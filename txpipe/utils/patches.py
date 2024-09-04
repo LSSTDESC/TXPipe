@@ -284,6 +284,9 @@ class PatchMaker:
         initial_size = max_size // npatch
         patch_centers = cat.patch_centers
 
+        if initial_size == 0:
+            initial_size = 1
+
         # make the patchmaker object
         patchmaker = cls(
             patch_filenames,
