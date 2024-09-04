@@ -288,7 +288,7 @@ class PatchMaker:
         patch_centers = cat.patch_centers
 
         if initial_size == 0:
-            initial_size = 1
+            initial_size = 2
 
         # make the patchmaker object
         patchmaker = cls(
