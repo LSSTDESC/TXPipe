@@ -31,8 +31,8 @@ TXSourceTrueNumberDensity:
     nz: 601
     zmax: 3.0
     chunk_rows: 100000
-    weight_col: metacal/weight
-    redshift_group: metacal
+    weight_col: shear/00/weight
+    redshift_group: shear/00
 
 TXLensTrueNumberDensity:
     name: TXLensTrueNumberDensity
