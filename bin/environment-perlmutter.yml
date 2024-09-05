@@ -67,4 +67,4 @@ dependencies:
     - pz-rail-pzflow==1.0.1
     - pz-rail-sklearn==1.0.1
     - pz-rail-som==1.0.1
-    - qp-prob=0.9.1
+    - qp-prob==0.9.1
