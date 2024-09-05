@@ -15,4 +15,6 @@ mamba activate /global/common/software/lsst/users/zuntz/txpipe/env
 # we have to uninstall and re-install it.  This is even though
 # we are using the external MPI package, as far as I can tell.
 mamba remove --force --yes mpi4py
-MPICC="mpicc -shared" pip install --force-reinstall --no-cache-dir --no-binary=mpi4py "mpi4py==3.*"
+CC="cc -shared" MPICC="mpicc -shared" pip install --force-reinstall --no-cache-dir --no-binary=mpi4py "mpi4py==3.*"
+
+chmod go+rX ${ENV_PATH}
