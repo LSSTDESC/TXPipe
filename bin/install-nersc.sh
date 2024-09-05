@@ -12,12 +12,12 @@ module swap PrgEnv-${PE_ENV,,} PrgEnv-gnu
 module load cray-mpich-abi
 
 # Create an almost empty environment
-mamba create -p ${ENV_PATH} python=3.10
+mamba create --yes -p ${ENV_PATH} python=3.10
 mamba activate ${ENV_PATH}
 
 # Manually install MPI.
 # We have to do this first because something breaks it later otherwise
-MPICC="cc -shared" python3 -m pip install --force-reinstall --no-cache-dir --no-binary=mpi4py "mpi4py==3.*"
+MPICC="cc -shared -I $MPICH_DIR/include" python3 -m pip install --force-reinstall --no-cache-dir --no-binary=mpi4py "mpi4py==3.*"
 
 # Okay, this is a terrible thing we're doing now.
 # If I install the TX environment then it breaks something, somewhere
