@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+
+set -e
+set -x
 VERSION=1.0
 ENV_PATH=/global/common/software/lsst/users/zuntz/txpipe/env-${VERSION}
 
@@ -9,7 +12,7 @@ module load cray-mpich-abi
 
 # create environment
 mamba env create -p ${ENV_PATH} -f bin/environment-perlmutter.yml
-mamba activate /global/common/software/lsst/users/zuntz/txpipe/env
+mamba activate ${ENV_PATH}
 
 # The default mpi4py version does not work at NERSC.
 # we have to uninstall and re-install it.  This is even though
