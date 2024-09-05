@@ -25,14 +25,14 @@ MPICC="cc -shared -I $MPICH_DIR/include" python3 -m pip install --force-reinstal
 # let conda overwrite it, and then replace it again
 BACKUP_DIR=mpi4py-tmp-${RANDOM}
 mkdir ${BACKUP_DIR}
-cp -r ${ENV_DIR}/lib/python3.10/site-packages/mpi4py*  ${BACKUP_DIR}/
+cp -r ${ENV_PATH}/lib/python3.10/site-packages/mpi4py*  ${BACKUP_DIR}/
 
 # Install all the TXPipe dependencies
 mamba env update --file bin/environment-perlmutter.yml
 
 # Now we put mpi4py back manually. May God forgive me.
 mamba remove --force --yes mpi4py
-cp -r ${BACKUP_DIR}/* ${ENV_DIR}/lib/python3.10/site-packages/
+cp -r ${BACKUP_DIR}/* ${ENV_PATH}/lib/python3.10/site-packages/
 rm -rf ${BACKUP_DIR}
 
 # Let the rest of the collaboration read this cursed install
