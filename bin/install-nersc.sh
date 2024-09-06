@@ -6,18 +6,14 @@ set -x
 VERSION=1.0
 ENV_PATH=/global/common/software/lsst/users/zuntz/txpipe/env-${VERSION}
 
-# modules needed
 module load python
+
+
+conda create --yes -p ${ENV_PATH} python=3.10
+conda activate ${ENV_PATH}
 module swap PrgEnv-${PE_ENV,,} PrgEnv-gnu
-module load cray-mpich-abi
+MPICC="cc -shared" pip install --force-reinstall --no-cache-dir --no-binary=mpi4py mpi4py -vv
 
-# Create an almost empty environment
-mamba create --yes -p ${ENV_PATH} python=3.10
-mamba activate ${ENV_PATH}
-
-# Manually install MPI.
-# We have to do this first because something breaks it later otherwise
-MPICC="cc -shared -I $MPICH_DIR/include" python3 -m pip install --force-reinstall --no-cache-dir --no-binary=mpi4py "mpi4py==3.*"
 
 # Okay, this is a terrible thing we're doing now.
 # If I install the TX environment then it breaks something, somewhere
