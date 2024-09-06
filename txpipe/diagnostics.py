@@ -56,16 +56,9 @@ class TXDiagnosticQuantiles(PipelineStage):
             chunk_rows = "auto"
 
         # We canonicalise the names here
-        renames = {
-            "psf_g1": f"{psf_prefix}g1",
-            "psf_T_mean": f"{psf_prefix}T_mean",
-            "s2n": f"{shear_prefix}s2n",
-            "T": f"{shear_prefix}T",
-        }
-
-        with self.open_input("shear_catalog", wrapper=Tru) as f:
+        with self.open_input("shear_catalog", wrapper=True) as f:
             group = f.get_primary_catalog_group()
-            col_names = list(f[g].keys())
+            col_names = list(f.file[group].keys())
 
 
         quantiles = np.linspace(0, 1, nedge, endpoint=True)
@@ -75,9 +68,8 @@ class TXDiagnosticQuantiles(PipelineStage):
 
             # Create dask arrays of the columns. This loads lazily
             cols = {}
-            for old_name in col_names:
-                new_name = renames.get(old_name, old_name)
-                cols[new_name] = da.from_array(f[f"{group}/{old_name}"], chunks=chunk_rows)
+            for name in col_names:
+                cols[name] = da.from_array(f[f"{group}/{name}"], chunks=chunk_rows)
 
             # Cut down to just the source selection
             bins = da.from_array(g["tomography/bin"], chunks=chunk_rows)
@@ -394,7 +386,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         psf_prefix = self.config["psf_prefix"]
         delta_gamma = self.config["delta_gamma"]
 
-        psf_T_edges = self.get_bin_edges("psf_T_mean")
+        psf_T_edges = self.get_bin_edges("{psf_prefix}}/psf_T_mean")
         
         
         binnedShear = MeanShearInBins(
@@ -592,8 +584,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         for band in self.config["bands"]:
                 
             with self.open_input("shear_catalog") as c:
-                col = c[f"shear/{shear_prefix}mag_{band}"][:]
-                m_edges = self.BinEdges(col,nbins)
+                m_edges = self.get_bin_edges(f"mag_{band}")
 
             binnedShear[f"{band}"] = MeanShearInBins(
                 f"{shear_prefix}mag_{band}",

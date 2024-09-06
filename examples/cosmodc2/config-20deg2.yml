@@ -117,8 +117,6 @@ TXSourceSelectorMetadetect:
     shear_prefix: ''
 
 TXDiagnosticQuantiles:
-    psf_prefix: 00/mcal_psf_
-    shear_prefix: 00/
     nbins: 20
 
 
