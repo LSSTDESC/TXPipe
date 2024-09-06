@@ -3,10 +3,7 @@ global:
 
 PZPrepareEstimatorSource:
     name: PZPrepareEstimatorSource
-    classname: Inform_BPZ_lite
-    aliases:
-        input: spectroscopic_catalog
-        model: source_photoz_model
+    classname: BPZliteInformer
     zmin: 0.0
     zmax: 3.0
     nzbins: 301
@@ -19,7 +16,7 @@ PZPrepareEstimatorSource:
     p_min: 0.005
     gauss_kernel: 0.0
     mag_err_min: 0.005
-    inform_options: {'save_train': False, 'load_model': False, 'modelfile': 'BPZpriormodel.out'}  
+    inform_options: {save_train: false, load_model: false, modelfile: BPZpriormodel.out}
     madau_reddening: no
     bands: riz
     zp_errors: [0.01, 0.01, 0.01]
@@ -27,11 +24,7 @@ PZPrepareEstimatorSource:
 
 PZEstimatorSource:
     name: PZEstimatorSource
-    classname: BPZ_lite
-    aliases:
-        model: source_photoz_model
-        input: shear_catalog
-        output: source_photoz_pdfs
+    classname: BPZliteEstimator
     zmin: 0.0
     zmax: 3.0
     dz: 0.01
@@ -59,14 +52,14 @@ PZEstimatorSource:
 
 TXSourceSelectorMetadetect:
     # change to False to use realistic selection based on riz
-    true_z: True
+    true_z: true
     bands: riz   # used for selection
     T_cut: 0.5
     s2n_cut: 10.0
     max_rows: 1000
     delta_gamma: 0.02
     source_zbin_edges: [0.1, 3.0]
-    shear_prefix: ""
+    shear_prefix: ''
 
 
 # No options here

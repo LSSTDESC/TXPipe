@@ -42,6 +42,8 @@ class TXShearCalibration(PipelineStage):
         "chunk_rows": 100_000,
         "subtract_mean_shear": True,
         "extra_cols": [""],
+        "shear_catalog_type": '',
+        "shear_prefix": "",
     }
 
     def run(self):
@@ -52,10 +54,21 @@ class TXShearCalibration(PipelineStage):
         extra_cols = [c for c in self.config["extra_cols"] if c]
         subtract_mean_shear = self.config["subtract_mean_shear"]
 
+        with self.open_input("shear_catalog", wrapper=True) as f:
+            bands = f.get_bands()
+
+        shear_prefix = self.config["shear_prefix"]
+        # this is the names of the columns in the input catalog
+        mag_cols_out = [f"mag_{b}" for b in bands] + [f"mag_err_{b}" for b in bands]
+        mag_cols_in = [f"{shear_prefix}{c}" for c in mag_cols_out]
+
+        if self.rank == 0:
+            print("Copying extra columns: ", extra_cols)
+
         # Prepare the output file, and create a splitter object,
         # whose job is to save the separate bins to separate HDF5
         # extensions depending on the tomographic bin
-        output_file, splitter, nbin = self.setup_output(extra_cols)
+        output_file, splitter, nbin = self.setup_output(extra_cols + mag_cols_out)
 
         #  Load the calibrators.  If using the true shear no calibration
         # is needed
@@ -66,14 +79,30 @@ class TXShearCalibration(PipelineStage):
         #  Get the correct shear catalogs
         with self.open_input("shear_catalog", wrapper=True) as f:
             cat_cols, renames = f.get_primary_catalog_names()
+            g = f.get_primary_catalog_group()
 
-            cat_cols += [f"00/{c}" for c in extra_cols]
-            renames.update({f"00/{c}":c for c in extra_cols})
-    
+            # cat_cols is everything we are reading in
+            if cat_type == "metadetect":
+                cat_cols = cat_cols + [f"00/{c}" for c in extra_cols + mag_cols_in]
+                mag_cols_in = [f"00/{c}" for c in mag_cols_in]
+                renames.update({f"00/{c}":c for c in extra_cols})
+            else:
+                cat_cols = cat_cols + extra_cols + mag_cols_in
+
+            renames.update(zip(mag_cols_in, mag_cols_out))
+
         if cat_type!='hsc':
-            output_cols = ["ra", "dec", "weight", "g1", "g2"] + extra_cols
+            output_cols = ["ra", "dec", "weight", "g1", "g2"] + extra_cols + mag_cols_out
         else:
-            output_cols = ["ra", "dec", "weight", "g1", "g2","c1","c2"] + extra_cols
+            output_cols = ["ra", "dec", "weight", "g1", "g2", "c1", "c2"]  + extra_cols + mag_cols_out
+
+        if self.rank == 0:
+            print("Reading these columns from the 'shear' group:")
+            for c in cat_cols:
+                print(f" - {c}")
+            print("Renaming these columns:")
+            for k, v in renames.items():
+                print(f" - {k} -> {v}")
 
         # We parallelize by bin.  This isn't ideal but we don't know the number
         # of objects in each bin per chunk, so we can't parallelize in full.  This
@@ -104,6 +133,7 @@ class TXShearCalibration(PipelineStage):
 
         #  Main loop
         for s, e, data in rename_iterated(it, renames):
+            
 
             if self.rank == 0:
                 print(f"Rank 0 processing data {s:,} - {e:,}")
@@ -123,26 +153,22 @@ class TXShearCalibration(PipelineStage):
                     # otherwise just objects in this bin
                     w = np.where(data["bin"] == b)
                     cal = cals[b]
-
+                
                 # Cut down the data to just this selection for output
                 d = {name: data[name][w] for name in output_cols}
-
-                # Calibrate the shear columns 
+                
+                # Calibrate the shear columns
                 if cat_type=='hsc':
-                    d["g1"], d["g2"] = cal.apply(
-                        d["g1"], d["g2"], d["c1"], d["c2"]
-                    )
+                    d["g1"], d["g2"] = cal.apply(d["g1"], d["g2"], d["c1"], d["c2"], d['aselepsf1'], d['aselepsf2'], d['msel'], subtract_mean=subtract_mean_shear)
                 elif cat_type=='lensfit':
                     # In KiDS, the additive bias is calculated and removed per North and South field
-                    # therefore, we add dec to split data into these fields. 
+                    # therefore, we add dec to split data into these fields.
                     # You can choose not to by setting dec_cut = 90 in the config, for example.
                     d["g1"], d["g2"] = cal.apply(
                         d["dec"],d["g1"], d["g2"], subtract_mean=subtract_mean_shear
                     )
                 else:
-                    d["g1"], d["g2"] = cal.apply(
-                    d["g1"], d["g2"]
-                )
+                    d["g1"], d["g2"] = cal.apply(d["g1"], d["g2"], subtract_mean=subtract_mean_shear)
 
                 # Write output, keeping track of sizes
                 splitter.write_bin(d, b)
@@ -156,7 +182,7 @@ class TXShearCalibration(PipelineStage):
             counts = f["tomography/counts"][:]
             count2d = f["tomography/counts_2d"][0]
             nbin = len(counts)
-
+        
         # Prepare the calibrated output catalog
         f = self.open_output("binned_shear_catalog", parallel=True)
 

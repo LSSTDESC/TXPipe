@@ -13,6 +13,7 @@ def read_shear_catalog_type(stage):
     with stage.open_input("shear_catalog", wrapper=True) as f:
         shear_catalog_type = f.catalog_type
         stage.config["shear_catalog_type"] = shear_catalog_type
+        print('Temporarily setting cat_type to: ', f.catalog_type)
     return shear_catalog_type
 
 
@@ -655,14 +656,13 @@ class HSCCalculator:
         self.count += n
         self.sum_weights += np.sum(w[sel])
         self.sum_weights_sq += np.sum(w[sel]**2)
-
+        
         w = w[sel]
 
         # Accumulate the calibration quantities so that later we
         # can compute the weighted mean of the values
         self.R.add_data(0, R[sel], w)
         self.K.add_data(0, K[sel], w)
-
         return sel
 
     def collect(self, comm=None, allgather=False):

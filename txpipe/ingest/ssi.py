@@ -1,17 +1,11 @@
 from ..base_stage import PipelineStage
 from ..data_types import (
-    YamlFile,
     HDFFile,
-    FitsFile,
 )
 from ..utils import (
-    LensNumberDensityStats,
-    Splitter,
-    rename_iterated,
     nanojansky_to_mag_ab,
     nanojansky_err_to_mag_ab,
 )
-from ..binning import build_tomographic_classifier, apply_classifier
 import numpy as np
 import warnings
 
@@ -20,7 +14,6 @@ column_names = {
     "coord_ra": "ra",
     "coord_dec": "dec",
 }
-
 
 class TXIngestSSIGCR(PipelineStage):
     """
@@ -63,23 +56,24 @@ class TXIngestSSIGCR(PipelineStage):
             sys.path.insert(0, self.config["GCRcatalog_path"])
         import GCRCatalogs
 
-        output_catalogs = [
+        #attempt to ingest three types of catalog
+        catalogs_labels = [
             "injection_catalog",
             "ssi_photometry_catalog",
             "ssi_uninjected_photometry_catalog",
         ]
 
-        for output_catalog_name in output_catalogs:
-            catalog_name = self.config[f"{output_catalog_name}_name"]
+        for catalog_label in catalogs_labels:
+            input_catalog_name = self.config[f"{catalog_label}_name"]
 
-            if catalog_name == "":
-                print(f"No catalog {output_catalog_name} name provided")
+            if input_catalog_name == "":
+                print(f"No catalog {catalog_label} name provided")
                 continue
 
-            output_file = self.open_output(output_catalog_name)
+            output_file = self.open_output(catalog_label)
             group = output_file.create_group("photometry")
 
-            gc0 = GCRCatalogs.load_catalog(catalog_name)
+            gc0 = GCRCatalogs.load_catalog(input_catalog_name)
             native_quantities = gc0.list_all_native_quantities()
 
             # iterate over native quantities as some might be missing (or be nans)
@@ -94,18 +88,16 @@ class TXIngestSSIGCR(PipelineStage):
                         continue  # skip the quantities that are empty
 
                     group.create_dataset(q, data=qobj[q], dtype=qobj[q].dtype)
-                    if q in column_names.keys():
+                    if q in column_names:
                         # also save with TXPipe names
-                        group.create_dataset(
-                            column_names[q], data=qobj[q], dtype=qobj[q].dtype
-                        )
+                        group[column_names[q]] = group[q]
 
                 except KeyError:  # skip quantities that are missing
-                    warnings.warn(f"KeyError for quantity {q}")
+                    warnings.warn(f"quantity {q} was missing from the GCRCatalog object")
                     continue
 
                 except TypeError:
-                    warnings.warn(f"TypeError when trying to save quantity {q}")
+                    warnings.warn(f"Quantity {q} coud not be saved as it has a data type not recognised by hdf5")
 
             # convert fluxes to mags using txpipe/utils/conversion.py
             bands = "ugrizy"
@@ -198,26 +190,20 @@ class TXMatchSSI(PipelineStage):
             max_n,
         )
 
-        start1 = 0
-        for ichunk in range(n_chunk):
+        out_start = 0
+        for ichunk, (in_start,in_end,data) in enumerate(self.iterate_hdf("ssi_photometry_catalog", "photometry", ["ra","dec"], batch_size)):
             phot_coord = SkyCoord(
-                ra=phot_cat["photometry/ra"][
-                    ichunk * batch_size : (ichunk + 1) * batch_size
-                ]
-                * u.degree,
-                dec=phot_cat["photometry/dec"][
-                    ichunk * batch_size : (ichunk + 1) * batch_size
-                ]
-                * u.degree,
+                ra=data["ra"]*u.degree,
+                dec=data["dec"]*u.degree,
             )
 
             idx, d2d, d3d = phot_coord.match_to_catalog_sky(inj_coord)
             select_matches = d2d.value <= self.config["match_radius"] / 60.0 / 60.0
             nmatches = np.sum(select_matches)
-            end1 = start1 + nmatches
+            out_end = out_start + nmatches
 
             if nmatches != 0:
-                print(start1, end1, nmatches)
+                print(out_start, out_end, nmatches)
                 self.write_output(
                     match_outfile,
                     "photometry",
@@ -227,13 +213,13 @@ class TXMatchSSI(PipelineStage):
                     select_matches,
                     ichunk,
                     batch_size,
-                    start1,
-                    end1,
+                    out_start,
+                    out_end,
                 )
 
-            start1 = end1
+            out_start = out_end
 
-        self.finalize_output(match_outfile, "photometry", end1)
+        self.finalize_output(match_outfile, "photometry", out_end)
 
     def setup_output(self, tag, group, inj_group, phot_group, n):
         """

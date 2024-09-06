@@ -18,6 +18,17 @@ def metacalibration_names(names):
         out += [name + "_" + s for s in suffices]
     return out
 
+class PhotometryCatalog(HDFFile):
+    def get_bands(self):
+        group = self.file["photometry"]
+        if "bands" in group.attrs:
+            return group.attrs["bands"]
+        bands = []
+        for col in group.keys():
+            if col.startswith("mag_") and col.count("_") == 1:
+                bands.append(col[4:])
+        return bands
+
 
 class ShearCatalog(HDFFile):
     """
@@ -89,6 +100,30 @@ class ShearCatalog(HDFFile):
             rename = {}
 
         return shear_cols, rename
+
+    def get_bands(self):
+        group = self.file[self.get_primary_catalog_group()]
+        if "bands" in group.attrs:
+            return group.attrs["bands"]
+        bands = []
+        for col in group.keys():
+            if col.startswith("mag_") and col.count("_") == 1:
+                bands.append(col[4:])
+        return bands
+
+
+class BinnedCatalog(HDFFile):
+    required_datasets = []
+    def get_bins(self, group_name):
+        group = self.file[group_name]
+        info = dict(group.attrs)
+        bins = []
+        for i in range(info["nbin"]):
+            code = info[f"bin_{i}"]
+            name = f"bin_{code}"
+            bins.append(name)
+        return bins
+
 
 
 class TomographyCatalog(HDFFile):
@@ -197,9 +232,9 @@ class MapsFile(HDFFile):
             raise ValueError(f"Unknown map pixelization type {pixelization}")
         return m
 
-    def read_mask(self):
+    def read_mask(self, thresh=0):
         mask = self.read_map("mask")
-        mask[mask < 0] = 0
+        mask[mask <= thresh] = 0
         return mask
 
     def write_map(self, map_name, pixel, value, metadata):

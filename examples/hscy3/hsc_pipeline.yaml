@@ -1,0 +1,147 @@
+# Stages to run
+stages:
+      #- name: TXSourceDiagnosticPlots
+      #- name: TXRoweStatistics  
+      #- name: TXTauStatistics
+      #- name: TXPSFDiagnostics
+  - name: TXSimpleMask
+  - name: TXAuxiliaryLensMaps
+      #- name: TXSourceNoiseMaps
+  - name: TXTwoPoint             # Compute real-space 2-point correlations
+    threads_per_process: 128
+  - name: TXTracerMetadata
+  - name: FlowCreator               # Simulate a spectroscopic population
+    aliases:
+        output: ideal_specz_catalog
+        model: flow
+  - name: GridSelection            # Simulate a spectroscopic sample
+    aliases:
+        input: ideal_specz_catalog
+        output: specz_catalog_pq
+  - name: TXParqetToHDF            # Convert the spec sample format
+    aliases:
+        input: specz_catalog_pq
+        output: spectroscopic_catalog
+  - name: TXSourceSelectorHSC       # select and split objects into source bins
+  - name: TXShearCalibration
+  - name: TXTruthLensSelector
+  - name: PZPrepareEstimatorLens
+    classname: Inform_BPZ_lite
+    aliases:
+        input: spectroscopic_catalog
+        model: lens_photoz_model
+  - name: PZEstimatorLens
+    classname: BPZ_lite
+    aliases:
+        model: lens_photoz_model
+        input: photometry_catalog
+        output: lens_photoz_pdfs
+  - name: TXMeanLensSelector       # select objects for lens bins from the PDFs
+  - name: Inform_NZDirLens         # Prepare the DIR method inputs for the lens sample     
+    classname: Inform_NZDir
+  - name: Inform_NZDirSource       # Prepare the DIR method inputs for the source sample
+    classname: Inform_NZDir
+  - name: TXJackknifeCenters     # Split the area into jackknife regions
+    #- name: PZRailSummarizeLens    # Run the DIR method on the lens sample to find n(z)
+    #  classname: PZRailSummarize  
+    #- name: PZRailSummarizeSource  # Run the DIR method on the lens sample to find n(z)
+    #  classname: PZRailSummarize
+    #- name: TXPhotozSourceStack
+    #  classname: TXPhotozStack
+    #- name: TXPhotozLensStack
+    #  classname: TXPhotozStack   
+    #- name: PZRailSummarizeSource  # Run the DIR method on the lens sample to find n(z)
+    #  classname: PZRailSummarize
+    #- name: Inform_NZDirSource     # Prepare the DIR method inputs for the source sample
+    #  classname: Inform_NZDir
+    #- name: PZPrepareEstimatorLens   # Prepare the p(z) estimator
+    #  classname: Inform_BPZ_lite   
+    #- name: PZEstimatorLens        # Measure lens galaxy PDFs
+    #  classname: BPZ_lite
+    #  threads_per_process: 1  
+    #- name: TXMeanLensSelector     # select objects for lens bins from the PDFs
+    #- name: Inform_NZDirLens       # Prepare the DIR method inputs for the lens sample     
+    #  classname: Inform_NZDir
+    #- name: PZRailSummarizeLens    # Run the DIR method on the lens sample to find n(z)
+    #  classname: PZRailSummarize  
+    #- name: PZRailSummarizeSource  # Run the DIR method on the lens sample to find n(z)
+    #  classname: PZRailSummarize
+    #- name: TXSourceSelectorMetacal  # select and split objects into source bins
+    #- name: Inform_NZDirSource     # Prepare the DIR method inputs for the source sample
+    #  classname: Inform_NZDir
+    #- name: TXLensCatalogSplitter 
+
+
+# modules and packages to import that have pipeline
+# stages defined in them
+modules: >
+    txpipe
+    rail.creation.degradation.grid_selection
+    rail.creation.engines.flowEngine
+    rail.estimation.algos.NZDir
+    rail.estimation.algos.bpz_lite
+
+
+# where to find any modules that are not in this repo,
+# and any other code we need.
+python_paths:
+  - submodules/WLMassMap/python/desc/
+  - submodules/TJPCov
+  - submodules/FlexZPipe
+  - submodules/RAIL
+
+# Where to put outputs
+output_dir: data/hsc-y3/outputs/shearsys/
+
+# How to run the pipeline: mini, parsl, or cwl
+launcher:
+    name: mini
+    interval: 1.0
+
+# Where to run the pipeline: cori-interactive, cori-batch, or local
+site:
+    name: local
+    max_threads: 128
+
+# python modules to import to search for stages
+#modules: txpipe
+
+# configuration settings
+config: examples/hscy3/config.yml
+
+# On NERSC, set this before running:
+# export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
+
+inputs:
+    # The following files are REQUIRED files 
+    shear_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/hsc-y3/shear/txpipe_allfield_shear.h5
+    calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
+    star_catalog: /global/cfs/cdirs/lsst/groups/WL/users/yomori/repo/nulltests_txpipe/hscy1/star_catalog_hscy1_allfields.h5
+    fiducial_cosmology: data/fiducial_cosmology.yml
+    random_cats_source:
+    random_cats: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/hsc-y3/shear/random_cats.hdf5
+
+    binned_random_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/hsc-y3/shear/random_cats.hdf5
+    binned_random_catalog_sub: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/hsc-y3/shear/random_cats.hdf5
+
+    # The following are just extracted from other pipelines which never gets used for cosmic shear-only analyses
+    flow: data/example/inputs/example_flow.pkl
+    photometry_catalog: data/example/inputs/photometry_catalog.hdf5
+    lens_tomography_catalog: /global/cfs/cdirs/lsst/groups/WL/users/yomori/repo/aaa/TXPipe/data/desy3a/outputs/lens_tomography_catalog_unweighted.hdf5
+    shear_photoz_stack: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/hscy1/shear_pz_stack.hdf5
+    lens_photoz_stack: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/hscy1/lens_pz_stack.hdf5
+    binned_lens_catalog: /global/cfs/cdirs/lsst/groups/WL/users/yomori/repo/aaa/TXPipe/data/desy3a/outputs/binned_lens_catalog.hdf5
+    #patch_centers            : /global/cfs/cdirs/lsst/groups/WL/users/yomori/repo/aaa/TXPipe/data/desy3a/outputs/patch_centers.txt
+
+
+# if supported by the launcher, restart the pipeline where it left off
+# if interrupteda
+# # if supported by the launcher, restart the pipeline where it left off
+# if interrupted
+resume: true
+# where to put output logs for individual stages
+log_dir: data/hsc-y3/logs
+# where to put an overall parsl pipeline log
+pipeline_log: data/hsc-y3/log.txt
+
+

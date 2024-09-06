@@ -91,6 +91,7 @@ class TXTwoPoint(PipelineStage):
 
         # Binning information
         source_list, lens_list = self.read_nbin()
+        self.config["num_threads"] = int(os.environ.get("OMP_NUM_THREADS", 1))
 
         if self.rank == 0:
             # This is a workaround for the fact the the ceci config stuff doesn't
@@ -129,6 +130,7 @@ class TXTwoPoint(PipelineStage):
 
         # For shear-shear we omit pairs with j>i
         if self.config["do_shear_shear"]:
+            print('DOING SHEAR-SHEAR')
             k = SHEAR_SHEAR
             for i in source_list:
                 for j in range(i + 1):
@@ -137,6 +139,7 @@ class TXTwoPoint(PipelineStage):
 
         # For shear-position we use all pairs
         if self.config["do_shear_pos"]:
+            print('DOING SHEAR-POS')
             k = SHEAR_POS
             for i in source_list:
                 for j in lens_list:
@@ -144,6 +147,7 @@ class TXTwoPoint(PipelineStage):
 
         # For position-position we omit pairs with j>i
         if self.config["do_pos_pos"]:
+            print('DOING POS-POS')
             if not self.config["use_randoms"]:
                 raise ValueError(
                     "You need to have a random catalog to calculate position-position correlations"
@@ -364,6 +368,10 @@ class TXTwoPoint(PipelineStage):
                 weight = d.object.weight
                 xi_x = d.object.xi_im
                 covX = d.object.estimate_cov("shot")
+                # TreeCorr v5 returns the diagonal of the covariance matrix
+                # instead of a full but diagal (so almost all zero) format.
+                if treecorr.__version_info__[0] >= 5:
+                    covX = np.diag(covX)
                 covs.append(covX)
                 err = np.sqrt(np.diag(covX))
                 n = len(xi_x)
@@ -376,7 +384,6 @@ class TXTwoPoint(PipelineStage):
                         error=err[i],
                         weight=weight[i],
                     )
-
         S.add_covariance(covs)
 
 
@@ -399,23 +406,28 @@ class TXTwoPoint(PipelineStage):
 
         # Load the tracer data N(z) from an input file and
         # copy it to the output, for convenience
-        if source_list:
-            with self.open_input("shear_photoz_stack", wrapper=True) as f:
-                for i in source_list:
-                    z, Nz = f.get_bin_n_of_z(i)
-                    S.add_tracer("NZ", f"source_{i}", z, Nz)
-                    if self.config["do_shear_pos"] == True:
-                        S2.add_tracer("NZ", f"source_{i}", z, Nz)
+        if self.config["do_shear_pos"] or self.config["do_shear_shear"]:
+            if source_list:
+                with self.open_input("shear_photoz_stack", wrapper=True) as f:
+                    for i in source_list:
+                        z, Nz = f.get_bin_n_of_z(i)
+                        S.add_tracer("NZ", f"source_{i}", z, Nz)
+                        if self.config["do_shear_pos"] == True:
+                            S2.add_tracer("NZ", f"source_{i}", z, Nz)
+            else:
+                sys.exit("Requesting a measurement that requires source galaxies but no source_list provided")
 
-
-        if lens_list:
-            with self.open_input("lens_photoz_stack", wrapper=True) as f:
-                # For both source and lens
-                for i in lens_list:
-                    z, Nz = f.get_bin_n_of_z(i)
-                    S.add_tracer("NZ", f"lens_{i}", z, Nz)
-                    if self.config["do_shear_pos"] == True:
-                        S2.add_tracer("NZ", f"lens_{i}", z, Nz)
+        if self.config["do_pos_pos"] or self.config["do_shear_pos"]:
+            if lens_list:
+                with self.open_input("lens_photoz_stack", wrapper=True) as f:
+                    # For both source and lens
+                    for i in lens_list:
+                        z, Nz = f.get_bin_n_of_z(i)
+                        S.add_tracer("NZ", f"lens_{i}", z, Nz)
+                        if self.config["do_shear_pos"] == True:
+                            S2.add_tracer("NZ", f"lens_{i}", z, Nz)
+            else:
+                sys.exit("Requesting a measurement that requires lens galaxies but no lens_list provided")
 
         # Now build up the collection of data points, adding them all to
         # the sacc data one by one.
@@ -679,7 +691,7 @@ class TXTwoPoint(PipelineStage):
             flip_g1=self.config["flip_g1"],
             flip_g2=self.config["flip_g2"],
         )
-
+        
         return cat
 
 
@@ -908,7 +920,7 @@ class TXTwoPoint(PipelineStage):
             rn.process(rancat_i, cat_j, comm=self.comm, low_mem=self.config["low_mem"])
 
         t2 = perf_counter()
-        nn.calculateXi(rr, dr=nr, rd=rn)
+        nn.calculateXi(rr=rr, dr=nr, rd=rn)
         if self.rank == 0:
             print(f"Processing took {t2 - t1:.1f} seconds")
 
@@ -971,7 +983,6 @@ class TXTwoPointPixel(TXTwoPoint):
         "sep_units": "arcmin",
         "flip_g1": False,
         "flip_g2": True,
-        "cores_per_task": 20,
         "verbose": 1,
         "source_bins": [-1],
         "lens_bins": [-1],
@@ -1134,7 +1145,6 @@ class TXTwoPointPixelExtCross(TXTwoPointPixel):
         "sep_units": "arcmin",
         "flip_g1": False,
         "flip_g2": True,
-        "cores_per_task": 20,
         "verbose": 1,
         "source_bins": [-1],
         "lens_bins": [-1],

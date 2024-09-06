@@ -1,52 +1,62 @@
-
 # Stages to run
 stages:
-    - name: TXSourceSelectorMetacal
-    - name: TXShearCalibration
-    - name: TXExternalLensCatalogSplitter
-    - name: TXStarCatalogSplitter
-    - name: TXTruePhotozStackSource
-      classname: TXTruePhotozStack
-    - name: TXIngestRedmagic
-    - name: TXTracerMetadata
-    - name: TXSourceMaps
-    - name: TXExternalLensMaps
-    - name: TXAuxiliarySourceMaps
-    - name: TXAuxiliaryLensMaps
-    - name: TXSimpleMask
-    - name: TXLSSWeightsUnit
-    - name: TXDensityMaps
-    - name: TXMapPlots
-    - name: TXRandomCat
-    - name: TXJackknifeCenters
-    - name: TXTwoPoint
-      threads_per_process: 2
-    - name: TXTwoPointRLens
-      threads_per_process: 2
-    - name: TXBlinding           # Blind the data following Muir et al
-      threads_per_process: 2
-    - name: TXTwoPointTheoryReal # compute theory using CCL to save in sacc file and plot later
-    - name: TXPhotozPlotSource        # Plot the bin n(z)
-      classname: TXPhotozPlot
-    - name: TXPhotozPlotLens        # Plot the bin n(z)
-      classname: TXPhotozPlot
-    - name: TXSourceDiagnosticPlots    # Make a suite of diagnostic plots
-    - name: TXLensDiagnosticPlots    # Make a suite of diagnostic plots
-    - name: TXGammaTFieldCenters # Compute and plot gamma_t around center points
-      threads_per_process: 2
-    - name: TXGammaTRandoms      # Compute and plot gamma_t around randoms
-      threads_per_process: 2
-    - name: TXGammaTStars     # Compute and plot gamma_t around dim stars
-      threads_per_process: 2
-    - name: TXRoweStatistics     # Compute and plot Rowe statistics
-      threads_per_process: 2
-    - name: TXPSFDiagnostics     # Compute and plots other PSF diagnostics
-    - name: TXBrighterFatterPlot # Make plots tracking the brighter-fatter effect
-    - name: TXSourceNoiseMaps
-    - name: TXExternalLensNoiseMaps
-    - name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
-    - name: TXConvergenceMapPlots # Plot the convergence map
-    - name: TXTwoPointPlots
+  - name: TXSourceSelectorMetacal
+  - name: TXShearCalibration
+  - name: TXExternalLensCatalogSplitter
+  - name: TXStarCatalogSplitter
+  - name: TXTruePhotozStackSource
+    classname: TXTruePhotozStack
+    aliases:
+        tomography_catalog: shear_tomography_catalog
+        catalog: shear_catalog
+        weights_catalog: shear_catalog
+        photoz_stack: shear_photoz_stack
+  - name: TXIngestRedmagic
+  - name: TXTracerMetadata
+  - name: TXSourceMaps
+  - name: TXExternalLensMaps
+  - name: TXAuxiliarySourceMaps
+  - name: TXAuxiliaryLensMaps
+  - name: TXSimpleMask
+  - name: TXLSSWeightsUnit
+  - name: TXDensityMaps
+  - name: TXMapPlots
+  - name: TXRandomCat
+  - name: TXJackknifeCenters
+  - name: TXTwoPoint
+    threads_per_process: 2
+  - name: TXTwoPointRLens
+    threads_per_process: 2
+  - name: TXBlinding             # Blind the data following Muir et al
+    threads_per_process: 2
+  - name: TXTwoPointTheoryReal   # compute theory using CCL to save in sacc file and plot later
+  - name: TXPhotozPlotSource          # Plot the bin n(z)
+    classname: TXPhotozPlot
+    aliases:
+        photoz_stack: shear_photoz_stack
+        nz_plot: nz_source
+  - name: TXPhotozPlotLens          # Plot the bin n(z)
+    classname: TXPhotozPlot
+    aliases:
+        photoz_stack: lens_photoz_stack
+        nz_plot: nz_lens
+  - name: TXSourceDiagnosticPlots      # Make a suite of diagnostic plots
+  - name: TXLensDiagnosticPlots      # Make a suite of diagnostic plots
+  - name: TXGammaTFieldCenters   # Compute and plot gamma_t around center points
+    threads_per_process: 2
+  - name: TXGammaTRandoms        # Compute and plot gamma_t around randoms
+    threads_per_process: 2
+  - name: TXGammaTStars       # Compute and plot gamma_t around dim stars
+    threads_per_process: 2
+  - name: TXRoweStatistics       # Compute and plot Rowe statistics
+    threads_per_process: 2
+  - name: TXPSFDiagnostics       # Compute and plots other PSF diagnostics
+  - name: TXBrighterFatterPlot   # Make plots tracking the brighter-fatter effect
+  - name: TXSourceNoiseMaps
+  - name: TXExternalLensNoiseMaps
+  - name: TXConvergenceMaps      # Make convergence kappa maps from g1, g2 maps
+  - name: TXConvergenceMapPlots   # Plot the convergence map
+  - name: TXTwoPointPlots
     # - name: TXTwoPointFourier
       # threads_per_process: 2
     # - name: TXRealGaussianCovariance   # Compute covariance of real-space correlations
@@ -71,7 +81,7 @@ modules: txpipe
 # where to find any modules that are not in this repo,
 # and any other code we need.
 python_paths:
-    - submodules/WLMassMap/python/desc/
+  - submodules/WLMassMap/python/desc/
 
 # configuration settings
 config: examples/redmagic/config.yml
@@ -93,9 +103,9 @@ inputs:
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted
-resume: True
+resume: true
 # where to put output logs for individual stages
 log_dir: data/example/logs_redmagic
 # where to put an overall parsl pipeline log
-pipeline_log: data/example/log.txt
+pipeline_log: data/example/log_redmagic.txt
 
