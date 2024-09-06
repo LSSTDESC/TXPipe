@@ -3,8 +3,7 @@
 set -e
 set -x
 
-VERSION=1.0
-ENV_PATH=/global/common/software/lsst/users/zuntz/txpipe/env-${VERSION}
+ENV_PATH=./conda
 
 module load python
 
@@ -14,14 +13,13 @@ conda activate ${ENV_PATH}
 module swap PrgEnv-${PE_ENV,,} PrgEnv-gnu
 MPICC="cc -shared" pip install --force-reinstall --no-cache-dir --no-binary=mpi4py mpi4py -vv
 
-
 # Okay, this is a terrible thing we're doing now.
 # If I install the TX environment then it breaks something, somewhere
 # in the compilation of mpi4py.  So we are going to copy it out somewhere else,
 # let conda overwrite it, and then replace it again
 BACKUP_DIR=mpi4py-tmp-${RANDOM}
 mkdir ${BACKUP_DIR}
-cp -r ${ENV_PATH}/lib/python3.10/site-packages/mpi4py*  ${BACKUP_DIR}/
+mv  ${ENV_PATH}/lib/python3.10/site-packages/mpi4py*  ${BACKUP_DIR}/
 
 # Install all the TXPipe dependencies
 mamba env update --file bin/environment-perlmutter.yml
@@ -31,5 +29,11 @@ mamba remove --force --yes mpi4py
 cp -r ${BACKUP_DIR}/* ${ENV_PATH}/lib/python3.10/site-packages/
 rm -rf ${BACKUP_DIR}
 
-# Let the rest of the collaboration read this cursed install
-chmod g+rX ${ENV_PATH}
+# we manually install firecrown as we have to remove numcosmo
+git clone --branch v1.7.5 https://github.com/LSSTDESC/firecrown 
+cd firecrown
+sed -i '/numcosmo/d' setup.cfg
+pip install .
+cd ..
+rm -rf firecrown
+
