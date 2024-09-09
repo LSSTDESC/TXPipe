@@ -446,9 +446,13 @@ class TXTauStatistics(PipelineStage):
         _, _, _, _, _, _, _, cov = tau_stats
         mask   = cov.diagonal() > 0
         cov    = cov[mask][:, mask]
-        fval   = self.config['npatch']
-        f_H    = 1.*(fval-120-2)/(fval-1)
-        f_DS   = 1/(1+(120-3)*(fval-120-2)/(fval-120-1)/(fval-120-4))
+        # We debias the covariance with two correction factors from Hartlap et. al 2006 eq. 17 and Dodelson & Schneider 2013 eq. 28
+        Njk    = self.config['npatch']
+        Ndv    = 6*self.config['nbins']
+        if not Ndv < Njk - 2:
+            raise ValueError("Hartlap correction only valid for N data vector elements < N jackknife patches - 2")
+        f_H    = 1.*(Njk-Ndv-2)/(Njk-1)
+        f_DS   = 1/(1+(Ndv-ndim)*(Njk-Ndv-2)/(Njk-Ndv-1)/(Njk-Ndv-4))
         cov    = cov / f_H / f_DS 
         
         _, tau0p, tau0m, tau2p, tau2m, tau5p, tau5m, _  = tau_stats
@@ -472,6 +476,7 @@ class TXTauStatistics(PipelineStage):
             ret[v] = {'median': mcmc[1],'lerr': q[0], 'rerr': q[1]}
             
         chi2 = self.chi2([ret['alpha']['median'],ret['beta']['median'],ret['eta']['median']], tau_stats,rowe_stats,invcov,mask)
+        # degree of freedom = nbins * 6 (i.e. tau 0+/-, tau2+/-, tau5+/-) - ndim
         dof  = (self.config['nbins']*6) - ndim
         print("Best-fit finished. Resulting chi^2/dof: ", chi2/dof)
         return ret
@@ -644,11 +649,13 @@ class TXTauStatistics(PipelineStage):
             de2    = e2meas - e2mod
             
             if self.config["psf_size_units"] == "Tmeas":
-                T_frac = (g["measured_T"][:] - g["model_T"][:]) / g["measured_T"][:]    
+                T_frac = (g["measured_T"][:] - g["model_T"][:]) / g["measured_T"][:]
+            elif self.config["psf_size_units"] == "Tmodel":
+                T_frac = (g["measured_T"][:] - g["model_T"][:]) / g["model_T"][:]  
             elif self.config["psf_size_units"] == "sigma":
                 T_frac = (g["measured_T"][:] ** 2 - g["model_T"][:] ** 2) / g["measured_T"][:] ** 2
             else:
-                sys.exit("Need to specify measured_T: Tmeas/Tmodel/sigma")
+                raise ValueError("Need to specify measured_T: Tmeas/Tmodel/sigma")
 
             if self.config['subtract_mean']:
                 e_meas = np.array((e1meas-np.mean(e1meas), e2meas-np.mean(e2meas)))
@@ -694,12 +701,12 @@ class TXTauStatistics(PipelineStage):
             theta, tau0p, tau0m, tau2p, tau2m, tau5p, tau5m, cov = tau_stats[s]['bin_all']
             nb    = len(theta)
             taus  = {'0p':tau0p, '0m':tau0m, '2p':tau2p, '2m':tau2m, '5p':tau5p, '5m':tau5m}
-            errs  = {'0p': np.diag(cov[int(0*nb):int(1*nb),int(0*nb):int(1*nb)])**0.5,
-                     '0m': np.diag(cov[int(1*nb):int(2*nb),int(1*nb):int(2*nb)])**0.5,
-                     '2p': np.diag(cov[int(2*nb):int(3*nb),int(2*nb):int(3*nb)])**0.5,
-                     '2m': np.diag(cov[int(3*nb):int(4*nb),int(3*nb):int(4*nb)])**0.5,
-                     '5p': np.diag(cov[int(4*nb):int(5*nb),int(4*nb):int(5*nb)])**0.5,
-                     '5m': np.diag(cov[int(5*nb):int(6*nb),int(5*nb):int(6*nb)])**0.5
+            errs  = {'0p': np.diag(cov[ 0*nb:1*nb , 0*nb:1*nb ])**0.5,
+                     '0m': np.diag(cov[ 1*nb:2*nb , 1*nb:2*nb ])**0.5,
+                     '2p': np.diag(cov[ 2*nb:3*nb , 2*nb:3*nb ])**0.5,
+                     '2m': np.diag(cov[ 3*nb:4*nb , 3*nb:4*nb ])**0.5,
+                     '5p': np.diag(cov[ 4*nb:5*nb , 4*nb:5*nb ])**0.5,
+                     '5m': np.diag(cov[ 5*nb:6*nb , 5*nb:6*nb ])**0.5
                     }
     
             for j,i in enumerate([0,2,5]):
