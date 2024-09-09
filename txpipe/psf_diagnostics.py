@@ -605,14 +605,14 @@ class TXTauStatistics(PipelineStage):
                 theta, tau0p, tau0m, tau2p, tau2m, tau5p, tau5m, cov = tau_stats[s][f'bin_{n}']
                 name = STAR_TYPE_NAMES[s]
                 h = g.create_group(f"tau_{name}/bin_{n}/")
-                h.create_dataset("theta"  , data=theta)
-                h.create_dataset("tau0p"   , data=tau0p)
-                h.create_dataset("tau0m"   , data=tau0m)
-                h.create_dataset("tau2p"   , data=tau2p)
-                h.create_dataset("tau2m"   , data=tau2m)
-                h.create_dataset("tau5p"   , data=tau5p)
-                h.create_dataset("tau5m"   , data=tau5m)
-                h.create_dataset("cov"    , data=cov)
+                h.create_dataset("theta" , data=theta)
+                h.create_dataset("tau0p" , data=tau0p)
+                h.create_dataset("tau0m" , data=tau0m)
+                h.create_dataset("tau2p" , data=tau2p)
+                h.create_dataset("tau2m" , data=tau2m)
+                h.create_dataset("tau5p" , data=tau5p)
+                h.create_dataset("tau5m" , data=tau5m)
+                h.create_dataset("cov"   , data=cov)
 
                 # Also save best-fit values 
                 h = g.create_group(f"bestfits_{name}/bin_{n}")
@@ -754,9 +754,9 @@ class TXRoweStatistics(PipelineStage):
     inputs = [("star_catalog", HDFFile),
              ("patch_centers", TextFile)]
     outputs = [
-        #("rowe134", PNGFile),
-        #("rowe25", PNGFile),
-        #("rowe0", PNGFile),
+        ("rowe134", PNGFile),
+        ("rowe25", PNGFile),
+        ("rowe0", PNGFile),
         ("rowe_stats", HDFFile),
     ]
 
@@ -811,7 +811,7 @@ class TXRoweStatistics(PipelineStage):
                 rowe_stats[4, t] = self.compute_rowe(4, s, ra, dec, de, e_mod * T_f)
                 rowe_stats[5, t] = self.compute_rowe(5, s, ra, dec, e_mod, e_meas * T_f)
         self.save_stats(rowe_stats)
-        #self.rowe_plots(rowe_stats)
+        self.rowe_plots(rowe_stats)
 
     def load_stars(self):
         with self.open_input("star_catalog") as f:
@@ -900,12 +900,12 @@ class TXRoweStatistics(PipelineStage):
                 )
                 plt.errorbar(
                     theta,
-                    abs(xip),
-                    xip_err,
+                    abs(xim),
+                    xim_err,
                     fmt=".",
                     label=rf"$\rho_{i}-$",
                     capsize=3,
-                    color="red",
+                    color="blue",
                     transform=tr,
                 )
             plt.xscale("log")
