@@ -897,7 +897,7 @@ class TXRoweStatistics(PipelineStage):
                 )
                 plt.errorbar(
                     theta,
-                    abs(xip),
+                    xip,
                     xip_err,
                     fmt=".",
                     label=rf"$\rho_{i}+$",
@@ -907,7 +907,7 @@ class TXRoweStatistics(PipelineStage):
                 )
                 plt.errorbar(
                     theta,
-                    abs(xim),
+                    xim,
                     xim_err,
                     fmt=".",
                     label=rf"$\rho_{i}-$",
@@ -916,7 +916,7 @@ class TXRoweStatistics(PipelineStage):
                     transform=tr,
                 )
             plt.xscale("log")
-            plt.yscale("log")
+            plt.yscale("symlog")
             plt.xlabel(r"$\theta$")
             plt.ylabel(r"$\xi(\theta)$")
             plt.legend()
@@ -936,7 +936,7 @@ class TXRoweStatistics(PipelineStage):
                 )
                 plt.errorbar(
                     theta,
-                    abs(xip),
+                    xip,
                     xip_err,
                     fmt=repr(mkr[j]),
                     label=rf"$\rho_{i}+$",
@@ -946,7 +946,7 @@ class TXRoweStatistics(PipelineStage):
                 )
                 plt.errorbar(
                     theta,
-                    abs(xim),
+                    xim,
                     xim_err,
                     fmt=repr(mkr[j]),
                     label=rf"$\rho_{i}-$",
@@ -955,7 +955,7 @@ class TXRoweStatistics(PipelineStage):
                     transform=tr,
                 )
             plt.xscale("log")
-            plt.yscale("log")
+            plt.yscale("symlog")
             plt.xlabel(r"$\theta$")
             plt.ylabel(r"$\xi(\theta)$")
             plt.legend()
@@ -975,7 +975,7 @@ class TXRoweStatistics(PipelineStage):
                 )
                 plt.errorbar(
                     theta,
-                    abs(xip),
+                    xip,
                     xip_err,
                     fmt=repr(mkr[j]),
                     label=rf"$\rho_{i}+$",
@@ -985,7 +985,7 @@ class TXRoweStatistics(PipelineStage):
                 )
                 plt.errorbar(
                     theta,
-                    abs(xim),
+                    xim,
                     xim_err,
                     fmt=repr(mkr[j]),
                     label=rf"$\rho_{i}-$",
@@ -995,7 +995,7 @@ class TXRoweStatistics(PipelineStage):
                 )
                 plt.title(STAR_TYPE_NAMES[s])
                 plt.xscale("log")
-                plt.yscale("log")
+                plt.yscale("symlog")
                 plt.xlabel(r"$\theta$")
                 plt.ylabel(r"$\xi(\theta)$")
                 plt.legend()
