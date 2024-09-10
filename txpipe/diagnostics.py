@@ -9,10 +9,12 @@ from .utils.calibration_tools import (
     read_shear_catalog_type,
     metadetect_variants,
     band_variants,
+    metacal_variants,
 )
 from .utils.fitting import fit_straight_line
 from .plotting import manual_step_histogram
 import numpy as np
+import difflib
 
 class TXDiagnosticQuantiles(PipelineStage):
     """
@@ -70,6 +72,8 @@ class TXDiagnosticQuantiles(PipelineStage):
             cols = {}
             for name in col_names:
                 cols[name] = da.from_array(f[f"{group}/{name}"], chunks=chunk_rows)
+                if name.startswith("mcal_"):
+                    cols[name[5:]] = cols[name]
 
             # Cut down to just the source selection
             bins = da.from_array(g["tomography/bin"], chunks=chunk_rows)
@@ -149,9 +153,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
         import matplotlib
 
         matplotlib.use("agg")
+        self.shear_catalog_type = read_shear_catalog_type(self)
 
-        # this also sets self.config["shear_catalog_type"]
-        cat_type = read_shear_catalog_type(self)
         
         # Collect together all the methods on this class called self.plot_*
         # They are all expected to be python coroutines - generators that
@@ -167,40 +170,44 @@ class TXSourceDiagnosticPlots(PipelineStage):
         # Create an iterator for reading through the input data.
         # This method automatically splits up data among the processes,
         # so the plotters should handle this.
+        it = self.data_iterator()
+
+         
+        # Now loop through each chunk of input data, one at a time.
+        # Each time we get a new segment of data, which goes to all the plotters
+        for (start, end, data) in it:
+            print(f"Read data {start} - {end}")
+            # This causes each data = yield statement in each plotter to
+            # be given this data chunk as the variable data.
+
+            for plotter in plotters:
+                plotter.send(data)
+
+        # Tell all the plotters to finish, collect together results from the different
+        # processors, and make their final plots.  Plotters need to respond
+        # to the None input and
+        for plotter in plotters:
+            try:
+                plotter.send(None)
+            except StopIteration:
+                pass
+
+    def data_iterator(self):
         chunk_rows = self.config["chunk_rows"]
         psf_prefix = self.config["psf_prefix"]
         shear_prefix = self.config["shear_prefix"]
+
+        # this also sets self.config["shear_catalog_type"]
+        cat_type = self.shear_catalog_type
+
         bands = self.config["bands"]
         if self.rank == 0:
             print("Catalog type = ", cat_type)
 
         if cat_type == "metacal":
-            shear_cols = [
-                f"{psf_prefix}g1",
-                f"{psf_prefix}g2",
-                f"{psf_prefix}T_mean",
-                "mcal_g1",
-                "mcal_g1_1p",
-                "mcal_g1_2p",
-                "mcal_g1_1m",
-                "mcal_g1_2m",
-                "mcal_g2",
-                "mcal_g2_1p",
-                "mcal_g2_2p",
-                "mcal_g2_1m",
-                "mcal_g2_2m",
-                "mcal_s2n",
-                "mcal_T",
-                "mcal_T_1p",
-                "mcal_T_2p",
-                "mcal_T_1m",
-                "mcal_T_2m",
-                "mcal_s2n_1p",
-                "mcal_s2n_2p",
-                "mcal_s2n_1m",
-                "mcal_s2n_2m",
-                "weight",
-            ] + [f"mcal_mag_{b}" for b in bands]
+            shear_cols = metacal_variants("mcal_g1", "mcal_g2", "mcal_T", "mcal_s2n")
+            shear_cols += ["mcal_psf_g1", "mcal_psf_g2", "mcal_psf_T_mean", "weight"]
+            shear_cols += [f"mcal_mag_{b}" for b in bands]
         elif cat_type == "metadetect":
             # g1, g2, T, psf_g1, psf_g2, T, s2n, weight, magnitudes
             shear_cols = metadetect_variants(
@@ -248,32 +255,37 @@ class TXSourceDiagnosticPlots(PipelineStage):
             shear_tomo_cols,
             *more_iters,
         )
-        
-        # Now loop through each chunk of input data, one at a time.
-        # Each time we get a new segment of data, which goes to all the plotters
-        for (start, end, data) in it:
-            print(f"Read data {start} - {end}")
-            # This causes each data = yield statement in each plotter to
-            # be given this data chunk as the variable data.
 
-            for plotter in plotters:
-                plotter.send(data)
-
-        # Tell all the plotters to finish, collect together results from the different
-        # processors, and make their final plots.  Plotters need to respond
-        # to the None input and
-        for plotter in plotters:
-            try:
-                plotter.send(None)
-            except StopIteration:
-                pass
+        for start, end, data in it:
+            # Some of the columns have the "mcal_" prefix in them
+            # We'd like to normalize them all, but annoyingly the
+            # calibration process is expecting some of them to have
+            # the prefix included. So as a blunt force solution we
+            # just give an alias for all of them.
+            for name, col in list(data.items()):
+                if 'mcal_' in name:
+                    new_name = name.replace("mcal_", "")
+                    data[new_name] = col
+            # now also add an alias for the metadet primary columns
+            for name, col in list(data.items()):
+                if name.startswith("00/"):
+                    data[name[3:]] = col
+            yield start, end, data
     
     def get_bin_edges(self, col):
         """
         Get the bin edges for a given column from the quantiles file
         """
         with self.open_input("shear_catalog_quantiles") as f:
-            edges = f[f"quantiles/{col}"][:]
+            try:
+                edges = f[f"quantiles/{col}"][:]
+            except KeyError:
+                matches = difflib.get_close_matches(col, f["quantiles"].keys())
+                if matches:
+                    raise ValueError(f"Column {col} not found. Possible columns: {matches[0]}?")
+                else:
+                    raise ValueError(f"Column {col} not found")
+                    
         return edges
 
     def plot_psf_shear(self):
@@ -282,20 +294,19 @@ class TXSourceDiagnosticPlots(PipelineStage):
         import matplotlib.pyplot as plt
         from scipy import stats
         
-        psf_prefix = self.config["psf_prefix"]
         delta_gamma = self.config["delta_gamma"]
 
         psf_g_edges = self.get_bin_edges("psf_g1")
             
         p1 = MeanShearInBins(
-            f"{psf_prefix}g1",
+            f"g1",
             psf_g_edges,
             delta_gamma,
             cut_source_bin=True,
             shear_catalog_type=self.config["shear_catalog_type"],
         )
         p2 = MeanShearInBins(
-            f"{psf_prefix}g2",
+            f"g2",
             psf_g_edges,
             delta_gamma,
             cut_source_bin=True,
@@ -338,7 +349,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         std_err21 = mc_cov[0, 0] ** 0.5
         line21 = slope21 * (mu2) + intercept21
         
-        slope22, intercept22, mc_cov = fit_straight_line(mu2, mean22, y_err=std22)
+        slope22, intercept22, mc_cov = fit_straight_line(mu2[idx], mean22[idx], y_err=std22[idx])
         std_err22 = mc_cov[0, 0] ** 0.5
         line22 = slope22 * (mu2) + intercept22
         
@@ -386,11 +397,11 @@ class TXSourceDiagnosticPlots(PipelineStage):
         psf_prefix = self.config["psf_prefix"]
         delta_gamma = self.config["delta_gamma"]
 
-        psf_T_edges = self.get_bin_edges("{psf_prefix}}/psf_T_mean")
+        psf_T_edges = self.get_bin_edges("psf_T_mean")
         
         
         binnedShear = MeanShearInBins(
-            f"{psf_prefix}T_mean",
+            f"psf_T_mean",
             psf_T_edges,
             delta_gamma,
             cut_source_bin=True,
@@ -403,10 +414,13 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
             if data is None:
                 break
+            print('xxx')
+            print('xxx', data['psf_T_mean'].min(), data['psf_T_mean'].max())
 
             binnedShear.add_data(data)
-            
+
         mu, mean1, mean2, std1, std2 = binnedShear.collect(self.comm)
+        print(std1)
         
         if self.rank != 0:
             return
