@@ -422,7 +422,7 @@ class MetaDetectCalculator:
                 sum_sq_weights = comm.reduce(self.sum_sq_weights)
 
                 if comm.rank > 0:
-                    return None, None, None, None
+                    return None, None, None
 
         else:
             counts = self.counts
