@@ -163,6 +163,13 @@ TXBlinding:
     b0: 0.95  ## we use bias of the form b0/g
     delete_unblinded: true
 
+TXDiagnosticQuantiles:
+    psf_prefix: psf_
+    shear_prefix: ""
+    nbins: 20
+    bands: ri
+
+
 TXSourceDiagnosticPlots:
     psf_prefix: psf_
     shear_prefix: ''
