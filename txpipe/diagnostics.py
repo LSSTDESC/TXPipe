@@ -619,8 +619,11 @@ class TXSourceDiagnosticPlots(PipelineStage):
         for band in self.config["bands"]:
             stat[f"mu_{band}"], stat[f"mean1_{band}"], stat[f"mean2_{band}"], stat[f"std1_{band}"], stat[f"std2_{band}"] = binnedShear[f"{band}"].collect(self.comm)
 
-            if self.rank != 0:
-                return
+        if self.rank != 0:
+            return
+
+        for band in self.config["bands"]:
+
             dx = 0.05 * (m_edges[1] - m_edges[0])
         
             idx = np.where(np.isfinite(stat[f"mu_{band}"]))[0]
