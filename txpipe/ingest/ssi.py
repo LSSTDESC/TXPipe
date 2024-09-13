@@ -1,6 +1,7 @@
 from ..base_stage import PipelineStage
 from ..data_types import (
     HDFFile,
+    FitsFile,
 )
 from ..utils import (
     nanojansky_to_mag_ab,
@@ -351,6 +352,10 @@ class TXIngestSSIMatchedDESBalrog(TXIngestSSIMatched):
                 dtype = dtype.subdtype[0]
                 for b in "griz":
                     g.create_dataset(column_names[col]+f"_{b}", (n,), dtype=dtype)
+
+                    #also create an empty array for the mag errors
+                    #TO DO: compute mag errors from flux errors
+                    g.create_dataset(column_names[col]+f"_err_{b}", (n,), dtype=dtype)
             else:
                 g.create_dataset(column_names[col], (n,), dtype=dtype)
 
