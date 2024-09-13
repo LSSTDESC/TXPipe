@@ -208,6 +208,10 @@ class TXBaseLensSelector(PipelineStage):
             group = outfile["tomography"]
             group["counts"][:] = lens_counts
             group["counts_2d"][:] = lens_counts_2d
+            print("Final bin counts:")
+            for i, b in enumerate(lens_counts):
+                print(f"Bin {i}: {b:,}")
+            print("Total: ", lens_counts_2d)
 
     def select_lens(self, phot_data):
         t = self.config["selection_type"]
