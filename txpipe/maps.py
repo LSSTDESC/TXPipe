@@ -142,6 +142,58 @@ class TXBaseMaps(PipelineStage):
             output_files[tag].write_map(map_name, pix, map_data, self.pixel_metadata)
 
 
+def make_dask_maps(ra, dec, g1, g2, weight, pixel_scheme,):
+    import dask.array as da
+    import healpy
+    npix = pixel_scheme.npix
+    # This seems to work directly, but we should check performance
+    pix = pixel_scheme.ang2pix(ra, dec)
+
+    # count map is just the number of galaxies per pixel
+    count_map = da.bincount(pix, minlength=npix)
+
+    # For the other map we use bincount with weights - these are the
+    # various maps by pixel. bincount gives the number of objects in each
+    # vaue of the first argument, weighted by the weights keyword, so effectively
+    # it gives us
+    # p_i = sum_{j} x[j] * delta_{pix[j], i}
+    # which is out map
+    weight_map = da.bincount(pix, weights=weight, minlength=npix)
+    g1_map = da.bincount(pix, weights=weight * g1, minlength=npix)
+    g2_map = da.bincount(pix, weights=weight * g2, minlength=npix)
+    esq_map = da.bincount(pix, weights=weight**2 * 0.5 * (g1**2 + g2**2), minlength=npix)
+
+    # normalize by weights to get the mean map value in each pixel
+    g1_map /= weight_map
+    g2_map /= weight_map
+
+    # Generate a catalog-like vector of the means so we can
+    # subtract from the full catalog.  Not sure if this ever actually gets
+    # created, or if dask just keeps a conceptual reference to it.
+    g1_mean = g1_map[pix]
+    g2_mean = g2_map[pix]
+
+    # Also generate variance maps
+    var1_map = da.bincount(pix, weights=weight * (g1 - g1_mean)**2, minlength=npix)
+    var2_map = da.bincount(pix, weights=weight * (g2 - g2_mean)**2, minlength=npix)
+
+    # we want the variance on the mean, so we divide by both the weight
+    # (to go from the sum to the variance) and then by the count (to get the
+    # variance on the mean). Have verified that this is the same as using
+    # var() on the original arrays.
+    var1_map /= (weight_map * count_map)
+    var2_map /= (weight_map * count_map)
+
+    # replace nans with UNSEEN.  The NaNs can occur if there are no objects
+    # in a pixel, so the value is undefined.
+    g1_map[da.isnan(g1_map)] = healpy.UNSEEN
+    g2_map[da.isnan(g2_map)] = healpy.UNSEEN
+    var1_map[da.isnan(var1_map)] = healpy.UNSEEN
+    var2_map[da.isnan(var2_map)] = healpy.UNSEEN
+    esq_map[da.isnan(esq_map)] = healpy.UNSEEN
+
+    return count_map, g1_map, g2_map, weight_map, esq_map, var1_map, var2_map
+
 
 class TXSourceMaps(PipelineStage):
     """Generate source maps directly from binned, calibrated shear catalogs.
@@ -196,55 +248,13 @@ class TXSourceMaps(PipelineStage):
             g2 = da.from_array(f[f"shear/bin_{i}/g2"], block_size)
             weight = da.from_array(f[f"shear/bin_{i}/weight"], block_size)
 
-            # This seems to work directly, but we should check performance
-            pix = pixel_scheme.ang2pix(ra, dec)
+            count_map, g1_map, g2_map, weight_map, esq_map, var1_map, var2_map = make_dask_maps(
+                ra, dec, g1, g2, weight, pixel_scheme)
 
-            # count map is just the number of galaxies per pixel
-            count_map = da.bincount(pix, minlength=npix)
-
-            # For the other map we use bincount with weights - these are the
-            # various maps by pixel. bincount gives the number of objects in each
-            # vaue of the first argument, weighted by the weights keyword, so effectively
-            # it gives us
-            # p_i = sum_{j} x[j] * delta_{pix[j], i}
-            # which is out map
-            weight_map = da.bincount(pix, weights=weight, minlength=npix)
-            g1_map = da.bincount(pix, weights=weight * g1, minlength=npix)
-            g2_map = da.bincount(pix, weights=weight * g2, minlength=npix)
-            esq_map = da.bincount(pix, weights=weight**2 * 0.5 * (g1**2 + g2**2), minlength=npix)
-
-            # normalize by weights to get the mean map value in each pixel
-            g1_map /= weight_map
-            g2_map /= weight_map
-
-            # Generate a catalog-like vector of the means so we can
-            # subtract from the full catalog.  Not sure if this ever actually gets
-            # created, or if dask just keeps a conceptual reference to it.
-            g1_mean = g1_map[pix]
-            g2_mean = g2_map[pix]
-
-            # Also generate variance maps
-            var1_map = da.bincount(pix, weights=weight * (g1 - g1_mean)**2, minlength=npix)
-            var2_map = da.bincount(pix, weights=weight * (g2 - g2_mean)**2, minlength=npix)
-
-            # we want the variance on the mean, so we divide by both the weight
-            # (to go from the sum to the variance) and then by the count (to get the
-            # variance on the mean). Have verified that this is the same as using
-            # var() on the original arrays.
-            var1_map /= (weight_map * count_map)
-            var2_map /= (weight_map * count_map)
-            
             # slight change in output name
             if i == "all":
                 i = "2D"
 
-            # replace nans with UNSEEN.  The NaNs can occur if there are no objects
-            # in a pixel, so the value is undefined.
-            g1_map[da.isnan(g1_map)] = healpy.UNSEEN
-            g2_map[da.isnan(g2_map)] = healpy.UNSEEN
-            var1_map[da.isnan(var1_map)] = healpy.UNSEEN
-            var2_map[da.isnan(var2_map)] = healpy.UNSEEN
-            esq_map[da.isnan(esq_map)] = healpy.UNSEEN
 
             # Save all the stuff we want here.
             output[f"count_{i}"] = count_map

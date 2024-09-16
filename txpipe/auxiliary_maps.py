@@ -4,24 +4,24 @@ from .base_stage import PipelineStage
 from .mapping import ShearMapper, LensMapper, FlagMapper, BrightObjectMapper, DepthMapperDR1
 from .data_types import MapsFile, HDFFile, ShearCatalog
 from .utils import choose_pixelization, rename_iterated, read_shear_catalog_type
+from .maps import map_config_options, make_dask_maps
 
+def make_dask_flag_maps(ra, dec, flag, max_exponent, pixel_scheme):
+    import dask.array as da
+    import healpy
+    npix = pixel_scheme.npix
+    # This seems to work directly, but we should check performance
+    pix = pixel_scheme.ang2pix(ra, dec)
+    maps = []
+    for i in range(max_exponent):
+        f = 2**i
+        flag_map = da.where(flag & f, 1, 0)
+        flag_map = da.bincount(pix, weights=flag_map, minlength=npix).astype(int)
+        maps.append(flag_map)
+    pix = da.unique(pix)
+    return pix, maps
 
-class TXAuxiliarySourceMaps(TXBaseMaps):
-    """
-    Generate auxiliary maps from the source catalog
-
-    This stage makes maps of:
-    - the count of different flag values
-    - the mean PSF
-
-    These are currently only used for making visualizations in the later TXMapPlots
-    stage, and are not otherwise used directly.
-
-    Like most of the mapping stages it inherits most behavior from the TXBaseMaps
-    parent class, which specifies the primary `run` method. This is because most
-    mapper classes have the same overall structure. See that class for more details.
-    """
-
+class TXAuxiliarySourceMaps(PipelineStage):
     name = "TXAuxiliarySourceMaps"
     inputs = [
         ("shear_catalog", ShearCatalog),  # for psfs
@@ -31,161 +31,107 @@ class TXAuxiliarySourceMaps(TXBaseMaps):
     outputs = [
         ("aux_source_maps", MapsFile),
     ]
-
     config_options = {
-        "chunk_rows": 100_000,
-        "sparse": True,
+        "block_size": 0,
         "flag_exponent_max": 8,  # flag bits go up to 2**8 by default
         "psf_prefix": "psf_",  # prefix name for columns
+        **map_config_options
     }
+
 
     def choose_pixel_scheme(self):
         with self.open_input("source_maps", wrapper=True) as maps_file:
             pix_info = dict(maps_file.file["maps"].attrs)
         return choose_pixelization(**pix_info)
 
-    def prepare_mappers(self, pixel_scheme):
-        # We make a suite of mappers here.
-        # We read nbin_source because we want PSF maps per-bin
-        with self.open_input("shear_tomography_catalog") as f:
-            nbin_source = f["tomography"].attrs["nbin"]
-        self.config["nbin_source"] = nbin_source  # so it gets saved later
-        source_bins = list(range(nbin_source))
+    def run(self):
+        import dask
+        import dask.array as da
+        import healpy
 
-        # For making psf_g1, psf_g2 maps, per source-bin
-        psf_mapper = ShearMapper(
-            pixel_scheme, source_bins, sparse=self.config["sparse"]
-        )
+        pixel_scheme = self.choose_pixel_scheme()
+        block_size = self.config["block_size"]
+        if block_size == 0:
+            block_size = "auto"
 
-        # for mapping the density of flagged objects
-        flag_mapper = FlagMapper(
-            pixel_scheme, self.config["flag_exponent_max"], sparse=self.config["sparse"]
-        )
 
-        return psf_mapper, flag_mapper
 
-    def data_iterator(self):
-        psf_prefix = self.config["psf_prefix"]
-        shear_catalog_type = read_shear_catalog_type(self)
+        flag_exponent_max = self.config["flag_exponent_max"]
 
-        # Flag column name depends on catalog type
-        if shear_catalog_type == "metacal":
-            shear_cols = [
-                f"{psf_prefix}g1",
-                f"{psf_prefix}g2",
-                "mcal_flags",
-                "weight",
-                "ra",
-                "dec",
-            ]
-            renames = {
-                f"{psf_prefix}g1": "psf_g1",
-                f"{psf_prefix}g2": "psf_g2",
-                "mcal_flags": "flags",
-            }
-        elif shear_catalog_type == "metadetect":
-            shear_cols = [
-                f"00/{psf_prefix}g1",
-                f"00/{psf_prefix}g2",
-                "00/flags",
-                "00/weight",
-                "00/ra",
-                "00/dec",
-            ]
-            renames = {
-                f"00/{psf_prefix}g1": "psf_g1",
-                f"00/{psf_prefix}g2": "psf_g2",
-                "00/flags": "flags",
-                "00/weight": "weight",
-                "00/ra": "ra",
-                "00/dec": "dec",
-            }
-        else:
-            shear_cols = [
-                f"{psf_prefix}g1",
-                f"{psf_prefix}g2",
-                "flags",
-                "weight",
-                "ra",
-                "dec",
-            ]
-            renames = {
-                f"{psf_prefix}g1": "psf_g1",
-                f"{psf_prefix}g2": "psf_g2",
-            }
+        # We have to keep this open throughout the process, because
+        # dask will internally load chunks of the input hdf5 data.
+        shear_cat = self.open_input("shear_catalog", wrapper=True)
+        shear_tomo = self.open_input("shear_tomography_catalog", wrapper=True)
+        nbin = shear_tomo.file['tomography'].attrs['nbin']
 
-        # See maps.py for an explanation of this
-        it = self.combined_iterators(
-            self.config["chunk_rows"],
-            # first file
-            "shear_catalog",
-            "shear",
-            shear_cols,
-            # next file
-            "shear_tomography_catalog",
-            "tomography",
-            ["bin"],
-        )
-
-        return rename_iterated(it, renames)
-
-    def accumulate_maps(self, pixel_scheme, data, mappers):
-        psf_mapper, flag_mapper = mappers
-
-        psf_prefix = self.config["psf_prefix"]
-
-        # Our different mappers want different data columns.
-        # We pull out the bits they need and give them just those.
-
-        psf_data = {
-            "g1": data["psf_g1"],
-            "g2": data["psf_g2"],
-            "ra": data["ra"],
-            "dec": data["dec"],
-            "bin": data["bin"],
-            "weight": data["weight"],
-        }
-
-        flag_data = {
-            "ra": data["ra"],
-            "dec": data["dec"],
-            "flags": data["flags"],
-        }
-
-        psf_mapper.add_data(psf_data)
-        flag_mapper.add_data(flag_data)
-
-    def finalize_mappers(self, pixel_scheme, mappers):
-        psf_mapper, flag_mapper = mappers
-
-        # Four different mappers
-        pix, counts, g1, g2, var_g1, var_g2, weight, _ = psf_mapper.finalize(self.comm)
-        flag_pixs, flag_maps = flag_mapper.finalize(self.comm)
-
-        # Collect all the maps
+        # The "all" bin is the non-tomographic case.
+        bins = list(range(nbin)) + ["all"]
         maps = {}
+        group = shear_cat.get_primary_catalog_group()
 
-        if self.rank != 0:
-            return maps
+        # These don't actually load all the data - everything is lazy
+        ra = da.from_array(shear_cat.file[f"{group}/ra"], block_size)
+        dec = da.from_array(shear_cat.file[f"{group}/dec"], block_size)
+        psf_g1 = da.from_array(shear_cat.file[f"{group}/psf_g1"], block_size)
+        psf_g2 = da.from_array(shear_cat.file[f"{group}/psf_g2"], block_size)
+        weight = da.from_array(shear_cat.file[f"{group}/weight"], block_size)
+        if shear_cat.catalog_type == "metacal":
+            flag_name = "mcal_flags"
+        else:
+            flag_name = "flags"
+        flag = da.from_array(shear_cat.file[f"{group}/{flag_name}"], block_size)
+        b = da.from_array(shear_tomo.file["tomography/bin"], block_size)
+        
+        # collate metadata
+        metadata = {
+            key: self.config[key]
+            for key in map_config_options
+        }
+        metadata["flag_exponent_max"] = flag_exponent_max
+        metadata['nbin'] = nbin
+        metadata['nbin_source'] = nbin
 
-        # Save PSF maps
-        for b in psf_mapper.bins:
-            maps["aux_source_maps", f"psf/counts_{b}"] = (pix, counts[b])
-            maps["aux_source_maps", f"psf/g1_{b}"] = (pix, g1[b])
-            maps["aux_source_maps", f"psf/g2_{b}"] = (pix, g2[b])
-            maps["aux_source_maps", f"psf/var_g2_{b}"] = (pix, var_g1[b])
-            maps["aux_source_maps", f"psf/var_g2_{b}"] = (pix, var_g2[b])
-            maps["aux_source_maps", f"psf/lensing_weight_{b}"] = (pix, weight[b])
 
-        # Save flag maps
-        for i, (p, m) in enumerate(zip(flag_pixs, flag_maps)):
+        for i in bins:
+
+            w = b == i
+
+            count_map, g1_map, g2_map, weight_map, esq_map, var1_map, var2_map = make_dask_maps(
+                ra[w], dec[w], psf_g1[w], psf_g2[w], weight[w], pixel_scheme)
+            
+            pix = da.where(weight_map > 0)[0]
+
+            # Change output name
+            if i == "all":
+                i = "2D"
+
+            maps[f"psf/counts_{i}"] = (pix, count_map[pix])
+            maps[f"psf/g1_{i}"] = (pix, g1_map[pix])
+            maps[f"psf/g2_{i}"] = (pix, g2_map[pix])
+            maps[f"psf/var_g2_{i}"] = (pix, var1_map[pix])
+            maps[f"psf/var_g2_{i}"] = (pix, var2_map[pix])
+            maps[f"psf/var_{i}"] = (pix, esq_map[pix])
+            maps[f"psf/lensing_weight_{i}"] = (pix, weight[pix])
+
+        # Now add the flag maps. These are not tomographic.
+        pix, flag_maps = make_dask_flag_maps(ra, dec, flag, flag_exponent_max, pixel_scheme)
+        for j in range(flag_exponent_max):
+            maps[f"flags/flag_{2**j}"] = (pix, flag_maps[j][pix])
+
+
+        maps, = dask.compute(maps)
+
+        # Print out some info about the flag maps
+        for i in range(flag_exponent_max):
             f = 2**i
-            maps["aux_source_maps", f"flags/flag_{f}"] = (p, m)
-            # also print out some stats
-            t = m.sum()
-            print(f"Map shows total {t} objects with flag {f}")
+            count = maps[f"flags/flag_{f}"][1].sum()
+            print(f"Map shows total {count} objects with flag {f}")
 
-        return maps
+        # write the output maps
+        with self.open_output("aux_source_maps", wrapper=True) as out:
+            for map_name, (pix, m) in maps.items():
+                out.write_map(map_name, pix, m, metadata)
+            out.file['maps'].attrs.update(metadata)
 
 
 class TXAuxiliaryLensMaps(TXBaseMaps):
