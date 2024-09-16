@@ -82,7 +82,8 @@ class TXFourierGaussianCovariance(PipelineStage):
         # C_ell covariance
         cov = self.compute_covariance(cosmo, meta, two_point_data=two_point_data)
 
-        self.save_outputs(two_point_data, cov)
+        if self.rank == 0:
+            self.save_outputs(two_point_data, cov)
 
     def save_outputs(self, two_point_data, cov):
         filename = self.get_output("summary_statistics_fourier")
@@ -260,7 +261,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         WT=None,
     ):
         import pyccl as ccl
-        from .utils.wigner_transform import WignerTransform
+        from .utils.wigner_transform import bin_cov
 
         cl = {}
 
@@ -437,7 +438,6 @@ class TXFourierGaussianCovariance(PipelineStage):
 
     # compute all the covariances and then combine them into one single giant matrix
     def compute_covariance(self, cosmo, meta, two_point_data):
-        from tjpcov.wigner_transform import bin_cov
 
         ccl_tracers, tracer_Noise = self.get_tracer_info(
             cosmo, meta, two_point_data=two_point_data
@@ -488,12 +488,16 @@ class TXFourierGaussianCovariance(PipelineStage):
         for i in range(N2pt):
             tracer_comb1 = tracer_combs[i]
 
+            if i % self.size != self.rank:
+                continue
+
+
             count_xi_pm1 = 1 if i in range(xim_start, xim_end) else 0
 
             for j in range(i, N2pt):
                 tracer_comb2 = tracer_combs[j]
                 print(
-                    f"Computing {tracer_comb1} x {tracer_comb2}: chunk ({i},{j}) of ({N2pt},{N2pt})"
+                    f"Rank {self.rank} computing {tracer_comb1} x {tracer_comb2}: chunk ({i},{j}) of ({N2pt},{N2pt})"
                 )
 
                 count_xi_pm2 = 1 if j in range(xim_start, xim_end) else 0
@@ -543,6 +547,11 @@ class TXFourierGaussianCovariance(PipelineStage):
                 cov_full[start_i:end_i, start_j:end_j] = cov_ij
                 cov_full[start_j:end_j, start_i:end_i] = cov_ij.T
 
+        if self.comm is not None:
+            cov_full = self.comm.reduce(cov_full)
+
+        if self.rank != 0:
+            return
 
         try:
             np.linalg.cholesky(cov_full)

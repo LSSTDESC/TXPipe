@@ -21,6 +21,19 @@ class PipelineStage(PipelineStageBase):
     def run(self):
         print("Please do not execute this stage again.")
 
+    def time_stamp(self, tag):
+        """
+        Print a time stamp with an optional tag.
+
+        Parameters
+        ----------
+        tag: str
+            Additional info to print in the output line. Default is empty.
+        """
+        t = datetime.datetime.now()
+        print(f"Process {self.rank}: {tag} {t}")
+        sys.stdout
+
     def memory_report(self, tag=None):
         """
         Print a report about memory currently available
