@@ -23,6 +23,8 @@ def make_dask_flag_maps(ra, dec, flag, max_exponent, pixel_scheme):
 
 class TXAuxiliarySourceMaps(PipelineStage):
     name = "TXAuxiliarySourceMaps"
+    dask_parallel = True
+    
     inputs = [
         ("shear_catalog", ShearCatalog),  # for psfs
         ("shear_tomography_catalog", HDFFile),  # for per-bin psf maps
