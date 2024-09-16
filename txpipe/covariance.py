@@ -12,6 +12,7 @@ import numpy as np
 import warnings
 import os
 import pickle
+import sys
 
 # require TJPCov to be in PYTHONPATH
 d2r = np.pi / 180
@@ -30,7 +31,7 @@ class TXFourierGaussianCovariance(PipelineStage):
     measured.
     """
     name = "TXFourierGaussianCovariance"
-    parallel = False
+    parallel = True
     do_xi = False
 
     inputs = [
@@ -259,7 +260,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         WT=None,
     ):
         import pyccl as ccl
-        from tjpcov.wigner_transform import bin_cov
+        from .utils.wigner_transform import WignerTransform
 
         cl = {}
 
@@ -406,8 +407,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         return edges
 
     def make_wigner_transform(self, meta):
-        import threadpoolctl
-        from tjpcov.wigner_transform import WignerTransform
+        from .utils.wigner_transform import WignerTransform
 
         path = self.config["pickled_wigner_transform"]
         if path:
@@ -419,22 +419,14 @@ class TXFourierGaussianCovariance(PipelineStage):
                 print(f"Precomputed wigner transform {path} not found.")
                 print("Will compute it and then save it.")
 
-        # We don't want to use n processes with n threads each by accident,
-        # where n is the number of CPUs we have
-        # so for this bit of the code, which uses python's multiprocessing,
-        # we limit the number of threads that numpy etc can use.
-        # After this is finished this will switch back to allowing all the CPUs
-        # to be used for threading instead.
-        num_processes = int(os.environ.get("OMP_NUM_THREADS", 1))
-        print("Generating Wigner Transform.")
-        with threadpoolctl.threadpool_limits(1):
-            WT = WignerTransform(
-                ell=meta["ell"],
-                theta=meta["theta"] * d2r,
-                s1_s2=[(2, 2), (2, -2), (0, 2), (2, 0), (0, 0)],
-                ncpu=num_processes,
-            )
-            print("Computed Wigner Transform.")
+        self.time_stamp("Generating Wigner Transform")
+        WT = WignerTransform(
+            ell=meta["ell"],
+            theta=meta["theta"] * d2r,
+            s1_s2=[(2, 2), (2, -2), (0, 2), (2, 0), (0, 0)],
+            comm=self.comm,
+        )
+        self.time_stamp("Completed Wigner Transform")
 
         if path:
             try:
@@ -551,6 +543,7 @@ class TXFourierGaussianCovariance(PipelineStage):
                 cov_full[start_i:end_i, start_j:end_j] = cov_ij
                 cov_full[start_j:end_j, start_i:end_i] = cov_ij.T
 
+
         try:
             np.linalg.cholesky(cov_full)
         except:
@@ -574,7 +567,7 @@ class TXRealGaussianCovariance(TXFourierGaussianCovariance):
     TJPCov and a fiducial cosmology.
     """
     name = "TXRealGaussianCovariance"
-    parallel = False
+    parallel = True
     do_xi = True
 
     inputs = [
