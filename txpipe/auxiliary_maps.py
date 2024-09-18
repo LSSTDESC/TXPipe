@@ -1,25 +1,14 @@
 from .maps import TXBaseMaps, map_config_options
 import numpy as np
 from .base_stage import PipelineStage
-from .mapping import ShearMapper, LensMapper, FlagMapper, BrightObjectMapper, DepthMapperDR1
+from .mapping import make_dask_shear_maps, make_dask_flag_maps, make_dask_bright_object_map, make_dask_depth_map
 from .data_types import MapsFile, HDFFile, ShearCatalog
-from .utils import choose_pixelization, rename_iterated, read_shear_catalog_type, import_dask
-from .maps import map_config_options, make_dask_maps
+from .utils import choose_pixelization, import_dask
+from .maps import map_config_options
 
-def make_dask_flag_maps(ra, dec, flag, max_exponent, pixel_scheme):
-    _, da = import_dask()
-    import healpy
-    npix = pixel_scheme.npix
-    # This seems to work directly, but we should check performance
-    pix = pixel_scheme.ang2pix(ra, dec)
-    maps = []
-    for i in range(max_exponent):
-        f = 2**i
-        flag_map = da.where(flag & f, 1, 0)
-        flag_map = da.bincount(pix, weights=flag_map, minlength=npix).astype(int)
-        maps.append(flag_map)
-    pix = da.unique(pix)
-    return pix, maps
+
+
+
 
 class TXAuxiliarySourceMaps(PipelineStage):
     name = "TXAuxiliarySourceMaps"
@@ -97,7 +86,7 @@ class TXAuxiliarySourceMaps(PipelineStage):
             else:
                 w = b == i
 
-            count_map, g1_map, g2_map, weight_map, esq_map, var1_map, var2_map = make_dask_maps(
+            count_map, g1_map, g2_map, weight_map, esq_map, var1_map, var2_map = make_dask_shear_maps(
                 ra[w], dec[w], psf_g1[w], psf_g2[w], weight[w], pixel_scheme)
             
             pix = da.where(weight_map > 0)[0]
@@ -135,15 +124,14 @@ class TXAuxiliarySourceMaps(PipelineStage):
             out.file['maps'].attrs.update(metadata)
 
 
+
 class TXAuxiliaryLensMaps(TXBaseMaps):
     """
     Generate auxiliary maps from the lens catalog
 
     This class generates maps of:
         - depth
-        - psf
         - bright object counts
-        - flags
     """
     name = "TXAuxiliaryLensMaps"
     inputs = [
@@ -154,92 +142,79 @@ class TXAuxiliaryLensMaps(TXBaseMaps):
     ]
 
     config_options = {
-        "chunk_rows": 100_000,
-        "sparse": True,
+        "block_size": 0,
         "bright_obj_threshold": 22.0,  # The magnitude threshold for a object to be counted as bright
         "depth_band": "i",  # Make depth maps for this band
         "snr_threshold": 10.0,  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)
         "snr_delta": 1.0,  # The range threshold +/- delta is used for finding objects at the boundary
     }
 
-    # we dont redefine choose_pixel_scheme for lens_maps to prevent circular modules
-
-    def prepare_mappers(self, pixel_scheme):
-        # We make a suite of mappers here.
-
-        # for estimating depth per lens-bin
-        depth_mapper = DepthMapperDR1(
-            pixel_scheme,
-            self.config["snr_threshold"],
-            self.config["snr_delta"],
-            sparse=self.config["sparse"],
-            comm=self.comm,
-        )
-
-        # for mapping bright star fractions, for masks
-        brobj_mapper = BrightObjectMapper(
-            pixel_scheme,
-            self.config["bright_obj_threshold"],
-            sparse=self.config["sparse"],
-            comm=self.comm,
-        )
-
-        return depth_mapper, brobj_mapper
-
-    def data_iterator(self):
-        band = self.config["depth_band"]
-        cols = ["ra", "dec", "extendedness", f"snr_{band}", f"mag_{band}"]
-        return self.iterate_hdf(
-            "photometry_catalog", "photometry", cols, self.config["chunk_rows"]
-        )
-
-    def accumulate_maps(self, pixel_scheme, data, mappers):
-        depth_mapper, brobj_mapper = mappers
+    def run(self):
+        # Import dask and alias it as 'da'
+        _, da = import_dask()
+        
+        
+        # Retrieve configuration parameters
+        block_size = self.config["block_size"]
+        if block_size == 0:
+            block_size = "auto"
         band = self.config["depth_band"]
 
-        # Our different mappers want different data columns.
-        # We pull out the bits they need and give them just those.
-        brobj_data = {
-            "mag": data[f"mag_{band}"],
-            "extendedness": data["extendedness"],
-            "ra": data["ra"],
-            "dec": data["dec"],
-        }
+        # Open the input photometry catalog file.
+        # We can't use a "with" statement because we need to keep the file open
+        # while we're using dask.
+        f = self.open_input("photometry_catalog", wrapper=True)
+        
+        # Load photometry data into dask arrays.
+        # This is lazy in dask, so we're not actually loading the data here.
+        ra = da.from_array(f.file["photometry/ra"], block_size)
+        dec = da.from_array(f.file["photometry/dec"], block_size)
+        extendedness = da.from_array(f.file["photometry/extendedness"], block_size)
+        snr = da.from_array(f.file[f"photometry/snr_{band}"], block_size)
+        mag = da.from_array(f.file[f"photometry/mag_{band}"], block_size)
 
-        depth_data = {
-            "mag": data[f"mag_{band}"],
-            "snr": data[f"snr_{band}"],
-            "ra": data["ra"],
-            "dec": data["dec"],
-        }
-
-        depth_mapper.add_data(depth_data)
-        brobj_mapper.add_data(brobj_data)
-
-    def finalize_mappers(self, pixel_scheme, mappers):
-        depth_mapper, brobj_mapper = mappers
-
-        # Four different mappers
-        depth_pix, depth_count, depth, depth_var = depth_mapper.finalize(self.comm)
-        brobj_pix, brobj_count, brobj_mag, brobj_mag_var = brobj_mapper.finalize(
-            self.comm
-        )
-
-        # Collect all the maps
+        # Choose the pixelization scheme based on the configuration.
+        # Might need to review this to make sure we use the same scheme everywhere
+        pixel_scheme = choose_pixelization(**self.config)
+        
+        # Initialize a dictionary to store the maps.
+        # To start with this is all lazy too, until we call compute
         maps = {}
 
-        if self.rank != 0:
-            return maps
+        # Create a bright object map using dask
+        pix1, bright_object_count_map = make_dask_bright_object_map(
+            ra, dec, mag, extendedness, self.config["bright_obj_threshold"], pixel_scheme)
+        maps["bright_objects/count"] = (pix1, bright_object_count_map[pix1])
 
-        # Save depth maps
-        maps["aux_lens_maps", "depth/depth"] = (depth_pix, depth)
-        maps["aux_lens_maps", "depth/depth_count"] = (depth_pix, depth_count)
-        maps["aux_lens_maps", "depth/depth_var"] = (depth_pix, depth_var)
+        # Create depth maps using dask
+        pix2, count_map, depth_map, depth_var = make_dask_depth_map(
+            ra, dec, mag, snr, self.config["snr_threshold"], self.config["snr_delta"], pixel_scheme)
+        maps["depth/depth"] = (pix2, depth_map[pix2])
+        maps["depth/depth_count"] = (pix2, count_map[pix2])
+        maps["depth/depth_var"] = (pix2, depth_var[pix2])
 
-        # Save bright object counts
-        maps["aux_lens_maps", "bright_objects/count"] = (brobj_pix, brobj_count)
 
-        return maps
+        maps, = da.compute(maps)
+
+        # Prepare metadata for the maps. Copy the pixelization-related
+        # configuration options only here
+        metadata = {
+            key: self.config[key]
+            for key in map_config_options
+            if key in self.config
+        }
+        # Then add the other configuration options
+        metadata["depth_band"] = band
+        metadata["depth_snr_threshold"] = self.config["snr_threshold"]
+        metadata["depth_snr_delta"] = self.config["snr_delta"]
+        metadata["bright_obj_threshold"] = self.config["bright_obj_threshold"]
+
+        # Write the output maps to the output file
+        with self.open_output("aux_lens_maps", wrapper=True) as out:
+            for map_name, (pix, m) in maps.items():
+                out.write_map(map_name, pix, m, metadata)
+            out.file['maps'].attrs.update(metadata)
+
 
 
 class TXUniformDepthMap(PipelineStage):
