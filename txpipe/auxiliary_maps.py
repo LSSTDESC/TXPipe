@@ -56,8 +56,6 @@ class TXAuxiliarySourceMaps(PipelineStage):
         if block_size == 0:
             block_size = "auto"
 
-
-
         flag_exponent_max = self.config["flag_exponent_max"]
 
         # We have to keep this open throughout the process, because
@@ -95,8 +93,10 @@ class TXAuxiliarySourceMaps(PipelineStage):
 
 
         for i in bins:
-
-            w = b == i
+            if i == "all":
+                w = b >= 0
+            else:
+                w = b == i
 
             count_map, g1_map, g2_map, weight_map, esq_map, var1_map, var2_map = make_dask_maps(
                 ra[w], dec[w], psf_g1[w], psf_g2[w], weight[w], pixel_scheme)
@@ -113,7 +113,7 @@ class TXAuxiliarySourceMaps(PipelineStage):
             maps[f"psf/var_g2_{i}"] = (pix, var1_map[pix])
             maps[f"psf/var_g2_{i}"] = (pix, var2_map[pix])
             maps[f"psf/var_{i}"] = (pix, esq_map[pix])
-            maps[f"psf/lensing_weight_{i}"] = (pix, weight[pix])
+            maps[f"psf/lensing_weight_{i}"] = (pix, weight_map[pix])
 
         # Now add the flag maps. These are not tomographic.
         pix, flag_maps = make_dask_flag_maps(ra, dec, flag, flag_exponent_max, pixel_scheme)
