@@ -232,6 +232,7 @@ class TXSourceMaps(PipelineStage):
         }
         metadata['nbin'] = nbin
         metadata['nbin_source'] = nbin
+        metadata.update(pixel_scheme.metadata)
 
         pix = np.where(output["mask"])[0]
 
@@ -282,6 +283,8 @@ class TXLensMaps(PipelineStage):
         import healpy
         _, da = import_dask()
 
+
+
         # The subclass reads the ra and dec of the lenses
         # from a different input file, so we allow that here
         # using this method which is overwrites
@@ -327,6 +330,7 @@ class TXLensMaps(PipelineStage):
         }
         metadata['nbin'] = nbin_lens
         metadata['nbin_lens'] = nbin_lens
+        metadata.update(pixel_scheme.metadata)
 
         # Save all the maps
         with self.open_output("lens_maps", wrapper=True) as out:

@@ -78,7 +78,7 @@ class TXAuxiliarySourceMaps(PipelineStage):
         metadata["flag_exponent_max"] = flag_exponent_max
         metadata['nbin'] = nbin
         metadata['nbin_source'] = nbin
-
+        metadata.update(pixel_scheme.metadata)
 
         for i in bins:
             if i == "all":
@@ -208,6 +208,7 @@ class TXAuxiliaryLensMaps(TXBaseMaps):
         metadata["depth_snr_threshold"] = self.config["snr_threshold"]
         metadata["depth_snr_delta"] = self.config["snr_delta"]
         metadata["bright_obj_threshold"] = self.config["bright_obj_threshold"]
+        metadata.update(pixel_scheme.metadata)
 
         # Write the output maps to the output file
         with self.open_output("aux_lens_maps", wrapper=True) as out:
