@@ -11,6 +11,7 @@ from .utils.calibration_tools import (
     band_variants,
 )
 from .utils.fitting import fit_straight_line
+from .utils import import_dask
 from .plotting import manual_step_histogram
 import numpy as np
 
@@ -46,7 +47,7 @@ class TXDiagnosticQuantiles(PipelineStage):
         "bands": "riz",
     }
     def run(self):
-        import dask.array as da
+        _, da = import_dask()
 
         # Configuration parameters
         psf_prefix = self.config["psf_prefix"]
@@ -1044,7 +1045,7 @@ class TXLensDiagnosticPlots(PipelineStage):
             f.close()
 
     def load_data(self):
-        import dask.array as da
+        _, da = import_dask()
 
         bands = self.config["bands"]
         # These need to stay open until dask has finished with them.:
@@ -1094,8 +1095,7 @@ class TXLensDiagnosticPlots(PipelineStage):
         self.plot_histograms(data, nbin, "mag", xlog, bins)
 
     def plot_histograms(self, data, nbin, name, xlog, bins):
-        import dask
-        import dask.array as da
+        dask, da = import_dask()
         import matplotlib.pyplot as plt
 
         bands = self.config["bands"]

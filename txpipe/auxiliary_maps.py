@@ -3,11 +3,11 @@ import numpy as np
 from .base_stage import PipelineStage
 from .mapping import ShearMapper, LensMapper, FlagMapper, BrightObjectMapper, DepthMapperDR1
 from .data_types import MapsFile, HDFFile, ShearCatalog
-from .utils import choose_pixelization, rename_iterated, read_shear_catalog_type
+from .utils import choose_pixelization, rename_iterated, read_shear_catalog_type, import_dask
 from .maps import map_config_options, make_dask_maps
 
 def make_dask_flag_maps(ra, dec, flag, max_exponent, pixel_scheme):
-    import dask.array as da
+    _, da = import_dask()
     import healpy
     npix = pixel_scheme.npix
     # This seems to work directly, but we should check performance
@@ -47,8 +47,7 @@ class TXAuxiliarySourceMaps(PipelineStage):
         return choose_pixelization(**pix_info)
 
     def run(self):
-        import dask
-        import dask.array as da
+        dask, da = import_dask()
         import healpy
 
         pixel_scheme = self.choose_pixel_scheme()

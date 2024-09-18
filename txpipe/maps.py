@@ -1,7 +1,7 @@
 from .base_stage import PipelineStage
 from .data_types import TomographyCatalog, MapsFile, HDFFile, ShearCatalog
 import numpy as np
-from .utils import unique_list, choose_pixelization, rename_iterated
+from .utils import unique_list, choose_pixelization, import_dask
 from .utils.calibration_tools import read_shear_catalog_type
 from .utils.calibrators import Calibrator
 from .mapping import ShearMapper, LensMapper, FlagMapper
@@ -143,7 +143,7 @@ class TXBaseMaps(PipelineStage):
 
 
 def make_dask_maps(ra, dec, g1, g2, weight, pixel_scheme,):
-    import dask.array as da
+    _, da = import_dask()
     import healpy
     npix = pixel_scheme.npix
     # This seems to work directly, but we should check performance
@@ -219,8 +219,7 @@ class TXSourceMaps(PipelineStage):
     }
 
     def run(self):
-        import dask
-        import dask.array as da
+        dask, da = import_dask()
         import healpy
 
         # Configuration options
