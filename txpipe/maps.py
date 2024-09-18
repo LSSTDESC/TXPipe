@@ -261,6 +261,7 @@ class TXLensMaps(PipelineStage):
     """
 
     name = "TXLensMaps"
+    dask_parallel = True
 
     inputs = [
         ("photometry_catalog", HDFFile),

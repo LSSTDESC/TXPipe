@@ -134,6 +134,7 @@ class TXAuxiliaryLensMaps(TXBaseMaps):
         - bright object counts
     """
     name = "TXAuxiliaryLensMaps"
+    dask_parallel = True
     inputs = [
         ("photometry_catalog", HDFFile),  # for mags etc
     ]
