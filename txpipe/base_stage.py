@@ -32,7 +32,7 @@ class PipelineStage(PipelineStageBase):
         """
         t = datetime.datetime.now()
         print(f"Process {self.rank}: {tag} {t}")
-        sys.stdout
+        sys.stdout.flush()
 
     def memory_report(self, tag=None):
         """

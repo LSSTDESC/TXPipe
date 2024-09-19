@@ -593,9 +593,6 @@ class TXSourceDiagnosticPlots(PipelineStage):
         binnedShear = {}
         for band in self.config["bands"]:
             m_edges = self.get_bin_edges(f"{shear_prefix}mag_{band}")
-            # with self.open_input("shear_catalog") as c:
-            #     col = c[f"shear/{shear_prefix}mag_{band}"][:]
-            #     m_edges = self.BinEdges(col,nbins)
 
             binnedShear[f"{band}"] = MeanShearInBins(
                 f"{shear_prefix}mag_{band}",
