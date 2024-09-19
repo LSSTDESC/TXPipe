@@ -97,6 +97,19 @@ jobs:
       run: |
         tail -n +1 data/example/logs_metacal/*
 
+    - name: Create output report
+      if: ${{ always() }}
+      run: |
+          python bin/make_output_report.py data/example/outputs_metacal metacal-report.md
+          pandoc metacal-report.md -o metacal-report.pdf
+
+    - name: Upload output report
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: metacal-report
+        path: metacal-report.pdf
+
   Metadetect_Pipeline:
     runs-on: ubuntu-latest
     needs: Download_Data
@@ -143,10 +156,18 @@ jobs:
       run: |
         tail -n +1 data/example/logs_metadetect/*
 
-    - uses: actions/upload-artifact@v4
+    - name: Create output report
+      if: ${{ always() }}
+      run: |
+        python bin/make_output_report.py data/example/outputs_metadetect metadetect-report.md
+        pandoc metadetect-report.md -o metadetect-report.pdf
+
+    - name: Upload output report
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v4
       with:
-        name: metadetect-outputs
-        path: data/example/outputs_metadetect/*.png
+        name: metadetect-report
+        path: metadetect-report.pdf
       
 
   Metadetect_Source_Only_Pipeline:
@@ -185,6 +206,19 @@ jobs:
         if: ${{ always() }}
         run: |
           tail -n +1 data/example/metadetect_source_only/*
+
+      - name: Create output report
+        if: ${{ always() }}
+        run: |
+            python bin/make_output_report.py data/example/outputs_metadetect_source_only metadetect-source-only-report.md
+            pandoc metadetect-source-only-report.md -o metadetect-source-only-report.pdf
+
+      - name: Upload output report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: metadetect-source-only-report
+          path: metadetect-source-only-report.pdf
 
 
   Lensfit_Pipeline:
@@ -225,6 +259,19 @@ jobs:
       run: |
         tail -n +1 data/example/logs_lensfit/*
 
+    - name: Create output report
+      if: ${{ always() }}
+      run: |
+        python bin/make_output_report.py data/example/outputs_lensfit lensfit-report.md
+        pandoc lensfit-report.md -o lensfit-report.pdf
+
+    - name: Upload output report
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: lensfit-only-report
+        path: lensfit-report.pdf
+
 
   Redmagic_Pipeline:
     runs-on: ubuntu-latest
@@ -263,6 +310,21 @@ jobs:
       if: ${{ always() }}
       run: |
         tail -n +1 data/example/logs_redmagic/*
+
+    - name: Create output report
+      if: ${{ always() }}
+      run: |
+        python bin/make_output_report.py data/example/outputs_redmagic redmagic-report.md
+        pandoc redmagic-report.md -o redmagic-report.pdf
+  
+    - name: Upload output report
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: redmagic-report
+        path: redmagic-report.pdf
+  
+
 
   Other_Pipeline_Dry_Runs:
     runs-on: ubuntu-latest
