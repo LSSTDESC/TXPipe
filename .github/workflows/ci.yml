@@ -289,7 +289,7 @@ jobs:
           - os: ubuntu-latest
             INSTALL_DEPS: sudo apt-get update && sudo apt-get -y install wget
           - os: macos-14
-            INSTALL_DEPS: brew update-reset && brew install wget && brew install --cask mactex-no-gui
+            INSTALL_DEPS: brew update-reset && brew install wget && brew install --cask basictex
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
