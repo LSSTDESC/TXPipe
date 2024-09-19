@@ -143,6 +143,11 @@ jobs:
       run: |
         tail -n +1 data/example/logs_metadetect/*
 
+    - uses: actions/upload-artifact@v4
+      with:
+        name: metadetect-outputs
+        path: data/example/outputs_metadetect/*.png
+      
 
   Metadetect_Source_Only_Pipeline:
       runs-on: ubuntu-latest
