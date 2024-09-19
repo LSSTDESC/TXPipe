@@ -12,7 +12,6 @@ import numpy as np
 import warnings
 import os
 import pickle
-import sys
 
 # require TJPCov to be in PYTHONPATH
 d2r = np.pi / 180
@@ -31,7 +30,7 @@ class TXFourierGaussianCovariance(PipelineStage):
     measured.
     """
     name = "TXFourierGaussianCovariance"
-    parallel = True
+    parallel = False
     do_xi = False
 
     inputs = [
@@ -82,8 +81,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         # C_ell covariance
         cov = self.compute_covariance(cosmo, meta, two_point_data=two_point_data)
 
-        if self.rank == 0:
-            self.save_outputs(two_point_data, cov)
+        self.save_outputs(two_point_data, cov)
 
     def save_outputs(self, two_point_data, cov):
         filename = self.get_output("summary_statistics_fourier")
@@ -408,6 +406,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         return edges
 
     def make_wigner_transform(self, meta):
+        import threadpoolctl
         from tjpcov.wigner_transform import WignerTransform
 
         path = self.config["pickled_wigner_transform"]
@@ -420,14 +419,22 @@ class TXFourierGaussianCovariance(PipelineStage):
                 print(f"Precomputed wigner transform {path} not found.")
                 print("Will compute it and then save it.")
 
-        self.time_stamp("Generating Wigner Transform")
-        WT = WignerTransform(
-            ell=meta["ell"],
-            theta=meta["theta"] * d2r,
-            s1_s2=[(2, 2), (2, -2), (0, 2), (2, 0), (0, 0)],
-            comm=self.comm,
-        )
-        self.time_stamp("Completed Wigner Transform")
+        # We don't want to use n processes with n threads each by accident,
+        # where n is the number of CPUs we have
+        # so for this bit of the code, which uses python's multiprocessing,
+        # we limit the number of threads that numpy etc can use.
+        # After this is finished this will switch back to allowing all the CPUs
+        # to be used for threading instead.
+        num_processes = int(os.environ.get("OMP_NUM_THREADS", 1))
+        print("Generating Wigner Transform.")
+        with threadpoolctl.threadpool_limits(1):
+            WT = WignerTransform(
+                ell=meta["ell"],
+                theta=meta["theta"] * d2r,
+                s1_s2=[(2, 2), (2, -2), (0, 2), (2, 0), (0, 0)],
+                ncpu=num_processes,
+            )
+            print("Computed Wigner Transform.")
 
         if path:
             try:
@@ -438,6 +445,7 @@ class TXFourierGaussianCovariance(PipelineStage):
 
     # compute all the covariances and then combine them into one single giant matrix
     def compute_covariance(self, cosmo, meta, two_point_data):
+        from tjpcov.wigner_transform import bin_cov
 
         ccl_tracers, tracer_Noise = self.get_tracer_info(
             cosmo, meta, two_point_data=two_point_data
@@ -488,16 +496,12 @@ class TXFourierGaussianCovariance(PipelineStage):
         for i in range(N2pt):
             tracer_comb1 = tracer_combs[i]
 
-            if i % self.size != self.rank:
-                continue
-
-
             count_xi_pm1 = 1 if i in range(xim_start, xim_end) else 0
 
             for j in range(i, N2pt):
                 tracer_comb2 = tracer_combs[j]
                 print(
-                    f"Rank {self.rank} computing {tracer_comb1} x {tracer_comb2}: chunk ({i},{j}) of ({N2pt},{N2pt})"
+                    f"Computing {tracer_comb1} x {tracer_comb2}: chunk ({i},{j}) of ({N2pt},{N2pt})"
                 )
 
                 count_xi_pm2 = 1 if j in range(xim_start, xim_end) else 0
@@ -547,12 +551,6 @@ class TXFourierGaussianCovariance(PipelineStage):
                 cov_full[start_i:end_i, start_j:end_j] = cov_ij
                 cov_full[start_j:end_j, start_i:end_i] = cov_ij.T
 
-        if self.comm is not None:
-            cov_full = self.comm.reduce(cov_full)
-
-        if self.rank != 0:
-            return
-
         try:
             np.linalg.cholesky(cov_full)
         except:
@@ -576,7 +574,7 @@ class TXRealGaussianCovariance(TXFourierGaussianCovariance):
     TJPCov and a fiducial cosmology.
     """
     name = "TXRealGaussianCovariance"
-    parallel = True
+    parallel = False
     do_xi = True
 
     inputs = [
