@@ -261,7 +261,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         WT=None,
     ):
         import pyccl as ccl
-        from .utils.wigner_transform import bin_cov
+        from tjpcov.wigner_transform import bin_cov
 
         cl = {}
 
@@ -408,7 +408,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         return edges
 
     def make_wigner_transform(self, meta):
-        from .utils.wigner_transform import WignerTransform
+        from tjpcov.wigner_transform import WignerTransform
 
         path = self.config["pickled_wigner_transform"]
         if path:
