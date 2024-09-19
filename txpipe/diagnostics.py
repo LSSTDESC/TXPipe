@@ -73,13 +73,12 @@ class TXDiagnosticQuantiles(PipelineStage):
         percentiles = quantiles * 100
 
         with self.open_input("shear_catalog") as f, self.open_input("shear_tomography_catalog") as g:
-
-            # Create dask arrays of the columns. This loads lazily
-            cols = {
-                new_name: 
-                    da.from_array(f[f"shear/{old_name}"], chunks=chunk_rows)
-                    for (new_name, old_name) in col_names.items()
-                }
+            cols = {}
+            for (new_name, old_name) in col_names.items():
+                cols[new_name] = da.from_array(f[f"shear/{old_name}"], chunks=chunk_rows)
+                # force all chunks to be the same even if we set auto mode
+                if chunk_rows == "auto":
+                    chunk_rows = cols[new_name].chunksize
 
             # Cut down to just the source selection
             bins = da.from_array(g["tomography/bin"], chunks=chunk_rows)
@@ -1064,6 +1063,11 @@ class TXLensDiagnosticPlots(PipelineStage):
         data = {}
         for b in bands:
             data[f"mag_{b}"] = da.from_array(f[f"photometry/mag_{b}"], block)
+            # all the blocks must be the same size. If the columns are of different
+            # types then dask can sometimes select different block sizes for each column
+            # which can cause problems. So we force them to be the same size.
+            if block == "auto":
+                block = data[f"mag_{b}"].chunk_size
             data[f"snr_{b}"] = da.from_array(f[f"photometry/snr_{b}"], block)
         data["bin"] = da.from_array(g["tomography/bin"], block)
 

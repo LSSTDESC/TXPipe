@@ -188,6 +188,7 @@ class TXSourceMaps(PipelineStage):
         for i in bins:
             # These don't actually load all the data - everything is lazy
             ra = da.from_array(f[f"shear/bin_{i}/ra"], block_size)
+            block_size = ra.chunksize
             dec = da.from_array(f[f"shear/bin_{i}/dec"], block_size)
             g1 = da.from_array(f[f"shear/bin_{i}/g1"], block_size)
             g2 = da.from_array(f[f"shear/bin_{i}/g2"], block_size)
@@ -307,6 +308,7 @@ class TXLensMaps(PipelineStage):
         
         # Lazily open input data sets
         ra = da.from_array(photo_cat.file[f"{cat_group}/ra"], block_size)
+        block_size = ra.chunksize
         dec = da.from_array(photo_cat.file[f"{cat_group}/dec"], block_size)
         weight = da.from_array(tomo_cat.file["tomography/lens_weight"], block_size)
         tomo_bin = da.from_array(tomo_cat.file["tomography/bin"], block_size)

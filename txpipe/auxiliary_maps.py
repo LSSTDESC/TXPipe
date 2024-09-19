@@ -59,6 +59,8 @@ class TXAuxiliarySourceMaps(PipelineStage):
 
         # These don't actually load all the data - everything is lazy
         ra = da.from_array(shear_cat.file[f"{group}/ra"], block_size)
+        # force all columns to use the same block size
+        block_size = ra.chunksize
         dec = da.from_array(shear_cat.file[f"{group}/dec"], block_size)
         psf_g1 = da.from_array(shear_cat.file[f"{group}/psf_g1"], block_size)
         psf_g2 = da.from_array(shear_cat.file[f"{group}/psf_g2"], block_size)
@@ -169,6 +171,7 @@ class TXAuxiliaryLensMaps(TXBaseMaps):
         # Load photometry data into dask arrays.
         # This is lazy in dask, so we're not actually loading the data here.
         ra = da.from_array(f.file["photometry/ra"], block_size)
+        block_size = ra.chunksize
         dec = da.from_array(f.file["photometry/dec"], block_size)
         extendedness = da.from_array(f.file["photometry/extendedness"], block_size)
         snr = da.from_array(f.file[f"photometry/snr_{band}"], block_size)
