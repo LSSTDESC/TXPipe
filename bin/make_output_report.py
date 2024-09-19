@@ -76,6 +76,10 @@ def main(input_directory, output_file):
     unused_files = []
     with open(output_file, "w") as out:
 
+        if not os.path.exists(input_directory) or not os.path.listdir(input_directory):
+            out.write("# No report generated\n\n")
+            out.write("No input directory, or directory is empty.")
+
         for filename in os.listdir(input_directory):
             if filename.startswith("inprogress"):
                 continue
