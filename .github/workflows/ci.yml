@@ -324,6 +324,7 @@ jobs:
     - name: Create output report
       if: $${{ matrix.os == 'macos-14' }}
       run: |
+          source ./conda/bin/activate
           python bin/make_output_report.py data/example/outputs_metadetect metadetect-report.md
           pandoc metadetect-report.md -o metadetect-report.pdf
   
