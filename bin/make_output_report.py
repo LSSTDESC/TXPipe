@@ -73,14 +73,14 @@ def summarize_png(filename):
     return f"![{filename}]({filename}){{ width=90% }}\ "
 
 def main(input_directory, output_file):
-    unused_files = []
+    other_files = []
     with open(output_file, "w") as out:
 
         if not os.path.exists(input_directory) or not os.listdir(input_directory):
             out.write("# No report generated\n\n")
             out.write("No input directory, or directory is empty.")
 
-        for filename in os.listdir(input_directory):
+        for filename in sorted(os.listdir(input_directory)):
             if filename.startswith("inprogress"):
                 continue
             path = os.path.join(input_directory, filename)
@@ -93,12 +93,12 @@ def main(input_directory, output_file):
             elif filename.endswith(".sacc"):
                 text = summarize_sacc(path)
             else:
-                unused_files.append(filename)
+                other_files.append(filename)
             out.write(f"# {filename}\n\n")
             out.write(text + "\n\\newpage\n\n")
-        if unused_files:
-            out.write("# Unused files\n\n")
-            out.write("\n- ".join(unused_files))
+        if other_files:
+            out.write("# Other files\n\n")
+            out.write("- " + ("\n- ".join(other_files)))
 
 
 
