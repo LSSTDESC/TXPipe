@@ -22,7 +22,7 @@ jobs:
     steps:
     - name: Cache example data
       id: cache-example
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       env:
         cache-name: cache-example-data
       with:
@@ -47,10 +47,10 @@ jobs:
           - os: ubuntu-latest
             INSTALL_DEPS: sudo apt-get update && sudo apt-get -y install wget
           - os: macos-14
-            INSTALL_DEPS: brew update-reset  && brew install wget
+            INSTALL_DEPS: echo nothing to do
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         submodules: true
 
@@ -83,7 +83,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         submodules: true
 
@@ -115,11 +115,11 @@ jobs:
           - os: ubuntu-latest
             INSTALL_DEPS: echo nothing to do
           - os: macos-14
-            INSTALL_DEPS: brew update-reset && brew install --cask basictex && brew install wget && eval "$(/usr/libexec/path_helper)" && pdflatex --version
+            INSTALL_DEPS: brew update-reset && brew install --cask basictex && eval "$(/usr/libexec/path_helper)" && pdflatex --version
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
       with:
         submodules: true
 
