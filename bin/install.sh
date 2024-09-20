@@ -13,7 +13,7 @@ fi
 
 # Figure out operating system details
 
-if [ ${NERSC_HOST} == "perlmutter" ]
+if [ "${NERSC_HOST}" == "perlmutter" ]
 then
     echo "Installing on Perlmutter using specialised script"
     ./bin/perlmutter-install.sh
