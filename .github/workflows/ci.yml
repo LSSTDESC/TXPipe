@@ -301,7 +301,6 @@ jobs:
 
     - name: Run Auto-Install
       run: |
-        pdflatex --version
         ./bin/install.sh
 
     - name: Restore example data
@@ -327,6 +326,7 @@ jobs:
       if: matrix.os == 'macos-14'
       run: |
           source ./conda/bin/activate
+          eval "$(/usr/libexec/path_helper)"
           python bin/make_output_report.py data/example/outputs_metadetect metadetect-report.md
           pandoc metadetect-report.md -o metadetect-report.pdf
   
