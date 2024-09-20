@@ -80,20 +80,12 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-14]
-        include:
-          - os: ubuntu-latest
-            INSTALL_DEPS: sudo apt-get update && sudo apt-get -y install wget
-          - os: macos-14
-            INSTALL_DEPS: brew update-reset && brew install --cask basictex && brew install wget && eval "$(/usr/libexec/path_helper)" && pdflatex --version
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
       with:
         submodules: true
-
-    - name: Install dependencies
-      run: ${{ matrix.INSTALL_DEPS }}
 
     - name: Restore conda environment
       id: restore-conda
@@ -121,7 +113,7 @@ jobs:
         pipeline: [metadetect]
         include:
           - os: ubuntu-latest
-            INSTALL_DEPS: sudo apt-get update && sudo apt-get -y install wget
+            INSTALL_DEPS: echo nothing to do
           - os: macos-14
             INSTALL_DEPS: brew update-reset && brew install --cask basictex && brew install wget && eval "$(/usr/libexec/path_helper)" && pdflatex --version
 
@@ -162,3 +154,18 @@ jobs:
         source ./conda/bin/activate
         ceci examples/${{ matrix.pipeline }}/pipeline.yml
         test -f data/example/outputs_${{ matrix.pipeline }}/shear_xi_plus.png
+
+    - name: Create output report
+      if: matrix.os == 'macos-14'
+      run: |
+          source ./conda/bin/activate
+          eval "$(/usr/libexec/path_helper)"
+          python bin/make_output_report.py data/example/outputs_metadetect metadetect-report.md
+          pandoc ${{ matrix.pipeline }}-report.md -o ${{ matrix.pipeline }}-report.pdf
+
+    - name: Upload output report
+      if: matrix.os == 'macos-14'
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.pipeline }}-report
+        path: ${{ matrix.pipeline }}-report.pdf
