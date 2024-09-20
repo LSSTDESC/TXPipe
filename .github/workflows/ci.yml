@@ -160,7 +160,7 @@ jobs:
       run: |
           source ./conda/bin/activate
           eval "$(/usr/libexec/path_helper)"
-          python bin/make_output_report.py data/example/outputs_metadetect metadetect-report.md
+          python bin/make_output_report.py data/example/outputs_${{ matrix.pipeline }} ${{ matrix.pipeline }}-report.md
           pandoc ${{ matrix.pipeline }}-report.md -o ${{ matrix.pipeline }}-report.pdf
 
     - name: Upload output report
