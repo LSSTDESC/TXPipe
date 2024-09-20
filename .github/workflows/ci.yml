@@ -55,7 +55,8 @@ jobs:
         submodules: true
 
     - name: Install wget
-      run: ${{ matrix.INSTALL_DEPS }}
+      run: |
+        ${{ matrix.INSTALL_DEPS }}
 
     - name: Cache conda environment
       id: cache-conda
@@ -133,7 +134,6 @@ jobs:
   #   - name: Install dependencies
   #     run: |
   #       ${{ matrix.INSTALL_DEPS }}
-  #       pip install mockmpi  # move to env file
 
   #   - name: Restore conda environment
   #     id: restore-conda
