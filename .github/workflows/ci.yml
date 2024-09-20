@@ -138,7 +138,7 @@ jobs:
         fail-on-cache-miss: true
 
     - name: Restore example data
-      uses: actions/cache/restore@v3
+      uses: actions/cache@v4
       with:
         path: example.tar.gz
         key: example-data-${{ env.EXAMPLE_DATA_FILE_VERSION }}
