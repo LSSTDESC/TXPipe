@@ -57,7 +57,6 @@ class TXDiagnosticQuantiles(PipelineStage):
             chunk_rows = "auto"
 
         # We canonicalise the names here
-        cols = []
         col_names = {
             "psf_g1": f"{psf_prefix}g1",
             "psf_T_mean": f"{psf_prefix}T_mean",
@@ -80,7 +79,7 @@ class TXDiagnosticQuantiles(PipelineStage):
 
             # We now build up the quantile values
             quantile_values = {}
-            for new_name, old_name in cols.items():
+            for new_name, old_name in col_names.items():
                 # Create dask arrays of the columns. This loads them lazily,
                 # so no data is actually loaded here. Only when the "compute"
                 # method is called below does anything actually happen.
