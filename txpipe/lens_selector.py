@@ -208,6 +208,10 @@ class TXBaseLensSelector(PipelineStage):
             group = outfile["tomography"]
             group["counts"][:] = lens_counts
             group["counts_2d"][:] = lens_counts_2d
+            print("Final bin counts:")
+            for i, b in enumerate(lens_counts):
+                print(f"Bin {i}: {b:,}")
+            print("Total: ", lens_counts_2d)
 
     def select_lens(self, phot_data):
         t = self.config["selection_type"]
@@ -395,7 +399,8 @@ class TXRandomForestLensSelector(TXBaseLensSelector):
         ("photometry_catalog", PhotometryCatalog),
         ("calibration_table", TextFile),
     ]
-    config_options = TXBaseLensSelector.config_options.copy().update({
+    config_options = TXBaseLensSelector.config_options.copy()
+    config_options.update({
         "verbose": False,
         "bands": "ugrizy",
         "chunk_rows": 10000,
