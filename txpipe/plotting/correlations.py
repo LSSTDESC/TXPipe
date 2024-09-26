@@ -269,7 +269,7 @@ def make_plot(corr, obs_data, obs_theory, fig=None, xlogscale=True, ratios=False
                         a.errorbar(
                             theta,
                             xi / xi_th,
-                            err / xi_th,
+                            err / abs(xi_th),
                             fmt=".",
                             label="TXPipe Data/CCL Theory",
                         )

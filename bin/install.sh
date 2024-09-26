@@ -13,6 +13,14 @@ fi
 
 # Figure out operating system details
 
+if [ "${NERSC_HOST}" == "perlmutter" ]
+then
+    echo "Installing on Perlmutter using specialised script"
+    ./bin/perlmutter-install.sh
+    exit
+fi
+
+
 INSTALLER_VERSION=24.3.0-0
 
 export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
