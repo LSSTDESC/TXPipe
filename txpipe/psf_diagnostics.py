@@ -347,8 +347,8 @@ class TXTauStatistics(PipelineStage):
                 ("tau2"    , PNGFile),
                 ("tau5"    , PNGFile),
                 ("tau_stats", HDFFile),
+                ("tau_chain", HDFFile)
                ]
-
 
     config_options = {
                        "min_sep"       : 0.5,
@@ -375,6 +375,7 @@ class TXTauStatistics(PipelineStage):
         matplotlib.use("agg")
         
         tau_stats  = {}
+        tau_chain  = {}
         p_bestfits = {}
 
         # Load star properties
@@ -396,13 +397,14 @@ class TXTauStatistics(PipelineStage):
             
             tau_stats[s]  = {}
             p_bestfits[s] = {}
+            tau_chain[s]  = {}
             # Load galaxies
             if self.config['tomographic']:
                 with self.open_input("binned_shear_catalog") as f:
                      nzbin = list(range(f["shear"].attrs["nbin_source"])) + ['all']
             else:
                 nzbin = ['all']
-            print(nzbin)
+
             for n in nzbin:
                 gal_ra, gal_dec, gal_g1, gal_g2, gal_weight = self.load_galaxies(n)
                 gal_g = np.array((gal_g1, gal_g2))
@@ -413,9 +415,10 @@ class TXTauStatistics(PipelineStage):
                                                     s, ra, dec, e_psf, e_mod, de_psf, T_f, star_type)
 
                 # Run simple mcmc to find best-fit values for alpha,beta,eta
-                p_bestfits[s][f'bin_{n}'] = self.sample(tau_stats[s][f'bin_{n}'],rowe_stats,ranges)
+                p_bestfits[s][f'bin_{n}'], tau_chain[s][f'bin_{n}'] = self.sample(tau_stats[s][f'bin_{n}'],
+                                                                                  rowe_stats,ranges)
         #Save tau stats in a h5 file
-        self.save_tau_stats(tau_stats, p_bestfits)
+        self.save_tau_stats(tau_stats, p_bestfits,tau_chain)
 
         # Save tau plots
         self.tau_plots(tau_stats)
@@ -476,10 +479,11 @@ class TXTauStatistics(PipelineStage):
             ret[v] = {'median': mcmc[1],'lerr': q[0], 'rerr': q[1]}
             
         chi2 = self.chi2([ret['alpha']['median'],ret['beta']['median'],ret['eta']['median']], tau_stats,rowe_stats,invcov,mask)
+        
         # degree of freedom = nbins * 6 (i.e. tau 0+/-, tau2+/-, tau5+/-) - ndim
         dof  = (self.config['nbins']*6) - ndim
         print("Best-fit finished. Resulting chi^2/dof: ", chi2/dof)
-        return ret
+        return ret, flat_samples
 
     def logPrior(self,theta,ranges):
         '''
@@ -591,7 +595,7 @@ class TXTauStatistics(PipelineStage):
         return corr0.meanr, corr0.xip, corr0.xim, corr2.xip, corr2.xim, corr5.xip, corr5.xim, cov
         
 
-    def save_tau_stats(self, tau_stats, p_bestfits):
+    def save_tau_stats(self, tau_stats, p_bestfits,tau_chain):
         '''
         tau_stats: (dict) dictionary containing theta,tau0,tau2,tau5 and cov
         '''            
@@ -631,6 +635,25 @@ class TXTauStatistics(PipelineStage):
                 h.create_dataset("eta"      , data=p_bestfits[s][f'bin_{n}']['eta']['median'])
                 h.create_dataset("eta_err"  , data=eta_err)
 
+        f.close()
+        
+        f = self.open_output("tau_chain")
+        g = f.create_group("chain")
+        
+        for s in STAR_TYPES:
+            if STAR_TYPE_NAMES[s] != self.config.star_type:
+                continue
+            if self.config['tomographic']:
+                with self.open_input("binned_shear_catalog") as h:
+                    nbin = list(range(h["shear"].attrs["nbin_source"])) + ['all']
+            else:
+                nbin = ['all']
+
+            for n in nbin:
+                h = g.create_group(f"bin_{n}")
+                h.create_dataset("alpha", data = tau_chain[s][f"bin_{n}"][:,0])
+                h.create_dataset("beta" , data = tau_chain[s][f"bin_{n}"][:,1])
+                h.create_dataset("eta"  , data = tau_chain[s][f"bin_{n}"][:,2])
         f.close()
 
     def load_stars(self):
