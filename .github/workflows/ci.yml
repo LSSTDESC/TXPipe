@@ -155,6 +155,13 @@ jobs:
         ceci examples/${{ matrix.pipeline }}/pipeline.yml
         test -f data/example/outputs_${{ matrix.pipeline }}/shear_xi_plus.png
 
+    - name: Show logs
+      run: |
+        # always run
+        if: always()
+        run: |
+          cat data/example/logs_${{ matrix.pipeline }}/*
+
     - name: Create output report
       if: matrix.os == 'macos-14'
       run: |
