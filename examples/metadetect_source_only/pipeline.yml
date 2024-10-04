@@ -126,6 +126,6 @@ inputs:
 # if interrupted
 resume: true
 # where to put output logs for individual stages
-log_dir: data/example/metadetect_source_only
+log_dir: data/example/logs_metadetect_source_only
 # where to put an overall parsl pipeline log
 pipeline_log: data/example/log.txt
