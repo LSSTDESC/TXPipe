@@ -32,3 +32,4 @@ dependencies:
   - treecorr=5.0.*
   - pip=24.0.*
   - pygraphviz=1.13.*
+  - mockmpi

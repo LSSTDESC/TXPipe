@@ -83,7 +83,7 @@ python_paths:
   - submodules/WLMassMap/python/desc/
 
 # Where to put outputs
-output_dir: data/example/metadetect_source_only
+output_dir: data/example/outputs_metadetect_source_only
 
 # How to run the pipeline: mini, parsl, or cwl
 launcher:

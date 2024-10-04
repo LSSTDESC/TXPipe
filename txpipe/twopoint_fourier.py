@@ -323,20 +323,16 @@ class TXTwoPointFourier(PipelineStage):
                 density_fields = [
                     (nmt.NmtField(clustering_weight, [d], n_iter=0, lmax=lmax1)) for d in d_maps
                 ]
-            print("Generated density fields")
         else:
             density_fields = []
-            print("Skipping density fields")
 
         if self.config["do_shear_pos"] or self.config["do_shear_shear"]:
             lensing_fields = [
                 (nmt.NmtField(lw, [g1, g2], n_iter=0, lmax=lmax1))
                 for (lw, g1, g2) in zip(lensing_weights, g1_maps, g2_maps)
             ]
-            print("Generated lensing fields")
         else:
             lensing_fields = []
-            print("Skipping lensing fields")
 
         # Collect together all the maps we will output
         maps = {
@@ -655,7 +651,7 @@ class TXTwoPointFourier(PipelineStage):
 
         # Save all the results, skipping things we don't want like EB modes
         for index, name in results_to_use:
-            win = bandpowers[index, :, index, :].copy()
+            win = bandpowers[index, :, index, :]
             self.results.append(
                 Measurement(
                     name,

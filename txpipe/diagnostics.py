@@ -58,7 +58,6 @@ class TXDiagnosticQuantiles(PipelineStage):
             chunk_rows = "auto"
 
         # We canonicalise the names here
-        cols = []
         col_names = {
             "psf_g1": f"{psf_prefix}g1",
             "psf_T_mean": f"{psf_prefix}T_mean",
@@ -69,26 +68,32 @@ class TXDiagnosticQuantiles(PipelineStage):
         for band in self.config["bands"]:
             col_names[f"mag_{band}"] = f"{shear_prefix}mag_{band}"
 
+        # We ask for quantiles at these points
         quantiles = np.linspace(0, 1, nedge, endpoint=True)
         percentiles = quantiles * 100
 
         with self.open_input("shear_catalog") as f, self.open_input("shear_tomography_catalog") as g:
-            cols = {}
-            for (new_name, old_name) in col_names.items():
-                cols[new_name] = da.from_array(f[f"shear/{old_name}"], chunks=chunk_rows)
-                # force all chunks to be the same even if we set auto mode
-                if chunk_rows == "auto":
-                    chunk_rows = cols[new_name].chunksize
-
-            # Cut down to just the source selection
+            # We will be checking if the source is in a tomographic bin
+            # and doing quantiles only of selected obejcts (in any bin)
             bins = da.from_array(g["tomography/bin"], chunks=chunk_rows)
             selected = bins >= 0
 
-            # Use dask to get the quantiles
-            quantile_values, = da.compute({
-                name: da.percentile(col[selected], percentiles) 
-                for name, col in cols.items()
-            })
+            # We now build up the quantile values
+            quantile_values = {}
+            for new_name, old_name in col_names.items():
+                # Create dask arrays of the columns. This loads them lazily,
+                # so no data is actually loaded here. Only when the "compute"
+                # method is called below does anything actually happen.
+                col = da.from_array(f[f"shear/{old_name}"], chunks=chunk_rows)
+
+                # Ask dask to compute the percentiles of this column.
+                # Again, it will not actually do anything until the "compute"
+                # method is called below. When that happens, it will
+                # chunk up the data and calculate the percentiles in parallel.
+                quantile_values[new_name] = da.percentile(col[selected], percentiles)
+
+            # Now ask dask to actually do the calculations
+            quantile_values, = da.compute(quantile_values)
 
         # Open the output file and save the results
         with self.open_output("shear_catalog_quantiles") as f:
@@ -593,9 +598,6 @@ class TXSourceDiagnosticPlots(PipelineStage):
         binnedShear = {}
         for band in self.config["bands"]:
             m_edges = self.get_bin_edges(f"{shear_prefix}mag_{band}")
-            # with self.open_input("shear_catalog") as c:
-            #     col = c[f"shear/{shear_prefix}mag_{band}"][:]
-            #     m_edges = self.BinEdges(col,nbins)
 
             binnedShear[f"{band}"] = MeanShearInBins(
                 f"{shear_prefix}mag_{band}",
