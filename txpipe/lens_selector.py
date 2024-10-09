@@ -295,7 +295,11 @@ class TXBaseLensSelector(PipelineStage):
         cut1 = (mag_i > bright_limit) #cut very bright gaalxies
         cut2 = (mag_i < a*z + b) #the z-dependant mag cut
         cut3 = (sg == 3) #star/galaxy separator
-        cut4 = (np.bitwise_and(flags,120) == 0) #flags
+        
+        # flags, selects objects flagged by bits 2^1, 2^2, 2^3, 2^4, 2^5, 2^6 but not 2^7
+        # from Rodriguez-Monroy et al 
+        cut4 = (np.bitwise_and(flags,126) == 0) 
+
 
         s = (cut1 & cut2 & cut3 & cut4).astype(np.int8)
         return s
