@@ -328,16 +328,16 @@ class TXIngestSSIMatchedDESBalrog(TXIngestSSIMatched):
 
         #we will only load a subset of columns to save space
         column_names = {
-            "bal_id":                   "bal_id", 
-            "true_bdf_mag_deredden":    "inj_mag", 
-            "true_id":                  "inj_id", 
-            "meas_id":                  "id", 
-            "meas_ra":                  "ra", 
-            "meas_dec":                 "dec", 
-            "meas_cm_mag_deredden":     "mag",  
-            "meas_cm_T":                "cm_T", 
-            "meas_EXTENDED_CLASS_SOF":  "EXTENDED_CLASS_SOF",  
-            "meas_FLAGS_GOLD_SOF_ONLY": "FLAGS_GOLD",
+            "bal_id":                   "bal_id",               # Unique identifier for object (created during balrog process)
+            "true_bdf_mag_deredden":    "inj_mag",              # Magnitude of the original deep field object, dereddened
+            "true_id":                  "inj_id",               # Original coadd_obj_id of deep field object
+            "meas_id":                  "id",                   # Coadd_object_id of injection
+            "meas_ra":                  "ra",                   # measured RA of the injection
+            "meas_dec":                 "dec",                  # measured DEC of the injection
+            "meas_cm_mag_deredden":     "mag",                  # measured magnitude of the injection
+            "meas_cm_T":                "cm_T",                 # measured size parameter T (x^2+y^2)
+            "meas_EXTENDED_CLASS_SOF":  "EXTENDED_CLASS_SOF",   # Star galaxy classifier (0,1=star, 2,3=Galaxy)
+            "meas_FLAGS_GOLD_SOF_ONLY": "FLAGS_GOLD",           # Measured flags (short version)
             }
         cols = list(column_names.keys())
 
