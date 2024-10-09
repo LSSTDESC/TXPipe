@@ -49,6 +49,7 @@ class TXBaseLensSelector(PipelineStage):
         "selection_type": "boss",
         "maglim_band": "i",
         "maglim_limit": 24.1,
+        "extra_cols": [""],
 
     }
 
@@ -219,6 +220,8 @@ class TXBaseLensSelector(PipelineStage):
             s = self.select_lens_boss(phot_data)
         elif t == "maglim":
             s= self.select_lens_maglim(phot_data)
+        elif t == "DESmaglim":
+            s= self.select_lens_DESmaglim(phot_data)
         else:
             raise ValueError(f"Unknown lens selection type {t} - expected boss or maglim")
         ntot = s.size
@@ -281,6 +284,30 @@ class TXBaseLensSelector(PipelineStage):
         s = (mag_i < limit).astype(np.int8)
         return s
 
+    def select_lens_DESmaglim(self, phot_data):
+        band = self.config["maglim_band"]
+        bright_limit = self.config["bright_limit"]
+        # mag < a*zphot + b
+        a = self.config["a"]
+        b = self.config["b"]
+
+        z = phot_data["z"]
+        mag_i = phot_data[f"mag_{band}"]
+        sg = phot_data["EXTENDED_CLASS_SOF"]
+        flags = phot_data["FLAGS_GOLD"]
+
+        cut1 = (mag_i > bright_limit) #cut very bright gaalxies
+        cut2 = (mag_i < a*z + b) #the z-dependant mag cut
+        cut3 = (sg == 3) #star/galaxy separator
+        
+        # flags, selects objects flagged by bits 2^1, 2^2, 2^3, 2^4, 2^5, 2^6 but not 2^7
+        # from Rodriguez-Monroy et al 
+        cut4 = (np.bitwise_and(flags,126) == 0) 
+
+
+        s = (cut1 & cut2 & cut3 & cut4).astype(np.int8)
+        return s
+
     def calculate_tomography(self, pz_data, phot_data, lens_gals):
 
         nbin = len(self.config["lens_zbin_edges"]) - 1
@@ -318,6 +345,8 @@ class TXTruthLensSelector(TXBaseLensSelector):
         print(f"We are cheating and using the true redshift.")
         chunk_rows = self.config["chunk_rows"]
         phot_cols = ["mag_i", "mag_r", "mag_g", "redshift_true"]
+        extra_cols = [c for c in self.config["extra_cols"] if c]
+        phot_cols += extra_cols
         # Input data.  These are iterators - they lazily load chunks
         # of the data one by one later when we do the for loop.
         # This code can be run in parallel, and different processes will
@@ -347,6 +376,8 @@ class TXMeanLensSelector(TXBaseLensSelector):
         phot_cols = ["mag_i", "mag_r", "mag_g"]
         z_cols = ["zmean"]
         rename = {"zmean": "z"}
+        extra_cols = [c for c in self.config["extra_cols"] if c]
+        phot_cols += extra_cols
 
         it = self.combined_iterators(
             chunk_rows,
@@ -359,7 +390,6 @@ class TXMeanLensSelector(TXBaseLensSelector):
         )
 
         return rename_iterated(it, rename)
-
 
 class TXModeLensSelector(TXBaseLensSelector):
     """
@@ -379,6 +409,8 @@ class TXModeLensSelector(TXBaseLensSelector):
         phot_cols = ["mag_i", "mag_r", "mag_g"]
         z_cols = ["zmode"]
         rename = {"zmode": "z"}
+        extra_cols = [c for c in self.config["extra_cols"] if c]
+        phot_cols += extra_cols
 
         it = self.combined_iterators(
             chunk_rows,
@@ -411,6 +443,8 @@ class TXRandomForestLensSelector(TXBaseLensSelector):
     def data_iterator(self):
         chunk_rows = self.config["chunk_rows"]
         phot_cols = ["mag_u", "mag_g", "mag_r", "mag_i", "mag_z", "mag_y"]
+        extra_cols = [c for c in self.config["extra_cols"] if c]
+        phot_cols += extra_cols
 
         for s, e, data in self.iterate_hdf(
             "photometry_catalog", "photometry", phot_cols, chunk_rows
