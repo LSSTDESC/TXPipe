@@ -180,8 +180,6 @@ TXSourceDiagnosticPlots:
     s2n_min: 1.25
     s2n_max: 300
 
-TXLensDiagnosticPlots: {}
-
 TXDiagnosticMaps:
     sparse: true  # Generate sparse maps - faster if using small areas
     snr_threshold: 10.0
