@@ -143,9 +143,6 @@ TXRealGaussianCovariance:
     max_sep: 250.
     nbins: 20
     use_true_shear: false
-    nprocess: 4
-    threads_per_process: 2
-    nodes: 4
     galaxy_bias: [1.404, 1.458, 1.693, 1.922, 2.133] # Tinker bias values
 
 TXTwoPointFourier:
