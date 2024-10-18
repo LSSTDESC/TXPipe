@@ -108,8 +108,8 @@ class TXIngestSSIGCR(PipelineStage):
                     mag_err = nanojansky_err_to_mag_ab(
                         group[f"{b}_{flux_name}"][:], group[f"{b}_{flux_name}Err"][:]
                     )
-                    group.create_dataset(f"{b}_mag", data=mag)
-                    group.create_dataset(f"{b}_mag_err", data=mag_err)
+                    group.create_dataset(f"mag_{b}", data=mag)
+                    group.create_dataset(f"mag_err_{b}", data=mag_err)
                 except KeyError:
                     warnings.warn(f"no flux {b}_{flux_name} in SSI GCR catalog")
 

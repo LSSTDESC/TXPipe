@@ -358,3 +358,6 @@ TXPhotozPlotSource:
     name: TXPhotozPlotSource
 TXPhotozPlotLens:
     name: TXPhotozPlotLens
+
+TXTauStatistics:
+    npatch: 150
