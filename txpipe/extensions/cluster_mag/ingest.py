@@ -84,7 +84,7 @@ class CMSkysimPhotometry(PipelineStage):
         # Make zero error columns
         zeros = np.zeros(n)
         for b in "ugrizy":
-            data[f"{b}_mag_err"] = zeros
+            data[f"mag_err_{b}"] = zeros
 
         # save outputs to file
         for col in cols.values():
