@@ -2,7 +2,9 @@ import numpy as np
 import os
 
 def from_array(arr, block_size):
-    return np.array(arr)
+    arr = np.array(arr)
+    arr.chunksize = 1
+    return arr
 
 def compute(anything):
     return anything,
