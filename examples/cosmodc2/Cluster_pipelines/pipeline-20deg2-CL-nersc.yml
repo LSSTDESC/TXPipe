@@ -6,8 +6,7 @@
 
 #for NERSC
 site:
-    name: cori-batch
-    image: ghcr.io/lsstdesc/txpipe-dev
+    name: nersc-interactive
 
 
 #all the following steps should not depend on where you run 
