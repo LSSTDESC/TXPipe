@@ -1,8 +1,29 @@
 import numpy as np
 import os
 
-def from_array(arr, block_size):
-    arr = np.array(arr)
+class MockDaskArray(np.ndarray):
+    """
+    Mock dask array class that subclasses numpy.ndarray. This is used to
+    replace dask arrays with numpy arrays for debugging purposes.
+
+    This is more complex than with other classes because numpy arrays
+    cannot have attributes added arbitrarily at runtime.
+
+    See:
+    https://numpy.org/doc/stable/user/basics.subclassing.html#simple-example-adding-an-extra-attribute-to-ndarray
+    """
+    def __new__(cls, input_array, chunksize=None):
+        obj = np.asarray(input_array).view(cls)
+        obj.chunksize = chunksize
+        return obj
+
+    def __array_finalize__(self, obj):
+        if obj is None:
+            return
+        self.chunksize = getattr(obj, 'chunksize', None)
+
+def from_array(arr, chunks=None):
+    arr = MockDaskArray(arr)
     arr.chunksize = 1
     return arr
 
