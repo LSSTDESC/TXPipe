@@ -152,8 +152,19 @@ jobs:
       run: |
         mkdir -p cache/workspaces
         source ./conda/bin/activate
+        # Just for the metadetect source pipeline
+        # we activate the debug mode with an env var
+        if [ "${{ matrix.pipeline }}" == "metadetect_source_only" ]; then
+          export TX_DASK_DEBUG=1
+        fi
         ceci examples/${{ matrix.pipeline }}/pipeline.yml
         test -f data/example/outputs_${{ matrix.pipeline }}/shear_xi_plus.png
+
+    - name: Show logs
+      if: always()
+      run: |
+        # always run
+        cat data/example/logs_${{ matrix.pipeline }}/*
 
     - name: Create output report
       if: matrix.os == 'macos-14'
