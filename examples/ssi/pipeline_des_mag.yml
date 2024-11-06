@@ -1,0 +1,74 @@
+# Stages to run
+stages:
+  - name: TXIngestSSIMatchedDESBalrog    # process the unmagnified SSI inputs
+  - name: TXIngestSSIMatchedDESBalrogMag    # process the magnified SSI inputs
+    classname: TXIngestSSIMatchedDESBalrog
+    aliases:
+        balrog_matched_catalog: balrog_matched_catalog_mag
+        matched_ssi_photometry_catalog: matched_ssi_photometry_catalog_mag
+
+  - name: TXMeanLensSelectorSSI        #make unmagnified SSI lens samples
+    classname: TXMeanLensSelector
+    aliases:
+        photometry_catalog: matched_ssi_photometry_catalog
+        lens_photoz_pdfs: balrog_lens_photoz_pdfs
+  - name: TXLensCatalogSplitterSSI
+    classname: TXLensCatalogSplitter
+    aliases:
+        photometry_catalog: matched_ssi_photometry_catalog
+        lens_photoz_pdfs: balrog_lens_photoz_pdfs
+
+  - name: TXMeanLensSelectorSSIMag     #make magnified SSI lens samples
+    classname: TXMeanLensSelector
+    aliases:
+        photometry_catalog: matched_ssi_photometry_catalog_mag
+        lens_tomography_catalog_unweighted: lens_tomography_catalog_unweighted_mag
+        lens_photoz_pdfs: balrog_lens_photoz_pdfs_mag
+  - name: TXLensCatalogSplitterSSIMag
+    classname: TXLensCatalogSplitter
+    aliases:
+        photometry_catalog: matched_ssi_photometry_catalog_mag
+        lens_tomography_catalog_unweighted: lens_tomography_catalog_unweighted_mag
+        binned_lens_catalog_unweighted: binned_lens_catalog_unweighted_mag
+        lens_photoz_pdfs: balrog_lens_photoz_pdfs_mag
+      
+  - name: TXSSIMagnification    # compute magnification coefficients for lens sample
+    aliases:
+        binned_lens_catalog_nomag: binned_lens_catalog_unweighted
+        binned_lens_catalog_mag: binned_lens_catalog_unweighted_mag
+
+        
+modules: txpipe
+
+# Where to put outputs
+output_dir: data/example/outputs_ssi_des_mag/
+
+# How to run the pipeline: mini, parsl, or cwl
+launcher:
+    name: mini
+    interval: 1.0
+
+# Where to run the pipeline: cori-interactive, cori-batch, or local
+site:
+    name: local
+    max_threads: 2
+
+# configuration settings
+config: examples/ssi/config_des_mag.yml
+
+inputs:
+    # See README for paths to download these files
+    balrog_matched_catalog:      /global/cfs/cdirs/lsst/groups/WL/users/jelvinpo/balrog_txpipe_example/balrog_matched_catalog_sof_run2a_v1.4.fits
+    balrog_matched_catalog_mag:  /global/cfs/cdirs/lsst/groups/WL/users/jelvinpo/balrog_txpipe_example/balrog_matched_catalog_sof_run2a-mag_v1.4.fits
+    balrog_lens_photoz_pdfs:     /global/cfs/cdirs/lsst/groups/WL/users/jelvinpo/balrog_txpipe_example/balrog_matched_catalog_sof_run2a_v1.4_dnf.h5
+    balrog_lens_photoz_pdfs_mag: /global/cfs/cdirs/lsst/groups/WL/users/jelvinpo/balrog_txpipe_example/balrog_matched_catalog_sof_run2a-mag_v1.4_dnf.h5
+
+    fiducial_cosmology: data/fiducial_cosmology.yml
+
+# if supported by the launcher, restart the pipeline where it left off
+# if interrupted
+resume: false
+# where to put output logs for individual stages
+log_dir: data/example/outputs_ssi_des_mag/logs/
+# where to put an overall parsl pipeline log
+pipeline_log: data/example/outputs_ssi_des_mag/log.txt

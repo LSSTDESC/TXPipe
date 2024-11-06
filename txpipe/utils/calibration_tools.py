@@ -171,7 +171,7 @@ class MetacalCalculator:
         self.selector = selector
         self.count = 0
         self.sum_weights    = 0
-        self.sum_weights_sq = 0
+        self.sum_sq_weights = 0
         self.delta_gamma = delta_gamma
         self.resp_mean_diag  = resp_mean_diag
         self.cal_bias_means = ParallelMean(size=4)
@@ -223,7 +223,7 @@ class MetacalCalculator:
         # Record the count for this chunk, for summation later
         self.count += n
         self.sum_weights    += np.sum(weight[sel_00])
-        self.sum_weights_sq += np.sum(weight[sel_00]**2)
+        self.sum_sq_weights += np.sum(weight[sel_00]**2)
         
 
         # This is the estimator response, correcting  bias of the shear estimator itself
@@ -277,21 +277,24 @@ class MetacalCalculator:
             Estimator response matrix
         S: 2x2 array
             Selection bias matrix
+
+        Neff: float
+            Sum(weights)**2 / Sum(weights**2)
         """
         # collect all the things we need
         if comm is not None:
             if allgather:
                 count = comm.allreduce(self.count)
                 sum_weights    = comm.allreduce(self.sum_weights)
-                sum_weights_sq = comm.allreduce(self.sum_weights_sq)
+                sum_sq_weights = comm.allreduce(self.sum_sq_weights)
             else:
                 count = comm.reduce(self.count)
                 sum_weights    = comm.reduce(self.sum_weights)
-                sum_weights_sq = comm.reduce(self.sum_weights_sq)
+                sum_sq_weights = comm.reduce(self.sum_sq_weights)
         else:
             count = self.count
             sum_weights    = self.sum_weights
-            sum_weights_sq = self.sum_weights_sq
+            sum_sq_weights = self.sum_sq_weights
 
         # Collect the mean values we need
         mode = "allgather" if allgather else "gather"
@@ -316,6 +319,11 @@ class MetacalCalculator:
         S_mean[1, 1] = S[6] - S[7]
         S_mean /= self.delta_gamma
 
+        if sum_weights is None:
+            Neff = None
+        else:
+            Neff = sum_weights**2/sum_sq_weights
+
         if self.resp_mean_diag:
             # Sets response to scalar R[0,0]==R[1,1] = (R[0,0]+R[1,1])/2 and nulls the off-diagonal elements (used in DES-Y3)
             print("Setting  R[0,0]==R[1,1] = (R[0,0]+R[1,1])/2")
@@ -327,7 +335,7 @@ class MetacalCalculator:
             S_mean[1,0]=S_mean[0,1]=0
             S_mean[0,0]=S_mean[1,1]=Savg
 
-        return R_mean, S_mean, count, sum_weights**2/sum_weights_sq
+        return R_mean, S_mean, count, Neff
 
 
 class MetaDetectCalculator:
@@ -348,7 +356,7 @@ class MetaDetectCalculator:
         self.mean_e = ParallelMean(size=10)
         self.counts = np.zeros(5, dtype=int)
         self.sum_weights    = np.zeros(5, dtype=int)
-        self.sum_weights_sq = np.zeros(5, dtype=int)
+        self.sum_sq_weights = np.zeros(5, dtype=int)
         
 
     def add_data(self, data, *args, **kwargs):
@@ -380,7 +388,7 @@ class MetaDetectCalculator:
             self.mean_e.add_data(2 * i + 1, g2, w)
             self.counts[i] += w.size
             self.sum_weights[i]    += np.sum(w)
-            self.sum_weights_sq[i] += np.sum(w**2)
+            self.sum_sq_weights[i] += np.sum(w**2)
             
         return sel_00
 
@@ -406,16 +414,19 @@ class MetaDetectCalculator:
             if allgather:
                 counts = comm.allreduce(self.counts)
                 sum_weights    = comm.allreduce(self.sum_weights)
-                sum_weights_sq = comm.allreduce(self.sum_weights_sq)
+                sum_sq_weights = comm.allreduce(self.sum_sq_weights)
             else:
                 counts = comm.reduce(self.counts)
                 sum_weights    = comm.reduce(self.sum_weights)
-                sum_weights_sq = comm.reduce(self.sum_weights_sq)
+                sum_sq_weights = comm.reduce(self.sum_sq_weights)
+
+                if comm.rank > 0:
+                    return None, None, None
 
         else:
             counts = self.counts
             sum_weights    = self.sum_weights
-            sum_weights_sq = self.sum_weights_sq
+            sum_sq_weights = self.sum_sq_weights
 
         # The ordering of these arrays is, from above:
         # 0: g1 (not actually used here)
@@ -428,7 +439,7 @@ class MetaDetectCalculator:
         # 7: g2_2p
         # 8: g1_2m
         # 9: g2_2m
-
+        
         # Compute the mean R components
         R = np.zeros((2, 2))
         R[0, 0] = mean_e[2] - mean_e[4]  # g1_1p - g1_1m
@@ -438,7 +449,7 @@ class MetaDetectCalculator:
         R /= self.delta_gamma
 
         # we just want the count of the 00 base catalog
-        return R, counts[0], sum_weights[0]**2/sum_weights_sq[0]
+        return R, counts[0], sum_weights[0]**2/sum_sq_weights[0]
 
 
 class LensfitCalculator:
@@ -476,6 +487,8 @@ class LensfitCalculator:
         self.C_S = ParallelMean(2)
         self.count = 0
         self.sum_weights = 0
+        self.sum_sq_weights = 0
+        
         self.sum_weights_sq = 0
         # In KiDS, the additive bias is calculated and removed per North and South field
         # we have implemented a config to choose whether or not to do this split
@@ -513,7 +526,7 @@ class LensfitCalculator:
         # Record the count for this chunk, for summation later
         self.count += n
         self.sum_weights += np.sum(w[sel])
-        self.sum_weights_sq += np.sum(w[sel]**2)
+        self.sum_sq_weights += np.sum(w[sel]**2)
 
         # Accumulate the calibration quantities so that later we
         # can compute the weighted mean of the values
@@ -561,6 +574,9 @@ class LensfitCalculator:
         C: float array
             c1, c2 additive biases (weighted average of g1 and g2)
 
+        Neff: float
+            Sum(weights)**2 / Sum(weights**2)
+
         """
         # The total number of objects is just the
         # number from all the processes summed together.
@@ -568,16 +584,16 @@ class LensfitCalculator:
             if allgather:
                 count = comm.allreduce(self.count)
                 sum_weights    = comm.allreduce(self.sum_weights)
-                sum_weights_sq = comm.allreduce(self.sum_weights_sq)
+                sum_sq_weights = comm.allreduce(self.sum_sq_weights)
             else:
                 count = comm.reduce(self.count)
                 sum_weights    = comm.reduce(self.sum_weights)
-                sum_weights_sq = comm.reduce(self.sum_weights_sq)
+                sum_sq_weights = comm.reduce(self.sum_sq_weights)
 
         else:
             count = self.count
             sum_weights    = self.sum_weights
-            sum_weights_sq = self.sum_weights_sq
+            sum_sq_weights = self.sum_sq_weights
 
         # Collect the weighted means of these numbers.
         # this collects all the values from the different
@@ -587,7 +603,12 @@ class LensfitCalculator:
         _, C_N = self.C_N.collect(comm, mode)
         _, C_S = self.C_S.collect(comm, mode)
 
-        return K, C_N, C_S, count, sum_weights**2/sum_weights_sq
+        if sum_weights is None:
+            Neff = None
+        else:
+            Neff = sum_weights**2/sum_sq_weights
+
+        return K, C_N, C_S, count, Neff
 
 
 class HSCCalculator:
@@ -623,7 +644,7 @@ class HSCCalculator:
         self.R = ParallelMean(1)
         self.count = 0
         self.sum_weights    = 0
-        self.sum_weights_sq = 0
+        self.sum_sq_weights = 0
         
 
     def add_data(self, data, *args, **kwargs):
@@ -654,7 +675,7 @@ class HSCCalculator:
         n = w[sel].size
         self.count += n
         self.sum_weights += np.sum(w[sel])
-        self.sum_weights_sq += np.sum(w[sel]**2)
+        self.sum_sq_weights += np.sum(w[sel]**2)
         
         w = w[sel]
 
@@ -697,24 +718,31 @@ class HSCCalculator:
             if allgather:
                 count   = comm.allreduce(self.count)
                 sum_weights    = comm.allreduce(self.sum_weights)
-                sum_weights_sq = comm.allreduce(self.sum_weights_sq)
+                sum_sq_weights = comm.allreduce(self.sum_sq_weights)
                 
             else:
                 count = comm.reduce(self.count)
                 sum_weights    = comm.reduce(self.sum_weights)
-                sum_weights_sq = comm.reduce(self.sum_weights_sq)
+                sum_sq_weights = comm.reduce(self.sum_sq_weights)
         else:
             count = self.count
             sum_weights    = self.sum_weights
-            sum_weights_sq = self.sum_weights_sq
+            sum_sq_weights = self.sum_sq_weights
         # Collect the weighted means of these numbers.
         # this collects all the values from the different
         # processes and over all the chunks of data
         mode = "allgather" if allgather else "gather"
         _, R = self.R.collect(comm, mode)
         _, K = self.K.collect(comm, mode)
-        return R, K, count, sum_weights**2/sum_weights_sq
-    
+
+        if sum_weights is None:
+            Neff = None
+        else:
+            Neff = sum_weights**2/sum_sq_weights
+
+        return R, K, count, Neff
+
+
 class MockCalculator:
     """
     This class calculates tomographic statistics for mock catalogs

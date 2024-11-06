@@ -1,6 +1,7 @@
 from ..base_stage import PipelineStage
 from ..data_types import (
     HDFFile,
+    FitsFile,
 )
 from ..utils import (
     nanojansky_to_mag_ab,
@@ -274,3 +275,110 @@ class TXMatchSSI(PipelineStage):
             col.resize((ntot,))
         outfile.close()
         return
+
+
+
+class TXIngestSSIMatched(PipelineStage):
+    """
+    Base-stage for ingesting a matched SSI catalog
+
+    This stage will just read in a file in a given format and output to a 
+    HDF file that TXPIPE can use
+
+    """
+
+    name = "TXIngestSSIMatched"
+
+    outputs = [
+        ("matched_ssi_photometry_catalog", HDFFile),
+    ]
+
+    config_options = {
+        "chunk_rows": 100_000,
+        "magnification":0, # magnification label
+    }
+
+
+class TXIngestSSIMatchedDESBalrog(TXIngestSSIMatched):
+    """
+    Class for ingesting a matched "SSI" catalog from DES (AKA Balrog)
+    """
+
+    name = "TXIngestSSIMatchedDESBalrog"
+
+    inputs = [
+        ("balrog_matched_catalog", FitsFile),
+    ]
+  
+    def run(self):
+        """
+        Run the analysis for this stage.
+        """
+        print('Ingesting DES Balrog matched catalog')
+
+        #get some basic onfo about the input file
+        f = self.open_input("balrog_matched_catalog")
+        n = f[1].get_nrows()
+        dtypes = f[1].get_rec_dtype()[0]
+        f.close()
+
+        print(f'{n} objects in matched catalog')
+
+        chunk_rows = self.config["chunk_rows"]
+
+        #we will only load a subset of columns to save space
+        column_names = {
+            "bal_id":                   "bal_id",               # Unique identifier for object (created during balrog process)
+            "true_bdf_mag_deredden":    "inj_mag",              # Magnitude of the original deep field object, dereddened
+            "true_id":                  "inj_id",               # Original coadd_obj_id of deep field object
+            "meas_id":                  "id",                   # Coadd_object_id of injection
+            "meas_ra":                  "ra",                   # measured RA of the injection
+            "meas_dec":                 "dec",                  # measured DEC of the injection
+            "meas_cm_mag_deredden":     "mag",                  # measured magnitude of the injection
+            "meas_cm_T":                "cm_T",                 # measured size parameter T (x^2+y^2)
+            "meas_EXTENDED_CLASS_SOF":  "EXTENDED_CLASS_SOF",   # Star galaxy classifier (0,1=star, 2,3=Galaxy)
+            "meas_FLAGS_GOLD_SOF_ONLY": "FLAGS_GOLD",           # Measured flags (short version)
+            }
+        cols = list(column_names.keys())
+
+        #set up the output file columns
+        output = self.open_output("matched_ssi_photometry_catalog")
+        g = output.create_group("photometry")
+        for col in cols:
+            dtype = dtypes[col]
+
+            if "_mag" in col:
+                #per band
+                dtype = dtype.subdtype[0]
+                for b in "griz":
+                    g.create_dataset(column_names[col]+f"_{b}", (n,), dtype=dtype)
+
+                    #also create an empty array for the mag errors
+                    #TO DO: compute mag errors from flux errors
+                    g.create_dataset(column_names[col]+f"_err_{b}", (n,), dtype=dtype)
+            else:
+                g.create_dataset(column_names[col], (n,), dtype=dtype)
+
+        #iterate over the input file and save to the output columns
+        for (s, e, data) in self.iterate_fits("balrog_matched_catalog", 1, cols, chunk_rows):
+            print(s,e,n)
+            for col in cols:
+                if "_mag" in col:
+                    for iband,b in enumerate("griz"):
+                        g[column_names[col]+f"_{b}"][s:e] = data[col][:,iband]
+                else:
+                    g[column_names[col]][s:e] = data[col]
+
+        # Set up any dummy columns with sentinal values 
+        # that were not in the original files
+        dummy_columns = {
+            "redshift_true":10.0,
+            }
+        for col_name in dummy_columns.keys():
+            g.create_dataset(col_name, data=np.full(n,dummy_columns[col_name]))
+
+        output.close()
+
+
+
+

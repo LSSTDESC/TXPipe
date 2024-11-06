@@ -1,160 +1,89 @@
 import numpy as np
+from ..utils import import_dask
 from parallel_statistics import ParallelMeanVariance
 
+def make_dask_bright_object_map(ra, dec, mag, extended, threshold, pixel_scheme):
+    """
+    Create a map of bright objects using Dask.
 
-class DepthMapperDR1:
-    def __init__(self, pixel_scheme, snr_threshold, snr_delta, sparse=False, comm=None):
-        """Class to build up depth maps iteratively as we cycle through a data set.
+    Parameters
+    ----------
+    ra : dask.array
+        Right ascension values of the objects.
+    dec : dask.array
+        Declination values of the objects.
+    mag : dask.array
+        Magnitude values of the objects.
+    extended : dask.array
+        Extendedness flag of the objects (0 for point sources, 1 for extended sources).
+    threshold : float
+        Magnitude threshold to classify objects as bright.
+    pixel_scheme : PixelScheme
+        Pixelization scheme object with methods `npix` and `ang2pix`.
 
-        Two methods should be used:
-        - add_data which should be called each time a new data chunk is loaded
-        - finalize, at the end to collect the results
+    Returns
+    -------
+    tuple
+        A tuple containing:
+        - pix (dask.array): Unique pixel indices containing bright objects.
+        - bright_object_count_map (dask.array): Count map of bright objects per pixel.
+    """
+    _, da = import_dask()
+    npix = pixel_scheme.npix
+    pix = pixel_scheme.ang2pix(ra, dec)
+    bright = da.where((mag < threshold) & (extended == 0), 1, 0)
+    bright_object_count_map = da.bincount(pix, weights=bright, minlength=npix).astype(int)
+    pix = da.unique(pix)
+    return pix, bright_object_count_map
 
-        Parameters
-        ----------
-        pixel_scheme: PixelScheme object
-            Converter from angle to pixel
+def make_dask_depth_map(ra, dec, mag, snr, threshold, delta, pixel_scheme):
+    """
+    Generate a depth map using Dask, by finding the mean magnitude of
+    objects with a signal-to-noise ratio close to a given threshold.
 
-        snr_threshold: float
-            Value of SNR to use as the depth (e.g. 5.0 for 5 sigma depth)
+    Parameters
+    ----------
+    ra : dask.array
+        Right Ascension coordinates in degrees.
+    dec : dask.array
+        Declination coordinates in degrees.
+    mag : dask.array
+        Magnitudes of the objects, in band of user's choice
+    snr : dask.array
+        Signal-to-noise ratios of the objects, in the same band.
+    threshold : float
+        Threshold value for signal-to-noise ratio.
+    delta : float
+        Tolerance value for signal-to-noise ratio.
+    pixel_scheme : PixelScheme
+        An object that provides pixelization scheme with methods `npix` and `ang2pix`.
 
-        snr_delta: float, optional
-            Half-width of the SNR values to use for the depth estimation
+    Returns
+    -------
+    tuple
+        A tuple containing:
+        - pix (dask.array): Unique pixel indices.
+        - count_map (dask.array): Count of objects per pixel.
+        - depth_map (dask.array): Mean depth per pixel.
+        - depth_var (dask.array): Variance of depth per pixel.
+    """
+    _, da = import_dask()
+    npix = pixel_scheme.npix
+    pix = pixel_scheme.ang2pix(ra, dec)
+    hit = da.where(abs(snr - threshold) < delta, 1, 0)
+    depth = da.where(abs(snr - threshold) < delta, mag, 0)
 
-        sparse: bool, optional
-            Whether to use sparse indexing for the calculation.  Faster if only a small number of pixels
-            Are used.
+    # get the count and sum of the depth and depth^2
+    count_map = da.bincount(pix, weights=hit, minlength=npix)
+    depth_map = da.bincount(pix, weights=depth, minlength=npix)
+    depth2_map = da.bincount(pix, weights=depth**2, minlength=npix)
 
-        comm: MPI communicator, optional
-            An MPI comm for parallel processing.  If None, calculation is serial.
+    # convert to means
+    depth_map /= count_map
+    depth2_map /= count_map
 
-        Returns
-        -------
+    # get the variance from the mean depth
+    depth_var = depth2_map - depth_map**2
 
-        pixel: array
-            Indices of all pixels with any objects
-
-        count: array
-            Number of objects in each pixel
-
-        depth: array
-            Estimated depth of each pixel
-
-        depth_var: array
-            Estimated variance of depth of each pixel
-
-        """
-        self.pixel_scheme = pixel_scheme
-        self.snr_threshold = snr_threshold
-        self.snr_delta = snr_delta
-        self.comm = comm
-        self.sparse = sparse
-        self.stats = ParallelMeanVariance(pixel_scheme.npix, sparse=sparse)
-
-    def add_data(self, data):
-        ra = data["ra"]
-        dec = data["dec"]
-        snr = data["snr"]
-        mags = data["mag"]
-        # Get healpix pixels
-        pix_nums = self.pixel_scheme.ang2pix(ra, dec)
-
-        # For each found pixel find all values hitting that pixel
-        # and yield the index and their magnitudes
-        for p in np.unique(pix_nums):
-            mask = (pix_nums == p) & (abs(snr - self.snr_threshold) < self.snr_delta)
-            self.stats.add_data(p, mags[mask])
-
-    def finalize(self, comm=None):
-
-        count, depth, depth_var = self.stats.collect(comm)
-
-        # Generate the pixel indexing (if parallel and the master process) and
-        # convert from sparse arrays to pixel, index arrays.if sparse
-        if count is None:
-            pixel = None
-        elif self.sparse:
-            pixel, count = count.to_arrays()
-            _, depth = depth.to_arrays()
-            _, depth_var = depth_var.to_arrays()
-        else:
-            pixel = np.arange(len(depth))
-
-        return pixel, count, depth, depth_var
-
-
-class BrightObjectMapper:
-    def __init__(self, pixel_scheme, mag_threshold, sparse=False, comm=None):
-        """Class to build up bright object maps iteratively as we cycle through a data set.
-
-        Two methods should be used:
-        - add_data which should be called each time a new data chunk is loaded
-        - finalize, at the end to collect the results
-
-        Parameters
-        ----------
-        pixel_scheme: PixelScheme object
-            Converter from angle to pixel
-
-        mag_threshold: float
-            Value of magnitude to use as the cutoff for bright objects
-
-        sparse: bool, optional
-            Whether to use sparse indexing for the calculation.  Faster if only a small number of pixels
-            Are used.
-
-        comm: MPI communicator, optional
-            An MPI comm for parallel processing.  If None, calculation is serial.
-
-        Returns
-        -------
-
-        pixel: array
-            Indices of all pixels with bright objects
-
-        count: array
-            Number of bright objects in each pixel
-
-        brmag: array
-            mean magnitude of bright objects in each pixel
-
-        brmag_var: array
-            variance of magnitude of bright objects in each pixel
-
-        """
-        self.pixel_scheme = pixel_scheme
-        self.mag_threshold = mag_threshold
-        self.comm = comm
-        self.sparse = sparse
-        self.stats = ParallelMeanVariance(pixel_scheme.npix, sparse=sparse)
-
-    def add_data(self, data):
-        ra = data["ra"]
-        dec = data["dec"]
-        ext = data["extendedness"]
-        mags = data["mag"]
-        # Get healpix pixels
-        pix_nums = self.pixel_scheme.ang2pix(ra, dec)
-
-        # For each found pixel find all values hitting that pixel
-        # and yield the index and their magnitudes
-        for p in np.unique(pix_nums):
-            mask = (pix_nums == p) & (ext == 0) & (mags < self.mag_threshold)
-            self.stats.add_data(p, mags[mask])
-
-    def finalize(self, comm=None):
-
-        count, brmag, brmag_var = self.stats.collect(comm)
-
-        # Generate the pixel indexing (if parallel and the master process) and
-        # convert from sparse arrays to pixel, index arrays.if sparse
-        if count is None:
-            pixel = None
-        elif self.sparse:
-            pixel, count = count.to_arrays()
-            _, brmag = brmag.to_arrays()
-            _, brmag_var = brmag_var.to_arrays()
-        else:
-            pixel = np.arange(len(brmag))
-
-        return pixel, count, brmag, brmag_var
+    pix = da.unique(pix)
+    return pix, count_map, depth_map, depth_var

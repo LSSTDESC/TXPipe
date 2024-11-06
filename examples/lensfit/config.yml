@@ -1,6 +1,6 @@
 global:
     chunk_rows: 100000
-    sparse: True  # Generate sparse maps - faster if using small areas
+    sparse: true  # Generate sparse maps - faster if using small areas
     pixelization: healpix
     nside: 512
 
@@ -12,14 +12,14 @@ TXMetacalGCRInput:
     cat_name: dc2_object_run2.1i_dr1b_with_metacal_griz
 
 TXExposureInfo:
-    dc2_name: '1.2p'
+    dc2_name: 1.2p
 
 
 TXCosmoDC2Mock:
     cat_name: cosmoDC2_v1.1.4_image
     visits_per_band: 16
     extra_cols: redshift_true size_true shear_1 shear_2
-    flip_g2: True # to match metacal
+    flip_g2: true # to match metacal
 
 
 PZPDFMLZ:
@@ -42,46 +42,24 @@ PZRailTrainLens:
     p_min: 0.005
     gauss_kernel: 0.0
     mag_err_min: 0.005
-    inform_options: {'save_train': False, 'load_model': False, 'modelfile': 'BPZpriormodel.out'}  
+    inform_options: {save_train: false, load_model: false, modelfile: BPZpriormodel.out}
     madau_reddening: no
     bands: ugrizy
     zp_errors: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
 
 PZRailEstimateLens:
-    convert_unseen: True
+    convert_unseen: true
     bands: ugrizy
 
 TXPhotozPlotSource:
     name: TXPhotozPlotSource
-    aliases:
-        photoz_stack: shear_photoz_stack
-        nz_plot: nz_source
-
 TXPhotozPlotLens:
     name: TXPhotozPlotLens
-    aliases:
-        photoz_stack: lens_photoz_stack
-        nz_plot: nz_lens
-
 TXPhotozLensStack:
     name: TXPhotozLensStack
-    aliases:
-        photoz_pdfs: lens_photoz_pdfs
-        tomography_catalog: lens_tomography_catalog
-        weights_catalog: none
-        photoz_stack: lens_photoz_stack
-
 TXPhotozSourceStack:
     name: TXPhotozSourceStack
     weight_col: shear/weight
-    aliases:
-        # not a mistake - we use the same photoz_pdfs for both
-        photoz_pdfs: lens_photoz_pdfs
-        tomography_catalog: shear_tomography_catalog
-        weights_catalog: shear_catalog
-        photoz_stack: shear_photoz_stack
-
-# Mock version of stacking:
 TXSourceTrueNumberDensity:
     nz: 301
     zmax: 3.0
@@ -90,7 +68,7 @@ TXLensTrueNumberDensity:
     zmax: 3.0
 
 TXSourceSelectorLensfit:
-    input_pz: True
+    input_pz: true
     bands: ri #used for selection
     T_cut: 0.25
     s2n_cut: 5.0
@@ -98,14 +76,11 @@ TXSourceSelectorLensfit:
     delta_gamma: 0.02
     source_zbin_edges: [0.1, 0.5, 1.0, 2.0]
     shear_prefix: ''
-    input_m_is_weighted: True
+    input_m_is_weighted: true
 
 PZPrepareEstimatorLens:
     name: PZPrepareEstimatorLens
     classname: BPZliteInformer
-    aliases:
-        input: spectroscopic_catalog
-        model: lens_photoz_model
     zmin: 0.0
     zmax: 3.0
     nzbins: 301
@@ -119,7 +94,7 @@ PZPrepareEstimatorLens:
     p_min: 0.005
     gauss_kernel: 0.0
     mag_err_min: 0.005
-    inform_options: {'save_train': False, 'load_model': False, 'modelfile': 'BPZpriormodel.out'}  
+    inform_options: {save_train: false, load_model: false, modelfile: BPZpriormodel.out}
     madau_reddening: no
     bands: riz
     zp_errors: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
@@ -128,7 +103,7 @@ PZPrepareEstimatorLens:
 
 TXTruthLensSelector:
     # Mag cuts
-    lens_zbin_edges: [0.0,0.2,0.4]
+    lens_zbin_edges: [0.0, 0.2, 0.4]
     cperp_cut: 0.2
     r_cpar_cut: 13.5
     r_lo_cut: 16.0
@@ -140,7 +115,7 @@ TXTruthLensSelector:
 
 TXMeanLensSelector:
     # Mag cuts
-    lens_zbin_edges: [0.0,0.2,0.4]
+    lens_zbin_edges: [0.0, 0.2, 0.4]
     cperp_cut: 0.2
     r_cpar_cut: 13.5
     r_lo_cut: 16.0
@@ -155,16 +130,16 @@ TXRandomCat:
 TXTwoPoint:
     bin_slop: 0.1
     delta_gamma: 0.02
-    do_pos_pos: True
-    do_shear_shear: True
-    do_shear_pos: True
-    flip_g2: True  # use true when using metacal shears
+    do_pos_pos: true
+    do_shear_shear: true
+    do_shear_pos: true
+    flip_g2: true  # use true when using metacal shears
     min_sep: 2.5
     max_sep: 60.0
     nbins: 10
     verbose: 0
     shear_catalog_type: metacal
-    subtract_mean_shear: True
+    subtract_mean_shear: true
     # Using the arc metric here to test it works
     metric: Arc
 
@@ -186,7 +161,14 @@ TXBlinding:
     sigma8: [0.801, 0.01]
     n_s: [0.971, 0.03]
     b0: 0.95  ## we use bias of the form b0/g
-    delete_unblinded: True
+    delete_unblinded: true
+
+TXDiagnosticQuantiles:
+    psf_prefix: psf_
+    shear_prefix: ""
+    nbins: 20
+    bands: ri
+
 
 TXSourceDiagnosticPlots:
     psf_prefix: psf_
@@ -214,7 +196,7 @@ TXMapPlots:
     projection: moll
 
 TXDiagnosticMaps:
-    sparse: True  # Generate sparse maps - faster if using small areas
+    sparse: true  # Generate sparse maps - faster if using small areas
     snr_threshold: 10.0
     snr_delta: 1.0
     pixelization: healpix
@@ -238,7 +220,7 @@ TXAuxiliarySourceMaps:
 
 TXAuxiliaryLensMaps:
     bright_obj_threshold: 22.0 # The magnitude threshold for a object to be counted as bright
-    depth_band : i
+    depth_band: i
     snr_threshold: 10.0  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)
     snr_delta: 1.0  # The range threshold +/- delta is used for finding objects at the boundary
 
@@ -255,27 +237,18 @@ TXJackknifeCenters:
 
 
 TXTwoPointFourier:
-    flip_g2: True
+    flip_g2: true
     bandwidth: 100
 
 TXSimpleMask:
-    depth_cut : 21.5
+    depth_cut: 21.5
     bright_object_max: 10.0
 
 
 FlowCreator:
     n_samples: 1000000
     seed: 5763248
-    aliases:
-        # This input was generated using get_example_flow in pzflow,
-        # not something specific.
-        output: ideal_specz_catalog
-        model: flow
-
 GridSelection:
-    aliases:
-        input: ideal_specz_catalog
-        output: specz_catalog_pq
     redshift_cut: 5.1
     ratio_file: data/example/inputs/hsc_ratios_and_specz.hdf5
     settings_file: data/example/inputs/HSC_grid_settings.pkl
@@ -285,18 +258,9 @@ GridSelection:
 
 TXParqetToHDF:
     hdf_group: photometry
-    aliases:
-        input: specz_catalog_pq
-        output: spectroscopic_catalog
-
-
 PZEstimatorLens:
     name: PZEstimatorLens
     classname: BPZliteEstimator
-    aliases:
-        model: lens_photoz_model
-        input: photometry_catalog
-        output: lens_photoz_pdfs
     zmin: 0.0
     zmax: 3.0
     dz: 0.01
