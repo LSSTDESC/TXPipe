@@ -22,12 +22,12 @@ python_paths: []
 stages:
   - name: TXSourceSelectorMetadetect
     nprocess: 30
-  - name: Inform_BPZ_lite
+  - name: BPZliteInformer
     nprocess: 1
     aliases:
         input: spectroscopic_catalog
         model: photoz_model
-  - name: BPZ_lite
+  - name: BPZliteEstimator
     nprocess: 30
     aliases:
         model: photoz_model
