@@ -162,7 +162,7 @@ jobs:
         ceci examples/${{ matrix.pipeline }}/pipeline.yml
 
         if [ "${{ matrix.pipeline }}" == "mock_shear" ]; then
-            test -f data/example/outputs_mock/binned_shear_catalog.hdf5
+          test -f data/example/outputs_mock/binned_shear_catalog.hdf5
         else
           test -f data/example/outputs_${{ matrix.pipeline }}/shear_xi_plus.png
         fi

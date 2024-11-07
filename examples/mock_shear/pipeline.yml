@@ -21,7 +21,7 @@ python_paths:
   - submodules/WLMassMap/python/desc/
 
 # Where to put outputs
-output_dir: data/example/outputs_mock
+output_dir: data/example/outputs_mock_shear
 
 # How to run the pipeline: mini, parsl, or cwl
 launcher:
@@ -49,6 +49,6 @@ inputs:
 # if interrupted
 resume: true
 # where to put output logs for individual stages
-log_dir: data/example/logs_mock
+log_dir: data/example/logs_mock_shear
 # where to put an overall parsl pipeline log
 pipeline_log: data/example/mock_shear_log.txt
