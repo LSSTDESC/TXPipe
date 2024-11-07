@@ -189,7 +189,7 @@ class CLClusterShearCatalogs(PipelineStage):
                 indices = np.zeros(0, dtype=int)
                 weights = np.zeros(0)
                 tangential_comps = np.zeros(0)
-                cross_comp = np.zeros(0)
+                cross_comps = np.zeros(0)
                 distances = np.zeros(0)
             else:
                 # Each process flattens the list of all the galaxies for this cluster
