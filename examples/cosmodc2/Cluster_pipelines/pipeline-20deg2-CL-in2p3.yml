@@ -50,12 +50,12 @@ config: ./examples/cosmodc2/Cluster_pipelines/config-20deg2-CL.yml
 
 inputs:
     # See README for paths to download these files
-    shear_catalog: ./data/cosmodc2/20deg2/shear_catalog.hdf5
-    #photometry_catalog:  ./data/cosmodc2/20deg2/photometry_catalog.hdf5
+    shear_catalog: /sps/lsst/users/mricci/TXPipe_data/data_link/cosmodc2/20deg2/shear_catalog.hdf5
+    #photometry_catalog:  /sps/lsst/users/mricci/TXPipe_data/data_link/cosmodc2/20deg2/photometry_catalog.hdf5
     fiducial_cosmology: ./data/fiducial_cosmology.yml
-    calibration_table: ./data/cosmodc2/20deg2/sample_cosmodc2_w10year_errors.dat
-    spectroscopic_catalog: ./data/cosmodc2/20deg2/spectroscopic_catalog.hdf5
-    cluster_catalog: ./data/cosmodc2/20deg2/cluster_catalog.hdf5
+    calibration_table: /sps/lsst/users/mricci/TXPipe_data/data_link/cosmodc2/20deg2/sample_cosmodc2_w10year_errors.dat
+    spectroscopic_catalog: /sps/lsst/users/mricci/TXPipe_data/data_link/cosmodc2/20deg2/spectroscopic_catalog.hdf5
+    cluster_catalog: /sps/lsst/users/mricci/TXPipe_data/data_link/cosmodc2/20deg2/cluster_catalog.hdf5
     #shear_tomography_catalog: ./data/example/outputs_metadetect/shear_tomography_catalog.hdf5
     #source_photoz_pdfs: ./data/example/inputs/photoz_pdfs.hdf5
 resume: true
