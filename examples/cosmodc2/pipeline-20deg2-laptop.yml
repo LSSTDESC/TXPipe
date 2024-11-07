@@ -3,7 +3,7 @@ launcher:
     interval: 3.0
 
 site:
-    name: cori-interactive
+    name: local
 
 
 modules: txpipe
@@ -14,12 +14,12 @@ python_paths:
 
 stages:
   - name: TXRandomCat
-    nprocess: 32
+    nprocess: 12
   - name: TXSourceSelectorMetadetect
-    nprocess: 32
+    nprocess: 12
   - name: TXLSSWeightsUnit
   - name: TXRandomForestLensSelector
-    nprocess: 32
+    nprocess: 12
   - name: TXLensTrueNumberDensity
     classname: TXTruePhotozStack
     aliases:
@@ -45,13 +45,13 @@ stages:
         photoz_stack: lens_photoz_stack
         nz_plot: lens_nz
   - name: TXShearCalibration
-    nprocess: 32
+    nprocess: 12
   - name: TXTruthLensCatalogSplitter
-    nprocess: 32
+    nprocess: 12
   - name: TXTwoPointFourier
     nprocess: 2
     nodes: 1
-    threads_per_process: 64
+    threads_per_process: 6
   - name: TXTwoPointTheoryFourier
   - name: TXTwoPointPlotsFourier
   - name: TXJackknifeCenters
@@ -77,26 +77,26 @@ stages:
   - name: TXTracerMetadata
   - name: TXNullBlinding
   - name: TXTwoPoint
-    threads_per_process: 64
+    threads_per_process: 12
     nprocess: 1
     nodes: 1
   - name: TXTwoPointPlotsTheory
   - name: TXDiagnosticQuantiles
     nodes: 1
-    nprocess: 16
+    nprocess: 12
   - name: TXLensDiagnosticPlots
-    nprocess: 16
+    nprocess: 12
     nodes: 1
   - name: TXSourceDiagnosticPlots
-    nprocess: 16
+    nprocess: 12
     nodes: 1
   - name: TXFourierGaussianCovariance
-    threads_per_process: 32
+    threads_per_process: 12
   - name: TXTwoPointTheoryReal
   - name: TXRealGaussianCovariance
-    threads_per_process: 32
+    threads_per_process: 12
   - name: TXConvergenceMaps
-    threads_per_process: 32
+    threads_per_process: 12
   - name: TXConvergenceMapPlots
 
 output_dir: data/cosmodc2/outputs-20deg2
