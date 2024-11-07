@@ -539,8 +539,8 @@ class CombinedClusterCatalog:
         self.cluster_shear_catalogs = HDFFile(cluster_shear_catalogs, "r").file
         self.cluster_cat_cols = list(self.cluster_catalog['clusters'].keys())
         self.ncluster = self.cluster_shear_catalogs['catalog/cluster_id'].size
-        self.pz_criterion = "z" + self.cluster_shear_catalogs['provenance'].attrs['config/redshift_criterion']
-        self.pz_col = self.pz_cat[f'ancil/{self.pz_criterion}']
+        #self.pz_criterion = "z" + self.cluster_shear_catalogs['provenance'].attrs['config/ redshift_criterion'] ### TO UPDATE
+        #self.pz_col = self.pz_cat[f'ancil/{self.pz_criterion}']
     @classmethod
     def from_pipeline_file(cls, pipeline_file, run_dir='.'):
         pipe_config = ceci.Pipeline.build_config(
@@ -626,7 +626,7 @@ class CombinedClusterCatalog:
         cat["distance_arcmin"] = distance
         cat["weight_original"] = cat.pop("weight")
 
-        cat[self.pz_criterion] = self.pz_col[index]
+        #cat[self.pz_criterion] = self.pz_col[index] ### TO UPDATE
 
 
         return clmm.GCData(data=cat)

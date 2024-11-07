@@ -32,6 +32,8 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         "delta_sigma_profile" : True,
         "shear_profile" : False,
         "magnification_profile" : False,
+        #coordinate_system for shear
+        "coordinate_system" : 'euclidean' #Must be either 'celestial' or 'euclidean'
     }
 
     def run(self):
@@ -131,13 +133,13 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
                                                 # in source_select_compute --> don't need it here, filling dummy array
             
             # Instantiating a CLMM galaxy cluster object
-            gc_object = clmm.GalaxyCluster(np.int(id_cl), ra_cl, dec_cl, z_cl, galcat)
+            gc_object = clmm.GalaxyCluster(np.int(id_cl), ra_cl, dec_cl, z_cl, galcat, coordinate_system = self.config["coordinate_system"] )
             gc_object.richness = rich_cl
 
 
             if (clmm.utils.convert_units(np.max(bg_cat["distance_arcmin"]), 'arcmin', 'Mpc', z_cl, clmm_cosmo)< radial_bins[-1]):
                 print ("!!! maximum radial distance of source smaller than radial_bins")
-                
+
             # Compute radial profile for the current cluster
             gc_object.make_radial_profile(
                     "Mpc", 
@@ -149,7 +151,7 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
                     cross_component_out = "cross_comp",
                     weights_in = "weight_clmm", # name given in the CLClusterShearCatalogs stage
                     weights_out = "W_l",
-                    include_empty_bins = True
+                    include_empty_bins = True 
                     )
 
 
