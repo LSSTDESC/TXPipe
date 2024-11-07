@@ -7,8 +7,12 @@ from ...utils.calibrators import Calibrator
 from collections import defaultdict
 import yaml
 import ceci
+import warnings
 
 class CLClusterShearCatalogs(PipelineStage):
+    """
+    
+    """
     name = "CLClusterShearCatalogs"
     inputs = [
         ("cluster_catalog", HDFFile),
@@ -26,8 +30,11 @@ class CLClusterShearCatalogs(PipelineStage):
         "chunk_rows": 100_000,  # rows to read at once from source cat
         "max_radius": 10.0,  # Mpc
         "delta_z": 0.1,
-        "redshift_criterion": "mean",  # might also need PDF
+        "redshift_cut_criterion": "zmean",  # pdf / mean / true / median
+        "redshift_weight_criterion": "zmean",  # pdf or point
+        "redshift_cut_criterion_pdf_fraction": 0.9,  # pdf / mean / true / median
         "subtract_mean_shear": True,
+        "coordinate_system": "celestial",
     }
 
     def run(self):
@@ -74,6 +81,10 @@ class CLClusterShearCatalogs(PipelineStage):
                 
             nearby_gals, nearby_gal_dists = self.find_galaxies_near_each_cluster(data, clusters, tree, max_theta_max)
 
+
+            redshift_cut_criterion = self.config["redshift_cut_criterion"]
+            redshift_cut_criterion_pdf_fraction = self.config["redshift_cut_criterion_pdf_fraction"]
+            
             # Now we have all the galaxies near each cluster
             # We need to cut down to a specific radius for this
             # cluster
@@ -99,8 +110,21 @@ class CLClusterShearCatalogs(PipelineStage):
                 cluster_dec = clusters[cluster_index]["dec"]
 
                 # # Cut down to clusters that are in front of this galaxy
-                zgal = data["redshift"][gal_index]
-                z_good = zgal > cluster_z + delta_z
+                if redshift_cut_criterion == "pdf":
+                    # If we cut based on the PDF then we need the probability
+                    # that the galaxy z is behind the cluster to be greater
+                    # than a cut criterion.
+                    pdf_z = data["pdf_z"]
+                    pdf = data["pdf_pz"][gal_index]
+                    pdf_frac = pdf[:, pdf_z > cluster_z + delta_z].sum(axis=1) / pdf.sum(axis=1)
+                    z_good = pdf_frac > redshift_cut_criterion_pdf_fraction
+                elif redshift_cut_criterion == "zmode":
+                    # otherwise if we are not using the PDF we do a simple cut
+                    zgal = data["redshift"][gal_index]
+                    z_good = zgal > cluster_z + delta_z
+                else:
+                    raise NotImplementedError("Not implemented other z cuts than zmode")
+                
                 gal_index = gal_index[z_good]
                 distance = distance[z_good]
 
@@ -165,7 +189,7 @@ class CLClusterShearCatalogs(PipelineStage):
                 indices = np.zeros(0, dtype=int)
                 weights = np.zeros(0)
                 tangential_comps = np.zeros(0)
-                cross_comp = np.zeros(0)
+                cross_comps = np.zeros(0)
                 distances = np.zeros(0)
             else:
                 # Each process flattens the list of all the galaxies for this cluster
@@ -319,35 +343,35 @@ class CLClusterShearCatalogs(PipelineStage):
         
         # Depending on whether we are using the PDF or not, choose
         # some keywords to give to compute_galaxy_weights
-        if self.config["redshift_criterion"] == "pdf":
+        if self.config["redshift_weight_criterion"] == "pdf":
             # We need the z and PDF(z) arrays in this case
             pdf_z = data["pdf_z"]
             pdf_pz = data["pdf_pz"][index]
-            redshift_keywords = {
-                "pzpdf":pdf_pz,
-                "pzbins":pdf_z,
-                "use_pdz":True
-            }
-        else:
+            
+            # suppress user warnings containing string "nSome source redshifts are lower than the cluster redshift"
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore")
+                sigma_c = clmm.theory.compute_critical_surface_density_eff(
+                    cosmo=clmm_cosmo,
+                    z_cluster=z_cluster,
+                    pzbins=pdf_z,
+                    pzpdf=pdf_pz,
+                )            
+        elif self.config["redshift_weight_criterion"] == "zmode":
             # point-estimated redshift
             z_source = data["redshift"][index]
-            redshift_keywords = {
-                "z_source":z_source,
-                "use_pdz":False
-            }
+            sigma_c = clmm_cosmo.eval_sigma_crit(z_cluster, z_source)
+        else:
+            raise NotImplementedError("Not implemented zmean weighting")
+            
 
         weight = clmm.dataops.compute_galaxy_weights(
-            z_cluster,
-            clmm_cosmo,
+            sigma_c = sigma_c,
             is_deltasigma=True,
-            use_shape_noise=True,
-            use_shape_error=False,
-            validate_input=True,
-            shape_component1=data["g1"][index],
-            shape_component2=data["g2"][index],
-            **redshift_keywords
+            use_shape_noise=False,
         )
 
+        coordinate_system = self.config["coordinate_system"]
         _, tangential_comp, cross_comp = clmm.compute_tangential_and_cross_components(
             ra_cluster,
             dec_cluster,
@@ -355,17 +379,12 @@ class CLClusterShearCatalogs(PipelineStage):
             data['dec'][index],
             data["g1"][index],
             data["g2"][index],
+            coordinate_system=coordinate_system,
             geometry="curve",
             is_deltasigma=True,
-            cosmo=clmm_cosmo,
-            z_lens=z_cluster,
-            z_source=z_source,
-            sigma_c=None,
-            use_pdz=False,
-            pzbins=None,
-            pzpdf=None,
+            sigma_c=sigma_c,
             validate_input=True,
-        )       
+        )
         
         return weight, tangential_comp, cross_comp
 
@@ -419,13 +438,30 @@ class CLClusterShearCatalogs(PipelineStage):
         # where and what to read rom the PZ catalog. This is in a QP
         # format where the mode and mean are stored in a file called
         # "ancil". The columns are called zmode and zmean.
-        # TODO: Support "pdf" option here and read from /data/yvals
-        redshift_criterion = self.config["redshift_criterion"]
+        redshift_cut_criterion = self.config["redshift_cut_criterion"]
+        redshift_weight_criterion = self.config["redshift_cut_criterion"]
+        want_pdf = (redshift_cut_criterion == "pdf") or (redshift_weight_criterion == "pdf")
 
-        if redshift_criterion == "pdf":
+        point_pz_group = "ancil"
+        # TODO: We may extend this to use other options for the point redshift
+        # in the cuts / weighting
+        point_pz_cols = ["zmode"]
+
+        if redshift_cut_criterion == "zmean" or redshift_weight_criterion == "zmean":
+            point_pz_cols.append("zmean")
+
+        rename["zmode"] = "redshift"
+
+        # if the PDF is available, load it
+        # use keyword to decide what to cut on 
+        # use keyword to decide what to weight on
+
+        if want_pdf:
             # This is not actually a single column but an array
-            pz_group = "data"
-            pz_cols = ["yvals"]
+            pdf_file = "source_photoz_pdfs"
+            pdf_group = "data"
+            pdf_cols = ["yvals"]
+            pdf_keywords = [pdf_file, pdf_group, pdf_cols]
 
             # we will also need the z axis values in this case
             with self.open_input("source_photoz_pdfs") as f:
@@ -433,10 +469,7 @@ class CLClusterShearCatalogs(PipelineStage):
                 # but that's the kind of thing they might change.
                 pdf_z = np.squeeze(f["/meta/xvals"][0])
         else:
-            pz_group = "ancil"
-            pz_col = "z" + self.config["redshift_criterion"]
-            pz_cols = [pz_col]
-            rename[pz_col] = "redshift"
+            pdf_keywords = []
 
 
         # where and what to read from the tomography catalog.
@@ -454,11 +487,12 @@ class CLClusterShearCatalogs(PipelineStage):
                 shear_group,
                 shear_cols,
                 "source_photoz_pdfs",
-                pz_group,
-                pz_cols,
+                point_pz_group,
+                point_pz_cols,
                 "shear_tomography_catalog",
                 tomo_group,
                 tomo_cols,
+                *pdf_keywords,
                 parallel=True
         ):
             # For each chunk of data we also want to store the original
@@ -486,7 +520,7 @@ class CLClusterShearCatalogs(PipelineStage):
             )
 
             # If we are in PDF mode then we need this extra info
-            if redshift_criterion == "pdf":
+            if want_pdf:
                 data["pdf_z"] = pdf_z
                 # also rename this for clarity
                 data["pdf_pz"] = data.pop("yvals")
