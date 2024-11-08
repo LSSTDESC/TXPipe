@@ -37,9 +37,9 @@ stages:
   - name: CLClusterBinningRedshiftRichness
     nprocess: 1
   - name: CLClusterShearCatalogs
-    nprocess: 1   #>1 does not work with mpi
+    nprocess: 30   #>1 does not work with mpi
   - name: CLClusterEnsembleProfiles
-    nprocess: 1
+    nprocess: 10
 #    - name: CLClusterDataVector
 #      nprocess: 1
 
