@@ -64,10 +64,11 @@ CLClusterShearCatalogs:
     chunk_rows: 100_000  # rows to read at once from source cat
     max_radius: 5   # Mpc
     delta_z: 0.2   # redshift buffer
-    redshift_cut_criterion: pdf
-    redshift_weight_criterion: pdf
+    redshift_cut_criterion: zmode
+    redshift_weight_criterion: zmode
     redshift_cut_criterion_pdf_fraction: 0.9
     subtract_mean_shear: true
+    coordinate_system: celestial #euclidean or celestial
 
 
 CLClusterEnsembleProfiles:
@@ -79,7 +80,7 @@ CLClusterEnsembleProfiles:
     delta_sigma_profile: true
     shear_profile: false
     magnification_profile: false
-
+    coordinate_system: euclidean #euclidean or celestial
 
 
 
