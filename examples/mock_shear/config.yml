@@ -19,3 +19,8 @@ TXSourceSelectorSimple:
 
 TXMockTruthPZ:
     mock_sigma_z: 0.001
+
+
+CLClusterShearCatalogs:
+    redshift_cut_criterion: zmode
+    redshift_weight_criterion: zmode
