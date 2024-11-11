@@ -119,6 +119,9 @@ class CLClusterShearCatalogs(PipelineStage):
                     pdf = data["pdf_pz"][gal_index]
                     pdf_frac = pdf[:, pdf_z > cluster_z + delta_z].sum(axis=1) / pdf.sum(axis=1)
                     z_good = pdf_frac > redshift_cut_criterion_pdf_fraction
+                elif redshift_cut_criterion == "true_z":
+                    zgal = data["redshift_true"][gal_index]
+                    z_good = zgal > cluster_z + delta_z
                 elif redshift_cut_criterion == "zmode":
                     # otherwise if we are not using the PDF we do a simple cut
                     zgal = data["redshift"][gal_index]
@@ -388,6 +391,9 @@ class CLClusterShearCatalogs(PipelineStage):
             # point-estimated redshift
             z_source = data["redshift"][index]
             sigma_c = clmm_cosmo.eval_sigma_crit(z_cluster, z_source)
+        elif self.config["redshift_weight_criterion"] == "true_z":
+            z_source = data["redshift_true"][index] 
+            sigma_c = clmm_cosmo.eval_sigma_crit(z_cluster, z_source)
         else:
             raise NotImplementedError("Not implemented zmean weighting")
             
@@ -451,7 +457,7 @@ class CLClusterShearCatalogs(PipelineStage):
         with self.open_input("shear_catalog", wrapper=True) as f:
             shear_group = "shear"
             shear_cols, rename = f.get_primary_catalog_names(true_shear=use_true_shear)
-        print(shear_group, shear_cols)
+
         # load the shear calibration information
         # for the moment, load the average overall shear calibrator,
         # that applies to the collective 2D bin. This won't be high
@@ -471,6 +477,15 @@ class CLClusterShearCatalogs(PipelineStage):
         redshift_cut_criterion = self.config["redshift_cut_criterion"]
         redshift_weight_criterion = self.config["redshift_cut_criterion"]
         want_pdf = (redshift_cut_criterion == "pdf") or (redshift_weight_criterion == "pdf")
+
+        # The truth redshifts are keps in the shear catalog not
+        # the p(z) catalog. If we ask for that column we need to load it
+        # here.
+        if redshift_cut_criterion == "true_z" or redshift_weight_criterion == "true_z":
+            with self.open_input("shear_catalog", wrapper=True) as f:
+                col = f.get_true_redshift_column()
+                shear_cols.append(col)
+                rename[col] = "redshift_true"
 
         point_pz_group = "ancil"
         # TODO: We may extend this to use other options for the point redshift
@@ -507,7 +522,6 @@ class CLClusterShearCatalogs(PipelineStage):
         # any selected object, so we just ask for bin >= 0.
         # (bin = -1 means non-selected)
         tomo_group = "tomography"
-#        tomo_cols = ["source_bin"]
         tomo_cols = ["bin"]
 
         # Loop through all these input files simultaneously.

@@ -81,6 +81,11 @@ class ShearCatalog(HDFFile):
         else:
             return "shear"
 
+    def get_true_redshift_column(self):
+        if self.catalog_type == "metadetect":
+            return "00/redshift_true"
+        else:
+            return "redshift_true"
 
     def get_primary_catalog_names(self, true_shear=False):
         if true_shear:
