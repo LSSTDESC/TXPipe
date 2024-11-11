@@ -30,8 +30,8 @@ class CLClusterShearCatalogs(PipelineStage):
         "chunk_rows": 100_000,  # rows to read at once from source cat
         "max_radius": 10.0,  # Mpc
         "delta_z": 0.1,
-        "redshift_cut_criterion": "zmean",  # pdf / mean / true / median
-        "redshift_weight_criterion": "zmean",  # pdf or point
+        "redshift_cut_criterion": "zmode",  # pdf / mean / true / median
+        "redshift_weight_criterion": "zmode",  # pdf or point
         "redshift_cut_criterion_pdf_fraction": 0.9,  # pdf / mean / true / median
         "subtract_mean_shear": False, # Not clear if this is useful for clusters
         "coordinate_system": "celestial",
@@ -119,7 +119,7 @@ class CLClusterShearCatalogs(PipelineStage):
                     pdf = data["pdf_pz"][gal_index]
                     pdf_frac = pdf[:, pdf_z > cluster_z + delta_z].sum(axis=1) / pdf.sum(axis=1)
                     z_good = pdf_frac > redshift_cut_criterion_pdf_fraction
-                elif redshift_cut_criterion == "true_z":
+                elif redshift_cut_criterion == "ztrue":
                     zgal = data["redshift_true"][gal_index]
                     z_good = zgal > cluster_z + delta_z
                 elif redshift_cut_criterion == "zmode":
@@ -391,7 +391,7 @@ class CLClusterShearCatalogs(PipelineStage):
             # point-estimated redshift
             z_source = data["redshift"][index]
             sigma_c = clmm_cosmo.eval_sigma_crit(z_cluster, z_source)
-        elif self.config["redshift_weight_criterion"] == "true_z":
+        elif self.config["redshift_weight_criterion"] == "ztrue":
             z_source = data["redshift_true"][index] 
             sigma_c = clmm_cosmo.eval_sigma_crit(z_cluster, z_source)
         else:
@@ -481,7 +481,7 @@ class CLClusterShearCatalogs(PipelineStage):
         # The truth redshifts are keps in the shear catalog not
         # the p(z) catalog. If we ask for that column we need to load it
         # here.
-        if redshift_cut_criterion == "true_z" or redshift_weight_criterion == "true_z":
+        if redshift_cut_criterion == "ztrue" or redshift_weight_criterion == "ztrue":
             with self.open_input("shear_catalog", wrapper=True) as f:
                 col = f.get_true_redshift_column()
                 shear_cols.append(col)
