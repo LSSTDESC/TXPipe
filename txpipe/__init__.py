@@ -43,5 +43,5 @@ from .magnification import TXSSIMagnification
 # Here are the stages that mostly will be used for other projects
 # such as the self-calibration of Intrinsic alignment.
 from .extensions.twopoint_scia import TXSelfCalibrationIA
-from .extensions.clmm import CLClusterShearCatalogs, CLClusterBinningRedshiftRichness
+from .extensions.cluster_counts import CLClusterShearCatalogs, CLClusterBinningRedshiftRichness
 from .covariance_nmt import TXFourierNamasterCovariance, TXRealNamasterCovariance
