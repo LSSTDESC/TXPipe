@@ -175,6 +175,7 @@ class CLClusterShearCatalogs(PipelineStage):
             index_group = outfile.create_group("index")
             index_group.create_dataset("cluster_index", shape=(total_count,), dtype=np.int64)
             index_group.create_dataset("source_index", shape=(total_count,), dtype=np.int64)
+            index_group.create_dataset("cluster_id", shape=(total_count,), dtype=np.int64)
             index_group.create_dataset("weight", shape=(total_count,), dtype=np.float64)
             index_group.create_dataset("tangential_comp", shape=(total_count,), dtype=np.float64)
             index_group.create_dataset("cross_comp", shape=(total_count,), dtype=np.float64)
@@ -250,12 +251,14 @@ class CLClusterShearCatalogs(PipelineStage):
             # Now we write out the per-cluster shear catalog information
             index_group["cluster_index"][start:start + n] = i
             index_group["source_index"][start:start + n] = indices
+            index_group["cluster_id"][start:start + n] = catalog_group["cluster_id"][i]
             index_group["weight"][start:start + n] = weights
             index_group["tangential_comp"][start:start + n] = tangential_comps
             index_group["cross_comp"][start:start + n] = cross_comps
             index_group["g1"][start:start + n] = g1
             index_group["g2"][start:start + n] = g2
             index_group["distance_arcmin"][start:start + n] = np.degrees(distances) * 60
+           
 
             start += n
 
@@ -572,7 +575,12 @@ class CLClusterShearCatalogs(PipelineStage):
             # Give this chunk of data to the main run function
             yield s, e, data
 
-
+#def get_cluster_shear_catalogs_index_from_cluster_id(cluster_file, cluster_id):
+#    outfile = HDFFile(cluster_file, "r").file
+#    cond = outfile['catalog/cluster_id'][:] == cluster_id
+#    return np.where(cond)[0][0]
+    
+            
 class CombinedClusterCatalog:
     """
     The CCC class collects together:
@@ -660,7 +668,6 @@ class CombinedClusterCatalog:
         return {k: self.cluster_catalog[f'clusters/{k}'][cluster_index] for k in self.cluster_cat_cols}
 
 
-
     def get_background_shear_catalog(self, cluster_index):
         import clmm
 
@@ -675,9 +682,12 @@ class CombinedClusterCatalog:
 
         # Load all the information that is in the per-cluster shear catalog
         cat = {}
-        for col in ["source_index", "weight", "tangential_comp", "cross_comp", "g1", "g2", "distance_arcmin"]:
+
+        #for col in ["cluster_index", "source_index", "cluster_id", "weight", "tangential_comp", "cross_comp", "g1", "g2", "distance_arcmin"]:
+        for col in index_group.keys():
             cat[col] = index_group[col][start:end]
 
+        
         # This is the index into the shear catalog that tells
         # us where the galaxies behind this cluster are in that
         # catalog. It is also the index to the shear photo-z PDF

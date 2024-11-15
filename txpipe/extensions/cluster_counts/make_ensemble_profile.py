@@ -2,7 +2,7 @@ import os
 import gc
 import numpy as np
 from ...base_stage import PipelineStage
-from .sources_select_compute import CLClusterShearCatalogs
+from .sources_select_compute import CLClusterShearCatalogs, CombinedClusterCatalog
 from ...data_types import ShearCatalog, HDFFile, PhotozPDFFile, FiducialCosmology, TomographyCatalog, PickleFile
 from ...utils.calibrators import Calibrator
 from collections import defaultdict
@@ -70,9 +70,6 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         #clusters = self.load_cluster_list(group=bins[0])
         
         #print(bins[0].keys())
-        
-        
-        
 
             pickle.dump(cluster_stack_dict, open(self.get_output("cluster_profiles"), 'wb'))
         
@@ -88,6 +85,7 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         with self.open_input("cluster_shear_catalogs") as f:
             g = f["index/"]
             cluster_index = g['cluster_index'][:]
+            cluster_id = g['cluster_id'][:]
             tangential_comp = g['tangential_comp'][:]
             cross_comp = g['cross_comp'][:]
             source_index = g['source_index'][:]
@@ -95,10 +93,14 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             distance_arcmin = g['distance_arcmin'][:]
 
         print(len(cluster_index), len(tangential_comp), len(source_index))
-
-        return Table({"cluster_index": cluster_index, "tangential_comp_clmm": tangential_comp,
+        
+        tab = Table({"cluster_index": cluster_index, "cluster_id" : cluster_id, "tangential_comp_clmm": tangential_comp,
                       "cross_comp_clmm": cross_comp, "source_index": source_index,
                       "weight_clmm": weight, "distance_arcmin": distance_arcmin})
+    
+        print(tab[0:4])
+                  
+        return tab 
 
 
 
@@ -110,21 +112,29 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         
         # Loop through clusters and calculate the profiles
         ncluster = len(cluster_list)
+        print('Ncluster', ncluster)
         
         for cluster_index in range(ncluster) :
 
             # Select subset of background shear information for this particular cluster
-
-            mask = (cluster_shears_cat["cluster_index"] == cluster_index)
-            bg_cat = cluster_shears_cat[mask]
             
+            print('cluster_index', cluster_index)
+            
+            #mask = (cluster_shears_cat["cluster_id"] == id_cl) #THERE IS A PROBLEM HERE !!!
+       
             z_cl = cluster_list[cluster_index]["redshift"]
             rich_cl = cluster_list[cluster_index]["richness"]
             ra_cl = cluster_list[cluster_index]["ra"]
             dec_cl = cluster_list[cluster_index]["dec"]
             id_cl = cluster_list[cluster_index]["id"]
 
-            print('theta_max', np.max(bg_cat["distance_arcmin"]), '=', clmm.utils.convert_units(np.max(bg_cat["distance_arcmin"]), 'arcmin', 'Mpc', z_cl, clmm_cosmo), 'Mpc')
+            
+            mask = (cluster_shears_cat['cluster_id'] == id_cl)
+            print(mask)
+            bg_cat = cluster_shears_cat[mask]
+               
+            print('For cluster', id_cl, 'at z=',z_cl, 'theta_max is', np.max(bg_cat["distance_arcmin"]), ' arcmin =', clmm.utils.convert_units(np.max(bg_cat["distance_arcmin"]), 'arcmin', 'Mpc', z_cl, clmm_cosmo), 'Mpc')
+            print(len(bg_cat), bg_cat[0:3])
             
             # To use CLMM, need to have galaxy table in clmm.GCData type
             galcat = clmm.GCData(bg_cat)
@@ -190,8 +200,8 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
 
             for key in k :
                 group = f["cluster_bin"][key]
-                clusters = self.load_cluster_list(group=group)
-                print(key, group, dict(group.attrs), len(clusters))
+                clusters = self.load_cluster_list(group=group) #elf.get_cluster_indice( DOES THIS FUNCTION COMES FROM ?
+                print(key, group, dict(group.attrs), len(clusters), clusters)
                 
                 if  len(clusters)>1:
                     cluster_stack = self.create_cluster_ensemble(radial_bins, clmm_cosmo, clusters, cluster_shears_cat, cluster_ensemble_id=key)
