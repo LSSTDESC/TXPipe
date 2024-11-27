@@ -197,17 +197,13 @@ class TXIngestSSIGCR(TXIngestSSI):
 
             output_file.close()
 
-
 class TXMatchSSI(PipelineStage):
     """
-    Class for ingesting SSI injection and photometry catalogs
+    Class for matching an SSI injection catalog and a photometry catalog
 
     Default inputs are in TXPipe photometry catalog format
 
-    Will perform its own matching between the catalogs to output a
-    matched SSI catalog for further use
-
-    TO DO: make a separate stage to ingest the matched catalog directly
+    Outpus a matched SSI catalog for further use
     """
 
     name = "TXMatchSSI"
@@ -357,8 +353,6 @@ class TXMatchSSI(PipelineStage):
         outfile.close()
         return
 
-
-
 class TXIngestSSIMatched(TXIngestSSI):
     """
     Base-stage for ingesting a matched SSI catalog
@@ -378,7 +372,6 @@ class TXIngestSSIMatched(TXIngestSSI):
         "chunk_rows": 100_000,
         "magnification":0, # magnification label
     }
-
 
 class TXIngestSSIMatchedDESBalrog(TXIngestSSIMatched):
     """
