@@ -16,22 +16,23 @@ column_names = {
     "coord_dec": "dec",
 }
 
+
 class TXIngestSSI(PipelineStage):
     """
-    Base-Class for ingesting SSI catalogs 
-    
+    Base-Class for ingesting SSI catalogs
+
     These can be GCR catalogs, or precursor surveys
     """
-    
+
     name = "TXIngestSSI"
-    
+
     def create_photometry(self, input_name, output_name, column_names, dummy_columns):
         """
         Create and save photometry dataset from an input catalog.
 
-        This method sets up the output HDF5 file structure and processes photometry 
-        data from the input catalog. It maps the input columns to the desired output 
-        column names, creates datasets for photometric magnitudes and their errors, 
+        This method sets up the output HDF5 file structure and processes photometry
+        data from the input catalog. It maps the input columns to the desired output
+        column names, creates datasets for photometric magnitudes and their errors,
         and iterates over chunks of data to save them in the output file.
 
         Parameters:
@@ -43,59 +44,60 @@ class TXIngestSSI(PipelineStage):
             name of (HDF5) output
 
         column_names : dict
-            A dictionary mapping the input column names to the desired output column names. 
+            A dictionary mapping the input column names to the desired output column names.
             Keys are input column names, and values are the corresponding output names.
 
         dummy_columns : dict
-            A dictionary of columns to be added to the output with fixed values. 
-            Keys are the names of the dummy columns, and values are the constant values 
+            A dictionary of columns to be added to the output with fixed values.
+            Keys are the names of the dummy columns, and values are the constant values
             to fill those columns.
-            
+
         """
-        #get some basic onfo about the input file
+        # get some basic onfo about the input file
         f = self.open_input(input_name)
         n = f[1].get_nrows()
         dtypes = f[1].get_rec_dtype()[0]
         f.close()
-        
+
         chunk_rows = self.config["chunk_rows"]
-        
+
         cols = list(column_names.keys())
-    
-        #set up the output file columns
+
+        # set up the output file columns
         output = self.open_output(output_name)
         g = output.create_group("photometry")
         for col in cols:
             dtype = dtypes[col]
 
             if "_mag" in col:
-                #per band
+                # per band
                 dtype = dtype.subdtype[0]
                 for b in "griz":
-                    g.create_dataset(column_names[col]+f"_{b}", (n,), dtype=dtype)
+                    g.create_dataset(column_names[col] + f"_{b}", (n,), dtype=dtype)
 
-                    #also create an empty array for the mag errors
-                    #TO DO: compute mag errors from flux errors
-                    g.create_dataset(column_names[col]+f"_err_{b}", (n,), dtype=dtype)
+                    # also create an empty array for the mag errors
+                    # TO DO: compute mag errors from flux errors
+                    g.create_dataset(column_names[col] + f"_err_{b}", (n,), dtype=dtype)
             else:
                 g.create_dataset(column_names[col], (n,), dtype=dtype)
 
-        #iterate over the input file and save to the output columns
-        for (s, e, data) in self.iterate_fits(input_name, 1, cols, chunk_rows):
-            print(s,e,n)
+        # iterate over the input file and save to the output columns
+        for s, e, data in self.iterate_fits(input_name, 1, cols, chunk_rows):
+            print(s, e, n)
             for col in cols:
                 if "_mag" in col:
-                    for iband,b in enumerate("griz"):
-                        g[column_names[col]+f"_{b}"][s:e] = data[col][:,iband]
+                    for iband, b in enumerate("griz"):
+                        g[column_names[col] + f"_{b}"][s:e] = data[col][:, iband]
                 else:
                     g[column_names[col]][s:e] = data[col]
 
-        # Set up any dummy columns with sentinal values 
+        # Set up any dummy columns with sentinal values
         # that were not in the original files
         for col_name in dummy_columns.keys():
-            g.create_dataset(col_name, data=np.full(n,dummy_columns[col_name]))
+            g.create_dataset(col_name, data=np.full(n, dummy_columns[col_name]))
 
         output.close()
+
 
 class TXIngestSSIGCR(TXIngestSSI):
     """
@@ -138,7 +140,7 @@ class TXIngestSSIGCR(TXIngestSSI):
             sys.path.insert(0, self.config["GCRcatalog_path"])
         import GCRCatalogs
 
-        #attempt to ingest three types of catalog
+        # attempt to ingest three types of catalog
         catalogs_labels = [
             "injection_catalog",
             "ssi_photometry_catalog",
@@ -175,11 +177,15 @@ class TXIngestSSIGCR(TXIngestSSI):
                         group[column_names[q]] = group[q]
 
                 except KeyError:  # skip quantities that are missing
-                    warnings.warn(f"quantity {q} was missing from the GCRCatalog object")
+                    warnings.warn(
+                        f"quantity {q} was missing from the GCRCatalog object"
+                    )
                     continue
 
                 except TypeError:
-                    warnings.warn(f"Quantity {q} coud not be saved as it has a data type not recognised by hdf5")
+                    warnings.warn(
+                        f"Quantity {q} coud not be saved as it has a data type not recognised by hdf5"
+                    )
 
             # convert fluxes to mags using txpipe/utils/conversion.py
             bands = "ugrizy"
@@ -196,6 +202,7 @@ class TXIngestSSIGCR(TXIngestSSI):
                     warnings.warn(f"no flux {b}_{flux_name} in SSI GCR catalog")
 
             output_file.close()
+
 
 class TXMatchSSI(PipelineStage):
     """
@@ -269,10 +276,14 @@ class TXMatchSSI(PipelineStage):
         )
 
         out_start = 0
-        for ichunk, (in_start,in_end,data) in enumerate(self.iterate_hdf("ssi_photometry_catalog", "photometry", ["ra","dec"], batch_size)):
+        for ichunk, (in_start, in_end, data) in enumerate(
+            self.iterate_hdf(
+                "ssi_photometry_catalog", "photometry", ["ra", "dec"], batch_size
+            )
+        ):
             phot_coord = SkyCoord(
-                ra=data["ra"]*u.degree,
-                dec=data["dec"]*u.degree,
+                ra=data["ra"] * u.degree,
+                dec=data["dec"] * u.degree,
             )
 
             idx, d2d, d3d = phot_coord.match_to_catalog_sky(inj_coord)
@@ -353,11 +364,12 @@ class TXMatchSSI(PipelineStage):
         outfile.close()
         return
 
+
 class TXIngestSSIMatched(TXIngestSSI):
     """
     Base-stage for ingesting a matched SSI catalog
 
-    This stage will just read in a file in a given format and output to a 
+    This stage will just read in a file in a given format and output to a
     HDF file that TXPIPE can use
 
     """
@@ -370,8 +382,9 @@ class TXIngestSSIMatched(TXIngestSSI):
 
     config_options = {
         "chunk_rows": 100_000,
-        "magnification":0, # magnification label
+        "magnification": 0,  # magnification label
     }
+
 
 class TXIngestSSIMatchedDESBalrog(TXIngestSSIMatched):
     """
@@ -383,39 +396,44 @@ class TXIngestSSIMatchedDESBalrog(TXIngestSSIMatched):
     inputs = [
         ("balrog_matched_catalog", FitsFile),
     ]
-  
+
     def run(self):
         """
         Run the analysis for this stage.
         """
-        print('Ingesting DES Balrog matched catalog')
+        print("Ingesting DES Balrog matched catalog")
 
-        #we will only load a subset of columns to save space
+        # we will only load a subset of columns to save space
         column_names = {
-            "bal_id":                   "bal_id",               # Unique identifier for object (created during balrog process)
-            "true_bdf_mag_deredden":    "inj_mag",              # Magnitude of the original deep field object, dereddened
-            "true_id":                  "inj_id",               # Original coadd_obj_id of deep field object
-            "meas_id":                  "id",                   # Coadd_object_id of injection
-            "meas_ra":                  "ra",                   # measured RA of the injection
-            "meas_dec":                 "dec",                  # measured DEC of the injection
-            "meas_cm_mag_deredden":     "mag",                  # measured magnitude of the injection
-            "meas_cm_T":                "cm_T",                 # measured size parameter T (x^2+y^2)
-            "meas_EXTENDED_CLASS_SOF":  "EXTENDED_CLASS_SOF",   # Star galaxy classifier (0,1=star, 2,3=Galaxy)
-            "meas_FLAGS_GOLD_SOF_ONLY": "FLAGS_GOLD",           # Measured flags (short version)
-            }
+            "bal_id": "bal_id",  # Unique identifier for object (created during balrog process)
+            "true_bdf_mag_deredden": "inj_mag",  # Magnitude of the original deep field object, dereddened
+            "true_id": "inj_id",  # Original coadd_obj_id of deep field object
+            "meas_id": "id",  # Coadd_object_id of injection
+            "meas_ra": "ra",  # measured RA of the injection
+            "meas_dec": "dec",  # measured DEC of the injection
+            "meas_cm_mag_deredden": "mag",  # measured magnitude of the injection
+            "meas_cm_T": "cm_T",  # measured size parameter T (x^2+y^2)
+            "meas_EXTENDED_CLASS_SOF": "EXTENDED_CLASS_SOF",  # Star galaxy classifier (0,1=star, 2,3=Galaxy)
+            "meas_FLAGS_GOLD_SOF_ONLY": "FLAGS_GOLD",  # Measured flags (short version)
+        }
         dummy_columns = {
-            "redshift_true":10.0,
-            }
-        
-        self.create_photometry("balrog_matched_catalog", "matched_ssi_photometry_catalog", 
-                               column_names, dummy_columns)
+            "redshift_true": 10.0,
+        }
+
+        self.create_photometry(
+            "balrog_matched_catalog",
+            "matched_ssi_photometry_catalog",
+            column_names,
+            dummy_columns,
+        )
+
 
 class TXIngestSSIDetection(TXIngestSSI):
     """
     Base-stage for ingesting an SSI "detection" catalog
     list of injected objects and their detected properties (if any)
 
-    This stage will just read in a file in a given format and output to a 
+    This stage will just read in a file in a given format and output to a
     HDF file that TXPIPE can use
 
     """
@@ -429,7 +447,8 @@ class TXIngestSSIDetection(TXIngestSSI):
     config_options = {
         "chunk_rows": 100_000,
     }
-    
+
+
 class TXIngestSSIDetectionDESBalrog(TXIngestSSIDetection):
     """
     Class for ingesting an "SSI" "detection" catalog from DES (AKA Balrog)
@@ -445,7 +464,7 @@ class TXIngestSSIDetectionDESBalrog(TXIngestSSIDetection):
         ("injection_catalog", HDFFile),
         ("ssi_detection_catalog", HDFFile),
     ]
-  
+
     def run(self):
         """
         We will split the Balrog "detection" catalog into two catalogs
@@ -455,30 +474,32 @@ class TXIngestSSIDetectionDESBalrog(TXIngestSSIDetection):
 
         ## Extract the injection catalog
         column_names_inj = {
-            'bal_id':           'bal_id',           # Unique identifier for object (created during balrog process)
-            'true_ra':          'ra',               # *injected* ra
-            'true_dec':         'dec',              # *injected* dec
-            'true_bdf_mag_deredden':        'inj_mag',                  # true magnitude (de-reddened)
-            'meas_FLAGS_GOLD_SOF_ONLY':     'flags',                    # measured data flags
-            'meas_EXTENDED_CLASS_SOF':      'meas_EXTENDED_CLASS_SOF',  # star galaxy separator
+            "bal_id": "bal_id",  # Unique identifier for object (created during balrog process)
+            "true_ra": "ra",  # *injected* ra
+            "true_dec": "dec",  # *injected* dec
+            "true_bdf_mag_deredden": "inj_mag",  # true magnitude (de-reddened)
+            "meas_FLAGS_GOLD_SOF_ONLY": "flags",  # measured data flags
+            "meas_EXTENDED_CLASS_SOF": "meas_EXTENDED_CLASS_SOF",  # star galaxy separator
         }
 
-        self.create_photometry("balrog_detection_catalog", "injection_catalog", 
-                               column_names_inj, {})
-        
-        # extract the "detection" file
-        #we will only load a subset of columns to save space
+        self.create_photometry(
+            "balrog_detection_catalog", "injection_catalog", column_names_inj, {}
+        )
+
+        # Extract the "detection" file
+        # We will only load a subset of columns to save space
         column_names_det = {
-            'bal_id':   'bal_id',     # Unique identifier for object (created during balrog process)
-            'detected': 'detected',   # 0 or 1. Is there a match between this object in injection_catalog and the ssi_photometry_catalog (search radius of 0.5'') 
-            'match_flag_0.5_asec': 'match_flag_0.5_asec',       # 0,1 or 2. Is there a match between this object in injection_catalog and the ssi_uninjected_photometry_catalog (search radius 0.5''). 1 if detection is lower flux than injection, 2 if brighter
-            'match_flag_0.75_asec': 'match_flag_0.75_asec',     # as above but with search radius of 0.75''
-            'match_flag_1.0_asec': 'match_flag_1.0_asec',       # etc
-            'match_flag_1.25_asec': 'match_flag_1.25_asec',
-            'match_flag_1.5_asec': 'match_flag_1.5_asec',
-            'match_flag_1.75_asec': 'match_flag_1.75_asec',
-            'match_flag_2.0_asec': 'match_flag_2.0_asec'
+            "bal_id": "bal_id",  # Unique identifier for object (created during balrog process)
+            "detected": "detected",  # 0 or 1. Is there a match between this object in injection_catalog and the ssi_photometry_catalog (search radius of 0.5'')
+            "match_flag_0.5_asec": "match_flag_0.5_asec",  # 0,1 or 2. Is there a match between this object in injection_catalog and the ssi_uninjected_photometry_catalog (search radius 0.5''). 1 if detection is lower flux than injection, 2 if brighter
+            "match_flag_0.75_asec": "match_flag_0.75_asec",  # as above but with search radius of 0.75''
+            "match_flag_1.0_asec": "match_flag_1.0_asec",  # etc
+            "match_flag_1.25_asec": "match_flag_1.25_asec",
+            "match_flag_1.5_asec": "match_flag_1.5_asec",
+            "match_flag_1.75_asec": "match_flag_1.75_asec",
+            "match_flag_2.0_asec": "match_flag_2.0_asec",
         }
-        
-        self.create_photometry("balrog_detection_catalog", "ssi_detection_catalog", 
-                               column_names_det,  {})
+
+        self.create_photometry(
+            "balrog_detection_catalog", "ssi_detection_catalog", column_names_det, {}
+        )
