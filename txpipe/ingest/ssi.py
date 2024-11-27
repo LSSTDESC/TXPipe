@@ -410,7 +410,7 @@ class TXIngestSSIMatchedDESBalrog(TXIngestSSIMatched):
         self.create_photometry("balrog_matched_catalog", "matched_ssi_photometry_catalog", 
                                column_names, dummy_columns)
 
-class TXIngestSSIDetection(PipelineStage):
+class TXIngestSSIDetection(TXIngestSSI):
     """
     Base-stage for ingesting an SSI "detection" catalog
     list of injected objects and their detected properties (if any)
@@ -430,7 +430,6 @@ class TXIngestSSIDetection(PipelineStage):
         "chunk_rows": 100_000,
     }
     
-
 class TXIngestSSIDetectionDESBalrog(TXIngestSSIDetection):
     """
     Class for ingesting an "SSI" "detection" catalog from DES (AKA Balrog)
@@ -441,20 +440,45 @@ class TXIngestSSIDetectionDESBalrog(TXIngestSSIDetection):
     inputs = [
         ("balrog_detection_catalog", FitsFile),
     ]
+
+    outputs = [
+        ("injection_catalog", HDFFile),
+        ("ssi_detection_catalog", HDFFile),
+    ]
   
     def run(self):
         """
-        Run the analysis for this stage.
+        We will split the Balrog "detection" catalog into two catalogs
+        One containing the injected catalog
+        The other contains info on whether a given injection has been detected
         """
 
-        #we will only load a subset of columns to save space
-        column_names = {
-            #add column names here
-            }
-        dummy_columns = {
-            #"redshift_true":10.0,
-            #add any neede dummy columns here
-            }
+        ## Extract the injection catalog
+        column_names_inj = {
+            'bal_id':           'bal_id',           # Unique identifier for object (created during balrog process)
+            'true_ra':          'ra',               # *injected* ra
+            'true_dec':         'dec',              # *injected* dec
+            'true_bdf_mag_deredden':        'inj_mag',                  # true magnitude (de-reddened)
+            'meas_FLAGS_GOLD_SOF_ONLY':     'flags',                    # measured data flags
+            'meas_EXTENDED_CLASS_SOF':      'meas_EXTENDED_CLASS_SOF',  # star galaxy separator
+        }
+
+        self.create_photometry("balrog_detection_catalog", "injection_catalog", 
+                               column_names_inj, {})
         
-        self.create_photometry("balrog_detection_catalog", "balrog_detection_catalog", 
-                               column_names, dummy_columns)
+        # extract the "detection" file
+        #we will only load a subset of columns to save space
+        column_names_det = {
+            'bal_id':   'bal_id',     # Unique identifier for object (created during balrog process)
+            'detected': 'detected',   # 0 or 1. Is there a match between this object in injection_catalog and the ssi_photometry_catalog (search radius of 0.5'') 
+            'match_flag_0.5_asec': 'match_flag_0.5_asec',       # 0,1 or 2. Is there a match between this object in injection_catalog and the ssi_uninjected_photometry_catalog (search radius 0.5''). 1 if detection is lower flux than injection, 2 if brighter
+            'match_flag_0.75_asec': 'match_flag_0.75_asec',     # as above but with search radius of 0.75''
+            'match_flag_1.0_asec': 'match_flag_1.0_asec',       # etc
+            'match_flag_1.25_asec': 'match_flag_1.25_asec',
+            'match_flag_1.5_asec': 'match_flag_1.5_asec',
+            'match_flag_1.75_asec': 'match_flag_1.75_asec',
+            'match_flag_2.0_asec': 'match_flag_2.0_asec'
+        }
+        
+        self.create_photometry("balrog_detection_catalog", "ssi_detection_catalog", 
+                               column_names_det,  {})
