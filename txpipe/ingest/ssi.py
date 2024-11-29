@@ -409,7 +409,7 @@ class TXIngestSSIDESBalrog(TXIngestSSI):
     def setup_output(self, output_name, column_names, dtypes, n):
         """
         For balrog, we need to include if statements to catch the 2D data entries
-        and add an extendedness column
+        and possibly add an extendedness column
         """
         cols = list(column_names.keys())
         output = self.open_output(output_name)
@@ -424,13 +424,17 @@ class TXIngestSSIDESBalrog(TXIngestSSI):
                     g.create_dataset(column_names[col] + f"_{b}", (n,), dtype=dtype)
             else:
                 g.create_dataset(column_names[col], (n,), dtype=dtype)
+
+            if col == "meas_EXTENDED_CLASS_SOF":
+                #also create an "extendedness" column
+                g.create_dataset("extendedness", (n,), dtype=dtype)
         
         return output, g
 
     def add_columns(self, g, input_name, column_names, chunk_rows, n):
         """
         For balrog, we need to include if statements to catch the 2D data entries
-        and add a extendedness column
+        and possibly add a extendedness column
         """
         cols = list(column_names.keys())
         for s, e, data in self.iterate_fits(input_name, 1, cols, chunk_rows):
@@ -442,6 +446,13 @@ class TXIngestSSIDESBalrog(TXIngestSSI):
                         g[column_names[col] + f"_{b}"][s:e] = data[col][:, iband]
                 else:
                     g[column_names[col]][s:e] = data[col]
+                
+                if col == "meas_EXTENDED_CLASS_SOF":
+                    # "meas_EXTENDED_CLASS_SOF" is (0 or 1) for star, (2 or 3) for galaxy
+                    # extendedness is 0 for star, 1 for galaxy
+                    extendedness = np.where((data[col] == 2) | (data[col] == 3), 1, 0) 
+                    g[column_names[col]][s:e] = extendedness
+
 
 class TXIngestSSIMatchedDESBalrog(TXIngestSSIDESBalrog):
     """
