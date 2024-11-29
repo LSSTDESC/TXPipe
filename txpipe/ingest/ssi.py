@@ -16,7 +16,6 @@ column_names = {
     "coord_dec": "dec",
 }
 
-
 class TXIngestSSI(PipelineStage):
     """
     Base-Class for ingesting SSI catalogs
@@ -61,35 +60,11 @@ class TXIngestSSI(PipelineStage):
 
         chunk_rows = self.config["chunk_rows"]
 
-        cols = list(column_names.keys())
-
-        # set up the output file columns
-        output = self.open_output(output_name)
-        g = output.create_group("photometry")
-        for col in cols:
-            dtype = dtypes[col]
-
-            if "_mag" in col:
-                # per band
-                dtype = dtype.subdtype[0]
-                for b in "griz":
-                    g.create_dataset(column_names[col] + f"_{b}", (n,), dtype=dtype)
-
-                    # also create an empty array for the mag errors
-                    # TO DO: compute mag errors from flux errors
-                    g.create_dataset(column_names[col] + f"_err_{b}", (n,), dtype=dtype)
-            else:
-                g.create_dataset(column_names[col], (n,), dtype=dtype)
+        # set up the output file columns 
+        output, g = self.setup_output(output_name, column_names, dtypes, n)
 
         # iterate over the input file and save to the output columns
-        for s, e, data in self.iterate_fits(input_name, 1, cols, chunk_rows):
-            print(s, e, n)
-            for col in cols:
-                if "_mag" in col:
-                    for iband, b in enumerate("griz"):
-                        g[column_names[col] + f"_{b}"][s:e] = data[col][:, iband]
-                else:
-                    g[column_names[col]][s:e] = data[col]
+        self.add_columns(g, input_name, column_names, chunk_rows, n)
 
         # Set up any dummy columns with sentinal values
         # that were not in the original files
@@ -98,6 +73,67 @@ class TXIngestSSI(PipelineStage):
 
         output.close()
 
+    def setup_output(self, output_name, column_names, dtypes, n):
+        """
+        Set up the output HDF5 file structure.
+
+        Parameters
+        ----------
+        output_name : str
+            The name of the output HDF5 file.
+
+        column_names : dict
+            dict of column names to include in the output file.
+
+        dtypes : dict
+            A dictionary mapping column names to their corresponding data types.
+
+        n : int
+            The total number of rows in the dataset.
+
+        Returns
+        -------
+        tuple
+            A tuple containing the open HDF5 output file object and the "photometry" group.
+        """
+        cols = list(column_names.keys())
+        output = self.open_output(output_name)
+        g = output.create_group("photometry")
+        for col in cols:
+            dtype = dtypes[col]
+            g.create_dataset(column_names[col], (n,), dtype=dtype)
+        
+        return output, g
+
+    def add_columns(self, g, input_name, column_names, chunk_rows, n):
+        """
+        Add data to the HDF5 output file in chunks.
+
+        This method reads chunks of data from the input file and writes them
+        to the corresponding datasets in the output file.
+
+        Parameters
+        ----------
+        g : h5py.Group
+            The HDF5 group where data will be written.
+
+        input_name : str
+            The name of the input file (e.g., a FITS file).
+
+        column_names : dict
+            Dict of column names to read from the input file.
+
+        chunk_rows : int
+            Number of rows to process in each chunk.
+
+        n : int
+            Total number of rows in the dataset.
+        """
+        cols = list(column_names.keys())
+        for s, e, data in self.iterate_fits(input_name, 1, cols, chunk_rows):
+            print(s, e, n)
+            for col in cols:
+                g[column_names[col]][s:e] = data[col]
 
 class TXIngestSSIGCR(TXIngestSSI):
     """
@@ -202,7 +238,6 @@ class TXIngestSSIGCR(TXIngestSSI):
                     warnings.warn(f"no flux {b}_{flux_name} in SSI GCR catalog")
 
             output_file.close()
-
 
 class TXMatchSSI(PipelineStage):
     """
@@ -364,29 +399,56 @@ class TXMatchSSI(PipelineStage):
         outfile.close()
         return
 
-
-class TXIngestSSIMatched(TXIngestSSI):
+class TXIngestSSIDESBalrog(TXIngestSSI):
     """
-    Base-stage for ingesting a matched SSI catalog
-
-    This stage will just read in a file in a given format and output to a
-    HDF file that TXPIPE can use
-
+    Base-stage for ingesting a DES SSI catalog AKA "Balrog"
     """
 
-    name = "TXIngestSSIMatched"
+    name = "TXIngestSSIDESBalrog"
 
-    outputs = [
-        ("matched_ssi_photometry_catalog", HDFFile),
-    ]
+    def setup_output(self, output_name, column_names, dtypes, n):
+        """
+        For balrog, we need to include if statements to catch the 2D data entries
+        and add an extendedness column
+        """
+        cols = list(column_names.keys())
+        output = self.open_output(output_name)
+        g = output.create_group("photometry")
+        for col in cols:
+            dtype = dtypes[col]
 
-    config_options = {
-        "chunk_rows": 100_000,
-        "magnification": 0,  # magnification label
-    }
+            if dtype.subdtype is not None: #this is a multi-dimentional column
+                assert dtype.subdtype[1]==(4,) #We are assuming this entry is a 2D array with 4 columns (corresponding to griz)
+                dtype = dtype.subdtype[0]
+                for b in "griz":
+                    g.create_dataset(column_names[col] + f"_{b}", (n,), dtype=dtype)
 
+                    if "_mag" in col: #if the column is also a mag
+                        # also create an empty array for the mag errors
+                        # TO DO: compute mag errors from flux errors
+                        g.create_dataset(column_names[col] + f"_err_{b}", (n,), dtype=dtype)
+            else:
+                g.create_dataset(column_names[col], (n,), dtype=dtype)
+        
+        return output, g
 
-class TXIngestSSIMatchedDESBalrog(TXIngestSSIMatched):
+    def add_columns(self, g, input_name, column_names, chunk_rows, n):
+        """
+        For balrog, we need to include if statements to catch the 2D data entries
+        and add a extendedness column
+        """
+        cols = list(column_names.keys())
+        for s, e, data in self.iterate_fits(input_name, 1, cols, chunk_rows):
+            print(s, e, n)
+            for col in cols:
+                if len(data[col].shape) == 2:
+                    assert data[col].shape[1] == 4
+                    for iband, b in enumerate("griz"):
+                        g[column_names[col] + f"_{b}"][s:e] = data[col][:, iband]
+                else:
+                    g[column_names[col]][s:e] = data[col]
+
+class TXIngestSSIMatchedDESBalrog(TXIngestSSIDESBalrog):
     """
     Class for ingesting a matched "SSI" catalog from DES (AKA Balrog)
     """
@@ -395,6 +457,10 @@ class TXIngestSSIMatchedDESBalrog(TXIngestSSIMatched):
 
     inputs = [
         ("balrog_matched_catalog", FitsFile),
+    ]
+
+    outputs = [
+        ("matched_ssi_photometry_catalog", HDFFile),
     ]
 
     def run(self):
@@ -412,6 +478,7 @@ class TXIngestSSIMatchedDESBalrog(TXIngestSSIMatched):
             "meas_ra": "ra",  # measured RA of the injection
             "meas_dec": "dec",  # measured DEC of the injection
             "meas_cm_mag_deredden": "mag",  # measured magnitude of the injection
+            #"meas_cm_max_flux_s2n": "snr", # measured S2N of the injection #TODO: add this column
             "meas_cm_T": "cm_T",  # measured size parameter T (x^2+y^2)
             "meas_EXTENDED_CLASS_SOF": "EXTENDED_CLASS_SOF",  # Star galaxy classifier (0,1=star, 2,3=Galaxy)
             "meas_FLAGS_GOLD_SOF_ONLY": "FLAGS_GOLD",  # Measured flags (short version)
@@ -426,30 +493,8 @@ class TXIngestSSIMatchedDESBalrog(TXIngestSSIMatched):
             column_names,
             dummy_columns,
         )
-
-
-class TXIngestSSIDetection(TXIngestSSI):
-    """
-    Base-stage for ingesting an SSI "detection" catalog
-    list of injected objects and their detected properties (if any)
-
-    This stage will just read in a file in a given format and output to a
-    HDF file that TXPIPE can use
-
-    """
-
-    name = "TXIngestSSIDetection"
-
-    outputs = [
-        ("detection_ssi_photometry_catalog", HDFFile),
-    ]
-
-    config_options = {
-        "chunk_rows": 100_000,
-    }
-
-
-class TXIngestSSIDetectionDESBalrog(TXIngestSSIDetection):
+    
+class TXIngestSSIDetectionDESBalrog(TXIngestSSIDESBalrog):
     """
     Class for ingesting an "SSI" "detection" catalog from DES (AKA Balrog)
     """
