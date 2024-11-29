@@ -422,11 +422,6 @@ class TXIngestSSIDESBalrog(TXIngestSSI):
                 dtype = dtype.subdtype[0]
                 for b in "griz":
                     g.create_dataset(column_names[col] + f"_{b}", (n,), dtype=dtype)
-
-                    if "_mag" in col: #if the column is also a mag
-                        # also create an empty array for the mag errors
-                        # TO DO: compute mag errors from flux errors
-                        g.create_dataset(column_names[col] + f"_err_{b}", (n,), dtype=dtype)
             else:
                 g.create_dataset(column_names[col], (n,), dtype=dtype)
         
@@ -485,6 +480,10 @@ class TXIngestSSIMatchedDESBalrog(TXIngestSSIDESBalrog):
         }
         dummy_columns = {
             "redshift_true": 10.0,
+            "meas_err_g":-99.,
+            "meas_err_r":-99.,
+            "meas_err_i":-99.,
+            "meas_err_z":-99.,
         }
 
         self.create_photometry(
