@@ -42,6 +42,7 @@ class TXMapPlots(PipelineStage):
     config_options = {
         # can also set moll
         "projection": "cart",
+        "rot180": False, 
         "debug": False,
     }
 
@@ -122,11 +123,11 @@ class TXMapPlots(PipelineStage):
 
         # Depth plots
         with self.open_output("depth_map", wrapper=True, figsize=(5, 5)) as fig:
-            m.plot("depth/depth", view=self.config["projection"])
+            m.plot("depth/depth", view=self.config["projection"], rot180=self.config["rot180"])
 
         # Bright objects
         with self.open_output("bright_object_map", wrapper=True, figsize=(5, 5)) as fig:
-            m.plot("bright_objects/count", view=self.config["projection"])
+            m.plot("bright_objects/count", view=self.config["projection"], rot180=self.config["rot180"])
 
     def source_plots(self):
         import matplotlib.pyplot as plt
