@@ -484,7 +484,7 @@ class TXIngestSSIMatchedDESBalrog(TXIngestSSIDESBalrog):
             "meas_ra": "ra",  # measured RA of the injection
             "meas_dec": "dec",  # measured DEC of the injection
             "meas_cm_mag_deredden": "mag",  # measured magnitude of the injection
-            "meas_cm_max_flux_s2n": "snr", # measured S2N of the injection #TODO: add this column
+            "meas_cm_max_flux_s2n": "snr", # measured S2N of the injection
             "meas_cm_T": "cm_T",  # measured size parameter T (x^2+y^2)
             "meas_EXTENDED_CLASS_SOF": "EXTENDED_CLASS_SOF",  # Star galaxy classifier (0,1=star, 2,3=Galaxy)
             "meas_FLAGS_GOLD_SOF_ONLY": "FLAGS_GOLD",  # Measured flags (short version)
