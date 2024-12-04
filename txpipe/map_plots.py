@@ -97,7 +97,7 @@ class TXMapPlots(PipelineStage):
         for i in range(flag_max):
             plt.subplot(1, flag_max, i + 1)
             f = 2**i
-            m.plot(f"flags/flag_{f}", view=self.config["projection"])
+            m.plot(f"flags/flag_{f}", view=self.config["projection"], rot180=self.config["rot180"])
         fig.close()
 
         # PSF plots - 2 x n, for g1 and g2
@@ -105,9 +105,9 @@ class TXMapPlots(PipelineStage):
         _, axes = plt.subplots(2, nbin_source, squeeze=False, num=fig.file.number)
         for i in range(nbin_source):
             plt.sca(axes[0, i])
-            m.plot(f"psf/g1_{i}", view=self.config["projection"])
+            m.plot(f"psf/g1_{i}", view=self.config["projection"], rot180=self.config["rot180"])
             plt.sca(axes[1, i])
-            m.plot(f"psf/g2_{i}", view=self.config["projection"])
+            m.plot(f"psf/g2_{i}", view=self.config["projection"], rot180=self.config["rot180"])
         fig.close()
 
     def aux_lens_plots(self):
@@ -149,11 +149,11 @@ class TXMapPlots(PipelineStage):
         for i in range(nbin_source):
             # g1
             plt.sca(axes[0, i])
-            m.plot(f"g1_{i}", view=self.config["projection"], min=-0.1, max=0.1)
+            m.plot(f"g1_{i}", view=self.config["projection"], rot180=self.config["rot180"], min=-0.1, max=0.1)
 
             # g2
             plt.sca(axes[1, i])
-            m.plot(f"g2_{i}", view=self.config["projection"], min=-0.1, max=0.1)
+            m.plot(f"g2_{i}", view=self.config["projection"], rot180=self.config["rot180"], min=-0.1, max=0.1)
         fig.close()
 
     def lens_plots(self):
@@ -174,9 +174,9 @@ class TXMapPlots(PipelineStage):
 
         for i in range(nbin_lens):
             plt.sca(axes[0, i])
-            m.plot(f"ngal_{i}", view=self.config["projection"])
+            m.plot(f"ngal_{i}", view=self.config["projection"], rot180=self.config["rot180"])
             plt.sca(axes[1, i])
-            rho.plot(f"delta_{i}", view=self.config["projection"])
+            rho.plot(f"delta_{i}", view=self.config["projection"], rot180=self.config["rot180"])
         fig.close()
 
     def mask_plots(self):
@@ -185,5 +185,5 @@ class TXMapPlots(PipelineStage):
         m = self.open_input("mask", wrapper=True)
 
         fig = self.open_output("mask_map", wrapper=True, figsize=(5, 5))
-        m.plot("mask", view=self.config["projection"])
+        m.plot("mask", view=self.config["projection"], rot180=self.config["rot180"])
         fig.close()
