@@ -150,7 +150,7 @@ class TXMapPlots(PipelineStage):
 
         # Depth plots (true magnitude)
         with self.open_output("depth_ssi_true_map", wrapper=True, figsize=(5, 5)) as fig:
-            m.plot("depth/depthtrue", view=self.config["projection"], rot180=self.config["rot180"])
+            m.plot("depth/depth_true", view=self.config["projection"], rot180=self.config["rot180"])
 
     def source_plots(self):
         import matplotlib.pyplot as plt
