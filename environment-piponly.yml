@@ -3,7 +3,7 @@ dependencies:
     - ceci==2.0.1
     - git+https://github.com/jlvdb/hyperbolic@b88b107a291fa16c2006cf971ce610248d58e94c
     - dask-mpi>=2022.4.0
-    - git+https://github.com/LSSTDESC/CLMM.git@1.12.5
+    - git+https://github.com/LSSTDESC/CLMM.git@1.14.1
     - parallel-statistics==0.13
     - sacc[all]==0.14
     - jax==0.4.27

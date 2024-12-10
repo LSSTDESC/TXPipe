@@ -10,7 +10,7 @@ TXSourceSelectorMetadetect:
     true_z: false
     shear_prefix: ''
 
-Inform_BPZ_lite:
+BPZliteInformer:
     zmin: 0.0
     zmax: 3.0
     nzbins: 301
@@ -32,7 +32,7 @@ Inform_BPZ_lite:
 
 
 
-BPZ_lite:
+BPZliteEstimator:
     zmin: 0.0
     zmax: 3.0
     dz: 0.01
@@ -64,7 +64,9 @@ CLClusterShearCatalogs:
     chunk_rows: 100_000  # rows to read at once from source cat
     max_radius: 5   # Mpc
     delta_z: 0.2   # redshift buffer
-    redshift_criterion: mean     # might also need PDF
+    redshift_cut_criterion: pdf
+    redshift_weight_criterion: pdf
+    redshift_cut_criterion_pdf_fraction: 0.9
     subtract_mean_shear: true
 
 
