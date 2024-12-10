@@ -28,7 +28,6 @@ class TXMapPlots(PipelineStage):
         ("mask", MapsFile),
         ("aux_source_maps", MapsFile),
         ("aux_lens_maps", MapsFile),
-        ("aux_ssi_maps", MapsFile),
     ]
 
     outputs = [
@@ -39,8 +38,6 @@ class TXMapPlots(PipelineStage):
         ("psf_map", PNGFile),
         ("mask_map", PNGFile),
         ("bright_object_map", PNGFile),
-        ("depth_ssi_meas_map", PNGFile),
-        ("depth_ssi_true_map", PNGFile),
     ]
     config_options = {
         # can also set moll
@@ -61,7 +58,6 @@ class TXMapPlots(PipelineStage):
         methods = [
             self.aux_source_plots,
             self.aux_lens_plots,
-            self.aux_ssi_plots,
             self.source_plots,
             self.lens_plots,
             self.mask_plots,
@@ -133,25 +129,6 @@ class TXMapPlots(PipelineStage):
         with self.open_output("bright_object_map", wrapper=True, figsize=(5, 5)) as fig:
             m.plot("bright_objects/count", view=self.config["projection"], rot180=self.config["rot180"])
 
-    def aux_ssi_plots(self):
-        import matplotlib.pyplot as plt
-        if self.get_input("aux_ssi_maps") == "none":
-            with self.open_output("depth_ssi_meas_map", wrapper=True) as f:
-                pass
-            with self.open_output("depth_ssi_true_map", wrapper=True) as f:
-                pass
-            return
-
-        m = self.open_input("aux_ssi_maps", wrapper=True)
-
-        # Depth plots (measured magnitude)
-        with self.open_output("depth_ssi_meas_map", wrapper=True, figsize=(5, 5)) as fig:
-            m.plot("depth/depth_meas", view=self.config["projection"], rot180=self.config["rot180"])
-
-        # Depth plots (true magnitude)
-        with self.open_output("depth_ssi_true_map", wrapper=True, figsize=(5, 5)) as fig:
-            m.plot("depth/depth_true", view=self.config["projection"], rot180=self.config["rot180"])
-
     def source_plots(self):
         import matplotlib.pyplot as plt
 
@@ -210,3 +187,64 @@ class TXMapPlots(PipelineStage):
         fig = self.open_output("mask_map", wrapper=True, figsize=(5, 5))
         m.plot("mask", view=self.config["projection"], rot180=self.config["rot180"])
         fig.close()
+
+class TXMapPlotsSSI(TXMapPlots):
+    """
+    Make plots of all the available maps that use SSI inputs
+
+    This makes plots of:
+    - depth (meas mag)
+    - depth (true mag)
+    """
+    name = "TXMapPlotsSSI"
+
+    inputs = [
+        ("aux_ssi_maps", MapsFile),
+    ]
+
+    outputs = [
+        ("depth_ssi_meas_map", PNGFile),
+        ("depth_ssi_true_map", PNGFile),
+    ]
+
+    def run(self):
+        # PSF tests
+        import matplotlib
+
+        matplotlib.use("agg")
+        import matplotlib.pyplot as plt
+
+        # Plot from each file separately, just
+        # to organize this file a bit
+        methods = [
+            self.aux_ssi_plots,
+        ]
+
+        # We don't want this to fail if some maps are missing.
+        for m in methods:
+            try:
+                m()
+            except:
+                if self.config["debug"]:
+                    raise
+                sys.stderr.write(f"Failed to make maps with method {m.__name__}")
+
+
+    def aux_ssi_plots(self):
+        import matplotlib.pyplot as plt
+        if self.get_input("aux_ssi_maps") == "none":
+            with self.open_output("depth_ssi_meas_map", wrapper=True) as f:
+                pass
+            with self.open_output("depth_ssi_true_map", wrapper=True) as f:
+                pass
+            return
+
+        m = self.open_input("aux_ssi_maps", wrapper=True)
+
+        # Depth plots (measured magnitude)
+        with self.open_output("depth_ssi_meas_map", wrapper=True, figsize=(5, 5)) as fig:
+            m.plot("depth/depth_meas", view=self.config["projection"], rot180=self.config["rot180"])
+
+        # Depth plots (true magnitude)
+        with self.open_output("depth_ssi_true_map", wrapper=True, figsize=(5, 5)) as fig:
+            m.plot("depth/depth_true", view=self.config["projection"], rot180=self.config["rot180"])
