@@ -3,7 +3,7 @@ stages:
   - name: TXIngestSSIDetectionDESBalrog
   - name: TXIngestSSIMatchedDESBalrog
   - name: TXAuxiliarySSIMaps
-  - name: TXMapPlots
+  - name: TXMapPlotsSSI
 
 modules: txpipe
 
@@ -26,19 +26,9 @@ config: examples/ssi/config_ssi_depth.yml
 inputs:
     # See README for paths to download these files
     
-    #NERSC
-    #balrog_detection_catalog: /global/cfs/cdirs/lsst/groups/WL/users/jelvinpo/balrog_txpipe_example/balrog_detection_catalog_sof_run2_v1.4.fits
-    
-    #local
-    balrog_detection_catalog: /Users/jackelvinpoole/DES/cats/y3/balrog/balrog_detection_catalog_sof_run2a_v1.4.fits
-    balrog_matched_catalog: /Users/jackelvinpoole/DES/cats/y3/balrog/balrog_matched_catalog_sof_run2a_v1.4.fits
-
-    source_maps: None
-    lens_maps: None
-    density_maps: None
-    mask: None
-    aux_source_maps: None
-    aux_lens_maps: none
+    #NERSC locations of public DES balrog data
+    balrog_detection_catalog: /global/cfs/cdirs/lsst/groups/WL/users/jelvinpo/balrog_txpipe_example/balrog_detection_catalog_sof_run2_v1.4.fits
+    balrog_matched_catalog:   /global/cfs/cdirs/lsst/groups/WL/users/jelvinpo/balrog_txpipe_example/balrog_matched_catalog_sof_run2_v1.4.fits
 
     fiducial_cosmology: data/fiducial_cosmology.yml
 
