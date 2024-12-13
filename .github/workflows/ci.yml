@@ -10,8 +10,10 @@ on:
     - cron: '0 12 * * 1'
 
 env:
-  EXAMPLE_DATA_FILE_VERSION: v3
-
+  EXAMPLE_DATA_FILE_VERSION: v5
+  # Setting this did not appear to work. Instead will need to
+  # find/replace when changing it.
+  # CONTAINER_IMAGE: ghcr.io/lsstdesc/txpipe:latest
 
 jobs:
   # Run a download step first so that it is in
@@ -110,7 +112,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-14]
-        pipeline: [metadetect, metacal, redmagic, lensfit, metadetect_source_only]
+        pipeline: [metadetect, metacal, redmagic, lensfit, metadetect_source_only, mock_shear]
         include:
           - os: ubuntu-latest
             INSTALL_DEPS: echo nothing to do
@@ -152,8 +154,24 @@ jobs:
       run: |
         mkdir -p cache/workspaces
         source ./conda/bin/activate
+        # Just for the metadetect source pipeline
+        # we activate the debug mode with an env var
+        if [ "${{ matrix.pipeline }}" == "metadetect_source_only" ]; then
+          export TX_DASK_DEBUG=1
+        fi
         ceci examples/${{ matrix.pipeline }}/pipeline.yml
-        test -f data/example/outputs_${{ matrix.pipeline }}/shear_xi_plus.png
+
+        if [ "${{ matrix.pipeline }}" == "mock_shear" ]; then
+          test -f data/example/outputs_mock_shear/binned_shear_catalog.hdf5
+        else
+          test -f data/example/outputs_${{ matrix.pipeline }}/shear_xi_plus.png
+        fi
+
+    - name: Show logs
+      if: always()
+      run: |
+        # always run
+        cat data/example/logs_${{ matrix.pipeline }}/*
 
     - name: Create output report
       if: matrix.os == 'macos-14'

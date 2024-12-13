@@ -42,7 +42,6 @@ stages:
         nz_plot: nz_lens
   - name: TXDiagnosticQuantiles
   - name: TXSourceDiagnosticPlots      # Make a suite of diagnostic plots
-  - name: TXLensDiagnosticPlots      # Make a suite of diagnostic plots
   - name: TXGammaTFieldCenters   # Compute and plot gamma_t around center points
     threads_per_process: 2
   - name: TXGammaTRandoms        # Compute and plot gamma_t around randoms
