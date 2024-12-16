@@ -1,0 +1,41 @@
+# Stages to run
+stages:
+  - name: TXIngestSSIDetectionDESBalrog
+  - name: TXIngestSSIMatchedDESBalrog
+  - name: TXAuxiliarySSIMaps
+  - name: TXMapPlotsSSI
+
+modules: txpipe
+
+# Where to put outputs
+output_dir: data/example/outputs_ssi_des_depth/
+
+# How to run the pipeline: mini, parsl, or cwl
+launcher:
+    name: mini
+    interval: 1.0
+
+# Where to run the pipeline: cori-interactive, cori-batch, or local
+site:
+    name: local
+    max_threads: 2
+
+# configuration settings
+config: examples/ssi/config_ssi_depth.yml
+
+inputs:
+    # See README for paths to download these files
+    
+    #NERSC locations of public DES balrog data
+    balrog_detection_catalog: /global/cfs/cdirs/lsst/groups/WL/users/jelvinpo/balrog_txpipe_example/balrog_detection_catalog_sof_run2_v1.4.fits
+    balrog_matched_catalog:   /global/cfs/cdirs/lsst/groups/WL/users/jelvinpo/balrog_txpipe_example/balrog_matched_catalog_sof_run2_v1.4.fits
+
+    fiducial_cosmology: data/fiducial_cosmology.yml
+
+# if supported by the launcher, restart the pipeline where it left off
+# if interrupted
+resume: false
+# where to put output logs for individual stages
+log_dir: data/example/outputs_ssi_des_mag/logs/
+# where to put an overall parsl pipeline log
+pipeline_log: data/example/outputs_ssi_des_mag/log.txt
