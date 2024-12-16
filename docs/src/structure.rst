@@ -1,4 +1,4 @@
-How TXPipe Works
+Concept Overview
 ================
 
 TXPipe is a collection of pipeline stages, which connect together and provide outputs to later stages.

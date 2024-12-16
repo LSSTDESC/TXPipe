@@ -4,14 +4,14 @@ Running an example pipeline
 Running
 -------
 
-If you haven't already, you can download data for a test pipeline like this:
+Download data for a test pipeline like this:
 
 .. code-block:: bash
 
     curl -O https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz
     tar -zxvf example.tar.gz
 
-and run that test pipeline like this:
+and run a test pipeline like this:
 
 .. code-block:: bash
 
@@ -30,7 +30,9 @@ A flow chart showing the steps in the pipeline and the files it generates is sho
   :width: 600
   :alt: A flow chart of the example pipeline.
 
-You can make your charts like this using (requires pygraphviz)::
+You can make your charts like this using::
+
+.. code-block:: bash
 
     python bin/flow_chart.py examples/metacal/pipeline.yml metacal.png
 
@@ -46,9 +48,7 @@ Under the hood
 
 When you do this, the following things are happening under the hood:
 
-#. The ``ceci`` program reads the pipeline yml file and finds a list of python modules to read. In those modules, any subclass of the ceci ``PipelineStage`` class is a stage of the analysis that can be executed, and specifies the inputs and outpits from that stage.
-
-#. ``ceci`` reads the list of stages from the pipeline yml file, and finds all the corresponding classes. It connects stages together so that the inputs of earlier ones can be the outputs of later ones. The yml file also lists initial inputs for the overall pipeline.
+#. The ``ceci`` program reads the pipeline yml file and finds the ``PipelineStage`` classes listed in it.  It connects stages together to pass data from one to the next.
 
 #. ``ceci`` runs the stages one by one, printing out the command line it uses. The outputs and logs of the tasks are put in locations defines in the pipeline yml.
 
