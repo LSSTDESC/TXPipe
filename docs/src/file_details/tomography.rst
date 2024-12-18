@@ -1,4 +1,28 @@
-## Tomography
+Tomography
+==========
+
+
+Tomography catalogs primarily list the tomographic bin 
+
+
+==========  ==========  ==========  =========
+Group       Name        Kind        Meaning
+==========  ==========  ==========  =========
+response    R           3D float32
+response    R_2d        2D float32
+tomography  bin         1D int32
+tomography  counts      1D int32
+tomography  counts_2d   1D int32
+==========  ==========  ==========  =========
+
+
+Shear tomography catalogs
+-------------------------
+
+Shear tomography catalogs additionally store:
+- calibration information, depending on the type of shear catalog
+- mean shear values
+- effective number counts and ellipticity dispersion sigma_e
 
 ==========  ==========  ==========  =========
 Group       Name        Kind        Meaning
@@ -17,5 +41,10 @@ tomography  mean_e2_2d  1D float32
 tomography  sigma_e     1D float32
 tomography  sigma_e_2d  1D float32
 ==========  ==========  ==========  =========
+
+Lens tomography catalogs
+------------------------
+
+Lens tomography catalogs additionally store a weight column.  Lens tomography files with the "_unweighted" suffix have unit values in that column. The version without the suffix has the weight values that account for systematic effects.
 
 

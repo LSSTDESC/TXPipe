@@ -9,7 +9,7 @@ Overall Pipeline inputs
 
 TXPipe starts from galaxy catalogs and various bits of anciliary information.  In most cases Ingestion stages generate these files from external data sets, such as GCRCatalogs, or generates mock data for them. Some are optional depending on the pipeline being run.
 
-The catalog inputs are:
+The catalog inputs are all in HDF5 format, and are:
 
 - :ref:`Photometry Catalogs`: a general-purpose catalog of detected objects and their photometry.
 - Shear Catalogs: galaxy shape/shear catalogs. TXPipe supports several different types:
@@ -35,17 +35,17 @@ Various stages in TXPipe generate intermediate catalogs, which are used as input
 Those associated with photo-z are described in the next section. 
 
 
-- Random Catalogs
-- Binned catalogs
-
-    - Source
-    - Lens
-    - Randoms
-    - Star
 - Tomography Catalogs
 
     - Lens Tomography
     - Shear Tomography
+- :ref:`Random Catalogs`: 
+- :ref:`Binned catalogs`: calibrated/weighted versions of the inputs catalogs, binned by tomography.
+
+    - :ref:`Binned shear catalogs`
+    - :ref:`Binned lens catalogs`
+    - :ref:`Binned random catalogs`
+    - :ref:`Binned star catalogs`
 
 Photometric Redshift Files
 --------------------------
