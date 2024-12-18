@@ -47,4 +47,11 @@ Lens tomography catalogs
 
 Lens tomography catalogs additionally store a weight column.  Lens tomography files with the "_unweighted" suffix have unit values in that column. The version without the suffix has the weight values that account for systematic effects.
 
-
+==========  ===========  ==========  =========
+Group       Name         Kind        Meaning
+==========  ===========  ==========  =========
+tomography  bin          1D int32
+tomography  counts       1D int32
+tomography  counts_2d    1D int32
+tomography  lens_weight  1D float32
+==========  ===========  ==========  =========

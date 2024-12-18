@@ -35,11 +35,11 @@ Various stages in TXPipe generate intermediate catalogs, which are used as input
 Those associated with photo-z are described in the next section. 
 
 
-- Tomography Catalogs
+- :ref:`Tomography Catalogs`: contain the tomographic bin index for each galaxy.
 
-    - Lens Tomography
-    - Shear Tomography
-- :ref:`Random Catalogs`: 
+    - :ref:`Lens tomography catalogs`: additionally contains lens weights.
+    - :ref:`Shear tomography catalogs`: additionally contains calibration and n_eff and sigma_e
+- :ref:`Random Catalogs`: galaxies randomly distributed within the survey mask
 - :ref:`Binned catalogs`: calibrated/weighted versions of the inputs catalogs, binned by tomography.
 
     - :ref:`Binned shear catalogs`
