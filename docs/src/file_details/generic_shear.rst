@@ -1,4 +1,4 @@
-Generic Shear Catalogs
+Generic shear catalogs
 ======================
 
 Generic shear catalogs are a type of shear catalog that require no calibration. They are used for testing and development purposes. The columns in a generic shear catalog are:

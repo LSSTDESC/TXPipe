@@ -14,14 +14,14 @@ The catalog inputs are all in HDF5 format, and are:
 - :ref:`Photometry Catalogs`: a general-purpose catalog of detected objects and their photometry.
 - Shear Catalogs: galaxy shape/shear catalogs. TXPipe supports several different types:
 
-   - :ref:`Metadetect Catalogs`: from the method of `Sheldon et al <https://arxiv.org/abs/2303.03947>`_.
-   - :ref:`Metacal Catalogs`: from the method of `Sheldon & Huff <https://arxiv.org/abs/1702.02601>`_.
-   - :ref:`Lensfit Catalogs`: a catalog of galaxy shapes measured by Lensfit.
-   - :ref:`HSC Catalogs`: a catalog of galaxy shapes measured by ngmix.
-   - :ref:`Generic Shear Catalogs`: a catalog of mock galaxy shears requiring no calibration
-- :ref:`Star Catalogs`: a catalog of stars, used for PSF-related diagnostics.
-- :ref:`Exposure Catalogs`: a catalog of exposures, used for more diagnostics.
-- :ref:`Spectroscopic Catalogs`: a catalog of spectroscopic redshifts, used for calibrating photo-z.
+   - :ref:`Metadetect catalogs`: from the method of `Sheldon et al <https://arxiv.org/abs/2303.03947>`_.
+   - :ref:`Metacal catalogs`: from the method of `Sheldon & Huff <https://arxiv.org/abs/1702.02601>`_.
+   - :ref:`Lensfit catalogs`: a catalog of galaxy shapes measured by Lensfit.
+   - :ref:`HSC catalogs`: a catalog of galaxy shapes measured by ngmix.
+   - :ref:`Generic shear catalogs`: a catalog of mock galaxy shears requiring no calibration
+- :ref:`Star catalogs`: a catalog of stars, used for PSF-related diagnostics.
+- :ref:`Exposure catalogs`: a catalog of exposures, used for more diagnostics.
+- :ref:`Spectroscopic catalogs`: a catalog of spectroscopic redshifts, used for calibrating photo-z.
 
 The other inputs are:
 

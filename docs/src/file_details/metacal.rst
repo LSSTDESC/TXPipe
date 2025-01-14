@@ -1,4 +1,5 @@
-## Metacal
+Metacal catalogs
+================
 
 The metacal catalog is used in TXPipe for Dark Energy Survey catalogs from Y1 and Y3.
 

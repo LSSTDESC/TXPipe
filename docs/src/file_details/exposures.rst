@@ -1,4 +1,4 @@
-Exposure Catalogs
+Exposure catalogs
 =================
 
 Exposure catalogs are used for diagnostics where tangential shear around exposure centers (and later, chip centers) is measured. Currently this file is generated from an OpSim catalog, but we need to figure out how to ingest it from the LSST stack. It may change form at that point.

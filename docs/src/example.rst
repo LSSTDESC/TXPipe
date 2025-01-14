@@ -30,7 +30,7 @@ A flow chart showing the steps in the pipeline and the files it generates is sho
   :width: 600
   :alt: A flow chart of the example pipeline.
 
-You can make your charts like this using::
+You can make charts like this using:
 
 .. code-block:: bash
 
@@ -40,7 +40,7 @@ You can make your charts like this using::
 Results
 -------
 
-Once the pipeline is complete, the results will be stored in ``data/example/outputs``. Some are PNG images you can look at directly. Others are HDF5 files - see :ref:`Reading HDF5 Files`.
+Once the pipeline is complete, the results will be stored in ``data/example/outputs_metadetect``. Some are PNG images you can look at directly. Others are HDF5 files - see :ref:`Reading HDF5 Files`.
 
 
 Under the hood

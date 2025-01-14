@@ -1,5 +1,5 @@
-Lensfit
-=======
+Lensfit catalogs
+================
 
 Lensfit is the shear measurement method used in KIDS and CFHTLens. In TXPipe is is used in re-analysis of KIDS data.
 

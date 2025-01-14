@@ -1,4 +1,4 @@
-HSC Catalogs
+HSC catalogs
 ============
 
 
