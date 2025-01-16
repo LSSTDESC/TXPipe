@@ -134,7 +134,10 @@ class _DataWrapper:
         return name in self.data
 
 
-class MetacalCalculator:
+class CalibrationCalculator:
+    pass
+
+class MetacalCalculator(CalibrationCalculator):
     """
     This class builds up the total response and selection calibration
     factors for Metacalibration from each chunk of data it is given.
@@ -338,7 +341,7 @@ class MetacalCalculator:
         return R_mean, S_mean, count, Neff
 
 
-class MetaDetectCalculator:
+class MetaDetectCalculator(CalibrationCalculator):
     """ """
 
     def __init__(self, selector, delta_gamma):
@@ -452,7 +455,7 @@ class MetaDetectCalculator:
         return R, counts[0], sum_weights[0]**2/sum_sq_weights[0]
 
 
-class LensfitCalculator:
+class LensfitCalculator(CalibrationCalculator):
     """
     This class builds up the total calibration
     factors for lensfit-convention shears from each chunk of data it is given.
@@ -611,7 +614,7 @@ class LensfitCalculator:
         return K, C_N, C_S, count, Neff
 
 
-class HSCCalculator:
+class HSCCalculator(CalibrationCalculator):
     """
     This class builds up the total response calibration
     factors for HSC-convention shear-calibration from each chunk of data it is
@@ -743,7 +746,7 @@ class HSCCalculator:
         return R, K, count, Neff
 
 
-class MockCalculator:
+class MockCalculator(CalibrationCalculator):
     """
     This class calculates tomographic statistics for mock catalogs
     where no calibration is necessary.
