@@ -2,14 +2,13 @@ Tomography
 ==========
 
 
-Tomography catalogs primarily list the tomographic bin 
+Tomography catalogs primarily list the tomographic bin selected for each object. The "bin" column is an integer that indexes the tomographic bin, one value per object in the main (shear or photometry) catalog. The first bin is indexed as zero. A value of -1 indicates that the object was not selected for any tomographic bin (e.g. because its SNR was too low).
 
+The "counts" column is the number of objects in each bin. The "counts_2d" column is the number of objects selected non-tomographically (i.e. the number of objects with any bin value other than -1).
 
 ==========  ==========  ==========  =========
 Group       Name        Kind        Meaning
 ==========  ==========  ==========  =========
-response    R           3D float32
-response    R_2d        2D float32
 tomography  bin         1D int32
 tomography  counts      1D int32
 tomography  counts_2d   1D int32

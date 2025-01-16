@@ -3,6 +3,8 @@ Metacal catalogs
 
 The metacal catalog is used in TXPipe for Dark Energy Survey catalogs from Y1 and Y3.
 
+Each quantitiy is measured under 5 different conditions: the nominal measurement, and four variants that are used to calculate calibration factors that account for shear measurement and selection biases. The variants are labeled "1m", "1p", "2m", "2p".
+
 =======  =================  ==========  =========
 Group    Name               Kind        Meaning
 =======  =================  ==========  =========
