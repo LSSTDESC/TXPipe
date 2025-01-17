@@ -14,13 +14,18 @@ Any stage can be "aliased" to a different tag when the pipeline is defined in th
 
 For example, the `TXPhotozPlot` class can be run twice, once on the source sample and once on the lens sample, to generate n(z) plots of each.
 
+Catalog HDF Files
+-----------------
+
+Map HDF Files
+-------------
 
 HDF5 Files
 ----------
 .. list-table:: HDF5 Files
     :header-rows: 1
 
-    * - File Name
+    * - File Tag
       - Kind
       - Description
     * - aux_lens_maps
@@ -69,77 +74,77 @@ HDF5 Files
       - :ref:`Exposure catalogs`
       - Catalogs centers of exposurs for use in systematics tests
     * - glass_cl_binned
-      - 
-      - 
+      - :ref:`HDF File<Reading HDF5 Files>`
+      - Tomographic log-normal C_ell realizations from GLASS
     * - glass_cl_shells
-      - 
-      - 
+      - :ref:`HDF File<Reading HDF5 Files>`
+      - Shell log-normal C_ell realizations from GLASS
     * - input_lss_weight_maps
-      - 
-      - 
+      - :ref:`Maps Files`
+      - Weight maps used in GLASS simulations
     * - lens_catalog
-      - 
-      - 
+      - :ref:`HDF File<Reading HDF5 Files>`
+      - A catalog of objects to be used as lenses (when something external is used instead of the photometry catalog
     * - lens_maps
-      - 
-      - 
+      - :ref:`Lens maps`
+      - Weighted and raw number density maps of the source sample
     * - lens_noise_maps
-      - 
-      - 
+      - :ref:`Lens Noise Maps`
+      - Density and number count maps for random halves of the lens and density maps
     * - lens_photoz_pdfs
-      - 
-      - 
+      - :ref:`Photo-z PDF Files`
+      - Per-object PDFs for the lens sample
     * - lens_photoz_realizations
-      - 
-      - 
+      - :ref:`Photo-z n(z) Files`
+      - Per-tomographic bin photo-z realizations for the lens sample
     * - lens_photoz_stack
-      - 
-      - 
+      - :ref:`Photo-z n(z) Files`
+      - Mean tomographic bin photo-z for the lens sample
     * - lens_tomography_catalog
-      - 
-      - 
+      - :ref:`Lens tomography catalogs`
+      - Tomographic selection information for the lens sample
     * - lens_tomography_catalog_unweighted
-      - 
-      - 
+      - :ref:`Lens tomography catalogs`
+      - Tomographic selection information for the lens sample, without weights
     * - lss_weight_maps
-      - 
-      - 
+      - :ref:`LSS Weight Maps`
+      - Maps of weights for the lens sample
     * - mask
-      - 
-      - 
+      - :ref:`Mask`
+      - Binary or fractional pixel coverage masks
     * - photometry_catalog
-      - 
-      - 
+      - :ref:`Photometry Catalogs`
+      - Photometric measurements from which the lens sample is chosen
     * - random_cats
-      - 
-      - 
+      - :ref:`Random Catalogs`
+      - A catalog of random objects following the same tomographic and location selection as the lens sample but with no underlying structure
     * - response_model
-      - 
-      - 
+      - :ref:`HDF File<Reading HDF5 Files>`
+      - A model used for generating mock shear catalog calibration distributions.
     * - rowe_stats
-      - 
-      - 
+      - :ref:`HDF File<Reading HDF5 Files>`
+      - Tabulation of the Rowe PSF statistics
     * - shear_catalog
-      - 
-      - 
+      - :ref:`Shear Catalogs<Overall Pipeline inputs>`
+      - Shear catalogs of various different types
     * - shear_catalog_quantiles
-      - 
-      - 
+      - :ref:`HDF File<Reading HDF5 Files>`
+      - Measurements of quantiles of shear catalog columns such as SNR, size, etc.
     * - shear_photoz_stack
-      - 
-      - 
+      - :ref:`Photo-z n(z) Files`
+      - Mean tomographic bin photo-z for the source sample
     * - shear_tomography_catalog
-      - 
-      - 
+      - :ref:`Shear tomography catalogs`
+      - Tomographic selection and shear calibration information for the source sample
     * - source_maps
-      - 
-      - 
+      - :ref:`Source maps`
+      - Tomographic cosmic shear maps
     * - source_noise_maps
-      - 
-      - 
+      - :ref:`Source Noise Maps`
+      - Tomographic cosmic shear map realizations with all object shears radomly rotated
     * - source_photoz_pdfs
-      - 
-      - 
+      - :ref:`Photo-z PDF Files`
+      - Per-object PDFs for the source sample
     * - source_photoz_realizations
       - 
       - 
@@ -164,115 +169,216 @@ HDF5 Files
 
 SACC Files
 -----------
+.. list-table:: SACC Files
+  :header-rows: 1
 
-aperture_mass_data
-gammat_bright_stars
-gammat_dim_stars
-gammat_field_center
-gammat_randoms
-summary_statistics_fourier
-summary_statistics_real
-twopoint_data_fourier
-twopoint_data_real
-twopoint_data_real_raw
-twopoint_gamma_x
-twopoint_theory_fourier
-twopoint_theory_real
+  * - File Tag
+    - Description
+  * - aperture_mass_data
+    - 
+  * - gammat_bright_stars
+    - 
+  * - gammat_dim_stars
+    - 
+  * - gammat_field_center
+    - 
+  * - gammat_randoms
+    - 
+  * - summary_statistics_fourier
+    - 
+  * - summary_statistics_real
+    - 
+  * - twopoint_data_fourier
+    - 
+  * - twopoint_data_real
+    - 
+  * - twopoint_data_real_raw
+    - 
+  * - twopoint_gamma_x
+    - 
+  * - twopoint_theory_fourier
+    - 
+  * - twopoint_theory_real
+    - 
 
 
 PNG Images
 ----------
 
-T_frac_psf_residual_hist
-bright_object_map
-brighter_fatter_plot
-convergence_map
-density_cl
-density_xi
-density_xi_ratio
-depth_map
-e1_psf_residual_hist
-e2_psf_residual_hist
-flag_map
-g1_hist
-g2_hist
-g_T
-g_colormag
-g_psf_T
-g_psf_g
-g_snr
-gammat_bright_stars_plot
-gammat_dim_stars_plot
-gammat_field_center_plot
-gammat_randoms_plot
-jk
-lens_mag_hist
-lens_map
-lens_nz
-lens_photoz_realizations_plot
-lens_snr_hist
-mask_map
-nz_lens
-nz_source
-psf_map
-response_hist
-rowe0
-rowe134
-rowe25
-shearDensity_cl
-shearDensity_xi
-shearDensity_xi_ratio
-shearDensity_xi_x
-shear_cl_ee
-shear_cl_ee_ratio
-shear_map
-shear_xi_minus
-shear_xi_minus_ratio
-shear_xi_plus
-shear_xi_plus_ratio
-source_mag_hist
-source_nz
-source_photoz_realizations_plot
-source_snr_hist
-star_density_test
-star_shear_test
-star_star_test
-tau0
-tau2
-tau5
+.. list-table:: PNG Images
+  :header-rows: 1
+
+  * - File Tag
+    - Description
+  * - T_frac_psf_residual_hist
+    - 
+  * - bright_object_map
+    - 
+  * - brighter_fatter_plot
+    - 
+  * - convergence_map
+    - 
+  * - density_cl
+    - 
+  * - density_xi
+    - 
+  * - density_xi_ratio
+    - 
+  * - depth_map
+    - 
+  * - e1_psf_residual_hist
+    - 
+  * - e2_psf_residual_hist
+    - 
+  * - flag_map
+    - 
+  * - g1_hist
+    - 
+  * - g2_hist
+    - 
+  * - g_T
+    - 
+  * - g_colormag
+    - 
+  * - g_psf_T
+    - 
+  * - g_psf_g
+    - 
+  * - g_snr
+    - 
+  * - gammat_bright_stars_plot
+    - 
+  * - gammat_dim_stars_plot
+    - 
+  * - gammat_field_center_plot
+    - 
+  * - gammat_randoms_plot
+    - 
+  * - jk
+    - 
+  * - lens_mag_hist
+    - 
+  * - lens_map
+    - 
+  * - lens_nz
+    - 
+  * - lens_photoz_realizations_plot
+    - 
+  * - lens_snr_hist
+    - 
+  * - mask_map
+    - 
+  * - nz_lens
+    - 
+  * - nz_source
+    - 
+  * - psf_map
+    - 
+  * - response_hist
+    - 
+  * - rowe0
+    - 
+  * - rowe134
+    - 
+  * - rowe25
+    - 
+  * - shearDensity_cl
+    - 
+  * - shearDensity_xi
+    - 
+  * - shearDensity_xi_ratio
+    - 
+  * - shearDensity_xi_x
+    - 
+  * - shear_cl_ee
+    - 
+  * - shear_cl_ee_ratio
+    - 
+  * - shear_map
+    - 
+  * - shear_xi_minus
+    - 
+  * - shear_xi_minus_ratio
+    - 
+  * - shear_xi_plus
+    - 
+  * - shear_xi_plus_ratio
+    - 
+  * - source_mag_hist
+    - 
+  * - source_nz
+    - 
+  * - source_photoz_realizations_plot
+    - 
+  * - source_snr_hist
+    - 
+  * - star_density_test
+    - 
+  * - star_shear_test
+    - 
+  * - star_star_test
+    - 
+  * - tau0
+    - 
+  * - tau2
+    - 
+  * - tau5
+    - 
 
 
 Text Files
 ----------
 
-calibration_table
-g_T_out
-g_psf_T_out
-g_psf_g_out
-g_snr_out
-mock_shear_catalog
-patch_centers
-rlens_measurement
+.. list-table:: PNG Images
+  :header-rows: 1
+
+  * - File Tag
+    - Description
+  * - calibration_table
+    - 
+  * - g_T_out
+    - 
+  * - g_psf_T_out
+    - 
+  * - g_psf_g_out
+    - 
+  * - g_snr_out
+    - 
+  * - mock_shear_catalog
+    - 
+  * - patch_centers
+    - 
+  * - rlens_measurement
+    - 
 
 YAML Files
 ----------
 
-fiducial_cosmology
-star_psf_stats
-tracer_metadata_yml
+.. list-table:: PNG Images
+  :header-rows: 1
+
+  * - fiducial_cosmology
+    -
+  * - star_psf_stats
+    -
+  * - tracer_metadata_yml
+    -
 
 
 Pickle Files
 ------------
 
-flow
-lens_direct_calibration_model
-lens_photoz_model
-source_direct_calibration_model
+.. list-table:: PNG Images
+  :header-rows: 1
 
-Parquet Files
--------------
-
+  * - flow
+    - 
+  * - lens_direct_calibration_model
+    - 
+  * - lens_photoz_model
+    - 
+  * - source_direct_calibration_model
+    - 
 
 
 Other Files and Directories
