@@ -54,7 +54,7 @@ Photometric Redshift Files
 Map Files
 ---------
 
-Various TXPipe stages generate maps of different kinds. They are stored in HDF5 files. An overview is here: :ref:`Maps`, and individual map types are described here:
+Various TXPipe stages generate maps of different kinds. They are stored in HDF5 files. An overview is here: :ref:`Map Files`, and individual map types are described here:
 
 - :ref:`Mask`
 - :ref:`Source Maps`

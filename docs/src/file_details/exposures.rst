@@ -16,13 +16,13 @@ exposures  colorterm1      1D float64
 exposures  colorterm2      1D float64
 exposures  colorterm3      1D float64
 exposures  darktime        1D float64
-exposures  date-avg        1D |S29
+exposures  date-avg        1D str
 exposures  dectel          1D float64
 exposures  exptime         1D float64
-exposures  filter          1D |S1
+exposures  filter          1D str
 exposures  fluxmag0        1D float64
 exposures  fluxmag0err     1D float64
-exposures  imgtype         1D |S6
+exposures  imgtype         1D str
 exposures  magzero_nobj    1D int64
 exposures  magzero_rms     1D float64
 exposures  mjd-obs         1D float64
@@ -30,10 +30,10 @@ exposures  obsid           1D int64
 exposures  psf_id          1D int64
 exposures  ratel           1D float64
 exposures  rotangle        1D float64
-exposures  rottype         1D |S7
+exposures  rottype         1D str
 exposures  runnum          1D int64
 exposures  skywcs_id       1D int64
-exposures  testtype        1D |S6
-exposures  timesys         1D |S3
+exposures  testtype        1D str
+exposures  timesys         1D str
 =========  ==============  ==========  =========
 

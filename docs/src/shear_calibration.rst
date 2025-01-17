@@ -16,7 +16,7 @@ If you are doing straightforward analysis on tomographic quantities you may be a
 Calculator Classes
 ------------------
 
-The calculator classes can be found in `txpipe/utils/calibration_tools.py`. There is one for each shear calibration method. Their main use is in the source selection stages, in `txpipe/source_selector.py`. Their output is saved into the :ref:`tomography file<shear_tomography_catalogs>` "response" group.
+The calculator classes can be found in `txpipe/utils/calibration_tools.py`. There is one for each shear calibration method. Their main use is in the source selection stages, in `txpipe/source_selector.py`. Their output is saved into the :ref:`tomography file<Shear tomography catalogs>` "response" group.
 
 The calculator classes are designed to operate on streamed data (i.e. they do not load the entire catalog at once, but a chunk at a time).  The expected life cycle of a calculator class is:
 
@@ -24,15 +24,11 @@ The calculator classes are designed to operate on streamed data (i.e. they do no
 2. Call the `add_data` method repeatedly with chunks of data (can be done in parallel).
 3. Call the `collect` method at the end to get the final calibration factors.
 
-The **selector** function is used because in some cases we need to calculate a selection bias quantity, and to do this we run the selection on different data variants. It should take this form:
+The **selector** function is used because in some cases we need to calculate a selection bias quantity, and to do this we run the selection on different data variants. It should take this form::
 
-```python
-
-def selector(data: dict[str,np.ndarray], *args, **kwargs):
-    ...
-    return selection
-
-```
+    def selector(data: dict[str,np.ndarray], *args, **kwargs):
+        ...
+        return selection
 
 The `data` argument is a dictionary of numpy arrays, where the keys are the column names and the values are the data. The function should return something we can use to index the data, such as a boolean array or an integer array.  The extra arguments are passed in from the `add_data` method, and can be anything used in the selection, such the index of the tomographic bin being selected. They will be passed in when calling `add_data`.
 

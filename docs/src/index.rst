@@ -19,6 +19,7 @@ It is designed to take catalogs of objects (as produced by the LSST Project), an
    example
    structure
    file_types
+   files
 
 .. toctree::
    :maxdepth: 1

@@ -136,17 +136,19 @@ Diagnostics:
     blurb: |
         These stages compute and/or plot diagnostics of catalogs or other data
     stages:
+        - TXSourceDiagnosticPlots
+        - TXLensDiagnosticPlots
+        - TXPSFDiagnostics
+        - TXPSFMomentCorr
+        - TXRoweStatistics
+        - TXTauStatistics
+        - TXGalaxyStarShear
+        - TXGalaxyStarDensity
+        - TXBrighterFatterPlot
         - TXGammaTFieldCenters
         - TXGammaTStars
         - TXGammaTRandoms
         - TXApertureMass
-        - TXSourceDiagnosticPlots
-        - TXLensDiagnosticPlots
-        - TXPSFDiagnostics
-        - TXRoweStatistics
-        - TXGalaxyStarShear
-        - TXGalaxyStarDensity
-        - TXBrighterFatterPlot
 
 
 Extensions:

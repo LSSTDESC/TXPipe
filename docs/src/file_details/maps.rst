@@ -1,5 +1,5 @@
-Maps
-====
+Maps Files
+==========
 
 Various TXPipe stages generate maps of different kinds. The general HDF5 structure of a TXPipe map file is:
 
@@ -10,6 +10,7 @@ maps     map_name          pixel   1D int64
 maps     map_name          value   1D float64
 ...
 =======  ================  ======  ==========  =========
+
 The pixel index and value sparsely store the map, and metadata in the ``maps/map_name.attrs`` group stores the pixelization information (nside integer and nest bool).
 
 Specific map file types are described below.
