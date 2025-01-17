@@ -1,5 +1,5 @@
-Stars
-=====
+Star catalogs
+=============
 
 Star catalogs are used for PSF-related diagnostics. The columns in a star catalog are:
 

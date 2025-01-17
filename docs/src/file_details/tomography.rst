@@ -1,5 +1,5 @@
-Tomography
-==========
+Tomography catalogs
+===================
 
 
 Tomography catalogs primarily list the tomographic bin selected for each object. The "bin" column is an integer that indexes the tomographic bin, one value per object in the main (shear or photometry) catalog. The first bin is indexed as zero. A value of -1 indicates that the object was not selected for any tomographic bin (e.g. because its SNR was too low).

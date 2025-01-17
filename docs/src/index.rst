@@ -20,6 +20,7 @@ It is designed to take catalogs of objects (as produced by the LSST Project), an
    structure
    file_types
    files
+   shear_calibration
 
 .. toctree::
    :maxdepth: 1

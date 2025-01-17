@@ -1,5 +1,5 @@
-Photometry
-==========
+Photometry Catalogs
+===================
 
 The photometry catalogs are used to store the results of photometric measurements for the catalog. This is not the same data sample as the shear catalog, since the metadetect method uses different selection criteria to pick out objects to measure. So this catalog is typically used as the basis for the lens sample.
 

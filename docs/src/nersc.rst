@@ -1,7 +1,8 @@
 Running TXPipe at NERSC
 =======================
 
-On NERSC, follow the setup command described in  :ref:`NERSC Shifter Installation` to set up the TXPipe dependencies.
+You can now use the standard installation script to install TXPipe at NERSC in your scratch directory.
+
 
 NERSC Interactive Sessions
 --------------------------
@@ -14,8 +15,10 @@ You should then only run small test commands on the login node, with only a smal
 
 Run the setup command again after starting your job. 
 
-Running pipelines at NERSC
---------------------------
+Legacy: Running pipelines at NERSC
+----------------------------------
+
+This command is deprecated and loads an old set of dependencies
 
 The ``tx`` command runs programs in a TXPipe environment. To run whole pipelines, you can do this:
 
@@ -23,9 +26,6 @@ The ``tx`` command runs programs in a TXPipe environment. To run whole pipelines
 
     tx ceci examples/metacal/pipeline.yml
 
-
-Running individual stages at NERSC
-----------------------------------
 
 You can also use the TX command to run individual stages, to test or develop them.
 

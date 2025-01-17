@@ -17,11 +17,17 @@ Ingestion:
         - TXExposureInfo
         - TXIngestStars
         - TXMetacalGCRInput
+        - TXIngestDataPreview02
+        - TXSimpleMock
+        - TXMockTruthPZ
+        - TXLogNormalGlass
 
 Photo-z:
     blurb: |
         These stages deal with photo-z PDF training and estimation
     stages:
+        - TXPhotozStack
+        - TXTruePhotozStack
         - PZRailTrainSource
         - PZRailTrainLens
         - PZRailTrainLensFromSource
@@ -38,6 +44,7 @@ Selection:
         bins.
     stages:
         - TXSourceSelector
+        - TXSourceSelectorSimple
         - TXSourceSelectorMetacal
         - TXSourceSelectorMetadetect
         - TXSourceSelectorLensfit
@@ -46,6 +53,7 @@ Selection:
         - TXTruthLensSelector
         - TXMeanLensSelector
         - TXModeLensSelector
+        - TXRandomForestLensSelector
 
 
 Calibration and Splitting:
@@ -57,7 +65,18 @@ Calibration and Splitting:
         - TXStarCatalogSplitter
         - TXLensCatalogSplitter
         - TXExternalLensCatalogSplitter
-
+        - TXTruthLensCatalogSplitter
+        - TXTruthLensCatalogSplitterWeighted
+        
+Weights:
+    blurb: |
+        These stages deal with weighting the lens sample
+    stages:
+        - TXLSSWeights
+        - TXLSSWeightsLinBinned
+        - TXLSSWeightsLinPix
+        - TXLSSWeightsUnit
+    
 
 Maps:
     blurb: |
@@ -76,6 +95,8 @@ Maps:
         - TXConvergenceMaps
         - TXMapCorrelations
         - TXSimpleMask
+        - TXSimpleMaskSource
+        - TXSimpleMaskFrac
         - TXAuxiliarySourceMaps
         - TXAuxiliaryLensMaps
         - TXUniformDepthMap
@@ -88,6 +109,8 @@ Ensemble Photo-z:
         - TXPhotozLensStack
         - TXSourceTrueNumberDensity
         - TXLensTrueNumberDensity
+        - PZRailSummarize
+        
 
 
 Two-Point:
@@ -95,11 +118,16 @@ Two-Point:
         These stages deal with measuring or predicting two-point statistics.
     stages:
         - TXJackknifeCenters
+        - TXJackknifeCentersSource
         - TXTwoPointFourier
         - TXTwoPoint
         - TXRandomCat
+        - TXSubsampleRandoms
         - TXTwoPointTheoryReal
         - TXTwoPointTheoryFourier
+        - TXTwoPointPixel
+        - TXTwoPointPixelExtCross
+        - TXTwoPointRLens
 
 
 Covariance:
@@ -129,6 +157,8 @@ Plots:
         - TXTwoPointPlotsFourier
         - TXConvergenceMapPlots
         - TXMapPlots
+        - PZRealizationsPlot
+        - TXTwoPointPlotsTheory
         - TXPhotozPlot
 
 
@@ -136,6 +166,7 @@ Diagnostics:
     blurb: |
         These stages compute and/or plot diagnostics of catalogs or other data
     stages:
+        - TXDiagnosticQuantiles
         - TXSourceDiagnosticPlots
         - TXLensDiagnosticPlots
         - TXPSFDiagnostics
@@ -149,6 +180,17 @@ Diagnostics:
         - TXGammaTStars
         - TXGammaTRandoms
         - TXApertureMass
+        - TXFocalPlanePlot
+
+Source Injection:
+    blurb: |
+        These stages ingest and use synthetic source injection information
+    stages:
+        - TXIngestSSIGCR
+        - TXMatchSSI
+        - TXIngestSSIMatched
+        - TXIngestSSIMatchedDESBalrog
+        - TXSSIMagnification
 
 
 Extensions:
@@ -156,6 +198,9 @@ Extensions:
         These stages are written for TXPipe extension projects.
     stages:
         - TXSelfCalibrationIA
+        - CLClusterBinningRedshiftRichness
+        - CLClusterShearCatalogs
+        - CLClusterEnsembleProfiles
 
 New and Miscellaneous:
     blurb: |
@@ -163,6 +208,7 @@ New and Miscellaneous:
         assigned to one.
     stages:
         - TXTracerMetadata
+        - TXParqetToHDF
 
 """)
 
@@ -198,7 +244,7 @@ for class_name, (cls, path) in txpipe.PipelineStage.pipeline_stages.items():
     if class_name == "BaseStageDoNotRunDirectly":
         continue
     if class_name not in stages:
-        print("Warning - update the section list for ", c)
+        print("Warning - update the section list for ", class_name)
 
     qual_name = get_name(cls)
     section = stages.get(class_name, "New and Miscellaneous")
@@ -236,7 +282,7 @@ TXPipe Stage Listing
    :caption: Contents:
 
 """)
-
+    f.write("   stages/base\n")
     for s, sd in sections.items():
         f.write("   stages/" + s + "\n")
     f.write("\n")

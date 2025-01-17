@@ -1,5 +1,5 @@
-Shear calibration
-=================
+Shear calibration guide
+=======================
 
 Raw cosmic shear values in catalogs cannot be used directly for cosmology; they are subject to selection and measurement biases that must be calibrated out first. It is not typically possible to do this calibration individually on each object; instead an ensemble of objects must be chosen, and the calibration for that ensemble applied to all the objects in it.
 

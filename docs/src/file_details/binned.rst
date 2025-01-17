@@ -1,5 +1,5 @@
-Binned
-======
+Binned catalogs
+===============
 
 Binned catalogs are split with each tomographic bin having its own HDF5 group.
 

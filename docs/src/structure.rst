@@ -51,6 +51,6 @@ A run of a TXPipe pipeline is defined by two files in YML format:
 
 * The configuration file chooses input parameters for the different stages.
 
-See :ref:`Running pipelines` for more details.
+See :ref:`Configuration Files` for more details.
 
 
