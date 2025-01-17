@@ -37,7 +37,7 @@ class TXBaseMaps(PipelineStage):
     - select pixelization
     - prepare some mapper objects
     - iterate through selected columns
-        - update each mapper with each chunk
+    - update each mapper with each chunk
     - finalize the mappers
     - save the maps
     """
