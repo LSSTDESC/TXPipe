@@ -269,11 +269,13 @@ class MetacalCalculator(CalibrationCalculator):
         """
         Finalize and sum up all the response values, returning separate
         R (estimator response) and S (selection bias) 2x2 matrices
+
         Parameters
         ----------
         comm: MPI Communicator
             If supplied, all processors response values will be combined together.
             All processes will return the same final value
+
         Returns
         -------
         R: 2x2 array
