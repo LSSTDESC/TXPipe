@@ -50,21 +50,6 @@ class ShearCatalog(HDFFile):
         shear_catalog_type = info.get("catalog_type")
         return shear_catalog_type
 
-    @classmethod
-    def subclass_for_file(cls, path):
-        with ShearCatalog(path, "r") as f:
-            catalog_type = f.catalog_type
-        if catalog_type == "metacal":
-            return MetacalCatalog
-        elif catalog_type == "metadetect":
-            return MetadetectCatalog
-        elif catalog_type == "lensfit":
-            return LensfitCatalog
-        elif catalog_type == "hsc":
-            return HSCShearCatalog
-        else:
-            return GenericShearCatalog
-
     @property
     def catalog_type(self):
         if self._catalog_type is not None:
@@ -126,23 +111,6 @@ class ShearCatalog(HDFFile):
                 bands.append(col[4:])
         return bands
 
-class GenericShearCatalog(ShearCatalog):
-    pass
-
-class MetadetectCatalog(ShearCatalog):
-    def get_size(self):
-        return self.file["shear/00/ra"].size
-    def get_primary_catalog_group(self):
-        return "shear/00"
-
-class LensfitCatalog(ShearCatalog):
-    pass
-
-class MetacalCatalog(ShearCatalog):
-    pass
-
-class HSCShearCatalog(ShearCatalog):
-    pass
 
 class BinnedCatalog(HDFFile):
     required_datasets = []
