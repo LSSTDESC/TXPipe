@@ -1,7 +1,7 @@
 TXPipe File Tags
 ================
 
-TXPipe saves everything it does in files saved in the `output_dir` directory specified in the pipeline YAML file.
+TXPipe saves everything it does in files saved in the `output_dir` directory specified in the pipeline YAML file. This page is useful if you want to learn what one of those files means and find a link to a page that describes the format of that file.
 
 TXPipe files are organized by `tags`, which are usually just the stem of the file name (i.e. without the directory or suffix). The tags input and output by each staged are defined in the stage class. Each file has a specific :ref:`type<File Types>`
 
@@ -16,8 +16,16 @@ Any stage can be "aliased" to a different tag when the pipeline is defined in th
 For example, the `TXPhotozPlot` class can be run twice, once on the source sample and once on the lens sample, to generate n(z) plots of each.
 
 
+HDF5 Files
+----------
+
+HDF files are a general-purpose file format for storing tabular data. They are the primary storage format for larger data sets in TXPipe, primarily because they are easy to read and write in parallel.  Different groups of HDF5 files are described below.
+
+
 Catalog HDF5 Files
 ------------------
+
+TXPipe catalog files are almost all stored in HDF5 format. They are described in full on the :ref:`File Types` page.
 
 .. list-table:: HDF5 Files
     :header-rows: 1
@@ -55,9 +63,6 @@ Catalog HDF5 Files
     * - lens_catalog
       - :ref:`HDF File<Reading HDF5 Files>`
       - A catalog of objects to be used as lenses (when something external is used instead of the photometry catalog
-    * - lens_photoz_pdfs
-      - :ref:`Photo-z PDF Files`
-      - Per-object PDFs for the lens sample
     * - lens_tomography_catalog
       - :ref:`Lens tomography catalogs`
       - Tomographic selection information for the lens sample
@@ -79,9 +84,6 @@ Catalog HDF5 Files
     * - shear_tomography_catalog
       - :ref:`Shear tomography catalogs`
       - Tomographic selection and shear calibration information for the source sample
-    * - source_photoz_pdfs
-      - :ref:`Photo-z PDF Files`
-      - Per-object PDFs for the source sample
     * - spectroscopic_catalog
       - :ref:`HDF File<Reading HDF5 Files>`
       - Training set for the photo-z model
@@ -93,6 +95,8 @@ Catalog HDF5 Files
 
 Map HDF Files
 -------------
+
+TXPipe map files are described in full under :ref:`Maps Files`.
 
 .. list-table:: HDF5 Files
     :header-rows: 1
@@ -134,8 +138,10 @@ Map HDF Files
       - :ref:`Source Noise Maps`
       - Tomographic cosmic shear map realizations with all object shears radomly rotated
 
-Miscellaneous HDF Files
------------------------
+Photo-z HDF Files
+----------------- 
+
+The :ref:`Photo-z Files` page describes the types and formats of photometric redshift files in more detail.
 
 .. list-table:: HDF5 Files
     :header-rows: 1
@@ -143,52 +149,65 @@ Miscellaneous HDF Files
     * - File Tag
       - Kind
       - Description
-    * - brighter_fatter_data
-      - :ref:`HDF File<Reading HDF5 Files>`
-      - Measurements of PSF size and ellipticity mismatch as a function of magnitude
-    * - density_shells
-      - :ref:`HDF File<Reading HDF5 Files>`
-      - Simulation density shell maps when simulating log-normal maps with GLASS
-    * - glass_cl_binned
-      - :ref:`HDF File<Reading HDF5 Files>`
-      - Tomographic log-normal C_ell realizations from GLASS
-    * - glass_cl_shells
-      - :ref:`HDF File<Reading HDF5 Files>`
-      - Shell log-normal C_ell realizations from GLASS
+    * - lens_photoz_pdfs
+      - :ref:`Photo-z PDF Files`
+      - Per-object PDFs for the lens sample
     * - lens_photoz_realizations
       - :ref:`Photo-z n(z) Files`
       - Per-tomographic bin photo-z realizations for the lens sample
     * - lens_photoz_stack
       - :ref:`Photo-z n(z) Files`
       - Mean tomographic bin photo-z for the lens sample
-    * - response_model
-      - :ref:`HDF File<Reading HDF5 Files>`
-      - A model used for generating mock shear catalog calibration distributions.
-    * - rowe_stats
-      - :ref:`HDF File<Reading HDF5 Files>`
-      - Tabulation of the Rowe PSF statistics
     * - shear_photoz_stack
       - :ref:`Photo-z n(z) Files`
       - Mean tomographic bin photo-z for the source sample
+    * - source_photoz_pdfs
+      - :ref:`Photo-z PDF Files`
+      - Per-object PDFs for the source sample
     * - source_photoz_realizations
       - :ref:`Photo-z n(z) Files`
       - Per-tomographic bin photo-z realizations for the source sample
+
+
+
+Miscellaneous HDF Files
+-----------------------
+
+Various miscellaneous HDF5 files with no common structure are also generated in the pipeline. See :ref:`the generic HDF5 page <Reading HDF5 Files>` for information on reading them.
+
+
+.. list-table:: HDF5 Files
+    :header-rows: 1
+
+    * - File Tag
+      - Description
+    * - brighter_fatter_data
+      - Measurements of PSF size and ellipticity mismatch as a function of magnitude
+    * - density_shells
+      - Simulation density shell maps when simulating log-normal maps with GLASS
+    * - glass_cl_binned
+      - Tomographic log-normal C_ell realizations from GLASS
+    * - glass_cl_shells
+      - Shell log-normal C_ell realizations from GLASS
+    * - response_model
+      - A model used for generating mock shear catalog calibration distributions.
+    * - rowe_stats
+      - Tabulation of the Rowe PSF statistics
     * - star_density_stats
-      - :ref:`HDF File<Reading HDF5 Files>`
       - Cross-correlation measurements between star and galaxy positions
     * - star_shear_stats
-      - :ref:`HDF File<Reading HDF5 Files>`
       - Cross-correlation measurements between star PSFs and galaxy shears
     * - tau_stats
-      - :ref:`HDF File<Reading HDF5 Files>`
       - Measurements of PSF Tau statistics
     * - tracer_metadata
-      - :ref:`Metadata`
-      - Collected lens and source sample metadata
+      - Collected lens and source sample metadata.  See :ref:`Metadata`.
 
 
 SACC Files
 -----------
+
+SACC is a DESC library for storing cosmological measurements and all the metadata associated with them needed to perform parameter estimation. The TXPipe intefface class for SACC files is  `txpipe.data_types.SaccFile`, but you can also just use the SACC library directly.
+
 .. list-table:: SACC Files
   :header-rows: 1
 
@@ -224,6 +243,8 @@ SACC Files
 
 PNG Images
 ----------
+
+Images are used for both quality diagnostics and plots of measured summary statistics. These would mostly require tweaking to be publication-ready.
 
 .. list-table:: PNG Images
   :header-rows: 1
@@ -349,6 +370,8 @@ PNG Images
 Text Files
 ----------
 
+Smaller data items in TXPipe are sometimes stored in simple text formats.
+
 .. list-table:: PNG Images
   :header-rows: 1
 
@@ -374,11 +397,15 @@ Text Files
 YAML Files
 ----------
 
+The YAML format is used for somewhat more structured key/value type data instead of plain text files.
+
 .. list-table:: PNG Images
   :header-rows: 1
 
+  * - File Tag
+    - Description
   * - fiducial_cosmology
-    - A representation of the fiducial cosmology loaded by CCL
+    - A representation of the fiducial cosmology loaded by CCL. Has its own `FiducialCosmology` class.
   * - star_psf_stats
     - PSF diagnostics for stars
   * - tracer_metadata_yml
@@ -388,9 +415,13 @@ YAML Files
 Pickle Files
 ------------
 
+In a few miscellaneous cases, TXPipe uses the Python pickle format for storing data. We are generally trying to phase this out as it is not very interpretable, but RAIL makes extensive use of this for storing trained PZ models, because they are complex and varied.
+
 .. list-table:: PNG Images
   :header-rows: 1
 
+  * - File Tag
+    - Description
   * - flow
     - Example model for simulating mock spectroscopic population
   * - lens_direct_calibration_model
