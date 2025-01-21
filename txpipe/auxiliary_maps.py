@@ -321,17 +321,16 @@ class TXAuxiliarySSIMaps(TXBaseMaps):
         # Create depth maps using dask and measured magnitudes
         pix2, count_map, depth_map, depth_var = make_dask_depth_map(
             ra, dec, mag_meas, snr, self.config["snr_threshold"], self.config["snr_delta"], pixel_scheme)
-        maps["depth/depth_meas"] = (pix2, depth_map[pix2])
-        maps["depth/depth_meas_count"] = (pix2, count_map[pix2])
-        maps["depth/depth_meas_var"] = (pix2, depth_var[pix2])
+        maps["depth_meas/depth"] = (pix2, depth_map[pix2])
+        maps["depth_meas/depth_count"] = (pix2, count_map[pix2])
+        maps["depth_meas/depth_var"] = (pix2, depth_var[pix2])
 
-
-        # Create depth maps using daskand true magnitudes
+        # Create depth maps using dask and true magnitudes
         pix2, count_map, depth_map, depth_var = make_dask_depth_map(
             ra, dec, mag_true, snr, self.config["snr_threshold"], self.config["snr_delta"], pixel_scheme)
-        maps["depth/depth_true"] = (pix2, depth_map[pix2])
-        maps["depth/depth_true_count"] = (pix2, count_map[pix2])
-        maps["depth/depth_true_var"] = (pix2, depth_var[pix2])
+        maps["depth_true/depth"] = (pix2, depth_map[pix2])
+        maps["depth_true/depth_count"] = (pix2, count_map[pix2])
+        maps["depth_true/depth_var"] = (pix2, depth_var[pix2])
 
         maps, = da.compute(maps)
 

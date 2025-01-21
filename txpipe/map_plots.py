@@ -243,8 +243,8 @@ class TXMapPlotsSSI(TXMapPlots):
 
         # Depth plots (measured magnitude)
         with self.open_output("depth_ssi_meas_map", wrapper=True, figsize=(5, 5)) as fig:
-            m.plot("depth/depth_meas", view=self.config["projection"], rot180=self.config["rot180"])
+            m.plot("depth_meas/depth", view=self.config["projection"], rot180=self.config["rot180"])
 
         # Depth plots (true magnitude)
         with self.open_output("depth_ssi_true_map", wrapper=True, figsize=(5, 5)) as fig:
-            m.plot("depth/depth_true", view=self.config["projection"], rot180=self.config["rot180"])
+            m.plot("depth_true/depth", view=self.config["projection"], rot180=self.config["rot180"])
