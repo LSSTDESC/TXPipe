@@ -10,6 +10,7 @@ class TXFocalPlanePlot(PipelineStage):
     """
 
     name = "TXFocalPlanePlot"
+    parallel = False
 
     inputs = [
         ("star_catalog", HDFFile),

@@ -14,6 +14,7 @@ class TXParqetToHDF(PipelineStage):
     and the appropriate tags will be replaced.
     """
     name = "TXParqetToHDF"
+    parallel = False
     inputs = [
         ("input", ParquetFile),
     ]

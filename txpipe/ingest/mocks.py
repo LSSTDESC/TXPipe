@@ -1224,6 +1224,7 @@ class TXSimpleMock(PipelineStage):
     Load an ascii astropy table and put it in shear catalog format.
     """
     name = "TXSimpleMock"
+    parallel = False
     inputs = [("mock_shear_catalog", TextFile)]
     outputs = [("shear_catalog", ShearCatalog)]
     config_options = {
@@ -1285,6 +1286,7 @@ class TXSimpleMock(PipelineStage):
 
 class TXMockTruthPZ(PipelineStage):
     name = "TXMockTruthPZ"
+    parallel = False
     inputs = [("shear_catalog", ShearCatalog)]
     outputs = [("photoz_pdfs", QPPDFFile)]
     config_options = {

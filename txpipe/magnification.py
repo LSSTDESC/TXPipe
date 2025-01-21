@@ -19,6 +19,7 @@ class TXSSIMagnification(PipelineStage):
     """
 
     name = "TXSSIMagnification"
+    parallel = False
 
     inputs = [
         ("binned_lens_catalog_nomag", HDFFile),
