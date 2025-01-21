@@ -4,8 +4,7 @@ import numpy as np
 
 class TXFocalPlanePlot(PipelineStage):
     """
-    Make diagnostic plot of 
-    mean measured ellipticity and residual
+    Make diagnostic plot of  mean measured ellipticity and residual ellipticity 
     as a function of position in the focal plane
     """
 
