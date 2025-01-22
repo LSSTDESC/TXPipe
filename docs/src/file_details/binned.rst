@@ -13,7 +13,7 @@ The tomographically binned shear catalogs also include the shear calibration to 
 
 The bin index b runs from 0 to nbin-1, or "all" tag for a combined non-tomographic sample. The "all" bin is not simply the same as all the other bins combined, because the selection bias calibration is different.
 
-Like the original source shear catalogs, the binned shear catalogs may include only a subset of magnitude values depending on what was measured during the pipeline.
+Like the original source shear catalogs, the binned shear catalogs may include only a subset of magnitude values depending on what was measured during the pipeline. An example using riz bands is shown below.
 
 =======  =======  =========  ==========  =========
 Group             Name       Kind        Meaning
