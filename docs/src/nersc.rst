@@ -18,7 +18,7 @@ Run the setup command again after starting your job.
 Legacy: Running pipelines at NERSC
 ----------------------------------
 
-This command is deprecated and loads an old set of dependencies
+**This command is deprecated - do not use it for new projects!**
 
 The ``tx`` command runs programs in a TXPipe environment. To run whole pipelines, you can do this:
 

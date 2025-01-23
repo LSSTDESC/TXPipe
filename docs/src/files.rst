@@ -76,7 +76,7 @@ TXPipe catalog files are almost all stored in HDF5 format. They are described in
       - :ref:`Random Catalogs`
       - A catalog of random objects following the same tomographic and location selection as the lens sample but with no underlying structure
     * - shear_catalog
-      - :ref:`Shear Catalogs<Overall Pipeline inputs>`
+      - :ref:`Shear Catalogs<Ingested Catalog Files>`
       - Shear catalogs of various different types
     * - shear_catalog_quantiles
       - :ref:`HDF File<Reading HDF5 Files>`

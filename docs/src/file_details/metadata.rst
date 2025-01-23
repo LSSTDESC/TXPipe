@@ -1,6 +1,8 @@
 Metadata
 ========
 
+The metadata files collect brief statistics for the source and lens samples as a whole, such as number densities. There are two versions of the metadata file, one in HDF5 format and a more human-readable one in YAML form. We should replace the HDF5 format with the YAML format entirely since they are redundant.
+
 =======  =================  ==========  =========
 Group    Name               Kind        Meaning
 =======  =================  ==========  =========

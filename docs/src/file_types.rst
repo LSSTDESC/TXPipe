@@ -94,4 +94,3 @@ Collected File details
     file_details/randoms
     file_details/stars
     file_details/tomography
-    file_details/supreme
