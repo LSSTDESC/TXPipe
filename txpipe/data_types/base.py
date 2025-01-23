@@ -503,7 +503,7 @@ class PickleFile(DataFile):
 
 
 class ParquetFile(DataFile):
-    suffiz = "pq"
+    suffix = "pq"
 
     def open(self, path, mode):
         import pyarrow.parquet

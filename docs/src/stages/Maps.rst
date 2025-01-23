@@ -6,7 +6,7 @@ plotting.
 
 * :py:class:`~txpipe.maps.TXBaseMaps` - A base class for mapping stages
 
-* :py:class:`~txpipe.maps.TXSourceMaps` - Make tomographic shear maps
+* :py:class:`~txpipe.maps.TXSourceMaps` - Generate source maps directly from binned, calibrated shear catalogs.
 
 * :py:class:`~txpipe.maps.TXLensMaps` - Make tomographic lens number count maps
 
@@ -22,13 +22,17 @@ plotting.
 
 * :py:class:`~txpipe.noise_maps.TXNoiseMapsJax` - Generate noise realisations of lens and source maps using JAX
 
-* :py:class:`~txpipe.auxiliary_maps.TXAuxiliarySourceMaps` - Generate auxiliary maps from the source catalog
+* :py:class:`~txpipe.auxiliary_maps.TXAuxiliarySourceMaps` - Stage TXAuxiliarySourceMaps
 
 * :py:class:`~txpipe.auxiliary_maps.TXAuxiliaryLensMaps` - Generate auxiliary maps from the lens catalog
 
 * :py:class:`~txpipe.auxiliary_maps.TXUniformDepthMap` - Generate a uniform depth map from the mask
 
 * :py:class:`~txpipe.masks.TXSimpleMask` - Make a simple binary mask using a depth cut and bright object cut
+
+* :py:class:`~txpipe.masks.TXSimpleMaskSource` - Stage TXSimpleMaskSource
+
+* :py:class:`~txpipe.masks.TXSimpleMaskFrac` - Make a simple mask using a depth cut and bright object cut
 
 * :py:class:`~txpipe.convergence.TXConvergenceMaps` - Make a convergence map from a source map using Kaiser-Squires
 
@@ -85,6 +89,14 @@ plotting.
 
 
 .. autoclass:: txpipe.masks.TXSimpleMask
+   :members:
+
+
+.. autoclass:: txpipe.masks.TXSimpleMaskSource
+   :members:
+
+
+.. autoclass:: txpipe.masks.TXSimpleMaskFrac
    :members:
 
 
