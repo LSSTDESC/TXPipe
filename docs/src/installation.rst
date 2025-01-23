@@ -18,6 +18,6 @@ This will create a conda environment with all the necessary dependencies in the 
 It will print out the command to activate the environment, which you can copy and paste into your shell.
 
 
-See `CC-IN2P3 Installation` for the French CC-IN2P3 machine instructions.
+See :ref:`CC-IN2P3 Installation` for the French CC-IN2P3 machine instructions.
 
 For other clusters, please open an issue.
