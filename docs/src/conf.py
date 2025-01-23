@@ -62,7 +62,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'TXPipe'
-copyright = u'2022, DESC'
+copyright = u'2022-2025, DESC'
 author = u'DESC'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -218,9 +218,9 @@ texinfo_documents = [
 
 #autoclass_content = 'both'
 
-autodoc_mock_imports = ['ceci', 'cmake','camb', 'cosmosis-standalone', 'firecrown', 
+autodoc_mock_imports = ['cmake','camb', 'cosmosis-standalone', 'firecrown', 
                         'fitsio', 'GCRCatalogs', 'mlz-desc', 'parallel-statistics', 
-                        'psutil', 'pyccl', 'sacc', 'sklearn', 'treecorr', 'GCR', 
+                        'pyccl', 'sacc', 'sklearn', 'treecorr', 'GCR', 
                         'easyquery', 'LSSTDESC.Coord', 'mpi4py', 'pyyaml', 
                         'parallel_statistics', 'mpmath','tkinter','paramiko', 
 						 'pygraphviz', 'pymaster', 'PIL', 'IPython', 'healpy']

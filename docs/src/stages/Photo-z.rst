@@ -10,9 +10,9 @@ These stages deal with photo-z PDF training and estimation
 
 
 .. autoclass:: txpipe.photoz_stack.TXPhotozStack
-   :members:
 
+    **parallel**: Yes - MPI
 
 .. autoclass:: txpipe.photoz_stack.TXTruePhotozStack
-   :members:
 
+    **parallel**: Yes - MPI

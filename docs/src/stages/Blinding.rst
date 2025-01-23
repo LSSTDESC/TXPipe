@@ -10,9 +10,9 @@ These stages deal with blinding measurements
 
 
 .. autoclass:: txpipe.blinding.TXBlinding
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.blinding.TXNullBlinding
-   :members:
 
+    **parallel**: No - Serial

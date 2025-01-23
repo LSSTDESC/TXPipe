@@ -41,69 +41,69 @@ plotting.
 
 
 .. autoclass:: txpipe.maps.TXBaseMaps
-   :members:
 
+    **parallel**: Yes - MPI
 
 .. autoclass:: txpipe.maps.TXSourceMaps
-   :members:
 
+    **parallel**: Yes - Dask
 
 .. autoclass:: txpipe.maps.TXLensMaps
-   :members:
 
+    **parallel**: Yes - Dask
 
 .. autoclass:: txpipe.maps.TXExternalLensMaps
-   :members:
 
+    **parallel**: Yes - Dask
 
 .. autoclass:: txpipe.maps.TXDensityMaps
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.noise_maps.TXSourceNoiseMaps
-   :members:
 
+    **parallel**: Yes - MPI
 
 .. autoclass:: txpipe.noise_maps.TXLensNoiseMaps
-   :members:
 
+    **parallel**: Yes - MPI
 
 .. autoclass:: txpipe.noise_maps.TXExternalLensNoiseMaps
-   :members:
 
+    **parallel**: Yes - MPI
 
 .. autoclass:: txpipe.noise_maps.TXNoiseMapsJax
-   :members:
 
+    **parallel**: Yes - MPI
 
 .. autoclass:: txpipe.auxiliary_maps.TXAuxiliarySourceMaps
-   :members:
 
+    **parallel**: Yes - Dask
 
 .. autoclass:: txpipe.auxiliary_maps.TXAuxiliaryLensMaps
-   :members:
 
+    **parallel**: Yes - Dask
 
 .. autoclass:: txpipe.auxiliary_maps.TXUniformDepthMap
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.masks.TXSimpleMask
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.masks.TXSimpleMaskSource
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.masks.TXSimpleMaskFrac
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.convergence.TXConvergenceMaps
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.map_correlations.TXMapCorrelations
-   :members:
 
+    **parallel**: No - Serial

@@ -29,45 +29,45 @@ simpler input catalogs.
 
 
 .. autoclass:: txpipe.exposure_info.TXExposureInfo
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.ingest.dp02.TXIngestDataPreview02
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.ingest.mocks.TXCosmoDC2Mock
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.ingest.mocks.TXBuzzardMock
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.ingest.mocks.TXGaussianSimsMock
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.ingest.mocks.TXSimpleMock
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.ingest.mocks.TXMockTruthPZ
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.ingest.gcr.TXMetacalGCRInput
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.ingest.gcr.TXIngestStars
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.ingest.redmagic.TXIngestRedmagic
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.simulation.TXLogNormalGlass
-   :members:
 
+    **parallel**: No - Serial

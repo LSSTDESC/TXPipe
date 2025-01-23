@@ -191,6 +191,11 @@ Source Injection:
         - TXIngestSSIMatched
         - TXIngestSSIMatchedDESBalrog
         - TXSSIMagnification
+        - TXAuxiliarySSIMaps
+        - TXMapPlotsSSI
+        - TXIngestSSI
+        - TXIngestSSIDESBalrog
+        - TXIngestSSIDetectionDESBalrog
 
 
 Extensions:
@@ -249,7 +254,7 @@ for class_name, (cls, path) in txpipe.PipelineStage.pipeline_stages.items():
     qual_name = get_name(cls)
     section = stages.get(class_name, "New and Miscellaneous")
     doc = get_doc_line(cls)
-    qual_names[section].append((qual_name, doc))
+    qual_names[section].append((qual_name, doc, cls.parallel, cls.dask_parallel))
 
 
 for name, section_data in sections.items():
@@ -259,15 +264,21 @@ for name, section_data in sections.items():
         f.write(section_data["blurb"] + "\n")
         files[name] = f
 
-        for qual_name, doc in qual_names[name]:
+        for qual_name, doc, _, _ in qual_names[name]:
             f.write(f"* :py:class:`~{qual_name}` - {doc}\n\n")
         f.write("\n")
 
-        for qual_name, _ in qual_names[name]:
+        for qual_name, _, parallel, dask_parallel in qual_names[name]:
+            if dask_parallel:
+                par_text = "Yes - Dask"
+            elif parallel:
+                par_text = "Yes - MPI"
+            else:
+                par_text = "No - Serial"
             f.write(f"""
 .. autoclass:: {qual_name}
-   :members:
 
+    **parallel**: {par_text}
 """)
 
 

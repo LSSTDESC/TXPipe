@@ -20,29 +20,29 @@ These stages make plots out TXPipe output data
 
 
 .. autoclass:: txpipe.photoz_stack.TXPhotozPlot
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.map_plots.TXMapPlots
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.convergence.TXConvergenceMapPlots
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.rail.summarize.PZRealizationsPlot
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.twopoint_plots.TXTwoPointPlots
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.twopoint_plots.TXTwoPointPlotsFourier
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.twopoint_plots.TXTwoPointPlotsTheory
-   :members:
 
+    **parallel**: No - Serial

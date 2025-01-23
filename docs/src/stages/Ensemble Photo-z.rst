@@ -8,5 +8,5 @@ These stages compute ensemble redshift histograms n(z) for bins
 
 
 .. autoclass:: txpipe.rail.summarize.PZRailSummarize
-   :members:
 
+    **parallel**: Yes - MPI

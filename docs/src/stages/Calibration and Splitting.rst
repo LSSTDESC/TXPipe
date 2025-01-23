@@ -19,25 +19,25 @@ sub-catalogs.
 
 
 .. autoclass:: txpipe.lens_selector.TXLensCatalogSplitter
-   :members:
 
+    **parallel**: Yes - MPI
 
 .. autoclass:: txpipe.lens_selector.TXTruthLensCatalogSplitter
-   :members:
 
+    **parallel**: Yes - MPI
 
 .. autoclass:: txpipe.lens_selector.TXExternalLensCatalogSplitter
-   :members:
 
+    **parallel**: Yes - MPI
 
 .. autoclass:: txpipe.lens_selector.TXTruthLensCatalogSplitterWeighted
-   :members:
 
+    **parallel**: Yes - MPI
 
 .. autoclass:: txpipe.twopoint_null_tests.TXStarCatalogSplitter
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.calibrate.TXShearCalibration
-   :members:
 
+    **parallel**: Yes - MPI

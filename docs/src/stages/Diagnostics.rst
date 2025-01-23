@@ -36,61 +36,61 @@ These stages compute and/or plot diagnostics of catalogs or other data
 
 
 .. autoclass:: txpipe.diagnostics.TXDiagnosticQuantiles
-   :members:
 
+    **parallel**: Yes - Dask
 
 .. autoclass:: txpipe.diagnostics.TXSourceDiagnosticPlots
-   :members:
 
+    **parallel**: Yes - MPI
 
 .. autoclass:: txpipe.diagnostics.TXLensDiagnosticPlots
-   :members:
 
+    **parallel**: Yes - Dask
 
 .. autoclass:: txpipe.psf_diagnostics.TXPSFDiagnostics
-   :members:
 
+    **parallel**: Yes - MPI
 
 .. autoclass:: txpipe.psf_diagnostics.TXPSFMomentCorr
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.psf_diagnostics.TXTauStatistics
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.psf_diagnostics.TXRoweStatistics
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.psf_diagnostics.TXGalaxyStarShear
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.psf_diagnostics.TXGalaxyStarDensity
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.psf_diagnostics.TXBrighterFatterPlot
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.twopoint_null_tests.TXGammaTFieldCenters
-   :members:
 
+    **parallel**: Yes - MPI
 
 .. autoclass:: txpipe.twopoint_null_tests.TXGammaTStars
-   :members:
 
+    **parallel**: Yes - MPI
 
 .. autoclass:: txpipe.twopoint_null_tests.TXGammaTRandoms
-   :members:
 
+    **parallel**: Yes - MPI
 
 .. autoclass:: txpipe.twopoint_null_tests.TXApertureMass
-   :members:
 
+    **parallel**: Yes - MPI
 
 .. autoclass:: txpipe.spatial_diagnostics.TXFocalPlanePlot
-   :members:
 
+    **parallel**: No - Serial

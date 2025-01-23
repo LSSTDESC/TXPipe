@@ -137,7 +137,7 @@ class TXIngestSSI(PipelineStage):
 
 class TXIngestSSIGCR(TXIngestSSI):
     """
-    Class for ingesting SSI catalogs using GCR
+    Ingest SSI catalogs using GCR
 
     Does not treat the injection or ssi photometry catalogs as formal inputs
     since they are not in a format TXPipe can recognize
@@ -241,7 +241,7 @@ class TXIngestSSIGCR(TXIngestSSI):
 
 class TXMatchSSI(PipelineStage):
     """
-    Class for matching an SSI injection catalog and a photometry catalog
+    Match an SSI injection catalog and a photometry catalog
 
     Default inputs are in TXPipe photometry catalog format
 
@@ -456,7 +456,7 @@ class TXIngestSSIDESBalrog(TXIngestSSI):
 
 class TXIngestSSIMatchedDESBalrog(TXIngestSSIDESBalrog):
     """
-    Class for ingesting a matched "SSI" catalog from DES (AKA Balrog)
+    Ingest a matched "SSI" catalog from DES (AKA Balrog)
     """
 
     name = "TXIngestSSIMatchedDESBalrog"
@@ -506,7 +506,7 @@ class TXIngestSSIMatchedDESBalrog(TXIngestSSIDESBalrog):
     
 class TXIngestSSIDetectionDESBalrog(TXIngestSSIDESBalrog):
     """
-    Class for ingesting an "SSI" "detection" catalog from DES (AKA Balrog)
+    Ingest an "SSI" "detection" catalog from DES (AKA Balrog)
     """
 
     name = "TXIngestSSIDetectionDESBalrog"

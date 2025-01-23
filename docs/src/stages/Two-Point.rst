@@ -21,52 +21,52 @@ These stages deal with measuring or predicting two-point statistics.
 
 * :py:class:`~txpipe.jackknife.TXJackknifeCenters` - Generate jack-knife centers from random catalogs.
 
-* :py:class:`~txpipe.jackknife.TXJackknifeCentersSource` - Stage TXJackknifeCentersSource
+* :py:class:`~txpipe.jackknife.TXJackknifeCentersSource` - Generate jack-knife centers from a shear catalog.
 
 * :py:class:`~txpipe.extensions.clmm.rlens.TXTwoPointRLens` - Measure 2-pt shear-position using the Rlens metric
 
 
 
 .. autoclass:: txpipe.random_cats.TXRandomCat
-   :members:
 
+    **parallel**: Yes - MPI
 
 .. autoclass:: txpipe.random_cats.TXSubsampleRandoms
-   :members:
 
+    **parallel**: Yes - MPI
 
 .. autoclass:: txpipe.twopoint_fourier.TXTwoPointFourier
-   :members:
 
+    **parallel**: Yes - MPI
 
 .. autoclass:: txpipe.twopoint.TXTwoPoint
-   :members:
 
+    **parallel**: Yes - MPI
 
 .. autoclass:: txpipe.twopoint.TXTwoPointPixel
-   :members:
 
+    **parallel**: Yes - MPI
 
 .. autoclass:: txpipe.twopoint.TXTwoPointPixelExtCross
-   :members:
 
+    **parallel**: Yes - MPI
 
 .. autoclass:: txpipe.theory.TXTwoPointTheoryReal
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.theory.TXTwoPointTheoryFourier
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.jackknife.TXJackknifeCenters
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.jackknife.TXJackknifeCentersSource
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.extensions.clmm.rlens.TXTwoPointRLens
-   :members:
 
+    **parallel**: Yes - MPI

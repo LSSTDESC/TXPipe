@@ -14,17 +14,17 @@ These stages deal with weighting the lens sample
 
 
 .. autoclass:: txpipe.lssweights.TXLSSWeights
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.lssweights.TXLSSWeightsLinBinned
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.lssweights.TXLSSWeightsLinPix
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.lssweights.TXLSSWeightsUnit
-   :members:
 
+    **parallel**: No - Serial

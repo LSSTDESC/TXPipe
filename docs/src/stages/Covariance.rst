@@ -16,21 +16,21 @@ These stages compute covariances of measurements
 
 
 .. autoclass:: txpipe.covariance.TXFourierGaussianCovariance
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.covariance.TXRealGaussianCovariance
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.covariance.TXFourierTJPCovariance
-   :members:
 
+    **parallel**: Yes - MPI
 
 .. autoclass:: txpipe.covariance_nmt.TXFourierNamasterCovariance
-   :members:
 
+    **parallel**: Yes - MPI
 
 .. autoclass:: txpipe.covariance_nmt.TXRealNamasterCovariance
-   :members:
 
+    **parallel**: Yes - MPI

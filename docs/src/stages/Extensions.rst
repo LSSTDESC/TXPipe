@@ -14,17 +14,17 @@ These stages are written for TXPipe extension projects.
 
 
 .. autoclass:: txpipe.extensions.clmm.bin_cluster.CLClusterBinningRedshiftRichness
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.extensions.clmm.sources_select_compute.CLClusterShearCatalogs
-   :members:
 
+    **parallel**: Yes - MPI
 
 .. autoclass:: txpipe.extensions.clmm.make_ensemble_profile.CLClusterEnsembleProfiles
-   :members:
 
+    **parallel**: Yes - MPI
 
 .. autoclass:: txpipe.extensions.twopoint_scia.TXSelfCalibrationIA
-   :members:
 
+    **parallel**: Yes - MPI

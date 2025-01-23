@@ -13,8 +13,9 @@ import warnings
 
 class TXSSIMagnification(PipelineStage):
     """
-    class for computing the magnification coefficients using SSI outputs
-    Following the methodology of https://arxiv.org/abs/2012.12825
+    Compute the magnification coefficients using SSI outputs
+
+    Follows the methodology of https://arxiv.org/abs/2012.12825
     and https://arxiv.org/abs/2209.09782
     """
 

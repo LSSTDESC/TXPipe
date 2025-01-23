@@ -29,45 +29,45 @@ bins.
 
 
 .. autoclass:: txpipe.source_selector.TXSourceSelectorBase
-   :members:
 
+    **parallel**: Yes - MPI
 
 .. autoclass:: txpipe.source_selector.TXSourceSelectorMetacal
-   :members:
 
+    **parallel**: Yes - MPI
 
 .. autoclass:: txpipe.source_selector.TXSourceSelectorMetadetect
-   :members:
 
+    **parallel**: Yes - MPI
 
 .. autoclass:: txpipe.source_selector.TXSourceSelectorLensfit
-   :members:
 
+    **parallel**: Yes - MPI
 
 .. autoclass:: txpipe.source_selector.TXSourceSelectorSimple
-   :members:
 
+    **parallel**: Yes - MPI
 
 .. autoclass:: txpipe.source_selector.TXSourceSelectorHSC
-   :members:
 
+    **parallel**: Yes - MPI
 
 .. autoclass:: txpipe.lens_selector.TXBaseLensSelector
-   :members:
 
+    **parallel**: Yes - MPI
 
 .. autoclass:: txpipe.lens_selector.TXTruthLensSelector
-   :members:
 
+    **parallel**: Yes - MPI
 
 .. autoclass:: txpipe.lens_selector.TXMeanLensSelector
-   :members:
 
+    **parallel**: Yes - MPI
 
 .. autoclass:: txpipe.lens_selector.TXModeLensSelector
-   :members:
 
+    **parallel**: Yes - MPI
 
 .. autoclass:: txpipe.lens_selector.TXRandomForestLensSelector
-   :members:
 
+    **parallel**: Yes - MPI

@@ -11,9 +11,9 @@ assigned to one.
 
 
 .. autoclass:: txpipe.metadata.TXTracerMetadata
-   :members:
 
+    **parallel**: No - Serial
 
 .. autoclass:: txpipe.rail.conversions.TXParqetToHDF
-   :members:
 
+    **parallel**: No - Serial
