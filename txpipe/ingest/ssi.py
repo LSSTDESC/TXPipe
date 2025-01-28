@@ -34,7 +34,7 @@ class TXIngestSSI(PipelineStage):
         column names, creates datasets for photometric magnitudes and their errors,
         and iterates over chunks of data to save them in the output file.
 
-        Parameters:
+        Parameters
         ----------
         input_name : str
             name of (FITS) input
