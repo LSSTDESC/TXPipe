@@ -8,3 +8,5 @@ sphinx_rtd_theme
 recommonmark
 ceci
 psutil
+autoclasstoc
+sphinx-toolbox
