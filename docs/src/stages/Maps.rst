@@ -44,6 +44,8 @@ plotting.
     :members:
     :exclude-members: run
 
+    Parallel: Yes - MPI
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -56,6 +58,8 @@ plotting.
 .. autotxclass:: txpipe.maps.TXSourceMaps
     :members:
     :exclude-members: run
+
+    Parallel: Yes - Dask
 
     .. collapse:: Configuration
 
@@ -80,6 +84,8 @@ plotting.
     :members:
     :exclude-members: run
 
+    Parallel: Yes - Dask
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -102,6 +108,8 @@ plotting.
 .. autotxclass:: txpipe.maps.TXExternalLensMaps
     :members:
     :exclude-members: run
+
+    Parallel: Yes - Dask
 
     .. collapse:: Configuration
 
@@ -126,6 +134,8 @@ plotting.
     :members:
     :exclude-members: run
 
+    Parallel: No - Serial
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -139,6 +149,8 @@ plotting.
 .. autotxclass:: txpipe.noise_maps.TXSourceNoiseMaps
     :members:
     :exclude-members: run
+
+    Parallel: Yes - MPI
 
     .. collapse:: Configuration
 
@@ -156,6 +168,8 @@ plotting.
     :members:
     :exclude-members: run
 
+    Parallel: Yes - MPI
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -171,6 +185,8 @@ plotting.
 .. autotxclass:: txpipe.noise_maps.TXExternalLensNoiseMaps
     :members:
     :exclude-members: run
+
+    Parallel: Yes - MPI
 
     .. collapse:: Configuration
 
@@ -188,6 +204,8 @@ plotting.
     :members:
     :exclude-members: run
 
+    Parallel: Yes - MPI
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -204,6 +222,8 @@ plotting.
 .. autotxclass:: txpipe.auxiliary_maps.TXAuxiliarySourceMaps
     :members:
     :exclude-members: run
+
+    Parallel: Yes - Dask
 
     .. collapse:: Configuration
 
@@ -230,6 +250,8 @@ plotting.
     :members:
     :exclude-members: run
 
+    Parallel: Yes - Dask
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -248,6 +270,8 @@ plotting.
     :members:
     :exclude-members: run
 
+    Parallel: No - Serial
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -261,6 +285,8 @@ plotting.
 .. autotxclass:: txpipe.masks.TXSimpleMask
     :members:
     :exclude-members: run
+
+    Parallel: No - Serial
 
     .. collapse:: Configuration
 
@@ -277,6 +303,8 @@ plotting.
     :members:
     :exclude-members: run
 
+    Parallel: No - Serial
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -289,6 +317,8 @@ plotting.
 .. autotxclass:: txpipe.masks.TXSimpleMaskFrac
     :members:
     :exclude-members: run
+
+    Parallel: No - Serial
 
     .. collapse:: Configuration
 
@@ -306,6 +336,8 @@ plotting.
     :members:
     :exclude-members: run
 
+    Parallel: No - Serial
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -320,6 +352,8 @@ plotting.
 .. autotxclass:: txpipe.map_correlations.TXMapCorrelations
     :members:
     :exclude-members: run
+
+    Parallel: No - Serial
 
     .. collapse:: Configuration
 

@@ -11,6 +11,8 @@ These stages compute ensemble redshift histograms n(z) for bins
     :members:
     :exclude-members: run
 
+    Parallel: Yes - MPI
+
     .. collapse:: Configuration
 
         .. raw:: html

@@ -32,6 +32,8 @@ simpler input catalogs.
     :members:
     :exclude-members: run
 
+    Parallel: No - Serial
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -48,6 +50,8 @@ simpler input catalogs.
     :members:
     :exclude-members: run
 
+    Parallel: No - Serial
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -62,6 +66,8 @@ simpler input catalogs.
 .. autotxclass:: txpipe.ingest.mocks.TXCosmoDC2Mock
     :members:
     :exclude-members: run
+
+    Parallel: No - Serial
 
     .. collapse:: Configuration
 
@@ -90,6 +96,8 @@ simpler input catalogs.
     :members:
     :exclude-members: run
 
+    Parallel: No - Serial
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -110,6 +118,8 @@ simpler input catalogs.
 .. autotxclass:: txpipe.ingest.mocks.TXGaussianSimsMock
     :members:
     :exclude-members: run
+
+    Parallel: No - Serial
 
     .. collapse:: Configuration
 
@@ -136,6 +146,8 @@ simpler input catalogs.
     :members:
     :exclude-members: run
 
+    Parallel: No - Serial
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -150,6 +162,8 @@ simpler input catalogs.
     :members:
     :exclude-members: run
 
+    Parallel: No - Serial
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -163,6 +177,8 @@ simpler input catalogs.
 .. autotxclass:: txpipe.ingest.gcr.TXMetacalGCRInput
     :members:
     :exclude-members: run
+
+    Parallel: No - Serial
 
     .. collapse:: Configuration
 
@@ -182,6 +198,8 @@ simpler input catalogs.
     :members:
     :exclude-members: run
 
+    Parallel: No - Serial
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -197,6 +215,8 @@ simpler input catalogs.
 .. autotxclass:: txpipe.ingest.redmagic.TXIngestRedmagic
     :members:
     :exclude-members: run
+
+    Parallel: No - Serial
 
     .. collapse:: Configuration
 
@@ -216,6 +236,8 @@ simpler input catalogs.
 .. autotxclass:: txpipe.simulation.TXLogNormalGlass
     :members:
     :exclude-members: run
+
+    Parallel: No - Serial
 
     .. collapse:: Configuration
 

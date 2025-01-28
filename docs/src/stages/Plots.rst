@@ -23,6 +23,8 @@ These stages make plots out TXPipe output data
     :members:
     :exclude-members: run
 
+    Parallel: No - Serial
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -37,6 +39,8 @@ These stages make plots out TXPipe output data
 .. autotxclass:: txpipe.map_plots.TXMapPlots
     :members:
     :exclude-members: run
+
+    Parallel: No - Serial
 
     .. collapse:: Configuration
 
@@ -54,6 +58,8 @@ These stages make plots out TXPipe output data
     :members:
     :exclude-members: run
 
+    Parallel: No - Serial
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -67,6 +73,8 @@ These stages make plots out TXPipe output data
 .. autotxclass:: txpipe.rail.summarize.PZRealizationsPlot
     :members:
     :exclude-members: run
+
+    Parallel: No - Serial
 
     .. collapse:: Configuration
 
@@ -83,6 +91,8 @@ These stages make plots out TXPipe output data
     :members:
     :exclude-members: run
 
+    Parallel: No - Serial
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -98,6 +108,8 @@ These stages make plots out TXPipe output data
     :members:
     :exclude-members: run
 
+    Parallel: No - Serial
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -112,6 +124,8 @@ These stages make plots out TXPipe output data
 .. autotxclass:: txpipe.twopoint_plots.TXTwoPointPlotsTheory
     :members:
     :exclude-members: run
+
+    Parallel: No - Serial
 
     .. collapse:: Configuration
 

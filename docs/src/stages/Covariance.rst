@@ -19,6 +19,8 @@ These stages compute covariances of measurements
     :members:
     :exclude-members: run
 
+    Parallel: No - Serial
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -35,6 +37,8 @@ These stages compute covariances of measurements
 .. autotxclass:: txpipe.covariance.TXRealGaussianCovariance
     :members:
     :exclude-members: run
+
+    Parallel: No - Serial
 
     .. collapse:: Configuration
 
@@ -56,6 +60,8 @@ These stages compute covariances of measurements
     :members:
     :exclude-members: run
 
+    Parallel: Yes - MPI
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -73,6 +79,8 @@ These stages compute covariances of measurements
     :members:
     :exclude-members: run
 
+    Parallel: Yes - MPI
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -89,6 +97,8 @@ These stages compute covariances of measurements
 .. autotxclass:: txpipe.covariance_nmt.TXRealNamasterCovariance
     :members:
     :exclude-members: run
+
+    Parallel: Yes - MPI
 
     .. collapse:: Configuration
 
