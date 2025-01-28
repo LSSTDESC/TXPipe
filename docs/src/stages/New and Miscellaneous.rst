@@ -10,10 +10,29 @@ assigned to one.
 
 
 
-.. autoclass:: txpipe.metadata.TXTracerMetadata
+.. autotxclass:: txpipe.metadata.TXTracerMetadata
+    :members:
+    :exclude-members: run
 
-    **parallel**: No - Serial
+    .. collapse:: Configuration
 
-.. autoclass:: txpipe.rail.conversions.TXParqetToHDF
+        .. raw:: html
 
-    **parallel**: No - Serial
+            <UL>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.rail.conversions.TXParqetToHDF
+    :members:
+    :exclude-members: run
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>hdf_group</strong>: (str) Default=/. </LI>
+            </UL>
+
+

@@ -23,38 +23,138 @@ These stages ingest and use synthetic source injection information
 
 
 
-.. autoclass:: txpipe.auxiliary_maps.TXAuxiliarySSIMaps
+.. autotxclass:: txpipe.auxiliary_maps.TXAuxiliarySSIMaps
+    :members:
+    :exclude-members: run
 
-    **parallel**: Yes - Dask
+    .. collapse:: Configuration
 
-.. autoclass:: txpipe.map_plots.TXMapPlotsSSI
+        .. raw:: html
 
-    **parallel**: No - Serial
+            <UL>
+            <LI><strong>block_size</strong>: (int) Default=0. </LI>
+            <LI><strong>depth_band</strong>: (str) Default=i. </LI>
+            <LI><strong>snr_threshold</strong>: (float) Default=10.0. </LI>
+            <LI><strong>snr_delta</strong>: (float) Default=1.0. </LI>
+            </UL>
 
-.. autoclass:: txpipe.ingest.ssi.TXIngestSSI
 
-    **parallel**: Yes - MPI
 
-.. autoclass:: txpipe.ingest.ssi.TXIngestSSIGCR
+.. autotxclass:: txpipe.map_plots.TXMapPlotsSSI
+    :members:
+    :exclude-members: run
 
-    **parallel**: No - Serial
+    .. collapse:: Configuration
 
-.. autoclass:: txpipe.ingest.ssi.TXMatchSSI
+        .. raw:: html
 
-    **parallel**: Yes - MPI
+            <UL>
+            <LI><strong>projection</strong>: (str) Default=cart. </LI>
+            <LI><strong>rot180</strong>: (bool) Default=False. </LI>
+            <LI><strong>debug</strong>: (bool) Default=False. </LI>
+            </UL>
 
-.. autoclass:: txpipe.ingest.ssi.TXIngestSSIDESBalrog
 
-    **parallel**: Yes - MPI
 
-.. autoclass:: txpipe.ingest.ssi.TXIngestSSIMatchedDESBalrog
+.. autotxclass:: txpipe.ingest.ssi.TXIngestSSI
+    :members:
+    :exclude-members: run
 
-    **parallel**: Yes - MPI
+    .. collapse:: Configuration
 
-.. autoclass:: txpipe.ingest.ssi.TXIngestSSIDetectionDESBalrog
+        .. raw:: html
 
-    **parallel**: Yes - MPI
+            <UL>
+            </UL>
 
-.. autoclass:: txpipe.magnification.TXSSIMagnification
 
-    **parallel**: No - Serial
+
+.. autotxclass:: txpipe.ingest.ssi.TXIngestSSIGCR
+    :members:
+    :exclude-members: run
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>injection_catalog_name</strong>: (str) Default=. </LI>
+            <LI><strong>ssi_photometry_catalog_name</strong>: (str) Default=. </LI>
+            <LI><strong>ssi_uninjected_photometry_catalog_name</strong>: (str) Default=. </LI>
+            <LI><strong>GCRcatalog_path</strong>: (str) Default=. </LI>
+            <LI><strong>flux_name</strong>: (str) Default=gaap3p0Flux. </LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.ingest.ssi.TXMatchSSI
+    :members:
+    :exclude-members: run
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>chunk_rows</strong>: (int) Default=100000. </LI>
+            <LI><strong>match_radius</strong>: (float) Default=0.5. </LI>
+            <LI><strong>magnification</strong>: (int) Default=0. </LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.ingest.ssi.TXIngestSSIDESBalrog
+    :members:
+    :exclude-members: run
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.ingest.ssi.TXIngestSSIMatchedDESBalrog
+    :members:
+    :exclude-members: run
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.ingest.ssi.TXIngestSSIDetectionDESBalrog
+    :members:
+    :exclude-members: run
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.magnification.TXSSIMagnification
+    :members:
+    :exclude-members: run
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>chunk_rows</strong>: (int) Default=10000. </LI>
+            <LI><strong>applied_magnification</strong>: (float) Default=1.02. </LI>
+            <LI><strong>n_patches</strong>: (int) Default=20. </LI>
+            <LI><strong>bootstrap_error</strong>: (bool) Default=True. </LI>
+            </UL>
+
+

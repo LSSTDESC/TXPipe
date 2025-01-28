@@ -19,30 +19,107 @@ These stages make plots out TXPipe output data
 
 
 
-.. autoclass:: txpipe.photoz_stack.TXPhotozPlot
+.. autotxclass:: txpipe.photoz_stack.TXPhotozPlot
+    :members:
+    :exclude-members: run
 
-    **parallel**: No - Serial
+    .. collapse:: Configuration
 
-.. autoclass:: txpipe.map_plots.TXMapPlots
+        .. raw:: html
 
-    **parallel**: No - Serial
+            <UL>
+            <LI><strong>label</strong>: (str) Default=. </LI>
+            <LI><strong>zmax</strong>: (float) Default=3.0. </LI>
+            </UL>
 
-.. autoclass:: txpipe.convergence.TXConvergenceMapPlots
 
-    **parallel**: No - Serial
 
-.. autoclass:: txpipe.rail.summarize.PZRealizationsPlot
+.. autotxclass:: txpipe.map_plots.TXMapPlots
+    :members:
+    :exclude-members: run
 
-    **parallel**: No - Serial
+    .. collapse:: Configuration
 
-.. autoclass:: txpipe.twopoint_plots.TXTwoPointPlots
+        .. raw:: html
 
-    **parallel**: No - Serial
+            <UL>
+            <LI><strong>projection</strong>: (str) Default=cart. </LI>
+            <LI><strong>rot180</strong>: (bool) Default=False. </LI>
+            <LI><strong>debug</strong>: (bool) Default=False. </LI>
+            </UL>
 
-.. autoclass:: txpipe.twopoint_plots.TXTwoPointPlotsFourier
 
-    **parallel**: No - Serial
 
-.. autoclass:: txpipe.twopoint_plots.TXTwoPointPlotsTheory
+.. autotxclass:: txpipe.convergence.TXConvergenceMapPlots
+    :members:
+    :exclude-members: run
 
-    **parallel**: No - Serial
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>projection</strong>: (str) Default=cart. </LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.rail.summarize.PZRealizationsPlot
+    :members:
+    :exclude-members: run
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>zmax</strong>: (float) Default=3.0. </LI>
+            <LI><strong>nz</strong>: (int) Default=301. </LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.twopoint_plots.TXTwoPointPlots
+    :members:
+    :exclude-members: run
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>wspace</strong>: (float) Default=0.05. </LI>
+            <LI><strong>hspace</strong>: (float) Default=0.05. </LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.twopoint_plots.TXTwoPointPlotsFourier
+    :members:
+    :exclude-members: run
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>wspace</strong>: (float) Default=0.05. </LI>
+            <LI><strong>hspace</strong>: (float) Default=0.05. </LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.twopoint_plots.TXTwoPointPlotsTheory
+    :members:
+    :exclude-members: run
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>wspace</strong>: (float) Default=0.05. </LI>
+            <LI><strong>hspace</strong>: (float) Default=0.05. </LI>
+            </UL>
+
+

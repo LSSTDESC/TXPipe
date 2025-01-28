@@ -18,26 +18,104 @@ sub-catalogs.
 
 
 
-.. autoclass:: txpipe.lens_selector.TXLensCatalogSplitter
+.. autotxclass:: txpipe.lens_selector.TXLensCatalogSplitter
+    :members:
+    :exclude-members: run
 
-    **parallel**: Yes - MPI
+    .. collapse:: Configuration
 
-.. autoclass:: txpipe.lens_selector.TXTruthLensCatalogSplitter
+        .. raw:: html
 
-    **parallel**: Yes - MPI
+            <UL>
+            <LI><strong>initial_size</strong>: (int) Default=100000. </LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=100000. </LI>
+            <LI><strong>extra_cols</strong>: (list) Default=['']. </LI>
+            <LI><strong>redshift_column</strong>: (str) Default=zmean. </LI>
+            </UL>
 
-.. autoclass:: txpipe.lens_selector.TXExternalLensCatalogSplitter
 
-    **parallel**: Yes - MPI
 
-.. autoclass:: txpipe.lens_selector.TXTruthLensCatalogSplitterWeighted
+.. autotxclass:: txpipe.lens_selector.TXTruthLensCatalogSplitter
+    :members:
+    :exclude-members: run
 
-    **parallel**: Yes - MPI
+    .. collapse:: Configuration
 
-.. autoclass:: txpipe.twopoint_null_tests.TXStarCatalogSplitter
+        .. raw:: html
 
-    **parallel**: No - Serial
+            <UL>
+            <LI><strong>initial_size</strong>: (int) Default=100000. </LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=100000. </LI>
+            <LI><strong>extra_cols</strong>: (list) Default=['']. </LI>
+            <LI><strong>redshift_column</strong>: (str) Default=redshift_true. </LI>
+            </UL>
 
-.. autoclass:: txpipe.calibrate.TXShearCalibration
 
-    **parallel**: Yes - MPI
+
+.. autotxclass:: txpipe.lens_selector.TXExternalLensCatalogSplitter
+    :members:
+    :exclude-members: run
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>initial_size</strong>: (int) Default=100000. </LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=100000. </LI>
+            <LI><strong>extra_cols</strong>: (list) Default=['']. </LI>
+            <LI><strong>redshift_column</strong>: (str) Default=redshift. </LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.lens_selector.TXTruthLensCatalogSplitterWeighted
+    :members:
+    :exclude-members: run
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>initial_size</strong>: (int) Default=100000. </LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=100000. </LI>
+            <LI><strong>extra_cols</strong>: (list) Default=['']. </LI>
+            <LI><strong>redshift_column</strong>: (str) Default=redshift_true. </LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.twopoint_null_tests.TXStarCatalogSplitter
+    :members:
+    :exclude-members: run
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>chunk_rows</strong>: (int) Default=100000. </LI>
+            <LI><strong>initial_size</strong>: (int) Default=100000. </LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.calibrate.TXShearCalibration
+    :members:
+    :exclude-members: run
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>use_true_shear</strong>: (bool) Default=False. </LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=100000. </LI>
+            <LI><strong>subtract_mean_shear</strong>: (bool) Default=True. </LI>
+            <LI><strong>extra_cols</strong>: (list) Default=['']. </LI>
+            <LI><strong>shear_catalog_type</strong>: (str) Default=. </LI>
+            <LI><strong>shear_prefix</strong>: (str) Default=. </LI>
+            </UL>
+
+

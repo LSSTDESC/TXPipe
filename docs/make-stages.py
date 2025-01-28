@@ -3,6 +3,7 @@ sys.path.append('..')
 import txpipe
 import yaml
 import collections
+import ceci
 
 sections = yaml.safe_load("""
 Ingestion:
@@ -245,6 +246,36 @@ def get_name(cls):
 
 qual_names = collections.defaultdict(list)
 
+def describe_config(cls):
+    lines = ["            <UL>"]
+    for name, val in cls.config_options.items():
+        if isinstance(val, ceci.config.StageParameter):
+            if val.required:
+                req = True
+            if val.dtype is None:
+                dt = "any"
+            else:
+                dt = val.dtype.__name__
+                default = val.default
+            help = val._help
+        else:
+            help = ""
+            if isinstance(val, type):
+                dt = val.__name__
+                req = True
+            else:
+                dt = type(val).__name__
+                req = False
+                default = val
+        if req:
+            lines.append(f"            <LI><strong>{name}</strong>: ({dt}) Required. {help}</LI>")
+        else:
+            lines.append(f"            <LI><strong>{name}</strong>: ({dt}) Default={default}. {help}</LI>")
+    lines.append("            </UL>")
+    return "\n".join(lines)
+        
+
+
 for class_name, (cls, path) in txpipe.PipelineStage.pipeline_stages.items():
     if class_name == "BaseStageDoNotRunDirectly":
         continue
@@ -254,7 +285,7 @@ for class_name, (cls, path) in txpipe.PipelineStage.pipeline_stages.items():
     qual_name = get_name(cls)
     section = stages.get(class_name, "New and Miscellaneous")
     doc = get_doc_line(cls)
-    qual_names[section].append((qual_name, doc, cls.parallel, cls.dask_parallel))
+    qual_names[section].append((qual_name, doc, cls))
 
 
 for name, section_data in sections.items():
@@ -264,22 +295,36 @@ for name, section_data in sections.items():
         f.write(section_data["blurb"] + "\n")
         files[name] = f
 
-        for qual_name, doc, _, _ in qual_names[name]:
+        for qual_name, doc, _ in qual_names[name]:
             f.write(f"* :py:class:`~{qual_name}` - {doc}\n\n")
         f.write("\n")
 
-        for qual_name, _, parallel, dask_parallel in qual_names[name]:
-            if dask_parallel:
+        for qual_name, _, cls in qual_names[name]:
+            if cls.dask_parallel:
                 par_text = "Yes - Dask"
-            elif parallel:
+            elif cls.parallel:
                 par_text = "Yes - MPI"
             else:
                 par_text = "No - Serial"
-            f.write(f"""
-.. autoclass:: {qual_name}
 
-    **parallel**: {par_text}
+            config_text = describe_config(cls)
+
+
+
+            f.write(f"""
+.. autotxclass:: {qual_name}
+    :members:
+    :exclude-members: run
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+{config_text}
+
+
 """)
+
 
 
 with open ("src/stages.rst", "w") as f:
