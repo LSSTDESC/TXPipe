@@ -32,6 +32,8 @@ bins.
     :members:
     :exclude-members: run
 
+    Parallel: Yes - MPI
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -53,6 +55,8 @@ bins.
 .. autotxclass:: txpipe.source_selector.TXSourceSelectorMetacal
     :members:
     :exclude-members: run
+
+    Parallel: Yes - MPI
 
     .. collapse:: Configuration
 
@@ -78,6 +82,8 @@ bins.
     :members:
     :exclude-members: run
 
+    Parallel: Yes - MPI
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -100,6 +106,8 @@ bins.
 .. autotxclass:: txpipe.source_selector.TXSourceSelectorLensfit
     :members:
     :exclude-members: run
+
+    Parallel: Yes - MPI
 
     .. collapse:: Configuration
 
@@ -125,6 +133,8 @@ bins.
     :members:
     :exclude-members: run
 
+    Parallel: Yes - MPI
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -146,6 +156,8 @@ bins.
 .. autotxclass:: txpipe.source_selector.TXSourceSelectorHSC
     :members:
     :exclude-members: run
+
+    Parallel: Yes - MPI
 
     .. collapse:: Configuration
 
@@ -169,6 +181,8 @@ bins.
 .. autotxclass:: txpipe.lens_selector.TXBaseLensSelector
     :members:
     :exclude-members: run
+
+    Parallel: Yes - MPI
 
     .. collapse:: Configuration
 
@@ -198,6 +212,8 @@ bins.
     :members:
     :exclude-members: run
 
+    Parallel: Yes - MPI
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -225,6 +241,8 @@ bins.
 .. autotxclass:: txpipe.lens_selector.TXMeanLensSelector
     :members:
     :exclude-members: run
+
+    Parallel: Yes - MPI
 
     .. collapse:: Configuration
 
@@ -254,6 +272,8 @@ bins.
     :members:
     :exclude-members: run
 
+    Parallel: Yes - MPI
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -281,6 +301,8 @@ bins.
 .. autotxclass:: txpipe.lens_selector.TXRandomForestLensSelector
     :members:
     :exclude-members: run
+
+    Parallel: Yes - MPI
 
     .. collapse:: Configuration
 

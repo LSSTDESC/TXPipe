@@ -17,6 +17,8 @@ These stages deal with weighting the lens sample
     :members:
     :exclude-members: run
 
+    Parallel: No - Serial
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -34,6 +36,8 @@ These stages deal with weighting the lens sample
 .. autotxclass:: txpipe.lssweights.TXLSSWeightsLinBinned
     :members:
     :exclude-members: run
+
+    Parallel: No - Serial
 
     .. collapse:: Configuration
 
@@ -58,6 +62,8 @@ These stages deal with weighting the lens sample
     :members:
     :exclude-members: run
 
+    Parallel: No - Serial
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -81,6 +87,8 @@ These stages deal with weighting the lens sample
 .. autotxclass:: txpipe.lssweights.TXLSSWeightsUnit
     :members:
     :exclude-members: run
+
+    Parallel: No - Serial
 
     .. collapse:: Configuration
 

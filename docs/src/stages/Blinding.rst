@@ -13,6 +13,8 @@ These stages deal with blinding measurements
     :members:
     :exclude-members: run
 
+    Parallel: No - Serial
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -34,6 +36,8 @@ These stages deal with blinding measurements
 .. autotxclass:: txpipe.blinding.TXNullBlinding
     :members:
     :exclude-members: run
+
+    Parallel: No - Serial
 
     .. collapse:: Configuration
 

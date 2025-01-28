@@ -13,6 +13,8 @@ These stages deal with photo-z PDF training and estimation
     :members:
     :exclude-members: run
 
+    Parallel: Yes - MPI
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -30,6 +32,8 @@ These stages deal with photo-z PDF training and estimation
 .. autotxclass:: txpipe.photoz_stack.TXTruePhotozStack
     :members:
     :exclude-members: run
+
+    Parallel: Yes - MPI
 
     .. collapse:: Configuration
 

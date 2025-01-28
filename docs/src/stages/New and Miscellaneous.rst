@@ -14,6 +14,8 @@ assigned to one.
     :members:
     :exclude-members: run
 
+    Parallel: No - Serial
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -26,6 +28,8 @@ assigned to one.
 .. autotxclass:: txpipe.rail.conversions.TXParqetToHDF
     :members:
     :exclude-members: run
+
+    Parallel: No - Serial
 
     .. collapse:: Configuration
 

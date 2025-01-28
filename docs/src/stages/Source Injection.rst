@@ -27,6 +27,8 @@ These stages ingest and use synthetic source injection information
     :members:
     :exclude-members: run
 
+    Parallel: Yes - Dask
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -44,6 +46,8 @@ These stages ingest and use synthetic source injection information
     :members:
     :exclude-members: run
 
+    Parallel: No - Serial
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -60,6 +64,8 @@ These stages ingest and use synthetic source injection information
     :members:
     :exclude-members: run
 
+    Parallel: Yes - MPI
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -72,6 +78,8 @@ These stages ingest and use synthetic source injection information
 .. autotxclass:: txpipe.ingest.ssi.TXIngestSSIGCR
     :members:
     :exclude-members: run
+
+    Parallel: No - Serial
 
     .. collapse:: Configuration
 
@@ -91,6 +99,8 @@ These stages ingest and use synthetic source injection information
     :members:
     :exclude-members: run
 
+    Parallel: Yes - MPI
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -107,6 +117,8 @@ These stages ingest and use synthetic source injection information
     :members:
     :exclude-members: run
 
+    Parallel: Yes - MPI
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -119,6 +131,8 @@ These stages ingest and use synthetic source injection information
 .. autotxclass:: txpipe.ingest.ssi.TXIngestSSIMatchedDESBalrog
     :members:
     :exclude-members: run
+
+    Parallel: Yes - MPI
 
     .. collapse:: Configuration
 
@@ -133,6 +147,8 @@ These stages ingest and use synthetic source injection information
     :members:
     :exclude-members: run
 
+    Parallel: Yes - MPI
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -145,6 +161,8 @@ These stages ingest and use synthetic source injection information
 .. autotxclass:: txpipe.magnification.TXSSIMagnification
     :members:
     :exclude-members: run
+
+    Parallel: No - Serial
 
     .. collapse:: Configuration
 

@@ -316,6 +316,8 @@ for name, section_data in sections.items():
     :members:
     :exclude-members: run
 
+    Parallel: {par_text}
+
     .. collapse:: Configuration
 
         .. raw:: html

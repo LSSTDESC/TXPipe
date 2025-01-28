@@ -22,6 +22,8 @@ sub-catalogs.
     :members:
     :exclude-members: run
 
+    Parallel: Yes - MPI
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -38,6 +40,8 @@ sub-catalogs.
 .. autotxclass:: txpipe.lens_selector.TXTruthLensCatalogSplitter
     :members:
     :exclude-members: run
+
+    Parallel: Yes - MPI
 
     .. collapse:: Configuration
 
@@ -56,6 +60,8 @@ sub-catalogs.
     :members:
     :exclude-members: run
 
+    Parallel: Yes - MPI
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -72,6 +78,8 @@ sub-catalogs.
 .. autotxclass:: txpipe.lens_selector.TXTruthLensCatalogSplitterWeighted
     :members:
     :exclude-members: run
+
+    Parallel: Yes - MPI
 
     .. collapse:: Configuration
 
@@ -90,6 +98,8 @@ sub-catalogs.
     :members:
     :exclude-members: run
 
+    Parallel: No - Serial
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -104,6 +114,8 @@ sub-catalogs.
 .. autotxclass:: txpipe.calibrate.TXShearCalibration
     :members:
     :exclude-members: run
+
+    Parallel: Yes - MPI
 
     .. collapse:: Configuration
 

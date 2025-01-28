@@ -17,6 +17,8 @@ These stages are written for TXPipe extension projects.
     :members:
     :exclude-members: run
 
+    Parallel: No - Serial
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -33,6 +35,8 @@ These stages are written for TXPipe extension projects.
 .. autotxclass:: txpipe.extensions.clmm.sources_select_compute.CLClusterShearCatalogs
     :members:
     :exclude-members: run
+
+    Parallel: Yes - MPI
 
     .. collapse:: Configuration
 
@@ -55,6 +59,8 @@ These stages are written for TXPipe extension projects.
     :members:
     :exclude-members: run
 
+    Parallel: Yes - MPI
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -73,6 +79,8 @@ These stages are written for TXPipe extension projects.
 .. autotxclass:: txpipe.extensions.twopoint_scia.TXSelfCalibrationIA
     :members:
     :exclude-members: run
+
+    Parallel: Yes - MPI
 
     .. collapse:: Configuration
 

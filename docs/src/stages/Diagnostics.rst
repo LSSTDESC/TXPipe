@@ -39,6 +39,8 @@ These stages compute and/or plot diagnostics of catalogs or other data
     :members:
     :exclude-members: run
 
+    Parallel: Yes - Dask
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -56,6 +58,8 @@ These stages compute and/or plot diagnostics of catalogs or other data
 .. autotxclass:: txpipe.diagnostics.TXSourceDiagnosticPlots
     :members:
     :exclude-members: run
+
+    Parallel: Yes - MPI
 
     .. collapse:: Configuration
 
@@ -85,6 +89,8 @@ These stages compute and/or plot diagnostics of catalogs or other data
     :members:
     :exclude-members: run
 
+    Parallel: Yes - Dask
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -105,6 +111,8 @@ These stages compute and/or plot diagnostics of catalogs or other data
     :members:
     :exclude-members: run
 
+    Parallel: Yes - MPI
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -117,6 +125,8 @@ These stages compute and/or plot diagnostics of catalogs or other data
 .. autotxclass:: txpipe.psf_diagnostics.TXPSFMomentCorr
     :members:
     :exclude-members: run
+
+    Parallel: No - Serial
 
     .. collapse:: Configuration
 
@@ -136,6 +146,8 @@ These stages compute and/or plot diagnostics of catalogs or other data
 .. autotxclass:: txpipe.psf_diagnostics.TXTauStatistics
     :members:
     :exclude-members: run
+
+    Parallel: No - Serial
 
     .. collapse:: Configuration
 
@@ -163,6 +175,8 @@ These stages compute and/or plot diagnostics of catalogs or other data
     :members:
     :exclude-members: run
 
+    Parallel: No - Serial
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -187,6 +201,8 @@ These stages compute and/or plot diagnostics of catalogs or other data
     :members:
     :exclude-members: run
 
+    Parallel: No - Serial
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -209,6 +225,8 @@ These stages compute and/or plot diagnostics of catalogs or other data
     :members:
     :exclude-members: run
 
+    Parallel: No - Serial
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -230,6 +248,8 @@ These stages compute and/or plot diagnostics of catalogs or other data
     :members:
     :exclude-members: run
 
+    Parallel: No - Serial
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -246,6 +266,8 @@ These stages compute and/or plot diagnostics of catalogs or other data
 .. autotxclass:: txpipe.twopoint_null_tests.TXGammaTFieldCenters
     :members:
     :exclude-members: run
+
+    Parallel: Yes - MPI
 
     .. collapse:: Configuration
 
@@ -280,6 +302,8 @@ These stages compute and/or plot diagnostics of catalogs or other data
     :members:
     :exclude-members: run
 
+    Parallel: Yes - MPI
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -312,6 +336,8 @@ These stages compute and/or plot diagnostics of catalogs or other data
 .. autotxclass:: txpipe.twopoint_null_tests.TXGammaTRandoms
     :members:
     :exclude-members: run
+
+    Parallel: Yes - MPI
 
     .. collapse:: Configuration
 
@@ -346,6 +372,8 @@ These stages compute and/or plot diagnostics of catalogs or other data
     :members:
     :exclude-members: run
 
+    Parallel: Yes - MPI
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -378,6 +406,8 @@ These stages compute and/or plot diagnostics of catalogs or other data
 .. autotxclass:: txpipe.spatial_diagnostics.TXFocalPlanePlot
     :members:
     :exclude-members: run
+
+    Parallel: No - Serial
 
     .. collapse:: Configuration
 

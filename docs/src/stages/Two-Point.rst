@@ -31,6 +31,8 @@ These stages deal with measuring or predicting two-point statistics.
     :members:
     :exclude-members: run
 
+    Parallel: Yes - MPI
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -50,6 +52,8 @@ These stages deal with measuring or predicting two-point statistics.
     :members:
     :exclude-members: run
 
+    Parallel: Yes - MPI
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -64,6 +68,8 @@ These stages deal with measuring or predicting two-point statistics.
 .. autotxclass:: txpipe.twopoint_fourier.TXTwoPointFourier
     :members:
     :exclude-members: run
+
+    Parallel: Yes - MPI
 
     .. collapse:: Configuration
 
@@ -96,6 +102,8 @@ These stages deal with measuring or predicting two-point statistics.
 .. autotxclass:: txpipe.twopoint.TXTwoPoint
     :members:
     :exclude-members: run
+
+    Parallel: Yes - MPI
 
     .. collapse:: Configuration
 
@@ -136,6 +144,8 @@ These stages deal with measuring or predicting two-point statistics.
     :members:
     :exclude-members: run
 
+    Parallel: Yes - MPI
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -173,6 +183,8 @@ These stages deal with measuring or predicting two-point statistics.
 .. autotxclass:: txpipe.twopoint.TXTwoPointPixelExtCross
     :members:
     :exclude-members: run
+
+    Parallel: Yes - MPI
 
     .. collapse:: Configuration
 
@@ -215,6 +227,8 @@ These stages deal with measuring or predicting two-point statistics.
     :members:
     :exclude-members: run
 
+    Parallel: No - Serial
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -229,6 +243,8 @@ These stages deal with measuring or predicting two-point statistics.
 .. autotxclass:: txpipe.theory.TXTwoPointTheoryFourier
     :members:
     :exclude-members: run
+
+    Parallel: No - Serial
 
     .. collapse:: Configuration
 
@@ -245,6 +261,8 @@ These stages deal with measuring or predicting two-point statistics.
     :members:
     :exclude-members: run
 
+    Parallel: No - Serial
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -260,6 +278,8 @@ These stages deal with measuring or predicting two-point statistics.
     :members:
     :exclude-members: run
 
+    Parallel: No - Serial
+
     .. collapse:: Configuration
 
         .. raw:: html
@@ -274,6 +294,8 @@ These stages deal with measuring or predicting two-point statistics.
 .. autotxclass:: txpipe.extensions.clmm.rlens.TXTwoPointRLens
     :members:
     :exclude-members: run
+
+    Parallel: Yes - MPI
 
     .. collapse:: Configuration
 
