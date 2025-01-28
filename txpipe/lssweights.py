@@ -18,9 +18,9 @@ from .utils.fitting import calc_chi2
 
 class TXLSSWeights(TXMapCorrelations):
     """
-    BaseClass to compute LSS systematic weights
+    Base class for LSS systematic weights
 
-    Not to be run directly
+    Not to be run directly.
 
     This is an abstract base class, which other subclasses
     inherit from to use the same basic structure, which is:
@@ -499,7 +499,7 @@ class TXLSSWeights(TXMapCorrelations):
 
 class TXLSSWeightsLinBinned(TXLSSWeights):
     """
-    Class compute LSS systematic weights using simultanious linear regression on the binned
+    Compute LSS systematic weights using simultanious linear regression on the binned
     1D correlations
 
     Model: Linear
@@ -987,7 +987,7 @@ class TXLSSWeightsLinBinned(TXLSSWeights):
 
 class TXLSSWeightsLinPix(TXLSSWeightsLinBinned):
     """
-    Class compute LSS systematic weights using simultanious linear regression at the
+    Compute LSS systematic weights using simultanious linear regression at the
     pixel level using scikitlearn simple linear regression
 
     Model:                Linear
@@ -1161,7 +1161,7 @@ def hsplist2array(hsp_list):
 
 class TXLSSWeightsUnit(TXLSSWeights):
     """
-    Class assigns weight=1 to all lens objects
+    Assign weight=1 to all lens objects
 
     """
 

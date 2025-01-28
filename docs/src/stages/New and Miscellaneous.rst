@@ -10,10 +10,29 @@ assigned to one.
 
 
 
-.. autoclass:: txpipe.metadata.TXTracerMetadata
-   :members:
+.. autotxclass:: txpipe.metadata.TXTracerMetadata
+    :members:
+    :exclude-members: run
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            </UL>
 
 
-.. autoclass:: txpipe.rail.conversions.TXParqetToHDF
-   :members:
+
+.. autotxclass:: txpipe.rail.conversions.TXParqetToHDF
+    :members:
+    :exclude-members: run
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>hdf_group</strong>: (str) Default=/. </LI>
+            </UL>
+
 

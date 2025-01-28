@@ -7,6 +7,7 @@ class TXParqetToHDF(PipelineStage):
     This will need to use aliases to be any use.
     """
     name = "TXParqetToHDF"
+    parallel = False
     inputs = [
         ("input", ParquetFile),
     ]
