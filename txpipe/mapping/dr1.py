@@ -87,3 +87,75 @@ def make_dask_depth_map(ra, dec, mag, snr, threshold, delta, pixel_scheme):
 
     pix = da.unique(pix)
     return pix, count_map, depth_map, depth_var
+
+
+def make_dask_depth_map_det_prob(ra, dec, mag, det, det_prob_threshold, pixel_scheme, ):
+    """
+    Generate a depth map using Dask, by finding the mean magnitude of
+    objects with a signal-to-noise ratio close to a given threshold.
+
+    Parameters
+    ----------
+    ra : dask.array
+        Right Ascension coordinates in degrees.
+    dec : dask.array
+        Declination coordinates in degrees.
+    mag : dask.array
+        Magnitudes of the objects, in band of user's choice
+    det : dask.array
+        dask array of boolean detection parameter
+    det_prob_threshold : float
+        Detection probability threshold for SSI depth 
+        (i.e. 0.9 to get magnitude at which 90% of brighter objects are detected)
+    pixel_scheme : PixelScheme
+        An object that provides pixelization scheme with methods `npix` and `ang2pix`.
+
+    Returns
+    -------
+    tuple
+        A tuple containing:
+        - pix (dask.array): Unique pixel indices.
+        - count_map (dask.array): Count of objects per pixel.
+        - depth_map (dask.array): Mean depth per pixel.
+        - depth_var (dask.array): Variance of depth per pixel.
+    """
+    _, da = import_dask()
+    npix = pixel_scheme.npix
+    pix = pixel_scheme.ang2pix(ra, dec)
+
+    count_map = da.bincount(pix, weights=det, minlength=npix)
+
+    # Make array of magnitude bins
+    min_depth = mag.min()
+    max_depth = mag.max()
+    n_depth_bins = 30 #TODO make config option
+    mag_edges = da.linspace( min_depth, max_depth, n_depth_bins )
+    mag_cen = (mag_edges[:-1]+mag_edges[1:])/2.
+
+    #loop over mag bins
+    frac_list = []
+    for mag_thresh in mag_edges:
+        above_thresh = (mag < mag_thresh)
+        ntot = da.bincount(pix, weights=above_thresh, minlength=npix)
+        ndet = da.bincount(pix, weights=above_thresh*det, minlength=npix)
+        frac_det = da.where(ntot!=0, ndet/ntot, np.nan)
+        frac_list.append(frac_det)
+    frac_stack = da.stack(frac_list)
+    
+    # In order for pixel to give a valid depth estimate it must have 
+    # (1) at least one mag_thresh with a computed frac_det above the threshold
+    # (2) at least one mag_thresh with a computed frac_det below the threshold
+    has_high = (frac_stack > det_prob_threshold).any(axis=0)
+    has_low  = (frac_stack < det_prob_threshold).any(axis=0)
+    valid_pix_mask = has_high & has_low
+
+    # find the first element smaller than the threshold
+    below_threshold = frac_stack < det_prob_threshold
+    masked = da.where(below_threshold, da.arange(frac_stack.shape[0])[:, None],  n_depth_bins+1)
+    thres_index = da.nanmin(masked, axis=0)
+
+    depth_map = mag_edges[thres_index]
+    depth_map[~valid_pix_mask] = np.nan
+
+    pix = da.unique(pix)
+    return pix, count_map, depth_map,
