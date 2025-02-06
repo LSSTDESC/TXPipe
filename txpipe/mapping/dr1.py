@@ -89,7 +89,7 @@ def make_dask_depth_map(ra, dec, mag, snr, threshold, delta, pixel_scheme):
     return pix, count_map, depth_map, depth_var
 
 def make_dask_depth_map_det_prob(
-    ra, dec, mag, det, det_prob_threshold, pixel_scheme
+    ra, dec, mag, det, det_prob_threshold, mag_delta, min_depth, max_depth, pixel_scheme
 ):
     """
     Generate a depth map using Dask, by finding the mean magnitude of
@@ -127,11 +127,8 @@ def make_dask_depth_map_det_prob(
     count_map = da.bincount(pix, weights=det, minlength=npix)
 
     # Make array of magnitude bins
-    min_depth = mag.min()
-    max_depth = mag.max()
-    n_depth_bins = 30  # TODO make config option
-    mag_edges = da.linspace(min_depth, max_depth, n_depth_bins)
-    mag_cen = (mag_edges[:-1] + mag_edges[1:]) / 2.0
+    mag_edges = da.arange(min_depth, max_depth, mag_delta)
+    n_depth_bins = len(mag_edges)
 
     # loop over mag bins
     # TODO: add option to compute fraction *at* each magnitude, rather than below
@@ -154,7 +151,7 @@ def make_dask_depth_map_det_prob(
     # find the first element smaller than the threshold
     below_threshold = frac_stack < det_prob_threshold
     masked = da.where(
-        below_threshold, da.arange(frac_stack.shape[0])[:, None], n_depth_bins + 1
+        below_threshold, da.arange(frac_stack.shape[0])[:, None], n_depth_bins - 1
     )
     thres_index = da.nanmin(masked, axis=0)
 

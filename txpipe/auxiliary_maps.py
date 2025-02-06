@@ -285,6 +285,9 @@ class TXAuxiliarySSIMaps(TXBaseMaps):
         "snr_threshold": 10.0,  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)
         "snr_delta": 1.0,  # The range threshold +/- delta is used for finding objects at the boundary
         "det_prob_threshold": 0.9, #detection probability threshold for SSI depth (i.e. 0.9 for magnitude at which 90% of brighter objects are detected)
+        "mag_delta": 0.1,  # Size of the magnitude bins used to determine detection probability depth
+        "min_depth": 20, # Min magnitude used in detection probability depth
+        "max_depth": 26, # Max magnitude used in detection probability depth
     }
 
     def run(self):
@@ -346,7 +349,7 @@ class TXAuxiliarySSIMaps(TXBaseMaps):
         # Create depth maps using injection catalog
         # depth is defined at given detection probability
         pix2, count_map, depth_map = make_dask_depth_map_det_prob(
-            ra_inj, dec_inj, inj_mag, det, self.config["det_prob_threshold"], pixel_scheme)
+            ra_inj, dec_inj, inj_mag, det, self.config["det_prob_threshold"], self.config["mag_delta"], self.config["min_depth"], self.config["max_depth"], pixel_scheme)
         maps["depth_det_prob/depth"] = (pix2, depth_map[pix2])
         maps["depth_det_prob/depth_count"] = (pix2, count_map[pix2])
 
