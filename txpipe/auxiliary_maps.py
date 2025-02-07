@@ -97,12 +97,12 @@ class TXAuxiliarySourceMaps(PipelineStage):
             if i == "all":
                 i = "2D"
 
-            maps[f"psf/counts_{i}"] = (pix, count_map[pix])
+            maps[f"psf/count_{i}"] = (pix, count_map[pix])
             maps[f"psf/g1_{i}"] = (pix, g1_map[pix])
             maps[f"psf/g2_{i}"] = (pix, g2_map[pix])
-            maps[f"psf/var_g2_{i}"] = (pix, var1_map[pix])
+            maps[f"psf/var_g1_{i}"] = (pix, var1_map[pix])
             maps[f"psf/var_g2_{i}"] = (pix, var2_map[pix])
-            maps[f"psf/var_{i}"] = (pix, esq_map[pix])
+            maps[f"psf/var_e_{i}"] = (pix, esq_map[pix])
             maps[f"psf/lensing_weight_{i}"] = (pix, weight_map[pix])
 
         # Now add the flag maps. These are not tomographic.
@@ -256,3 +256,100 @@ class TXUniformDepthMap(PipelineStage):
             print(len(pix))
             print(len(depth[pix]))
             f.write_map("depth/depth", pix, depth[pix], metadata)
+
+class TXAuxiliarySSIMaps(TXBaseMaps):
+    """
+    Generate auxiliary maps from SSI catalogs
+
+    This class generates maps of:
+        - depth (measured magnitude)
+        - depth (true magnitude)
+    """
+    name = "TXAuxiliarySSIMaps"
+    dask_parallel = True
+    inputs = [
+        ("injection_catalog", HDFFile),  # for injection locations
+        ("matched_ssi_photometry_catalog", HDFFile),
+    ]
+    outputs = [
+        ("aux_ssi_maps", MapsFile),
+    ]
+
+        ###################
+        ##################
+
+    config_options = {
+        "block_size": 0,
+        "depth_band": "i",  # Make depth maps for this band
+        "snr_threshold": 10.0,  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)
+        "snr_delta": 1.0,  # The range threshold +/- delta is used for finding objects at the boundary
+    }
+
+    def run(self):
+        # Import dask and alias it as 'da'
+        _, da = import_dask()
+        
+        
+        # Retrieve configuration parameters
+        block_size = self.config["block_size"]
+        if block_size == 0:
+            block_size = "auto"
+        band = self.config["depth_band"]
+
+        # Open the input photometry catalog file.
+        # We can't use a "with" statement because we need to keep the file open
+        # while we're using dask.
+        f = self.open_input("matched_ssi_photometry_catalog", wrapper=True)
+        
+        # Load photometry data into dask arrays.
+        # This is lazy in dask, so we're not actually loading the data here.
+        ra = da.from_array(f.file["photometry/ra"], block_size)
+        block_size = ra.chunksize
+        dec = da.from_array(f.file["photometry/dec"], block_size)
+        snr = da.from_array(f.file[f"photometry/snr_{band}"], block_size)
+        mag_meas = da.from_array(f.file[f"photometry/mag_{band}"], block_size)
+        mag_true = da.from_array(f.file[f"photometry/inj_mag_{band}"], block_size)
+
+        # Choose the pixelization scheme based on the configuration.
+        # Might need to review this to make sure we use the same scheme everywhere
+        pixel_scheme = choose_pixelization(**self.config)
+        
+        # Initialize a dictionary to store the maps.
+        # To start with this is all lazy too, until we call compute
+        maps = {}
+
+        # Create depth maps using dask and measured magnitudes
+        pix2, count_map, depth_map, depth_var = make_dask_depth_map(
+            ra, dec, mag_meas, snr, self.config["snr_threshold"], self.config["snr_delta"], pixel_scheme)
+        maps["depth/depth_meas"] = (pix2, depth_map[pix2])
+        maps["depth/depth_meas_count"] = (pix2, count_map[pix2])
+        maps["depth/depth_meas_var"] = (pix2, depth_var[pix2])
+
+
+        # Create depth maps using daskand true magnitudes
+        pix2, count_map, depth_map, depth_var = make_dask_depth_map(
+            ra, dec, mag_true, snr, self.config["snr_threshold"], self.config["snr_delta"], pixel_scheme)
+        maps["depth/depth_true"] = (pix2, depth_map[pix2])
+        maps["depth/depth_true_count"] = (pix2, count_map[pix2])
+        maps["depth/depth_true_var"] = (pix2, depth_var[pix2])
+
+        maps, = da.compute(maps)
+
+        # Prepare metadata for the maps. Copy the pixelization-related
+        # configuration options only here
+        metadata = {
+            key: self.config[key]
+            for key in map_config_options
+            if key in self.config
+        }
+        # Then add the other configuration options
+        metadata["depth_band"] = band
+        metadata["depth_snr_threshold"] = self.config["snr_threshold"]
+        metadata["depth_snr_delta"] = self.config["snr_delta"]
+        metadata.update(pixel_scheme.metadata)
+
+        # Write the output maps to the output file
+        with self.open_output("aux_ssi_maps", wrapper=True) as out:
+            for map_name, (pix, m) in maps.items():
+                out.write_map(map_name, pix, m, metadata)
+            out.file['maps'].attrs.update(metadata)

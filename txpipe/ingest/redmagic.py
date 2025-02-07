@@ -10,6 +10,7 @@ class TXIngestRedmagic(PipelineStage):
     This starts with the FITS file format, but may be outdated.
     """
     name = "TXIngestRedmagic"
+    parallel = False
     inputs = [
         ("redmagic_catalog", FitsFile),
     ]

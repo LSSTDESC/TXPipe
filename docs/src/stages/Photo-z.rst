@@ -3,53 +3,49 @@ Photo-z
 
 These stages deal with photo-z PDF training and estimation
 
+* :py:class:`~txpipe.photoz_stack.TXPhotozStack` - Naive stacker using QP.
 
-* :py:class:`~txpipe.rail.train.PZRailTrainSource` - Train a photo-z model on the source sample using RAIL
-
-* :py:class:`~txpipe.rail.train.PZRailTrainLens` - Train a photo-z model on the lens sample using RAIL
-
-* :py:class:`~txpipe.rail.train.PZRailTrainLensFromSource` - Copy the RAIL source trained model to the lens file
-
-* :py:class:`~txpipe.rail.train.PZRailTrainSourceFromLens` - Copy the RAIL lens trained model to the source file
-
-* :py:class:`~txpipe.rail.estimate.PZRailEstimateSource` - Estimate source redshift PDFs and best-fits using RAIL
-
-* :py:class:`~txpipe.rail.estimate.PZRailEstimateLens` - Estimate source redshift PDFs and best-fits using RAIL
-
-* :py:class:`~txpipe.rail.estimate.PZRailEstimateSourceFromLens` - Make a source redshifts file by copying lens redshifts
-
-* :py:class:`~txpipe.rail.estimate.PZRailEstimateLensFromSource` - Make a lens  redshifts file by copying source redshifts
+* :py:class:`~txpipe.photoz_stack.TXTruePhotozStack` - Make an ideal true source n(z) using true redshifts
 
 
 
-.. autoclass:: txpipe.rail.train.PZRailTrainSource
-   :members:
+.. autotxclass:: txpipe.photoz_stack.TXPhotozStack
+    :members:
+    :exclude-members: run
+
+    Parallel: Yes - MPI
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>chunk_rows</strong>: (int) Default=5000. </LI>
+            <LI><strong>tomo_name</strong>: (str) Default=source. </LI>
+            <LI><strong>weight_col</strong>: (str) Default=shear/00/weight. </LI>
+            <LI><strong>zmax</strong>: (float) Default=0.0. </LI>
+            <LI><strong>nz</strong>: (int) Default=0. </LI>
+            </UL>
 
 
-.. autoclass:: txpipe.rail.train.PZRailTrainLens
-   :members:
 
+.. autotxclass:: txpipe.photoz_stack.TXTruePhotozStack
+    :members:
+    :exclude-members: run
 
-.. autoclass:: txpipe.rail.train.PZRailTrainLensFromSource
-   :members:
+    Parallel: Yes - MPI
 
+    .. collapse:: Configuration
 
-.. autoclass:: txpipe.rail.train.PZRailTrainSourceFromLens
-   :members:
+        .. raw:: html
 
+            <UL>
+            <LI><strong>chunk_rows</strong>: (int) Default=5000. </LI>
+            <LI><strong>zmax</strong>: (float) Required. </LI>
+            <LI><strong>nz</strong>: (int) Required. </LI>
+            <LI><strong>weight_col</strong>: (str) Default=weight. </LI>
+            <LI><strong>redshift_group</strong>: (str) Required. </LI>
+            <LI><strong>redshift_col</strong>: (str) Default=redshift_true. </LI>
+            </UL>
 
-.. autoclass:: txpipe.rail.estimate.PZRailEstimateSource
-   :members:
-
-
-.. autoclass:: txpipe.rail.estimate.PZRailEstimateLens
-   :members:
-
-
-.. autoclass:: txpipe.rail.estimate.PZRailEstimateSourceFromLens
-   :members:
-
-
-.. autoclass:: txpipe.rail.estimate.PZRailEstimateLensFromSource
-   :members:
 

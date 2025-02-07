@@ -18,15 +18,16 @@ from .utils.fitting import calc_chi2
 
 class TXLSSWeights(TXMapCorrelations):
     """
-    BaseClass to compute LSS systematic weights
+    Base class for LSS systematic weights
 
-    Not to be run directly
+    Not to be run directly.
 
     This is an abstract base class, which other subclasses
     inherit from to use the same basic structure, which is:
-        - load and process sytematic (survey property) maps
-        - compute 1d density correlations+covariance
-        - compute weights with a regression method
+
+    - load and process sytematic (survey property) maps
+    - compute 1d density correlations+covariance
+    - compute weights with a regression method
     """
 
     name = "TXLSSWeights"
@@ -237,8 +238,8 @@ class TXLSSWeights(TXMapCorrelations):
         """
         compute the binned 1d density correlations for a single tomographic lens bin
 
-        Params
-        ------
+        Parameters
+        ----------
         tomobin: Integer
             index for the tomographic lens bin
         mean_density_map: healsparse map (None)
@@ -340,8 +341,8 @@ class TXLSSWeights(TXMapCorrelations):
         """
         Save the weights maps and galaxy weights
 
-        Params
-        ------
+        Parameters
+        ----------
         mean_density_map_list: list of Healsparse maps
             list of the F(s) maps. one for each tomo bin
             F(s) = 1/weight
@@ -418,8 +419,8 @@ class TXLSSWeights(TXMapCorrelations):
         """
         make 1d density plots and other summary statistics and save them
 
-        Params
-        ------
+        Parameters
+        ----------
         output_dir: string
 
         density_correlation: lsstools.DensityCorrelation
@@ -498,13 +499,12 @@ class TXLSSWeights(TXMapCorrelations):
 
 class TXLSSWeightsLinBinned(TXLSSWeights):
     """
-    Class compute LSS systematic weights using simultanious linear regression on the binned
+    Compute LSS systematic weights using simultanious linear regression on the binned
     1D correlations
 
-    Model:         Linear
-    Covarinace: Shot noise (for now), no correlation between 1d correlations
-    Fit:         Simultaniously fits all sysmaps. By calculating a total  weight map
-                and calculating Ndens vs sysmap directly
+    Model: Linear
+    Covariance: Shot noise (for now), no correlation between 1d correlations
+    Fit: Simultaniously fits all sysmaps. By calculating a total  weight map and calculating Ndens vs sysmap directly
 
     """
 
@@ -570,8 +570,8 @@ class TXLSSWeightsLinBinned(TXLSSWeights):
         """
         Construct the covariance matrix of the ndens vs SP data-vector
 
-        Params
-        ------
+        Parameters
+        ----------
         density_correlation: lsstools.DensityCorrelation
 
         """
@@ -612,8 +612,9 @@ class TXLSSWeightsLinBinned(TXLSSWeights):
         Off-diagonal terms are between different SP maps
         see https://github.com/elvinpoole/1dcov/blob/main/notes/1d_covariance_notes.pdf
 
-        Params
-        ------
+        Parameters
+        ----------
+
         density_correlation: lsstools.DensityCorrelation
 
         sys_maps: array of healsparse maps
@@ -691,8 +692,8 @@ class TXLSSWeightsLinBinned(TXLSSWeights):
         uses treecorr to compute the two point function between pixel positions in different SP bins
         see https://github.com/elvinpoole/1dcov/blob/main/notes/1d_covariance_notes.pdf
 
-        Params
-        ------
+        Parameters
+        ----------
         density_correlation: lsstools.DensityCorrelation
 
         sys_maps: array of healsparse maps
@@ -841,8 +842,8 @@ class TXLSSWeightsLinBinned(TXLSSWeights):
         Returns the map indices that have small null p-values (large chi2)
         Threshold p-value set in config
 
-        Params
-        ------
+        Parameters
+        ----------
         density_correlation: lsstools.DensityCorrelation
 
         """
@@ -867,8 +868,8 @@ class TXLSSWeightsLinBinned(TXLSSWeights):
 
         The function being optimized is a sum of the F(s) maps for each sys map plus a constant
 
-        Params
-        ------
+        Parameters
+        ----------
         density_correlation: lsstools.DensityCorrelation
 
         Returns
@@ -986,7 +987,7 @@ class TXLSSWeightsLinBinned(TXLSSWeights):
 
 class TXLSSWeightsLinPix(TXLSSWeightsLinBinned):
     """
-    Class compute LSS systematic weights using simultanious linear regression at the
+    Compute LSS systematic weights using simultanious linear regression at the
     pixel level using scikitlearn simple linear regression
 
     Model:                Linear
@@ -1019,8 +1020,8 @@ class TXLSSWeightsLinPix(TXLSSWeightsLinBinned):
 
         using p-value of binned 1d trends for regularisation
 
-        Params
-        ------
+        Parameters
+        ----------
         density_correlation: lsstools.DensityCorrelation
 
         Returns
@@ -1160,7 +1161,7 @@ def hsplist2array(hsp_list):
 
 class TXLSSWeightsUnit(TXLSSWeights):
     """
-    Class assigns weight=1 to all lens objects
+    Assign weight=1 to all lens objects
 
     """
 

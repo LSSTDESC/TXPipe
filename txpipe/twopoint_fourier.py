@@ -50,11 +50,10 @@ class TXTwoPointFourier(PipelineStage):
     systematic-dominated modes, represented as input maps.
 
     In the future we will want to include the following generalizations:
-     - TODO: specify which cross-correlations in particular to include
-             (e.g. which bin pairs and which source/lens combinations).
-     - TODO: include flags for rejected objects. Is this included in
-             the tomography_catalog?
-     - TODO: ell-binning is currently static.
+
+    - TODO: specify which cross-correlations in particular to include (e.g. which bin pairs and which source/lens combinations).
+    - TODO: include flags for rejected objects. Is this included in the tomography_catalog?
+    - TODO: ell-binning is currently static.
     """
 
     name = "TXTwoPointFourier"

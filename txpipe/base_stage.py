@@ -19,6 +19,9 @@ class PipelineStage(PipelineStageBase):
     config_options = {}
 
     def run(self):
+        """
+        The main function that does the work and must be implemented when building a TXPipe class.
+        """
         print("Please do not execute this stage again.")
 
     def time_stamp(self, tag):
@@ -70,6 +73,35 @@ class PipelineStage(PipelineStageBase):
         sys.stdout.flush()
 
     def combined_iterators(self, rows, *inputs, parallel=True):
+        """
+        Iterate through multiple files at the same time.
+
+        If you have more several HDF files with the some
+        columns of the same length then you can use this method to
+        iterate through them all at once, and combine the data from
+        all of them into a single dictionary.
+
+        Parameters
+        ----------
+        rows: int
+            The number of rows to read in each chunk
+
+        *inputs: list
+            A list of (tag, group, cols) triples for each file to read.
+            In each case tag is the input file name tag, group is the
+            group within the HDF5 file to read, and cols is a list of
+            columns to read from that group.  Specify multiple triplets
+            to read from multiple files
+
+        parallel: bool
+            Whether to split up data among processes (parallel=True) or give
+            all processes all data (parallel=False).  Default = True.
+
+        Returns
+        -------
+        it: iterator
+            Iterator yielding (int, int, dict) tuples of (start, end, data)
+        """
         if not len(inputs) % 3 == 0:
             raise ValueError(
                 "Arguments to combined_iterators should be in threes: "
@@ -120,16 +152,35 @@ class PipelineStage(PipelineStageBase):
         """
         Find and open an output file with the given tag, in write mode.
 
-        For general files this will simply return a standard
-        python file object.
+        If final_name is True then they will be opened using their final
+        target output name.  Otherwise we will prepend `inprogress_` to their
+        file name. This means we know that if the final file exists then it
+        is completed.
 
-        For specialized file types like FITS or HDF5 it will return
-        a more specific object - see the types.py file for more info.
+        If wrapper is True this will return an instance of the class
+        of the file as specified in the cls.outputs.  Otherwise it will
+        return an open file object (standard python one or something more
+        specialized).
 
-        This is an extended version of the parent class method which
-        also saves configuration information.  Putting this here right
-        now for testing.
+        Parameters
+        ----------
+        tag: str
+            Tag as listed in self.outputs
 
+        wrapper: bool
+            Whether to return an underlying file object (False) or a data type instange (True)
+
+        final_name: bool
+            Default=False. Whether to save to
+
+        **kwargs:
+            Extra args are passed on to the file's class constructor,
+            most notably "parallel" for parallel HDF writing.
+
+        Returns
+        -------
+        obj: file or object
+            The opened file or object
         """
         # This is added to cope with the new "aliases" system
         # in ceci - it lets us run the same code with different

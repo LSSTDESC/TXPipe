@@ -20,6 +20,8 @@ import os
 from os.path import abspath, dirname, join as pjoin
 import sys
 import sphinx_rtd_theme
+from sphinx.application import Sphinx
+from sphinx.ext.autodoc import ClassDocumenter, ALL
 #sys.path.insert(0, os.path.abspath('..'))
 
 this_dir = dirname(abspath(__file__))
@@ -39,6 +41,7 @@ sys.path.insert(0, root_path2)
 # ones.
 extensions = [
     'sphinx.ext.autodoc',
+    'autoclasstoc',
     'sphinx.ext.todo',
     'sphinx.ext.mathjax',
     'sphinx.ext.viewcode',
@@ -62,8 +65,14 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'TXPipe'
-copyright = u'2022, DESC'
+copyright = u'2022-2025, DESC'
 author = u'DESC'
+
+rst_prolog = """
+ .. include:: <s5defs.txt>
+
+ """
+
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -79,7 +88,7 @@ release = ''
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = "en"
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -137,7 +146,7 @@ html_theme = 'sphinx_rtd_theme'
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+html_static_path = []
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
@@ -218,9 +227,74 @@ texinfo_documents = [
 
 #autoclass_content = 'both'
 
-autodoc_mock_imports = ['ceci', 'cmake','camb', 'cosmosis-standalone', 'firecrown', 
+autodoc_mock_imports = ['cmake','camb', 'cosmosis-standalone', 'firecrown', 
                         'fitsio', 'GCRCatalogs', 'mlz-desc', 'parallel-statistics', 
-                        'psutil', 'pyccl', 'sacc', 'sklearn', 'treecorr', 'GCR', 
+                        'pyccl', 'sacc', 'sklearn', 'treecorr', 'GCR', 
                         'easyquery', 'LSSTDESC.Coord', 'mpi4py', 'pyyaml', 
                         'parallel_statistics', 'mpmath','tkinter','paramiko', 
 						 'pygraphviz', 'pymaster', 'PIL', 'IPython', 'healpy']
+
+
+
+def preprocess_docstring(app, what, name, obj, options, lines):
+    """
+    Cut out the final lines from the docstring that are the configuration parameters,
+    because these are separately documented and the current format does not match RST.
+    """
+    import txpipe
+    # only customize the docstring for PipelineStage subclasses
+    if not isinstance(obj, type):
+        return
+    if not issubclass(obj, txpipe.base_stage.PipelineStage):
+        return
+
+    # Strip out the configuration parameters section
+    bad = None
+    for i, line in enumerate(lines):
+        if line.startswith("Configuration Parameters:"):
+            bad = i
+            break
+
+    if bad is not None:
+        # cut all lines from bad onwards
+        del lines[bad:]
+
+
+
+class AutoCollapsibleClassDocumenter(ClassDocumenter):
+    objtype = 'txclass'
+    directivetype = ClassDocumenter.objtype
+    priority = 10 + ClassDocumenter.priority
+    option_spec = dict(ClassDocumenter.option_spec)
+
+    def document_members(self, all_members: bool = False) -> None:
+        # Get the name of this output
+        sourcename = self.get_sourcename()
+
+        # Use the parent method to document, but count
+        # the lines because in a momemnt we may go back
+        # and delete them
+        n1 = len(self.directive.result)    
+        super().document_members(all_members)
+        n2 = len(self.directive.result)
+
+        # Doing this weird hack because I couldn't figure out
+        # how to check if anything was going to be documented.
+        # The test in the library I got this from didn't work.
+        if n2 > n1:
+            # delete the members from the directive result
+            del self.directive.result[n1:n2]
+            # and redocument but this time with a collapse directive
+            self.add_line('', sourcename)
+            self.add_line('.. collapse:: Methods', sourcename)
+            self.indent += ' ' * 3
+
+            super().document_members(all_members)
+
+
+def setup(app: Sphinx) -> None:
+    app.setup_extension('sphinx.ext.autodoc')  # Require autodoc extension
+    app.setup_extension('sphinx_toolbox.collapse')  # Require sphinx_toolbox.collapse extension
+    app.add_autodocumenter(AutoCollapsibleClassDocumenter)
+    app.connect('autodoc-process-docstring', preprocess_docstring)
+

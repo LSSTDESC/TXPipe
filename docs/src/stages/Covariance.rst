@@ -15,22 +15,102 @@ These stages compute covariances of measurements
 
 
 
-.. autoclass:: txpipe.covariance.TXFourierGaussianCovariance
-   :members:
+.. autotxclass:: txpipe.covariance.TXFourierGaussianCovariance
+    :members:
+    :exclude-members: run
+
+    Parallel: No - Serial
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>pickled_wigner_transform</strong>: (str) Default=. </LI>
+            <LI><strong>use_true_shear</strong>: (bool) Default=False. </LI>
+            <LI><strong>galaxy_bias</strong>: (list) Default=[0.0]. </LI>
+            <LI><strong>gaussian_sims_factor</strong>: (list) Default=[1.0]. </LI>
+            </UL>
 
 
-.. autoclass:: txpipe.covariance.TXRealGaussianCovariance
-   :members:
+
+.. autotxclass:: txpipe.covariance.TXRealGaussianCovariance
+    :members:
+    :exclude-members: run
+
+    Parallel: No - Serial
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>min_sep</strong>: (float) Default=2.5. </LI>
+            <LI><strong>max_sep</strong>: (int) Default=250. </LI>
+            <LI><strong>nbins</strong>: (int) Default=20. </LI>
+            <LI><strong>pickled_wigner_transform</strong>: (str) Default=. </LI>
+            <LI><strong>use_true_shear</strong>: (bool) Default=False. </LI>
+            <LI><strong>galaxy_bias</strong>: (list) Default=[0.0]. </LI>
+            <LI><strong>gaussian_sims_factor</strong>: (list) Default=[1.0]. </LI>
+            </UL>
 
 
-.. autoclass:: txpipe.covariance.TXFourierTJPCovariance
-   :members:
+
+.. autotxclass:: txpipe.covariance.TXFourierTJPCovariance
+    :members:
+    :exclude-members: run
+
+    Parallel: Yes - MPI
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>galaxy_bias</strong>: (list) Default=[0.0]. </LI>
+            <LI><strong>IA</strong>: (float) Default=0.5. </LI>
+            <LI><strong>cache_dir</strong>: (str) Default=. </LI>
+            <LI><strong>cov_type</strong>: (list) Default=['FourierGaussianNmt', 'FourierSSCHaloModel']. </LI>
+            </UL>
 
 
-.. autoclass:: txpipe.covariance_nmt.TXFourierNamasterCovariance
-   :members:
+
+.. autotxclass:: txpipe.covariance_nmt.TXFourierNamasterCovariance
+    :members:
+    :exclude-members: run
+
+    Parallel: Yes - MPI
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>pickled_wigner_transform</strong>: (str) Default=. </LI>
+            <LI><strong>use_true_shear</strong>: (bool) Default=False. </LI>
+            <LI><strong>scratch_dir</strong>: (str) Default=temp. </LI>
+            <LI><strong>nside</strong>: (int) Default=1024. </LI>
+            </UL>
 
 
-.. autoclass:: txpipe.covariance_nmt.TXRealNamasterCovariance
-   :members:
+
+.. autotxclass:: txpipe.covariance_nmt.TXRealNamasterCovariance
+    :members:
+    :exclude-members: run
+
+    Parallel: Yes - MPI
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>min_sep</strong>: (float) Default=2.5. </LI>
+            <LI><strong>max_sep</strong>: (int) Default=250. </LI>
+            <LI><strong>nbins</strong>: (int) Default=20. </LI>
+            <LI><strong>pickled_wigner_transform</strong>: (str) Default=. </LI>
+            <LI><strong>use_true_shear</strong>: (bool) Default=False. </LI>
+            <LI><strong>galaxy_bias</strong>: (list) Default=[0.0]. </LI>
+            </UL>
+
 

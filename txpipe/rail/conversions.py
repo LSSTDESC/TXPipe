@@ -4,16 +4,10 @@ from ..data_types import ParquetFile, HDFFile, FitsFile
 class TXParqetToHDF(PipelineStage):
     """Generic stage to convert a Parquet File to HDF
 
-    This stage uses Eric Charles' alias feature.  In the config
-    you set:
-    TXParqetToHDF:
-        aliases:
-            input: actual_input_tag
-            output: actual_output_tag
-
-    and the appropriate tags will be replaced.
+    This will need to use aliases to be any use.
     """
     name = "TXParqetToHDF"
+    parallel = False
     inputs = [
         ("input", ParquetFile),
     ]

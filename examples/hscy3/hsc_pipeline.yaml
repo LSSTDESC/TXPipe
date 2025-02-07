@@ -86,9 +86,6 @@ modules: >
 # and any other code we need.
 python_paths:
   - submodules/WLMassMap/python/desc/
-  - submodules/TJPCov
-  - submodules/FlexZPipe
-  - submodules/RAIL
 
 # Where to put outputs
 output_dir: data/hsc-y3/outputs/shearsys/
