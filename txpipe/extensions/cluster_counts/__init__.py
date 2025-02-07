@@ -1,5 +1,5 @@
 #from .ingest import *
-from .rlens import TXTwoPointRLens
+#from .rlens import TXTwoPointRLens
 
 #from .select import CLClusterShearCatalogs
 from .bin_cluster import CLClusterBinningRedshiftRichness
