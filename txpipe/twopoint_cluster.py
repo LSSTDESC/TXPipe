@@ -24,7 +24,8 @@ class TXTwoPointCluster(PipelineStage):
     ]
 
     config_options = {
-        'richness_bin_edges': [20, 50, 200],   # Edges of richness bins
+        'redshift_bin_edges': [0.4,0.8,1.2],   # Edges of redshift bins
+        'richness_bin_edges': [20, 30, 200],   # Edges of richness bins
         'nbins': 20,                           # Number of angular bins
         'min_sep': 0.1,                        # Minimum separation [arcmins]
         'max_sep': 250.0,                      # Maximum separation [arcmins]
@@ -35,35 +36,20 @@ class TXTwoPointCluster(PipelineStage):
     def load_data(self, file_path):
         """
         Load data from catalog (hdf5 file).
-        Read ra, dec and the richness proxy.
+        Read ra and dec in each richness and redshift bin.
         """
-        try:
-            data = h5py.File(file_path, 'r+')
-            ra = data['ra'][:]
-            dec = data['dec'][:]
-            richness = data['richness'][:]
-        except ValueError:
-            raise ValueError('Catalog format not recognized. Use HDF5 format.')
-        return ra, dec, richness
+        # dictionaries for all the tomographic bins
+        ra  = {}
+        dec = {}
 
-    def split_data_by_richness(self, ra, dec, richness):
-        """
-        Split coordinates into richness bins based on the config.
-        """
-        richness_bin_edges = self.config['richness_bin_edges']
-        num_bins = len(richness_bin_edges) - 1
+        # read data and extract coordinates in each bin
+        data = h5py.File(file_path, 'r+')
+        for zbin_richbin in data['cluster_bin'].keys():
+            ra[zbin_richbin]  = data['cluster_bin'][zbin_richbin]['ra'][:]
+            dec[zbin_richbin] = data['cluster_bin'][zbin_richbin]['dec'][:]
 
-        ra_bins = []
-        dec_bins = []
+        return ra, dec 
 
-        # Iterate over richness bin edges to create bins
-        for i in range(num_bins):
-            indices = ((richness >= richness_bin_edges[i])
-                       & (richness < richness_bin_edges[i+1]))
-            ra_bins.append(ra[indices])
-            dec_bins.append(dec[indices])
-
-        return ra_bins, dec_bins
 
     def create_catalog(self, ra, dec):
         """
@@ -73,22 +59,8 @@ class TXTwoPointCluster(PipelineStage):
                                    ra_units='deg', dec_units='deg')
         return catalog
 
-    def measure_auto_correlation(self, data_cat, rand_cat, bin_config):
-        """
-        Measure the auto-correlation function for one richness bin.
-        """
-        dd = treecorr.NNCorrelation(**bin_config)
-        rr = treecorr.NNCorrelation(**bin_config)
-        dr = treecorr.NNCorrelation(**bin_config)
 
-        dd.process(data_cat)
-        rr.process(rand_cat)
-        dr.process(data_cat, rand_cat)
-
-        xi, varxi = dd.calculateXi(rr=rr, dr=dr)
-        return xi, varxi, dd.rnom
-
-    def measure_cross_correlation(self, data_cat1, data_cat2,
+    def measure_correlation(self, data_cat1, data_cat2,
                                   rand_cat1, rand_cat2, bin_config):
         """
         Measure the cross-correlation function between two richness bins.
@@ -136,27 +108,28 @@ class TXTwoPointCluster(PipelineStage):
         """
         Run the analysis for this stage.
         """
-        # Load data and random catalogs
-        data_ra, data_dec, data_richness = self.load_data(
+
+        
+        # Load data and random catalogs 
+        data_ra_bins, data_dec_bins = self.load_data(
             self.config['cluster_data_catalog'])
 
-        rand_ra, rand_dec, rand_richness = self.load_data(
+        rand_ra_bins, rand_dec_bins = self.load_data(
             self.config['cluster_random_catalog'])
 
-        # Split data and random catalogs by richness bins
-        data_ra_bins, data_dec_bins = self.split_data_by_richness(
-            data_ra, data_dec, data_richness)
 
-        rand_ra_bins, rand_dec_bins = self.split_data_by_richness(
-            rand_ra, rand_dec, rand_richness)
+        # Create TreeCorr data and random catalogs for each redshift and richness bin combination
+        data_cats = {}
+        rand_cats = {}
+        for zbin_richbin in data_ra_bins.keys():
+            
+            data_cats[zbin_richbin] = [self.create_catalog(data_ra_bins[zbin_richbin], 
+                                                           data_dec_bins[zbin_richbin])]
+    
+            rand_cats[zbin_richbin] = [self.create_catalog(rand_ra_bins[zbin_richbin], 
+                                                           rand_dec_bins[zbin_richbin])]
 
-        # Create TreeCorr data and random catalogs for all bins
-        data_cats = [self.create_catalog(ra, dec)
-                     for ra, dec in zip(data_ra_bins, data_dec_bins)]
-
-        rand_cats = [self.create_catalog(ra, dec)
-                     for ra, dec in zip(rand_ra_bins, rand_dec_bins)]
-
+        
         # Configuration for angular bins
         bin_config = {
             'nbins': self.config['nbins'],
@@ -166,28 +139,27 @@ class TXTwoPointCluster(PipelineStage):
             'bin_slop': 0,  # Set bin_slop to 0 for accurate binning
             'bin_type': self.config['binning_scale']}
 
+        num_zbins    = len(self.config['redshift_bin_edges'])-1
+        num_richbins = len(self.config['richness_bin_edges'])-1
+                       
         # Store results for saving
         results = []
 
-        # Measure auto-correlations
-        for i, (data_cat, rand_cat) in enumerate(zip(data_cats, rand_cats)):
-            tracer_name = f'richness_bin_{i+1}'
-            xi, varxi, meanr = self.measure_auto_correlation(
-                data_cat, rand_cat, bin_config)
-
-            results.append((meanr, xi, varxi, tracer_name, tracer_name))
-
         # Measure cross-correlations
         num_bins = len(data_cats)
-        for i in range(num_bins):
-            for j in range(i+1, num_bins):
-                tracer_name1 = f'richness_bin_{i+1}'
-                tracer_name2 = f'richness_bin_{j+1}'
-                xi, varxi, meanr = self.measure_cross_correlation(
-                    data_cats[i], data_cats[j],
-                    rand_cats[i], rand_cats[j], bin_config)
+        for zbin in range(num_zbins):
+            for richbin_i in range(num_richbins):
+                for richbin_j in range(richbin_i, num_richbins):
+                    
+                    tracer_1 = f'zbin_{zbin}_richbin_{richbin_i}'
+                    tracer_2 = f'zbin_{zbin}_richbin_{richbin_j}'
+                    
+                    xi, varxi, meanr = self.measure_correlation(
+                        data_cats['bin_'+tracer_1], data_cats['bin_'+tracer_2],
+                        rand_cats['bin_'+tracer_1], rand_cats['bin_'+tracer_2], bin_config)
+    
+                    results.append((meanr, xi, varxi, tracer_1, tracer_2))
 
-                results.append((meanr, xi, varxi, tracer_name1, tracer_name2))
 
         # Save results to a SACC file
         self.save_to_sacc(results, self.get_output("cluster_twopoint_real"))

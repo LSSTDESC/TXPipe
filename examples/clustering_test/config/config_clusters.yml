@@ -3,6 +3,10 @@ TXTwoPointCluster:
   max_sep: 250.0
   min_sep: 10.0
   nbins: 15
+  redshift_bin_edges:
+  - 0.4
+  - 0.8
+  - 1.2
   richness_bin_edges:
   - 20
   - 30
