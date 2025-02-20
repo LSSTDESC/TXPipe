@@ -285,8 +285,8 @@ class TXAuxiliarySSIMaps(TXBaseMaps):
         "snr_threshold": 10.0,  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)
         "snr_delta": 1.0,  # The range threshold +/- delta is used for finding objects at the boundary
         "det_prob_threshold": 0.9, #detection probability threshold for SSI depth (i.e. 0.9 for magnitude at which 90% of brighter objects are detected)
-        "mag_delta": 0.1,  # Size of the magnitude bins used to determine detection probability depth
-        "min_depth": 20, # Min magnitude used in detection probability depth
+        "mag_delta": 0.01,  # Size of the magnitude bins used to determine detection probability depth
+        "min_depth": 18, # Min magnitude used in detection probability depth
         "max_depth": 26, # Max magnitude used in detection probability depth
     }
 
