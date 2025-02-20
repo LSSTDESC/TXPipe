@@ -13,7 +13,16 @@ These stages deal with blinding measurements
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - twopoint_data_real_raw: SACCFile
+
+    Outputs: 
+
+    - twopoint_data_real: SACCFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -37,7 +46,16 @@ These stages deal with blinding measurements
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - twopoint_data_real_raw: SACCFile
+
+    Outputs: 
+
+    - twopoint_data_real: SACCFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 

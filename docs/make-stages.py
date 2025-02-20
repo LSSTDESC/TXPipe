@@ -273,7 +273,16 @@ def describe_config(cls):
             lines.append(f"            <LI><strong>{name}</strong>: ({dt}) Default={default}. {help}</LI>")
     lines.append("            </UL>")
     return "\n".join(lines)
-        
+
+
+def describe_inputs_or_outputs(d):
+    if not d:
+        return "None"
+    out = ["\n"]
+    for tag, ftype in d:
+        out.append(f"    - {tag}: {ftype.__name__}")
+    return "\n".join(out)
+
 
 
 for class_name, (cls, path) in txpipe.PipelineStage.pipeline_stages.items():
@@ -309,6 +318,9 @@ for name, section_data in sections.items():
 
             config_text = describe_config(cls)
 
+            inputs_text = describe_inputs_or_outputs(cls.inputs)
+            outputs_text = describe_inputs_or_outputs(cls.outputs)
+
 
 
             f.write(f"""
@@ -316,7 +328,12 @@ for name, section_data in sections.items():
     :members:
     :exclude-members: run
 
+    Inputs: {inputs_text}
+
+    Outputs: {outputs_text}
+    
     Parallel: {par_text}
+
 
     .. collapse:: Configuration
 

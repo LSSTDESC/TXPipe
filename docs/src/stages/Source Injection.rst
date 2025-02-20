@@ -27,7 +27,17 @@ These stages ingest and use synthetic source injection information
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - injection_catalog: HDFFile
+    - matched_ssi_photometry_catalog: HDFFile
+
+    Outputs: 
+
+    - aux_ssi_maps: MapsFile
+    
     Parallel: Yes - Dask
+
 
     .. collapse:: Configuration
 
@@ -46,7 +56,17 @@ These stages ingest and use synthetic source injection information
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - aux_ssi_maps: MapsFile
+
+    Outputs: 
+
+    - depth_ssi_meas_map: PNGFile
+    - depth_ssi_true_map: PNGFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -64,7 +84,12 @@ These stages ingest and use synthetic source injection information
     :members:
     :exclude-members: run
 
+    Inputs: None
+
+    Outputs: None
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -79,7 +104,16 @@ These stages ingest and use synthetic source injection information
     :members:
     :exclude-members: run
 
+    Inputs: None
+
+    Outputs: 
+
+    - injection_catalog: HDFFile
+    - ssi_photometry_catalog: HDFFile
+    - ssi_uninjected_photometry_catalog: HDFFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -99,7 +133,17 @@ These stages ingest and use synthetic source injection information
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - injection_catalog: HDFFile
+    - ssi_photometry_catalog: HDFFile
+
+    Outputs: 
+
+    - matched_ssi_photometry_catalog: HDFFile
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -117,7 +161,12 @@ These stages ingest and use synthetic source injection information
     :members:
     :exclude-members: run
 
+    Inputs: None
+
+    Outputs: None
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -132,7 +181,16 @@ These stages ingest and use synthetic source injection information
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - balrog_matched_catalog: FitsFile
+
+    Outputs: 
+
+    - matched_ssi_photometry_catalog: HDFFile
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -147,7 +205,17 @@ These stages ingest and use synthetic source injection information
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - balrog_detection_catalog: FitsFile
+
+    Outputs: 
+
+    - injection_catalog: HDFFile
+    - ssi_detection_catalog: HDFFile
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -162,7 +230,18 @@ These stages ingest and use synthetic source injection information
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - binned_lens_catalog_nomag: HDFFile
+    - binned_lens_catalog_mag: HDFFile
+
+    Outputs: 
+
+    - magnification_coefficients: HDFFile
+    - magnification_plot: PNGFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 

@@ -22,7 +22,19 @@ sub-catalogs.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - lens_tomography_catalog_unweighted: TomographyCatalog
+    - photometry_catalog: PhotometryCatalog
+    - fiducial_cosmology: FiducialCosmology
+    - lens_photoz_pdfs: HDFFile
+
+    Outputs: 
+
+    - binned_lens_catalog_unweighted: HDFFile
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -41,7 +53,18 @@ sub-catalogs.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - lens_tomography_catalog_unweighted: TomographyCatalog
+    - photometry_catalog: PhotometryCatalog
+    - fiducial_cosmology: FiducialCosmology
+
+    Outputs: 
+
+    - binned_lens_catalog_unweighted: HDFFile
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -60,7 +83,18 @@ sub-catalogs.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - lens_tomography_catalog_unweighted: TomographyCatalog
+    - lens_catalog: HDFFile
+    - fiducial_cosmology: FiducialCosmology
+
+    Outputs: 
+
+    - binned_lens_catalog_unweighted: HDFFile
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -79,7 +113,18 @@ sub-catalogs.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - lens_tomography_catalog: TomographyCatalog
+    - photometry_catalog: PhotometryCatalog
+    - fiducial_cosmology: FiducialCosmology
+
+    Outputs: 
+
+    - binned_lens_catalog: HDFFile
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -98,7 +143,16 @@ sub-catalogs.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - star_catalog: HDFFile
+
+    Outputs: 
+
+    - binned_star_catalog: HDFFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -115,7 +169,17 @@ sub-catalogs.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - shear_catalog: ShearCatalog
+    - shear_tomography_catalog: TomographyCatalog
+
+    Outputs: 
+
+    - binned_shear_catalog: ShearCatalog
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
