@@ -30,7 +30,7 @@ plotting.
 
 * :py:class:`~txpipe.masks.TXSimpleMask` - Make a simple binary mask using a depth cut and bright object cut
 
-* :py:class:`~txpipe.masks.TXSimpleMaskSource` - Stage TXSimpleMaskSource
+* :py:class:`~txpipe.masks.TXSimpleMaskSource` - 
 
 * :py:class:`~txpipe.masks.TXSimpleMaskFrac` - Make a simple mask using a depth cut and bright object cut
 
@@ -44,7 +44,12 @@ plotting.
     :members:
     :exclude-members: run
 
+    Inputs: None
+
+    Outputs: None
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -59,7 +64,16 @@ plotting.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - binned_shear_catalog: HDFFile
+
+    Outputs: 
+
+    - source_maps: MapsFile
+    
     Parallel: Yes - Dask
+
 
     .. collapse:: Configuration
 
@@ -84,7 +98,17 @@ plotting.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - photometry_catalog: HDFFile
+    - lens_tomography_catalog: TomographyCatalog
+
+    Outputs: 
+
+    - lens_maps: MapsFile
+    
     Parallel: Yes - Dask
+
 
     .. collapse:: Configuration
 
@@ -109,7 +133,17 @@ plotting.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - lens_catalog: HDFFile
+    - lens_tomography_catalog: TomographyCatalog
+
+    Outputs: 
+
+    - lens_maps: MapsFile
+    
     Parallel: Yes - Dask
+
 
     .. collapse:: Configuration
 
@@ -134,7 +168,17 @@ plotting.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - lens_maps: MapsFile
+    - mask: MapsFile
+
+    Outputs: 
+
+    - density_maps: MapsFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -150,7 +194,18 @@ plotting.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - shear_catalog: ShearCatalog
+    - shear_tomography_catalog: TomographyCatalog
+    - mask: MapsFile
+
+    Outputs: 
+
+    - source_noise_maps: LensingNoiseMaps
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -168,7 +223,18 @@ plotting.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - lens_tomography_catalog: TomographyCatalog
+    - photometry_catalog: HDFFile
+    - mask: MapsFile
+
+    Outputs: 
+
+    - lens_noise_maps: ClusteringNoiseMaps
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -186,7 +252,18 @@ plotting.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - lens_tomography_catalog: TomographyCatalog
+    - lens_catalog: HDFFile
+    - mask: MapsFile
+
+    Outputs: 
+
+    - lens_noise_maps: ClusteringNoiseMaps
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -204,7 +281,21 @@ plotting.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - shear_catalog: ShearCatalog
+    - lens_tomography_catalog: TomographyCatalog
+    - shear_tomography_catalog: TomographyCatalog
+    - mask: MapsFile
+    - lens_maps: MapsFile
+
+    Outputs: 
+
+    - source_noise_maps: LensingNoiseMaps
+    - lens_noise_maps: ClusteringNoiseMaps
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -223,7 +314,18 @@ plotting.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - shear_catalog: ShearCatalog
+    - shear_tomography_catalog: HDFFile
+    - source_maps: MapsFile
+
+    Outputs: 
+
+    - aux_source_maps: MapsFile
+    
     Parallel: Yes - Dask
+
 
     .. collapse:: Configuration
 
@@ -250,7 +352,16 @@ plotting.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - photometry_catalog: HDFFile
+
+    Outputs: 
+
+    - aux_lens_maps: MapsFile
+    
     Parallel: Yes - Dask
+
 
     .. collapse:: Configuration
 
@@ -270,7 +381,16 @@ plotting.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - mask: MapsFile
+
+    Outputs: 
+
+    - aux_lens_maps: MapsFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -286,7 +406,16 @@ plotting.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - aux_lens_maps: MapsFile
+
+    Outputs: 
+
+    - mask: MapsFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -303,7 +432,16 @@ plotting.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - source_maps: MapsFile
+
+    Outputs: 
+
+    - mask: MapsFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -318,7 +456,16 @@ plotting.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - aux_lens_maps: MapsFile
+
+    Outputs: 
+
+    - mask: MapsFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -336,7 +483,16 @@ plotting.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - source_maps: MapsFile
+
+    Outputs: 
+
+    - convergence_maps: MapsFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -353,7 +509,19 @@ plotting.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - lens_maps: MapsFile
+    - convergence_maps: MapsFile
+    - source_maps: MapsFile
+    - mask: MapsFile
+
+    Outputs: 
+
+    - map_systematic_correlations: FileCollection
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 

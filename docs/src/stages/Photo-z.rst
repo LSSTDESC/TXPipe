@@ -13,7 +13,18 @@ These stages deal with photo-z PDF training and estimation
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - photoz_pdfs: QPPDFFile
+    - tomography_catalog: TomographyCatalog
+    - weights_catalog: HDFFile
+
+    Outputs: 
+
+    - photoz_stack: QPNOfZFile
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -33,7 +44,18 @@ These stages deal with photo-z PDF training and estimation
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - tomography_catalog: TomographyCatalog
+    - catalog: HDFFile
+    - weights_catalog: HDFFile
+
+    Outputs: 
+
+    - photoz_stack: QPNOfZFile
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 

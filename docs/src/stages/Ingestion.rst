@@ -32,7 +32,14 @@ simpler input catalogs.
     :members:
     :exclude-members: run
 
+    Inputs: None
+
+    Outputs: 
+
+    - exposures: HDFFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -50,7 +57,15 @@ simpler input catalogs.
     :members:
     :exclude-members: run
 
+    Inputs: None
+
+    Outputs: 
+
+    - photometry_catalog: HDFFile
+    - shear_catalog: HDFFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -67,7 +82,17 @@ simpler input catalogs.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - response_model: HDFFile
+
+    Outputs: 
+
+    - shear_catalog: ShearCatalog
+    - photometry_catalog: HDFFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -96,7 +121,17 @@ simpler input catalogs.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - response_model: HDFFile
+
+    Outputs: 
+
+    - shear_catalog: ShearCatalog
+    - photometry_catalog: HDFFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -119,7 +154,17 @@ simpler input catalogs.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - response_model: HDFFile
+
+    Outputs: 
+
+    - shear_catalog: ShearCatalog
+    - photometry_catalog: HDFFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -146,7 +191,16 @@ simpler input catalogs.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - mock_shear_catalog: TextFile
+
+    Outputs: 
+
+    - shear_catalog: ShearCatalog
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -162,7 +216,16 @@ simpler input catalogs.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - shear_catalog: ShearCatalog
+
+    Outputs: 
+
+    - photoz_pdfs: QPPDFFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -178,7 +241,15 @@ simpler input catalogs.
     :members:
     :exclude-members: run
 
+    Inputs: None
+
+    Outputs: 
+
+    - shear_catalog: ShearCatalog
+    - photometry_catalog: HDFFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -198,7 +269,14 @@ simpler input catalogs.
     :members:
     :exclude-members: run
 
+    Inputs: None
+
+    Outputs: 
+
+    - star_catalog: HDFFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -216,7 +294,18 @@ simpler input catalogs.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - redmagic_catalog: FitsFile
+
+    Outputs: 
+
+    - lens_catalog: HDFFile
+    - lens_tomography_catalog_unweighted: HDFFile
+    - lens_photoz_stack: QPNOfZFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -237,7 +326,23 @@ simpler input catalogs.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - mask: MapsFile
+    - lens_photoz_stack: QPNOfZFile
+    - fiducial_cosmology: FiducialCosmology
+    - input_lss_weight_maps: MapsFile
+
+    Outputs: 
+
+    - photometry_catalog: HDFFile
+    - lens_tomography_catalog_unweighted: TomographyCatalog
+    - glass_cl_shells: HDFFile
+    - glass_cl_binned: HDFFile
+    - density_shells: HDFFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
