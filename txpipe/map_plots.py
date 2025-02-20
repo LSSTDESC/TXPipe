@@ -205,6 +205,7 @@ class TXMapPlotsSSI(TXMapPlots):
     outputs = [
         ("depth_ssi_meas_map", PNGFile),
         ("depth_ssi_true_map", PNGFile),
+        ("depth_det_prob_map", PNGFile),
     ]
 
     def run(self):
@@ -233,9 +234,13 @@ class TXMapPlotsSSI(TXMapPlots):
     def aux_ssi_plots(self):
         import matplotlib.pyplot as plt
         if self.get_input("aux_ssi_maps") == "none":
+            # Make empty plots if no data available, so that the
+            # pipeline thinks it is complete.
             with self.open_output("depth_ssi_meas_map", wrapper=True) as f:
                 pass
             with self.open_output("depth_ssi_true_map", wrapper=True) as f:
+                pass
+            with self.open_output("depth_det_prob_map", wrapper=True) as f:
                 pass
             return
 
@@ -248,3 +253,7 @@ class TXMapPlotsSSI(TXMapPlots):
         # Depth plots (true magnitude)
         with self.open_output("depth_ssi_true_map", wrapper=True, figsize=(5, 5)) as fig:
             m.plot("depth_true/depth", view=self.config["projection"], rot180=self.config["rot180"])
+
+        # Depth plots (true magnitude)
+        with self.open_output("depth_det_prob_map", wrapper=True, figsize=(5, 5)) as fig:
+            m.plot("depth_det_prob/depth", view=self.config["projection"], rot180=self.config["rot180"])
