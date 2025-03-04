@@ -86,6 +86,9 @@ class TXJackknifeCenters(PipelineStage):
 
 
 class TXJackknifeCentersSource(TXJackknifeCenters):
+    """
+    Generate jack-knife centers from a shear catalog.
+    """
     name = "TXJackknifeCentersSource"
     parallel = False
 

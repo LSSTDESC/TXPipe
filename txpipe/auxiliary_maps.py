@@ -97,12 +97,12 @@ class TXAuxiliarySourceMaps(PipelineStage):
             if i == "all":
                 i = "2D"
 
-            maps[f"psf/counts_{i}"] = (pix, count_map[pix])
+            maps[f"psf/count_{i}"] = (pix, count_map[pix])
             maps[f"psf/g1_{i}"] = (pix, g1_map[pix])
             maps[f"psf/g2_{i}"] = (pix, g2_map[pix])
-            maps[f"psf/var_g2_{i}"] = (pix, var1_map[pix])
+            maps[f"psf/var_g1_{i}"] = (pix, var1_map[pix])
             maps[f"psf/var_g2_{i}"] = (pix, var2_map[pix])
-            maps[f"psf/var_{i}"] = (pix, esq_map[pix])
+            maps[f"psf/var_e_{i}"] = (pix, esq_map[pix])
             maps[f"psf/lensing_weight_{i}"] = (pix, weight_map[pix])
 
         # Now add the flag maps. These are not tomographic.
