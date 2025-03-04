@@ -288,6 +288,8 @@ class TXAuxiliarySSIMaps(TXBaseMaps):
         "mag_delta": 0.01,  # Size of the magnitude bins used to determine detection probability depth
         "min_depth": 18, # Min magnitude used in detection probability depth
         "max_depth": 26, # Max magnitude used in detection probability depth
+        "smooth_det_frac": True, #apply savgol filtering to frac det vs magnitude for each pixel
+        "smooth_window":0.5 # size of smoothing window in magnitudes
     }
 
     def run(self):
@@ -349,7 +351,9 @@ class TXAuxiliarySSIMaps(TXBaseMaps):
         # Create depth maps using injection catalog
         # depth is defined at given detection probability
         pix2, det_count_map, inj_count_map, depth_map, frac_stack, mag_edges = make_dask_depth_map_det_prob(
-            ra_inj, dec_inj, inj_mag, det, self.config["det_prob_threshold"], self.config["mag_delta"], self.config["min_depth"], self.config["max_depth"], pixel_scheme)
+            ra_inj, dec_inj, inj_mag, det, self.config["det_prob_threshold"], self.config["mag_delta"], 
+            self.config["min_depth"], self.config["max_depth"], pixel_scheme, 
+            self.config["smooth_det_frac"], self.config["smooth_window"])
         maps["depth_det_prob/depth"] = (pix2, depth_map[pix2])
         maps["depth_det_prob/depth_det_count"] = (pix2, det_count_map[pix2])
         maps["depth_det_prob/depth_inj_count"] = (pix2, inj_count_map[pix2])

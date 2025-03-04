@@ -89,7 +89,8 @@ def make_dask_depth_map(ra, dec, mag, snr, threshold, delta, pixel_scheme):
     return pix, count_map, depth_map, depth_var
 
 def make_dask_depth_map_det_prob(
-    ra, dec, mag, det, det_prob_threshold, mag_delta, min_depth, max_depth, pixel_scheme
+    ra, dec, mag, det, det_prob_threshold, mag_delta, min_depth, max_depth, pixel_scheme, 
+    smooth_det_frac=False, smooth_window=0.5,
 ):
     """
     Generate a depth map using Dask, by finding the mean magnitude of
@@ -120,11 +121,13 @@ def make_dask_depth_map_det_prob(
         - depth_map (dask.array): Mean depth per pixel.
         - depth_var (dask.array): Variance of depth per pixel.
     """
+    from scipy.signal import savgol_filter
     _, da = import_dask()
     npix = pixel_scheme.npix
     pix = pixel_scheme.ang2pix(ra, dec)
 
-    count_map = da.bincount(pix, weights=det, minlength=npix)
+    det_count_map = da.bincount(pix, weights=det, minlength=npix)
+    inj_count_map = da.bincount(pix, minlength=npix)
 
     # Make array of magnitude bins
     mag_edges = da.arange(min_depth, max_depth, mag_delta)
@@ -140,6 +143,19 @@ def make_dask_depth_map_det_prob(
         frac_det = da.where(ntot != 0, ndet / ntot, np.nan)
         frac_list.append(frac_det)
     frac_stack = da.stack(frac_list)
+
+    # Optional smoothing of the stacked detection fractions
+    if smooth_det_frac:
+        window_length = int(n_depth_bins*smooth_window/(max_depth-min_depth)) #converting to units of depth bin
+        poly_order = 2 # TODO: could make config option
+
+        # Here extend the chunks of the dask array when applying a local filter to avoid boundary issues
+        frac_stack = frac_stack.map_overlap( 
+            lambda a: savgol_filter(a, window_length, poly_order, axis=0), 
+            depth=window_length // 2,   # Extend chunks by half window size
+            boundary="reflect",         # Reflect at edges to avoid NaNs
+            dtype=frac_stack.dtype, 
+            )
 
     # In order for pixel to give a valid depth estimate it must have 
     # (1) at least one mag_thresh with a computed frac_det above the threshold
@@ -159,4 +175,4 @@ def make_dask_depth_map_det_prob(
     depth_map[~valid_pix_mask] = np.nan
 
     pix = da.unique(pix)
-    return pix, count_map, depth_map
+    return pix, det_count_map, inj_count_map, depth_map, frac_stack, mag_edges
