@@ -288,14 +288,13 @@ class TXAuxiliarySSIMaps(TXBaseMaps):
         "mag_delta": 0.01,  # Size of the magnitude bins used to determine detection probability depth
         "min_depth": 18, # Min magnitude used in detection probability depth
         "max_depth": 26, # Max magnitude used in detection probability depth
-        "smooth_det_frac": True, #apply savgol filtering to frac det vs magnitude for each pixel
-        "smooth_window":0.5 # size of smoothing window in magnitudes
+        "smooth_det_frac": True, # Apply savgol filtering to frac det vs magnitude for each pixel
+        "smooth_window":0.5 # Size of smoothing window in magnitudes
     }
 
     def run(self):
         # Import dask and alias it as 'da'
         _, da = import_dask()
-        
         
         # Retrieve configuration parameters
         block_size = self.config["block_size"]
@@ -307,8 +306,8 @@ class TXAuxiliarySSIMaps(TXBaseMaps):
         # We can't use "with" statements because we need to keep the file open
         # while we're using dask.
         f_matched = self.open_input("matched_ssi_photometry_catalog", wrapper=True)
-        f_inj     = self.open_input("injection_catalog", wrapper=True)
-        f_det     = self.open_input("ssi_detection_catalog", wrapper=True)
+        f_inj = self.open_input("injection_catalog", wrapper=True)
+        f_det = self.open_input("ssi_detection_catalog", wrapper=True)
         
         # Load matched catalog data into dask arrays.
         # This is lazy in dask, so we're not actually loading the data here.

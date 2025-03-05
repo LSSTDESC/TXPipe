@@ -111,15 +111,21 @@ def make_dask_depth_map_det_prob(
         (i.e. 0.9 to get magnitude at which 90% of brighter objects are detected)
     pixel_scheme : PixelScheme
         An object that provides pixelization scheme with methods `npix` and `ang2pix`.
+    smooth_det_frac: bool
+        if True apply a savgol filtering to the individual detection frac vs magnitude cut signals
+    smooth_window: float
+        if smooth_det_frac==True, this is the window size of the filter (in magnitudes)
 
     Returns
     -------
     tuple
         A tuple containing:
         - pix (dask.array): Unique pixel indices.
-        - count_map (dask.array): Count of objects per pixel.
+        - det_count_map (dask.array): Count of detected objects per pixel.
+        - inj_count_map (dask.array): Count of injected objects per pixel.
         - depth_map (dask.array): Mean depth per pixel.
-        - depth_var (dask.array): Variance of depth per pixel.
+        - frac_stack (dask.array): stack of maps. fraction of detections brighter than mag_edges
+        - mag_edges (dask.array): grid of magnitudes at which frac_stack was evaluated
     """
     from scipy.signal import savgol_filter
     _, da = import_dask()
