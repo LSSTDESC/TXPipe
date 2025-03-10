@@ -126,8 +126,8 @@ class TXRubinIngest(PipelineStage):
                         for col in cols:
                             assert col in output_names, f"Column {col} not found"
                     
-                    photo_data = self.process_photometry_data(d) # Function to run through the photometry part
-                    shear_data = self.process_shear_data(d) # Function to run through the shear/shape part
+                    photo_data = self.process_photometry_data(d)  # Function to run through the photometry part
+                    shear_data = self.process_shear_data(d)  # Function to run through the shear/shape part
 
                     if i == 0 and j == 0:
                         photo_outfile = self.setup_output("photometry_catalog", "photometry", photo_data, n)
@@ -243,73 +243,3 @@ class TXRubinIngest(PipelineStage):
         return output
 
         return output
-    
-
-    # Following are copied from the Mock catalog generator and 
-    def setup_photometry_output(self, photo_file):
-        # Get a list of all the column names
-        cols = ["ra", "dec", "extendedness"]
-        for band in self.bands:
-            cols.append(f"mag_{band}")
-            cols.append(f"mag_{band}_err")
-            cols.append(f"snr_{band}")
-
-        for col in self.config["extra_cols"].split():
-            cols.append(col)
-
-        # Make group for all the photometry
-        group = photo_file.create_group("photometry")
-        group.attrs["bands"] = self.bands
-
-        # Extensible columns becase we don't know the size yet.
-        # We will cut down the size at the end.
-        for col in cols:
-            group.create_dataset(
-                col, maxshape=(target_size,), dtype="f8"
-            )
-
-        # The only non-float column for now
-        group.create_dataset("id", maxshape=(target_size,), dtype="i8")
-
-        return cols + ["id"]
-
-    def setup_metadetect_output(self, metacal_file, target_size):
-        # Get a list of all the column names
-        cols = metadetect_variants(
-            "g1",
-            "g2",
-            "T",
-            "s2n",
-            "T_err",
-            "ra",
-            "dec",
-            "psf_g1",
-            "psf_g2",
-            "mcal_psf_g1",
-            "mcal_psf_g2",
-            "mcal_psf_T_mean",
-            "weight",
-        ) + band_variants("riz", "mag", "mag_err", shear_catalog_type="metadetect")
-
-        # Store the truth values only for the primary catalog
-        cols += ["00/true_g1", "00/true_g2", "00/redshift_true"]
-
-        # Make group for all the photometry
-        group = metacal_file.create_group("shear")
-        group.attrs["bands"] = self.bands
-
-        # Extensible columns becase we don't know the size yet.
-        # We will cut down the size at the end.
-        for col in cols:
-            group.create_dataset(
-                col, (target_size,), maxshape=(target_size,), dtype="f8"
-            )
-
-        # Integer columns
-        int_cols = metadetect_variants("id", "flags")
-        for col in int_cols:
-            group.create_dataset(
-                col, (target_size,), maxshape=(target_size,), dtype="i8"
-            )
-
-        return cols + int_cols
