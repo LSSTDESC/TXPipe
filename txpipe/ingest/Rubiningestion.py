@@ -29,6 +29,7 @@ class TXRubinIngest(PipelineStage):
     config_options = {
         "pq_path": "",
         "tracts": "",
+        "bands": "ugrizy",
         "input_tracts": True, #Assume that data is split into files per tract
         "input_variations": False, # Assume that the data is split into files per variation
         "moment": "wmom", #Which type of moment are we using for our files
@@ -41,6 +42,7 @@ class TXRubinIngest(PipelineStage):
 
         tracts = self.config["tracts"]
         pq_path = self.config['pq_path']
+        bands = self.config['bands']
 
         cat_files = glob.glob(f"{pq_path}/INSERTNAME*.parq") #WE NEED THE NAME OF THE Tables
 
@@ -83,11 +85,26 @@ class TXRubinIngest(PipelineStage):
 
         nfile = len(cat_files)
 
+        output_cols_shape = metadetect_variants(
+            "g1",
+            "g2",
+            "T",
+            "s2n",
+            "T_err",
+            "ra",
+            "dec",
+            "psf_g1",
+            "psf_g2",
+            "mcal_psf_g1",
+            "mcal_psf_g2",
+            "mcal_psf_T_mean",
+            "weight",
+        ) + band_variants(bands, "mag", "mag_err", shear_catalog_type="metadetect")
+
+
         # Now using pyarrow to batch work through the files, and generate the TXPipe catalogs
         # THIS IS THE MAIN LOOP OF INGESTION
         batch_size = 65536 #default value
-        start1 = 0
-        start2 = 0
         for i, fn in enumerate(cat_files):
             with ParquetFile(fn) as f:
                 n_chunk = math.ceil(f.metadata.num_rows/ batch_size)
@@ -105,16 +122,11 @@ class TXRubinIngest(PipelineStage):
                     if i == 0 and j == 0:
                         photo_outfile = self.setup_output("photometry_catalog", "photometry", photo_data, n)
                         shear_outfile = self.setup_output("shear_catalog", "shear", shear_data, n)
-                    
-                    end1 = start1 + len(photo_data['ra'])
-                    end2 = start2 + len(shear_data['ra'])
-                    self.write_output(photo_outfile, "photometry", photo_data, start1, end1)
-                    self.write_output(shear_outfile, "shear", shear_data, start2, end2)
-                    print(f"Processing chunk {j+1}/{n_chunk} of file {i+1}/{nfile} into rows {start1:,} - {end1:,}")
-                    start1 = end1
-                    start2 = end2
+                    else:
+                        self.write_output(photo_outfile, "photometry", photo_data)
+                        self.write_output(shear_outfile, "shear", shear_data)
+                    print(f"Processing chunk {j+1}/{n_chunk} of file {i+1}/{nfile}")
 
-        print(f"Final selected objects: {end1:,} in photometry and {end2:,} in shear")
         # UNSURE IF WE NEED THE THINGS BELOW HERE TO BEGIN WITH
         print("Trimming photometry columns:")
         for col in photo_data.keys():
@@ -135,40 +147,56 @@ class TXRubinIngest(PipelineStage):
         repack(self.get_output("shear_catalog"))
 
 
-    def setup_output(self, tag, group, first_chunk, n):
+    def setup_output(self, tag, group, data):
         """
         setting up the output files, this is a joint method for both the 
         photometry and the shape catalogs.
+
+        POTENTIAL ISSUE, if the first chunk doesn't include all variations, 
+        NEED to implement stopgap/safety
         """
         import h5py 
         
         f = self.open_output(tag)
         g = f.create_group(group)
+        g.attrs["bands"] = self.config['bands']
+        g.attrs["moment"] = self.config['moment']
 
-        for name, col in first_chunk.items():
-            g.create_dataset(name, shape=(n,), dtype=col.dtype)
+        for name, col in data.items:
+            g.create_dataset(name, maxshape=(None,), data=col)
+
         return f
     
-    def write_output(self, outfile, group, data, start, end):
+    def write_output(self, outfile, group, data):
         """
         writing output to the already made file!
         """
         g = outfile[group]
         for name, col in data.items():
-            g[name][start:end] = col
+            start = g[name].shape[0]
+            n = len(col)
+
+            g[name].resize((start+n,))
+
+            g[name][start:start+n] = col
     
     def process_photometry_data(self, data):
         """
         Actually translating the photometry data into the output we need for TXPipe
         """
+        bands = self.config['bands']
+        moment = self.config['moment']
         output = {}
         for d in data:
             sheartype = d['shear_type']
-            output[f"{sheartype}/ra"] = d['ra']
-            output[f"{sheartype}/id"] = d['id']
-            output[f"{sheartype}/dec"] = d['dec']
-
-
+            output[f"{sheartype}/ra"].append(d['ra'])
+            output[f"{sheartype}/id"].append(d['id'])
+            output[f"{sheartype}/dec"].append(d['dec'])
+            output[f"{sheartype}/tract"].append(d["tract"])
+            for band in bands:
+                output[f"{sheartype}/flux_{band}"].append(d[f"{moment}_band_flux_{band}"])
+                output[f"{sheartype}/flux_{band}_err"].append(d[f"{moment}_band_flux_err_{band}"])
+                output[f"{sheartype}/flux_{band}_flag"].append(d[f"{moment}_band_flux_flags_{band}"])
 
         return output
 
@@ -176,4 +204,103 @@ class TXRubinIngest(PipelineStage):
         """
         Translating the input in to the need shape format for TXPipe
         """
+
+        bands = self.config['bands']
+        moment = self.config['moment']
+        output = {}
+        for d in data:
+            sheartype = d['shear_type']
+            output[f"{sheartype}/ra"].append(d['ra'])
+            output[f"{sheartype}/id"].append(d['id'])
+            output[f"{sheartype}/dec"].append(d['dec'])
+            output[f"{sheartype}/tract"].append(d["tract"])
+            output[f"{sheartype}/psf_flags"].append(d["{moment}_psf_flags"])
+            output[f"{sheartype}/psf_g1"].append(d[f"{moment}_psf_g_1"])
+            output[f"{sheartype}/psf_g2"].append(d[f"{moment}_psf_g_2"])
+            output[f"{sheartype}/psf_T"].append(d[f"{moment}_psf_T"])
+            output[f"{sheartype}/obj_flags"].append(d[f"{moment}_obj_flags"])
+            output[f"{sheartype}/s2n"].append(d[f"{moment}_s2n"])
+            output[f"{sheartype}/g1"].append(d[f"{moment}_g_1"])
+            output[f"{sheartype}/g2"].append(d[f"{moment}_g_2"]) 
+            output[f"{sheartype}/T"].append(d[f"{moment}_T"])
+            output[f"{sheartype}/T_err"].append(d[f"{moment}_T_err"])
+            output[f"{sheartype}/T_flags"].append(d[f"{moment}_T_flags"])
+            output[f"{sheartype}/T_ration"].append(d[f"{moment}_T_ration"])
+            for band in bands:
+                output[f"{sheartype}/flux_{band}"].append(d[f"{moment}_band_flux_{band}"])
+                output[f"{sheartype}/flux_{band}_err"].append(d[f"{moment}_band_flux_err_{band}"])
+                output[f"{sheartype}/flux_{band}_flag"].append(d[f"{moment}_band_flux_flags_{band}"])
+
         return output
+
+        return output
+    
+
+    # Following are copied from the Mock catalog generator and 
+    def setup_photometry_output(self, photo_file):
+        # Get a list of all the column names
+        cols = ["ra", "dec", "extendedness"]
+        for band in self.bands:
+            cols.append(f"mag_{band}")
+            cols.append(f"mag_{band}_err")
+            cols.append(f"snr_{band}")
+
+        for col in self.config["extra_cols"].split():
+            cols.append(col)
+
+        # Make group for all the photometry
+        group = photo_file.create_group("photometry")
+        group.attrs["bands"] = self.bands
+
+        # Extensible columns becase we don't know the size yet.
+        # We will cut down the size at the end.
+        for col in cols:
+            group.create_dataset(
+                col, maxshape=(target_size,), dtype="f8"
+            )
+
+        # The only non-float column for now
+        group.create_dataset("id", maxshape=(target_size,), dtype="i8")
+
+        return cols + ["id"]
+
+    def setup_metadetect_output(self, metacal_file, target_size):
+        # Get a list of all the column names
+        cols = metadetect_variants(
+            "g1",
+            "g2",
+            "T",
+            "s2n",
+            "T_err",
+            "ra",
+            "dec",
+            "psf_g1",
+            "psf_g2",
+            "mcal_psf_g1",
+            "mcal_psf_g2",
+            "mcal_psf_T_mean",
+            "weight",
+        ) + band_variants("riz", "mag", "mag_err", shear_catalog_type="metadetect")
+
+        # Store the truth values only for the primary catalog
+        cols += ["00/true_g1", "00/true_g2", "00/redshift_true"]
+
+        # Make group for all the photometry
+        group = metacal_file.create_group("shear")
+        group.attrs["bands"] = self.bands
+
+        # Extensible columns becase we don't know the size yet.
+        # We will cut down the size at the end.
+        for col in cols:
+            group.create_dataset(
+                col, (target_size,), maxshape=(target_size,), dtype="f8"
+            )
+
+        # Integer columns
+        int_cols = metadetect_variants("id", "flags")
+        for col in int_cols:
+            group.create_dataset(
+                col, (target_size,), maxshape=(target_size,), dtype="i8"
+            )
+
+        return cols + int_cols
