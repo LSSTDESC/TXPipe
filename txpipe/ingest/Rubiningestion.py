@@ -85,7 +85,10 @@ class TXRubinIngest(PipelineStage):
 
         nfile = len(cat_files)
 
-        output_cols_shape = metadetect_variants(
+        # making a list of what the columns that are in 
+        self.shear_output_cols = metadetect_variants(
+            "id",
+            "tract",
             "g1",
             "g2",
             "T",
@@ -99,12 +102,19 @@ class TXRubinIngest(PipelineStage):
             "mcal_psf_g2",
             "mcal_psf_T_mean",
             "weight",
-        ) + band_variants(bands, "mag", "mag_err", shear_catalog_type="metadetect")
+        ) + band_variants(bands, "flux", "flux_err", "flux_flag", shear_catalog_type="metadetect")
+        self.phot_output_cols = metadetect_variants(
+            "id",
+            "tract",
+            "ra",
+            "dec",
+        ) + band_variants(bands,  "flux", "flux_err", "flux_flag", shear_catalog_type="metadetect")
+        
 
 
         # Now using pyarrow to batch work through the files, and generate the TXPipe catalogs
         # THIS IS THE MAIN LOOP OF INGESTION
-        batch_size = 65536 #default value
+        batch_size = 65536  #default value
         for i, fn in enumerate(cat_files):
             with ParquetFile(fn) as f:
                 n_chunk = math.ceil(f.metadata.num_rows/ batch_size)
@@ -186,7 +196,7 @@ class TXRubinIngest(PipelineStage):
         """
         bands = self.config['bands']
         moment = self.config['moment']
-        output = {}
+        output = {name: [] for name in self.phot_output_cols}
         for d in data:
             sheartype = d['shear_type']
             output[f"{sheartype}/ra"].append(d['ra'])
@@ -204,10 +214,9 @@ class TXRubinIngest(PipelineStage):
         """
         Translating the input in to the need shape format for TXPipe
         """
-
         bands = self.config['bands']
         moment = self.config['moment']
-        output = {}
+        output = {name: [] for name in self.shear_output_cols}
         for d in data:
             sheartype = d['shear_type']
             output[f"{sheartype}/ra"].append(d['ra'])
@@ -228,8 +237,8 @@ class TXRubinIngest(PipelineStage):
             output[f"{sheartype}/T_ration"].append(d[f"{moment}_T_ration"])
             for band in bands:
                 output[f"{sheartype}/flux_{band}"].append(d[f"{moment}_band_flux_{band}"])
-                output[f"{sheartype}/flux_{band}_err"].append(d[f"{moment}_band_flux_err_{band}"])
-                output[f"{sheartype}/flux_{band}_flag"].append(d[f"{moment}_band_flux_flags_{band}"])
+                output[f"{sheartype}/flux_err_{band}"].append(d[f"{moment}_band_flux_err_{band}"])
+                output[f"{sheartype}/flux_flag_{band}"].append(d[f"{moment}_band_flux_flags_{band}"])
 
         return output
 
