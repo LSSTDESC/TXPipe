@@ -202,3 +202,114 @@ TXPhotozPlotLens:
     name: TXPhotozPlotLens
 TXPhotozPlotSource:
     name: TXPhotozPlotSource
+
+
+FlowCreator:
+    n_samples: 1000000
+    seed: 5763248
+
+
+InvRedshiftIncompleteness:
+    pivot_redshift: 0.8
+GridSelection:
+    redshift_cut: 5.1
+    ratio_file: data/example/inputs/hsc_ratios_and_specz.hdf5
+    settings_file: data/example/inputs/HSC_grid_settings.pkl
+    random_seed: 66
+    pessimistic_redshift_cut: 1.0
+
+
+
+PZRailSummarizeLens:
+    leafsize: 20
+    zmin: 0.0
+    zmax: 3.0
+    nzbins: 50
+    name: PZRailSummarizeLens
+    catalog_group: lens
+    tomography_name: lens
+    bands: ugrizy
+
+
+PZRailSummarizeSource:
+    leafsize: 20
+    zmin: 0.0
+    zmax: 3.0
+    nzbins: 50
+    mag_prefix: /shear/mcal_mag_
+    tomography_name: source
+    catalog_group: shear
+    bands: riz
+    name: PZRailSummarizeSource
+
+
+
+PZPrepareEstimatorLens:
+    name: PZPrepareEstimatorLens
+    classname: BPZliteInformer
+    zmin: 0.0
+    zmax: 3.0
+    nzbins: 301
+    columns_file: ./data/bpz_ugrizy.columns
+    data_path: ./data/example/rail-bpz-inputs
+    spectra_file: CWWSB4.list
+    prior_band: i
+    ref_band: i
+    # Not sure about this
+    prior_file: hdfn_gen
+    p_min: 0.005
+    gauss_kernel: 0.0
+    mag_err_min: 0.005
+    inform_options: {save_train: false, load_model: false, modelfile: BPZpriormodel.out}
+    madau_reddening: no
+    bands: riz
+    zp_errors: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+    hdf5_groupname: photometry
+
+
+
+PZEstimatorLens:
+    name: PZEstimatorLens
+    classname: BPZliteEstimator
+    zmin: 0.0
+    zmax: 3.0
+    dz: 0.01
+    nzbins: 301
+    band_names: [mag_u, mag_g, mag_r, mag_i, mag_z, mag_y]
+    bands: [mag_u, mag_g, mag_r, mag_i, mag_z, mag_y]
+    err_bands: [mag_err_u, mag_err_g, mag_err_r, mag_err_i, mag_err_z, mag_err_y]
+    hdf5_groupname: photometry
+    nondetect_val: .inf
+    columns_file: ./data/bpz_ugrizy.columns
+    data_path: ./data/example/rail-bpz-inputs
+    spectra_file: CWWSB4.list
+    prior_band: mag_i
+    ref_band: mag_i
+    prior_file: hdfn_gen
+    p_min: 0.005
+    gauss_kernel: 0.0
+    zp_errors: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+    mag_err_min: 0.005
+    madau_reddening: false
+    mag_limits:
+        mag_u: 27.79
+        mag_g: 29.04
+        mag_r: 29.06
+        mag_i: 28.62
+        mag_z: 27.98
+        mag_y: 27.05
+
+
+
+TXParqetToHDF:
+    hdf_group: photometry
+
+NZDirInformerSource:
+    name: NZDirInformerSource
+    usecols: riz
+    hdf5_groupname: photometry
+
+NZDirInformerLens:
+    name: NZDirInformerLens
+    usecols: ugrizy
+    hdf5_groupname: photometry
