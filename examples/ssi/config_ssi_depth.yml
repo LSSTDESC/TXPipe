@@ -1,0 +1,21 @@
+# Values in this section are accessible to all the different stages.
+# They can be overridden by individual stages though.
+global:
+    # This is read by many stages that read complete
+    # catalog data, and tells them how many rows to read
+    # at once
+    chunk_rows: 100_000
+    # These mapping options are also read by a range of stages
+    pixelization: healpix
+    nside: 256
+    sparse: true  # Generate sparse maps - faster if using small areas
+
+
+TXIngestSSIDetectionDESBalrog:
+    name: TXIngestSSIDetectionDESBalrog
+
+TXMapPlots:
+    name:  TXMapPlots
+    projection: cart
+    rot180: True
+

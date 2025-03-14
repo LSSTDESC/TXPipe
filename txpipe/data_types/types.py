@@ -18,6 +18,17 @@ def metacalibration_names(names):
         out += [name + "_" + s for s in suffices]
     return out
 
+class PhotometryCatalog(HDFFile):
+    def get_bands(self):
+        group = self.file["photometry"]
+        if "bands" in group.attrs:
+            return group.attrs["bands"]
+        bands = []
+        for col in group.keys():
+            if col.startswith("mag_") and col.count("_") == 1:
+                bands.append(col[4:])
+        return bands
+
 
 class ShearCatalog(HDFFile):
     """
@@ -89,6 +100,30 @@ class ShearCatalog(HDFFile):
             rename = {}
 
         return shear_cols, rename
+
+    def get_bands(self):
+        group = self.file[self.get_primary_catalog_group()]
+        if "bands" in group.attrs:
+            return group.attrs["bands"]
+        bands = []
+        for col in group.keys():
+            if col.startswith("mag_") and col.count("_") == 1:
+                bands.append(col[4:])
+        return bands
+
+
+class BinnedCatalog(HDFFile):
+    required_datasets = []
+    def get_bins(self, group_name):
+        group = self.file[group_name]
+        info = dict(group.attrs)
+        bins = []
+        for i in range(info["nbin"]):
+            code = info[f"bin_{i}"]
+            name = f"bin_{code}"
+            bins.append(name)
+        return bins
+
 
 
 class TomographyCatalog(HDFFile):
@@ -239,12 +274,20 @@ class MapsFile(HDFFile):
         subgroup.create_dataset("pixel", data=pixel)
         subgroup.create_dataset("value", data=value)
 
-    def plot_healpix(self, map_name, view="cart", **kwargs):
+    def plot_healpix(self, map_name, view="cart", rot180=False, **kwargs):
         import healpy
         import numpy as np
 
         m, pix, nside = self.read_healpix(map_name, return_all=True)
         lon, lat = healpy.pix2ang(nside, pix, lonlat=True)
+        if rot180: #(optional) rotate 180 degrees in the lon direction
+            lon += 180
+            lon[lon > 360.] -= 360.
+            pix_rot = healpy.ang2pix(nside, lon, lat, lonlat=True)
+            m_rot = np.ones(healpy.nside2npix(nside))*healpy.UNSEEN
+            m_rot[pix_rot] = m[pix]
+            m = m_rot
+            pix = pix_rot
         npix = healpy.nside2npix(nside)
         if len(pix) == 0:
             print(f"Empty map {map_name}")
@@ -256,6 +299,7 @@ class MapsFile(HDFFile):
         lon_range = [lon[w].min() - 0.1, lon[w].max() + 0.1]
         lat_range = [lat[w].min() - 0.1, lat[w].max() + 0.1]
         lat_range = np.clip(lat_range, -90, 90)
+        lon_range = np.clip(lon_range, 0, 360.)
         m[m == 0] = healpy.UNSEEN
         title = kwargs.pop("title", map_name)
         if view == "cart":

@@ -7,8 +7,8 @@ def random_points_in_triangle(p1, p2, p3, n):
 
     The points can be in any number of dimensions.
 
-    Params
-    ------
+    Parameters
+    ----------
     p1: 1D array
         Vector pointing to the first vertex
     p2: 1D array
@@ -56,8 +56,8 @@ def random_points_in_quadrilateral(p1, p2, p3, p4, n):
     As long as you specify the vertices consistently either clockwise or
     anti-clockwise is okay.
 
-    Params
-    ------
+    Parameters
+    ----------
     p1: 1D array
         Vector pointing to the first vertex
     p2: 1D array

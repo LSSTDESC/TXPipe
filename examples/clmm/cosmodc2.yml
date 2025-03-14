@@ -10,18 +10,18 @@ site:
 modules: txpipe  rail
 
 python_paths:
-    - submodules/RAIL
+  - submodules/RAIL
 
 
 stages:
-    - name: BPZ_lite                    # Run BPZ to get photo-z PDFs
-      nodes: 1
-      nprocess: 32
-      processes_per_node: 32
-      threads_per_process: 1
-    - name: TXSourceSelectorMetadetect  # Select a source sample
-    - name: CLIngestRedmapper           # Ingest redmapper catalog from GCR 
-    - name: CLClusterShearCatalogs      # Find shear catalogs around each cluster
+  - name: BPZ_lite                      # Run BPZ to get photo-z PDFs
+    nodes: 1
+    nprocess: 32
+    processes_per_node: 32
+    threads_per_process: 1
+  - name: TXSourceSelectorMetadetect    # Select a source sample
+  - name: CLIngestRedmapper             # Ingest redmapper catalog from GCR 
+  - name: CLClusterShearCatalogs        # Find shear catalogs around each cluster
 
 
 output_dir: data/clmm/outputs
@@ -37,7 +37,7 @@ inputs:
     calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
 
 
-resume: True
+resume: true
 log_dir: data/clmm/logs
 pipeline_log: data/clmm/log.txt
 

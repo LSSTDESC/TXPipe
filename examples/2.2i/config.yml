@@ -6,7 +6,7 @@ TXMetacalGCRInput:
     cat_name: dc2_object_run2.2i_dr6c_with_metacal
 
 TXExposureInfo:
-    dc2_name: '1.2p'
+    dc2_name: 1.2p
 
 TXIngestStars:
     cat_name: dc2_object_run2.2i_dr6c
@@ -15,13 +15,7 @@ TXCosmoDC2Mock:
     cat_name: cosmoDC2_v1.1.4_image
     visits_per_band: 16
     extra_cols: redshift_true size_true shear_1 shear_2
-    flip_g2: True # to match metacal
-
-FlexZPipe:
-    has_redshift: False
-    nz: 300
-    metacal_fluxes: False
-    chunk_rows: 100
+    flip_g2: true # to match metacal
 
 
 PZPDFMLZ:
@@ -32,24 +26,10 @@ PZPDFMLZ:
 
 TXPhotozPlotLens:
     name: TXPhotozPlotLens
-    aliases:
-        photoz_stack: lens_photoz_stack
-        nz_plot: source_nz
-
 TXPhotozPlotSource:
     name: TXPhotozPlotSource
-    aliases:
-        photoz_stack: shear_photoz_stack
-        nz_plot: lens_nz
-
-
 TXTruePhotozStackSource:
     name: TXTruePhotozStackSource
-    aliases:
-        tomography_catalog: shear_tomography_catalog
-        catalog: shear_catalog
-        weights_catalog: shear_catalog
-        photoz_stack: shear_photoz_stack
     weight_col: metacal/weight
     redshift_group: metacal
     zmax: 2.0
@@ -57,11 +37,6 @@ TXTruePhotozStackSource:
 
 TXTruePhotozStackLens:
     name: TXTruePhotozStackLens
-    aliases:
-        tomography_catalog: lens_tomography_catalog
-        catalog: photometry_catalog
-        weights_catalog: dummy
-        photoz_stack: lens_photoz_stack
     redshift_group: photometry
     zmax: 2.0
     nz: 201
@@ -73,7 +48,7 @@ TXSourceTrueNumberDensity:
     chunk_rows: 100000
 
 TXSourceSelector:
-    input_pz: False
+    input_pz: false
     bands: riz #used for selection
     T_cut: 0.5
     s2n_cut: 10.0
@@ -98,36 +73,36 @@ TXRandomCat:
 TXTwoPoint:
     binslop: 0.1
     delta_gamma: 0.02
-    do_pos_pos: True
-    do_shear_shear: True
-    do_shear_pos: True
-    flip_g2: False  # False now seems to be right for metacal
+    do_pos_pos: true
+    do_shear_shear: true
+    do_shear_pos: true
+    flip_g2: false  # False now seems to be right for metacal
     min_sep: 2.5
     max_sep: 250
     nbins: 20
     verbose: 0
-    subtract_mean_shear: True
+    subtract_mean_shear: true
 
 TXSourceMaps:
     pixelization: healpix
     nside: 1024
-    sparse: True
+    sparse: true
 
 TXLensMaps:
     pixelization: healpix
     nside: 1024
-    sparse: True
+    sparse: true
 
 
 TXAuxiliarySourceMaps:
-    chunk_rows:  100000
-    sparse:  True
-    psf_prefix:  psf_
+    chunk_rows: 100000
+    sparse: true
+    psf_prefix: psf_
 
 TXAuxiliaryLensMaps:
-    chunk_rows:  100000
-    sparse:  True
-    bright_obj_threshold:  22.0
+    chunk_rows: 100000
+    sparse: true
+    bright_obj_threshold: 22.0
 
 TXSimpleMask:
     depth_cut: 23.0
@@ -140,8 +115,8 @@ TXLensDiagnosticPlots: {}
 
 TXTwoPointFourier:
     chunk_rows: 100000
-    flip_g2: True
-    flip_g1: True
+    flip_g2: true
+    flip_g1: true
     bandwidth: 200
     apodization_size: 0.0
     cache_dir: ./cache
@@ -156,7 +131,7 @@ TXLensingNoiseMaps:
 TXMeanLensSelector:
     # Mag cuts
     chunk_rows: 100000
-    lens_zbin_edges: [0.0,0.2,0.4]
+    lens_zbin_edges: [0.0, 0.2, 0.4]
     cperp_cut: 0.2
     r_cpar_cut: 13.5
     r_lo_cut: 16.0
@@ -168,7 +143,7 @@ TXMeanLensSelector:
 TXTruthLensSelector:
     # Mag cuts
     chunk_rows: 100000
-    lens_zbin_edges: [0.0,0.2,0.4]
+    lens_zbin_edges: [0.0, 0.2, 0.4]
     cperp_cut: 0.2
     r_cpar_cut: 13.5
     r_lo_cut: 16.0
