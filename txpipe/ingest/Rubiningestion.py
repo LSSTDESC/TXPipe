@@ -67,7 +67,7 @@ class TXRubinIngest(PipelineStage):
         shape_cols = ["id", "ra", "dec", "tract","shear_type",
                       "psfrec_flags", "psfrec_g_1", "psfrec_g_2", "psfrec_T"
                       ]
-        # The next set of columns depend on the moment used for the calculation
+        # The next set of columns depend on the moment used for the calculatialon
         moment=self.config["moment"]
         other_columns = [f"{moment}_psf_flags", f"{moment}_psf_g_1", f"{moment}_psf_g_2",
                          f"{moment}_psf_T", f"{moment}_obj_flags", f"{moment}_s2n",
@@ -239,7 +239,5 @@ class TXRubinIngest(PipelineStage):
                 output[f"{sheartype}/flux_{band}"].append(d[f"{moment}_band_flux_{band}"])
                 output[f"{sheartype}/flux_err_{band}"].append(d[f"{moment}_band_flux_err_{band}"])
                 output[f"{sheartype}/flux_flag_{band}"].append(d[f"{moment}_band_flux_flags_{band}"])
-
-        return output
 
         return output
