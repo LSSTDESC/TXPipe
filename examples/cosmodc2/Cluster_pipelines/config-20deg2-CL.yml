@@ -85,7 +85,9 @@ CLClusterEnsembleProfiles:
     magnification_profile: false
     coordinate_system: celestial #euclidean or celestial
 
-
+CLClusterSACC:
+    survey_name: 'cosmodc2-20deg2-CL'
+    area: 440.0
 
 
 
