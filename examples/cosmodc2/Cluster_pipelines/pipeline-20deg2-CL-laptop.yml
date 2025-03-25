@@ -1,13 +1,13 @@
 #this step depends on where you run
 #for CCin2p3
-site:
-    name: cc-parallel
-    mpi_command: mpirun -n
+# site:
+#     name: cc-parallel
+#     mpi_command: "mpirun -n"
 
 #for NERSC
-#site:
-#    name: cori-batch
-#    image: ghcr.io/lsstdesc/txpipe-dev
+site:
+    name: local
+    image: 
 
 
 #all the following steps should not depend on where you run 
@@ -21,12 +21,19 @@ modules: >
 python_paths: []
 
 stages:
-#    - name: TXSourceSelectorMetadetect
-#      nprocess: 30
-#    - name: BPZliteInformer
-#      nprocess: 1
-#    - name: BPZ_lite
-#      nprocess: 30
+  - name: TXSourceSelectorMetadetect
+    nprocess: 6
+  - name: BPZliteInformer
+    nprocess: 1
+    aliases:
+        input: spectroscopic_catalog
+        model: photoz_model
+  - name: BPZliteEstimator
+    nprocess: 6
+    aliases:
+        model: photoz_model
+        input: shear_catalog
+        output: source_photoz_pdfs
   - name: CLClusterBinningRedshiftRichness
     nprocess: 1
   - name: CLClusterShearCatalogs
@@ -39,7 +46,7 @@ stages:
 
 
 output_dir: ./data/cosmodc2/outputs-20deg2-CL
-config: ./examples/cosmodc2/config-20deg2-CL.yml
+config: ./examples/cosmodc2/Cluster_pipelines/config-20deg2-CL.yml
 
 inputs:
     # See README for paths to download these files
@@ -54,4 +61,3 @@ inputs:
 resume: true
 log_dir: ./data/cosmodc2/logs
 pipeline_log: ./data/cosmodc2/log_20deg2.txt
-
