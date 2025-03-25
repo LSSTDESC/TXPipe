@@ -57,25 +57,27 @@ BPZliteEstimator:
         mag_z: 27.98
 
 CLClusterBinningRedshiftRichness:
-    zedge: [0.2, 0.4, 0.6, 0.8]
-    richedge: [5., 10., 20., 25., 50.]
+    zedge: [0.2, 0.4, 0.6, 0.8, 1.0, 1.2]
+    richedge: [10, 20., 35., 200.]
+#    zedge: [0.2, 0.4]
+#    richedge: [20., 25.]
 
 CLClusterShearCatalogs:
     chunk_rows: 100_000  # rows to read at once from source cat
-    max_radius: 5   # Mpc
+    max_radius: 10.  # Mpc
     delta_z: 0.2   # redshift buffer
-    redshift_cut_criterion: zmode
-    redshift_weight_criterion: zmode
+    redshift_cut_criterion: ztrue
+    redshift_weight_criterion: ztrue
     redshift_cut_criterion_pdf_fraction: 0.9
     subtract_mean_shear: false
     coordinate_system: celestial #euclidean or celestial
-    use_true_shear: true
+    use_true_shear: false
 
 
 CLClusterEnsembleProfiles:
     #radial bin definition
-    r_min: 0.2  #in Mpc
-    r_max: 5.0  #in Mpc
+    r_min: 0.5  #in Mpc
+    r_max: 10.  #in Mpc
     nbins: 10  # number of bins
     #type of profile
     delta_sigma_profile: true

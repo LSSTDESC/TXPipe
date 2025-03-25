@@ -604,6 +604,7 @@ class CombinedClusterCatalog:
         self.cluster_shear_catalogs = HDFFile(cluster_shear_catalogs, "r").file
         self.cluster_cat_cols = list(self.cluster_catalog['clusters'].keys())
         self.ncluster = self.cluster_shear_catalogs['catalog/cluster_id'].size
+        self.coordinate_systems = self.cluster_shear_catalogs['provenance'].attrs['config/coordinate_system'] 
         #self.pz_criterion = "z" + self.cluster_shear_catalogs['provenance'].attrs['config/ redshift_criterion'] ### TO UPDATE
         #self.pz_col = self.pz_cat[f'ancil/{self.pz_criterion}']
 
@@ -705,5 +706,8 @@ class CombinedClusterCatalog:
             cat["true_g1"] = group["true_g1"][source_index]
             cat["true_g2"] = group["true_g2"][source_index]
 
-        return clmm.GCData(data=cat)
+        gcdata = clmm.GCData(data=cat, meta={"coordinate_system": self.coordinate_systems})
+        #gcdata.update_coordinate_system(self.coordinate_systems)
+
+        return gcdata
     
