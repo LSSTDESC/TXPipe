@@ -86,7 +86,12 @@ def make_dask_depth_map(ra, dec, mag, snr, threshold, delta, pixel_scheme):
     depth_var = depth2_map - depth_map**2
 
     pix = da.unique(pix)
-    return pix, count_map, depth_map, depth_var
+    return {
+        "pix": pix, 
+        "count_map": count_map, 
+        "depth_map": depth_map, 
+        "depth_var": depth_var,
+    }
 
 def make_dask_depth_map_det_prob(
     ra, dec, mag, det, det_prob_threshold, mag_delta, min_depth, max_depth, pixel_scheme, 
@@ -152,7 +157,7 @@ def make_dask_depth_map_det_prob(
 
     # Optional smoothing of the stacked detection fractions
     if smooth_det_frac:
-        window_length = int(n_depth_bins*smooth_window/(max_depth-min_depth)) #converting to units of depth bin
+        window_length = int(n_depth_bins*smooth_window/(max_depth-min_depth)) #converting to units of mag bin
         poly_order = 2 # TODO: could make config option
 
         # Here extend the chunks of the dask array when applying a local filter to avoid boundary issues
@@ -181,4 +186,11 @@ def make_dask_depth_map_det_prob(
     depth_map[~valid_pix_mask] = np.nan
 
     pix = da.unique(pix)
-    return pix, det_count_map, inj_count_map, depth_map, frac_stack, mag_edges
+    return {
+        "pix": pix,
+        "det_count_map": det_count_map,
+        "inj_count_map": inj_count_map,
+        "depth_map": depth_map,
+        "frac_stack": frac_stack,
+        "mag_edges": mag_edges
+    }
