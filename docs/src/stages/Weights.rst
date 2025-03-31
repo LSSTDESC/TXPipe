@@ -17,7 +17,21 @@ These stages deal with weighting the lens sample
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - binned_lens_catalog_unweighted: TomographyCatalog
+    - lens_tomography_catalog_unweighted: TomographyCatalog
+    - mask: MapsFile
+
+    Outputs: 
+
+    - lss_weight_summary: FileCollection
+    - lss_weight_maps: MapsFile
+    - binned_lens_catalog: HDFFile
+    - lens_tomography_catalog: HDFFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -37,7 +51,23 @@ These stages deal with weighting the lens sample
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - binned_lens_catalog_unweighted: TomographyCatalog
+    - lens_tomography_catalog_unweighted: TomographyCatalog
+    - mask: MapsFile
+    - lens_photoz_stack: HDFFile
+    - fiducial_cosmology: FiducialCosmology
+
+    Outputs: 
+
+    - lss_weight_summary: FileCollection
+    - lss_weight_maps: MapsFile
+    - binned_lens_catalog: HDFFile
+    - lens_tomography_catalog: HDFFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -62,7 +92,23 @@ These stages deal with weighting the lens sample
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - binned_lens_catalog_unweighted: TomographyCatalog
+    - lens_tomography_catalog_unweighted: TomographyCatalog
+    - mask: MapsFile
+    - lens_photoz_stack: HDFFile
+    - fiducial_cosmology: FiducialCosmology
+
+    Outputs: 
+
+    - lss_weight_summary: FileCollection
+    - lss_weight_maps: MapsFile
+    - binned_lens_catalog: HDFFile
+    - lens_tomography_catalog: HDFFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -88,7 +134,21 @@ These stages deal with weighting the lens sample
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - binned_lens_catalog_unweighted: TomographyCatalog
+    - lens_tomography_catalog_unweighted: TomographyCatalog
+    - mask: MapsFile
+
+    Outputs: 
+
+    - lss_weight_summary: FileCollection
+    - lss_weight_maps: MapsFile
+    - binned_lens_catalog: HDFFile
+    - lens_tomography_catalog: HDFFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 

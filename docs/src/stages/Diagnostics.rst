@@ -39,7 +39,17 @@ These stages compute and/or plot diagnostics of catalogs or other data
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - shear_catalog: ShearCatalog
+    - shear_tomography_catalog: TomographyCatalog
+
+    Outputs: 
+
+    - shear_catalog_quantiles: HDFFile
+    
     Parallel: Yes - Dask
+
 
     .. collapse:: Configuration
 
@@ -59,7 +69,31 @@ These stages compute and/or plot diagnostics of catalogs or other data
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - shear_catalog: ShearCatalog
+    - shear_tomography_catalog: TomographyCatalog
+    - shear_catalog_quantiles: HDFFile
+
+    Outputs: 
+
+    - g_psf_T: PNGFile
+    - g_psf_g: PNGFile
+    - g1_hist: PNGFile
+    - g2_hist: PNGFile
+    - g_snr: PNGFile
+    - g_T: PNGFile
+    - g_colormag: PNGFile
+    - source_snr_hist: PNGFile
+    - source_mag_hist: PNGFile
+    - response_hist: PNGFile
+    - g_psf_T_out: TextFile
+    - g_psf_g_out: TextFile
+    - g_snr_out: TextFile
+    - g_T_out: TextFile
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -89,7 +123,18 @@ These stages compute and/or plot diagnostics of catalogs or other data
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - photometry_catalog: HDFFile
+    - lens_tomography_catalog: TomographyCatalog
+
+    Outputs: 
+
+    - lens_snr_hist: PNGFile
+    - lens_mag_hist: PNGFile
+    
     Parallel: Yes - Dask
+
 
     .. collapse:: Configuration
 
@@ -111,7 +156,19 @@ These stages compute and/or plot diagnostics of catalogs or other data
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - star_catalog: HDFFile
+
+    Outputs: 
+
+    - e1_psf_residual_hist: PNGFile
+    - e2_psf_residual_hist: PNGFile
+    - T_frac_psf_residual_hist: PNGFile
+    - star_psf_stats: YamlFile
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -126,7 +183,16 @@ These stages compute and/or plot diagnostics of catalogs or other data
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - star_catalog: HDFFile
+
+    Outputs: 
+
+    - moments_stats: HDFFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -147,7 +213,21 @@ These stages compute and/or plot diagnostics of catalogs or other data
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - binned_shear_catalog: ShearCatalog
+    - star_catalog: HDFFile
+    - rowe_stats: HDFFile
+
+    Outputs: 
+
+    - tau0: PNGFile
+    - tau2: PNGFile
+    - tau5: PNGFile
+    - tau_stats: HDFFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -175,7 +255,20 @@ These stages compute and/or plot diagnostics of catalogs or other data
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - star_catalog: HDFFile
+    - patch_centers: TextFile
+
+    Outputs: 
+
+    - rowe134: PNGFile
+    - rowe25: PNGFile
+    - rowe0: PNGFile
+    - rowe_stats: HDFFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -201,7 +294,20 @@ These stages compute and/or plot diagnostics of catalogs or other data
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - shear_catalog: ShearCatalog
+    - star_catalog: HDFFile
+    - shear_tomography_catalog: TomographyCatalog
+
+    Outputs: 
+
+    - star_shear_test: PNGFile
+    - star_star_test: PNGFile
+    - star_shear_stats: HDFFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -225,7 +331,20 @@ These stages compute and/or plot diagnostics of catalogs or other data
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - shear_catalog: ShearCatalog
+    - star_catalog: HDFFile
+    - shear_tomography_catalog: TomographyCatalog
+    - random_cats: RandomsCatalog
+
+    Outputs: 
+
+    - star_density_test: PNGFile
+    - star_density_stats: HDFFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -248,7 +367,17 @@ These stages compute and/or plot diagnostics of catalogs or other data
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - star_catalog: HDFFile
+
+    Outputs: 
+
+    - brighter_fatter_plot: PNGFile
+    - brighter_fatter_data: HDFFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -267,7 +396,23 @@ These stages compute and/or plot diagnostics of catalogs or other data
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - binned_shear_catalog: ShearCatalog
+    - shear_photoz_stack: QPNOfZFile
+    - lens_photoz_stack: QPNOfZFile
+    - random_cats: RandomsCatalog
+    - exposures: HDFFile
+    - patch_centers: TextFile
+    - tracer_metadata: HDFFile
+
+    Outputs: 
+
+    - gammat_field_center: SACCFile
+    - gammat_field_center_plot: PNGFile
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -302,7 +447,27 @@ These stages compute and/or plot diagnostics of catalogs or other data
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - binned_shear_catalog: ShearCatalog
+    - shear_tomography_catalog: TomographyCatalog
+    - shear_photoz_stack: QPNOfZFile
+    - lens_photoz_stack: QPNOfZFile
+    - random_cats: RandomsCatalog
+    - binned_star_catalog: HDFFile
+    - patch_centers: TextFile
+    - tracer_metadata: HDFFile
+    - binned_random_catalog: HDFFile
+
+    Outputs: 
+
+    - gammat_bright_stars: SACCFile
+    - gammat_bright_stars_plot: PNGFile
+    - gammat_dim_stars: SACCFile
+    - gammat_dim_stars_plot: PNGFile
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -337,7 +502,21 @@ These stages compute and/or plot diagnostics of catalogs or other data
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - binned_shear_catalog: ShearCatalog
+    - shear_photoz_stack: QPNOfZFile
+    - random_cats: RandomsCatalog
+    - patch_centers: TextFile
+    - tracer_metadata: HDFFile
+
+    Outputs: 
+
+    - gammat_randoms: SACCFile
+    - gammat_randoms_plot: PNGFile
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -372,7 +551,19 @@ These stages compute and/or plot diagnostics of catalogs or other data
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - binned_shear_catalog: ShearCatalog
+    - shear_photoz_stack: QPNOfZFile
+    - patch_centers: TextFile
+    - tracer_metadata: HDFFile
+
+    Outputs: 
+
+    - aperture_mass_data: SACCFile
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -407,7 +598,16 @@ These stages compute and/or plot diagnostics of catalogs or other data
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - star_catalog: HDFFile
+
+    Outputs: 
+
+    - focalplane_g: PNGFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 

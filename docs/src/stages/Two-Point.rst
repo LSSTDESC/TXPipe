@@ -31,7 +31,21 @@ These stages deal with measuring or predicting two-point statistics.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - aux_lens_maps: MapsFile
+    - mask: MapsFile
+    - lens_photoz_stack: QPNOfZFile
+    - fiducial_cosmology: FiducialCosmology
+
+    Outputs: 
+
+    - random_cats: RandomsCatalog
+    - binned_random_catalog: RandomsCatalog
+    - binned_random_catalog_sub: RandomsCatalog
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -52,7 +66,16 @@ These stages deal with measuring or predicting two-point statistics.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - binned_random_catalog: HDFFile
+
+    Outputs: 
+
+    - binned_random_catalog_sub: RandomsCatalog
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -69,7 +92,25 @@ These stages deal with measuring or predicting two-point statistics.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - shear_photoz_stack: QPNOfZFile
+    - lens_photoz_stack: QPNOfZFile
+    - fiducial_cosmology: FiducialCosmology
+    - tracer_metadata: TomographyCatalog
+    - lens_maps: MapsFile
+    - source_maps: MapsFile
+    - density_maps: MapsFile
+    - mask: MapsFile
+    - source_noise_maps: LensingNoiseMaps
+    - lens_noise_maps: ClusteringNoiseMaps
+
+    Outputs: 
+
+    - twopoint_data_fourier: SACCFile
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -103,7 +144,24 @@ These stages deal with measuring or predicting two-point statistics.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - binned_shear_catalog: ShearCatalog
+    - binned_lens_catalog: HDFFile
+    - binned_random_catalog: HDFFile
+    - binned_random_catalog_sub: HDFFile
+    - shear_photoz_stack: QPNOfZFile
+    - lens_photoz_stack: QPNOfZFile
+    - patch_centers: TextFile
+    - tracer_metadata: HDFFile
+
+    Outputs: 
+
+    - twopoint_data_real_raw: SACCFile
+    - twopoint_gamma_x: SACCFile
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -144,7 +202,26 @@ These stages deal with measuring or predicting two-point statistics.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - density_maps: MapsFile
+    - source_maps: MapsFile
+    - binned_shear_catalog: ShearCatalog
+    - binned_lens_catalog: HDFFile
+    - binned_random_catalog: HDFFile
+    - shear_photoz_stack: QPNOfZFile
+    - lens_photoz_stack: QPNOfZFile
+    - patch_centers: TextFile
+    - tracer_metadata: HDFFile
+    - mask: MapsFile
+
+    Outputs: 
+
+    - twopoint_data_real_raw: SACCFile
+    - twopoint_gamma_x: SACCFile
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -184,7 +261,25 @@ These stages deal with measuring or predicting two-point statistics.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - density_maps: MapsFile
+    - source_maps: MapsFile
+    - binned_shear_catalog: ShearCatalog
+    - binned_lens_catalog: HDFFile
+    - binned_random_catalog: HDFFile
+    - shear_photoz_stack: QPNOfZFile
+    - lens_photoz_stack: QPNOfZFile
+    - patch_centers: TextFile
+    - tracer_metadata: HDFFile
+    - mask: MapsFile
+
+    Outputs: 
+
+    - twopoint_data_ext_cross_raw: SACCFile
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -227,7 +322,17 @@ These stages deal with measuring or predicting two-point statistics.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - twopoint_data_real: SACCFile
+    - fiducial_cosmology: FiducialCosmology
+
+    Outputs: 
+
+    - twopoint_theory_real: SACCFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -244,7 +349,17 @@ These stages deal with measuring or predicting two-point statistics.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - twopoint_data_fourier: SACCFile
+    - fiducial_cosmology: FiducialCosmology
+
+    Outputs: 
+
+    - twopoint_theory_fourier: SACCFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -261,7 +376,17 @@ These stages deal with measuring or predicting two-point statistics.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - random_cats: RandomsCatalog
+
+    Outputs: 
+
+    - patch_centers: TextFile
+    - jk: PNGFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -278,7 +403,17 @@ These stages deal with measuring or predicting two-point statistics.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - shear_catalog: ShearCatalog
+
+    Outputs: 
+
+    - patch_centers: TextFile
+    - jk: PNGFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -295,7 +430,20 @@ These stages deal with measuring or predicting two-point statistics.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - binned_lens_catalog: HDFFile
+    - binned_shear_catalog: HDFFile
+    - binned_random_catalog: HDFFile
+    - patch_centers: TextFile
+    - tracer_metadata: HDFFile
+
+    Outputs: 
+
+    - rlens_measurement: TextFile
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 

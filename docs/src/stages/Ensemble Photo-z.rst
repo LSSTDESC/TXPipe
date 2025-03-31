@@ -11,7 +11,18 @@ These stages compute ensemble redshift histograms n(z) for bins
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - binned_catalog: BinnedCatalog
+    - model: PickleFile
+
+    Outputs: 
+
+    - photoz_stack: QPNOfZFile
+    - photoz_realizations: QPMultiFile
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
