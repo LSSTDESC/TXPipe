@@ -50,7 +50,7 @@ class TXTwoPointCluster(PipelineStage):
             ra[zbin_richbin]  = data['cluster_bin'][zbin_richbin]['ra'][:]
             dec[zbin_richbin] = data['cluster_bin'][zbin_richbin]['dec'][:]
 
-        return ra, dec 
+        return ra, dec
 
 
     def create_catalog(self, ra, dec):
@@ -171,7 +171,7 @@ class TXTwoPointCluster(PipelineStage):
     
                     results.append((meanr, xi, varxi, 
                                     tracer_1, tracer_2, 
-                                    log10rich1,l og10rich2))
+                                    log10rich1,log10rich2))
 
         # Save results to a SACC file
         self.save_to_sacc(results, self.get_output("cluster_twopoint_real"))
