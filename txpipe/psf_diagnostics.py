@@ -1051,7 +1051,8 @@ class TXPHStatistics(PipelineStage):
                        "star_type"     : 'PSF-reserved',
                        "cov_method"    : 'bootstrap',
                        "flip_g2"       : False,
-                       "tomographic"   : True,
+                       "ang_cell"      : 5./60.,
+                       "nboot"         : 30,
                      }
 
     def run(self):
@@ -1062,30 +1063,119 @@ class TXPHStatistics(PipelineStage):
         matplotlib.use("agg")
 
         # Load star properties
-        ra, dec, e_psf, de, T_psf, dT, star_type = self.load_stars()
+        sra, sdec, e_psf, de, T_psf, dT, star_type = self.load_stars()
 
-        # Compute 
+        # Compute size values
+        self.compute_Tquantities()
+        
+        # Compute PH correlations
         ph_stats = {}
         for t in STAR_TYPES:
             s = np.where(star_type==t)[0]
             if len(s)==0:
                 continue
-            ph_stats[0, t] = self.compute_PHstat(0, s, ra, dec, e_meas, e_meas, dT, dT)
-            ph_stats[1, t] = self.compute_PHstat(1, s, ra, dec, e_meas, de, dT, T_psf)
-            ph_stats[2, t] = self.compute_PHstat(2, s, ra, dec, de, de, T_psf, T_psf)
+            ph_stats[0, t] = self.compute_PHstat(0, s, sra, sdec, e_meas, e_meas, dT, dT)
+            ph_stats[1, t] = self.compute_PHstat(1, s, sra, sdec, e_meas, de, dT, T_psf)
+            ph_stats[2, t] = self.compute_PHstat(2, s, sra, sdec, de, de, T_psf, T_psf)
         
         
         self.save_stats(ph_stats)
         self.ph_plots(ph_stats)
+
+    def compute_Tquantities(self, sra, sec, dT):
+        # Compute mean dT/T_g, 1/T_g**2 & errors for each redshift bin
+        dT_Tg_ratio = np.zeros([ 2, num_zbins ])      
+        Tg_invsq = np.zeros_like( dT_Tg_ratio )       
+
+        # RA values that cross 0 causes issues with interpolation. Convert.
+        sra[((sra<360) & (sra>300))] += -360.
+        
+        # Load galaxy properties 
+        with self.open_input("binned_shear_catalog") as f:
+            nzbin = list(range(f["shear"].attrs["nbin_source"]))
+        for n in nzbin:
+            gra, gdec, Tgal, T_psf_g, wg = self.load_galaxies(n):
+        
+            #convert RA values.
+            gra[((gra<360) & (gra>300))] += -360. 
+            
+            # Compute dT at the position of the galaxy
+            dT_interpg = self.interpolate_dT(sra, sdec, dT,gra, gdec)
+
+            dT_Tg_ratio[0,n] = np.average(dT_interpg/T_g, weights=wg)
+            dT_Tg_ratio[1,n] = self.estimate_Terror(self.config["nboot"], dT_interpg/T_g, weights=wg)
+
+            Tg_inv = np.average(1./T_g, weights=wg)
+            Tg_invsq[0,n] = Tg_inv**2
+            Tg_invsq[1,i] = np.sqrt(2 * Tg_inv) * self.estimate_Terror(nboot, 1/T_g, weights=wg)
+
+        # For cross-bins, average the Tquantities from the individual bins
+        nzbin_tot = np.sum(range(nzbins+1))
+        dT_Tg_ratio_tot = np.zeros([2, nzbin_tot])
+        Tg_invsq_tot = np.zeros_like(dT_Tg_ratio_tot )
+        k=0
+        for i in range(nzbin_tot):
+            for j in range(nzbin_tot):
+                if j>= i:
+                    dT_Tg_ratio_tot[0,k] = (dT_Tg_ratio[0,i]+dT_Tg_ratio[0,j])/2
+                    dT_Tg_ratio_tot[1,k] = np.sqrt( dT_Tg_ratio[1,i]**2 + dT_Tg_ratio[1,j]**2 )
+                    Tg_invsq_tot[0,k] = (Tg_invsq[0,i] + Tg_invsq[0,j])/2
+                    Tg_invsq_tot[1,k] = np.sqrt(Tg_invsq[0,i]**2 + Tg_invsq[0,j]**2)
+                    k+=1
+        return dT_Tg_ratio, Tg_invsq, dT_Tg_ratio_tot, Tg_invsq_tot
+        
+    def interpolate_dT(self, sra, sdec, dT, gra, gdec):
+        from scipy.stats import binned_statistic_2d
+
+        # We need to make a grid for interpolation 
+        # Load angular size for 1 cell (default 5 arcmin) & make bins for the grid
+        ang_cell = self.config("ang_cell")
+        nbins_x = int( ( sra.max()-sra.min() ) / ang_cell )
+        nbins_y = int( ( sdec.max()-sdec.min() ) / ang_cell )
+        
+        # Compute cell coordinates of stars                                                                            
+        X_p = nbins_x * (sra - sra.min()) / (sra.max()-sra.min())
+        Y_p = nbins_y * (sdec - sdec.min()) / (sdec.max()-sdec.min())
+        
+        # Make dT grid:                                                                                
+        sum_wdT_grid, _, _, _ = binned_statistic_2d(Y_p, X_p, dT*np.ones_like(dT), statistic='sum', bins=[nbins_y,nbins_x])
+        sum_grid, _, _, _    = binned_statistic_2d(Y_p, X_p, np.ones_like(dT), statistic='sum', bins=[nbins_y,nbins_x])
+        Av_grid=sum_wdT_grid/sum_grid
+        dT_grid = np.nan_to_num(Av_grid, nan=0.)
+        
+        # Append last row, column to fix interpolation error:                                                        
+        dT_grid = np.c_[dT_grid, dT_grid[:,-1]]
+        dT_grid = np.r_[dT_grid, [dT_grid[-1,:]]]
+        
+        # Get cell coordinates of galaxies, round down
+        X_g = nbins_x * (gra - sra.min()) / (sra.max()-sra.min())
+        Y_g = nbins_y * (gdec - sdec.min()) / (sdec.max()-sdec.min())
+        Xi = X_g.astype(int)
+        Yi = Y_g.astype(int)                                                       
+        
+        # Calculate dT @ the galaxy's position
+        VAL_XYlo = dT_grid[Yi, Xi] + (X - Xi)*( dT_grid[Yi, Xi+1] - dT_grid[Yi, Xi] )
+        VAL_XYhi = dT_grid[Yi+1,Xi] + (X - Xi)*( dT_grid[Yi+1,Xi+1] - dT_grid[Yi+1, Xi] )
+        dT_interpg = VAL_XYlo + (Y - Yi)*( VAL_XYhi - VAL_XYlo )
+        return dT_interpg
+        
+    def estimate_Terr(self,nboot, Tquant, weights):
+        #bootstrapped error estimation for size quantity
+        N = len(Tquant)
+        samples = np.zeros(nboot)                                       
+        for i in range(nboot):
+            idx = np.random.randint(0,N,N)                         
+            samples[i] = np.sum( weights[idx]*Tquant[idx] ) /np.sum (weights[idx])
+        return np.std(samples)
     
     def compute_PHStat(self, i, s, ra, dec, q1, q2, q3, q4):
-        # select a subset of the stars
+        # Select a subset of the stars
         ra, dec, n = ra[s], dec[s], len(ra)
         q1 = q1[:, s]
         q2 = q2[:, s]
         q3 = q3[:, s]
         q4 = q4[:, s]
-        print(f"Computing Rowe statistic rho_{i} from {n} objects")
+        print(f"Computing PH statistic ph_{i} from {n} objects")
         
         corr = treecorr.GGCorrelation(self.config)
         cat1 = treecorr.Catalog(
@@ -1101,13 +1191,15 @@ class TXPHStatistics(PipelineStage):
     
     def load_galaxies():
         with self.open_input("binned_shear_catalog") as f:
-        g     = f[f'shear/bin_{zbin}/']
-        ra    = g['ra'][:]
-        dec   = g['dec'][:]
-        Tgal = g['mcal_T'][:]
-        Tpsf = g['mcal_psf_T_mean'][:]
-        w     = g['weight'][:]          
-
+            cat_cols, _ = f.get_primary_catalog_names()
+            if "T" and "psf_T" not in cat_cols:
+                raise ValueError("T, psf_T not in binned shear catalog") 
+            g     = f[f"shear/bin_{zbin}/"]
+            ra    = g["ra"][:]
+            dec   = g["dec"][:]
+            Tgal  = g["mcal_T"][:]
+            Tpsf  = g["mcal_psf_T_mean"][:]
+            w     = g["weight"][:]          
         return ra, dec, Tgal, Tpsf, w
 
     def load_stars(self):
