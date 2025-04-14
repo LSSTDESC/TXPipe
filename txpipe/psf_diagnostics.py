@@ -1019,6 +1019,101 @@ class TXRoweStatistics(PipelineStage):
         f.close()
 
 
+class TXPHStatistics(PipelineStage):
+    """
+    Compute and plot PSF Statistics as described in Paulin-Henricksson et. al 2008 and Giblin et. al 2021. 
+    Heavily drawing upon work by B. Giblin here: https://github.com/KiDS-WL/Cat_to_Obs_K1000_P1/tree/master/PSF_systests
+    """
+    name     = "TXPHStatistics"
+    parallel = False
+    inputs   = [("binned_shear_catalog"    , ShearCatalog),
+                ("star_catalog"            , HDFFile),
+                ("rowe_stats"              , HDFFile),
+               ]
+
+    outputs  = [
+                ("tau0"    , PNGFile), 
+                ("tau_stats", HDFFile),
+               ]
+
+
+    config_options = {
+                       "min_sep"       : 0.5,
+                       "max_sep"       : 250.0,
+                       "nbins"         : 20,
+                       "bin_slop"      : 0.01,
+                       "sep_units"     : "arcmin",
+                       "npatch"        : 150,
+                       "psf_size_units": "sigma",
+                       "subtract_mean" : False,
+                       "dec_cut"       : True,           # affects KiDS-1000 only
+                       "star_type"     : 'PSF-reserved',
+                       "cov_method"    : 'bootstrap',
+                       "flip_g2"       : False,
+                       "tomographic"   : True,
+                     }
+
+    def run(self):
+        import treecorr
+        import h5py
+        import matplotlib
+
+        matplotlib.use("agg")
+
+        # Load star properties
+        ra, dec, e_psf, e_mod, de_psf, dT, star_type = self.load_stars()
+
+        #compute stat
+
+        #
+    def compute_PHStat(self, ):
+        corr = treecorr.GGCorrelation(self.config)
+        cat1 = treecorr.Catalog(
+            ra=ra, dec=dec, g1=q1[0], g2=q1[1], ra_units="deg", dec_units="deg",
+            patch_centers=self.get_input("patch_centers")
+        )
+        cat2 = treecorr.Catalog(
+            ra=ra, dec=dec, g1=q2[0], g2=q2[1], ra_units="deg", dec_units="deg",
+            patch_centers=self.get_input("patch_centers")
+        )
+        corr.process(cat1, cat2)
+        return corr.meanr, corr.xip, corr.xim, corr.varxip**0.5, corr.varxim**0.5
+
+    def load_stars(self):
+        with self.open_input("star_catalog") as f:
+            g      = f["stars"]
+            ra     = g["ra"][:]
+            dec    = g["dec"][:]
+            e1meas = g["measured_e1"][:]
+            e2meas = g["measured_e2"][:]
+            e1mod  = g["model_e1"][:]
+            e2mod  = g["model_e2"][:]
+            if self.config["flip_g2"]:
+                e2meas *= -1
+                e2mod  *= -1
+            de1    = e1meas - e1mod
+            de2    = e2meas - e2mod
+             
+            if self.config["psf_size_units"] == "sigma":
+                dT = (g["measured_T"][:] ** 2 - g["model_T"][:] ** 2) / g["measured_T"][:] ** 2
+            else:
+                dT = (g["measured_T"][:] - g["model_T"][:])
+
+            if self.config['subtract_mean']:
+                e_meas = np.array((e1meas-np.mean(e1meas), e2meas-np.mean(e2meas)))
+                e_mod  = np.array((e1mod-np.mean(e1mod)  , e2mod-np.mean(e2mod)))
+                de     = np.array((de1-np.mean(de1)      , de2-np.mean(de2)))
+
+            else:
+                e_meas = np.array((e1meas, e2meas ))
+                e_mod  = np.array((e1mod , e2mod  ))
+                de     = np.array((de1   , de2    ))
+
+            star_type = load_star_type(g)
+
+        return ra, dec, e_meas, e_mod, de, dT, star_type
+        
+
 class TXGalaxyStarShear(PipelineStage):
     """
     Compute and plot star x galaxy and star x star correlations.
