@@ -78,10 +78,9 @@ class TXMapPlots(PipelineStage):
         if self.get_input("aux_source_maps") == "none":
             # Make empty plots if no data available, so that the
             # pipeline thinks it is complete.
-            with self.open_output("flag_map", wrapper=True) as f:
-                pass
-            with self.open_output("psf_map", wrapper=True) as f:
-                pass
+            for map_type in ["flag_map", 'psf_map']:
+                with self.open_output(map_type, wrapper=True) as f:
+                    plt.title(f'No map generated for {map_type}')
             return
 
         m = self.open_input("aux_source_maps", wrapper=True)
@@ -113,10 +112,9 @@ class TXMapPlots(PipelineStage):
     def aux_lens_plots(self):
         import matplotlib.pyplot as plt
         if self.get_input("aux_lens_maps") == "none":
-            with self.open_output("depth_map", wrapper=True) as f:
-                pass
-            with self.open_output("bright_object_map", wrapper=True) as f:
-                pass
+            for map_type in ["depth_map", "bright_object_map"]:
+                with self.open_output(map_type, wrapper=True) as f:
+                    plt.title(f'No map generated for {map_type}')
             return
 
         m = self.open_input("aux_lens_maps", wrapper=True)
@@ -133,8 +131,9 @@ class TXMapPlots(PipelineStage):
         import matplotlib.pyplot as plt
 
         if self.get_input("source_maps") == "none":
-            with self.open_output("shear_map", wrapper=True) as f:
-                pass
+            for map_type in ["shear_map"]:
+                with self.open_output(map_type, wrapper=True) as f:
+                    plt.title(f'No map generated for {map_type}')
             return
 
         m = self.open_input("source_maps", wrapper=True)
@@ -160,8 +159,9 @@ class TXMapPlots(PipelineStage):
         import matplotlib.pyplot as plt
 
         if self.get_input("lens_maps") == "none":
-            with self.open_output("lens_map", wrapper=True) as f:
-                pass
+            for map_type in ["lens_map"]:
+                with self.open_output(map_type, wrapper=True) as f:
+                    plt.title(f'No map generated for {map_type}')
             return
 
         m = self.open_input("lens_maps", wrapper=True)
@@ -181,6 +181,12 @@ class TXMapPlots(PipelineStage):
 
     def mask_plots(self):
         import matplotlib.pyplot as plt
+
+        if self.get_input("mask") == "none":
+            for map_type in ["mask_map"]:
+                with self.open_output(map_type, wrapper=True) as f:
+                    plt.title(f'No map generated for {map_type}')
+            return
 
         m = self.open_input("mask", wrapper=True)
 
@@ -205,7 +211,7 @@ class TXMapPlotsSSI(TXMapPlots):
     outputs = [
         ("depth_ssi_meas_map", PNGFile),
         ("depth_ssi_true_map", PNGFile),
-        ("depth_det_prob_map", PNGFile),
+        ("depth_ssi_det_prob_map", PNGFile),
     ]
 
     def run(self):
@@ -236,12 +242,9 @@ class TXMapPlotsSSI(TXMapPlots):
         if self.get_input("aux_ssi_maps") == "none":
             # Make empty plots if no data available, so that the
             # pipeline thinks it is complete.
-            with self.open_output("depth_ssi_meas_map", wrapper=True) as f:
-                pass
-            with self.open_output("depth_ssi_true_map", wrapper=True) as f:
-                pass
-            with self.open_output("depth_det_prob_map", wrapper=True) as f:
-                pass
+            for map_type in ["depth_ssi_meas_map", "depth_ssi_true_map", "depth_det_prob_map"]:
+                with self.open_output(map_type, wrapper=True) as f:
+                    plt.title(f'No map generated for {map_type}')
             return
 
         m = self.open_input("aux_ssi_maps", wrapper=True)
@@ -255,5 +258,5 @@ class TXMapPlotsSSI(TXMapPlots):
             m.plot("depth_true/depth", view=self.config["projection"], rot180=self.config["rot180"])
 
         # Depth plots (true magnitude)
-        with self.open_output("depth_det_prob_map", wrapper=True, figsize=(5, 5)) as fig:
+        with self.open_output("depth_ssi_det_prob_map", wrapper=True, figsize=(5, 5)) as fig:
             m.plot("depth_det_prob/depth", view=self.config["projection"], rot180=self.config["rot180"])
