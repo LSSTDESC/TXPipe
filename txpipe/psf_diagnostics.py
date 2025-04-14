@@ -1021,19 +1021,20 @@ class TXRoweStatistics(PipelineStage):
 
 class TXPHStatistics(PipelineStage):
     """
-    Compute and plot PSF Statistics as described in Paulin-Henricksson et. al 2008 and Giblin et. al 2021. 
-    Heavily drawing upon work by B. Giblin here: https://github.com/KiDS-WL/Cat_to_Obs_K1000_P1/tree/master/PSF_systests
+    Compute and plot PSF Statistics as described in Paulin-Henricksson et. al 2008 
+    Heavily drawing upon work by B. Giblin here:
+    https://github.com/KiDS-WL/Cat_to_Obs_K1000_P1/tree/master/PSF_systests
     """
     name     = "TXPHStatistics"
     parallel = False
     inputs   = [("binned_shear_catalog"    , ShearCatalog),
                 ("star_catalog"            , HDFFile),
-                ("rowe_stats"              , HDFFile),
+                ("patch_centers"           , TextFile),
                ]
 
     outputs  = [
-                ("tau0"    , PNGFile), 
-                ("tau_stats", HDFFile),
+                ("ph"    , PNGFile), 
+                ("ph_stats", HDFFile),
                ]
 
 
@@ -1061,23 +1062,53 @@ class TXPHStatistics(PipelineStage):
         matplotlib.use("agg")
 
         # Load star properties
-        ra, dec, e_psf, e_mod, de_psf, dT, star_type = self.load_stars()
+        ra, dec, e_psf, de, T_psf, dT, star_type = self.load_stars()
 
-        #compute stat
-
-        #
-    def compute_PHStat(self, ):
+        # Compute 
+        ph_stats = {}
+        for t in STAR_TYPES:
+            s = np.where(star_type==t)[0]
+            if len(s)==0:
+                continue
+            ph_stats[0, t] = self.compute_PHstat(0, s, ra, dec, e_meas, e_meas, dT, dT)
+            ph_stats[1, t] = self.compute_PHstat(1, s, ra, dec, e_meas, de, dT, T_psf)
+            ph_stats[2, t] = self.compute_PHstat(2, s, ra, dec, de, de, T_psf, T_psf)
+        
+        
+        self.save_stats(ph_stats)
+        self.ph_plots(ph_stats)
+    
+    def compute_PHStat(self, i, s, ra, dec, q1, q2, q3, q4):
+        # select a subset of the stars
+        ra, dec, n = ra[s], dec[s], len(ra)
+        q1 = q1[:, s]
+        q2 = q2[:, s]
+        q3 = q3[:, s]
+        q4 = q4[:, s]
+        print(f"Computing Rowe statistic rho_{i} from {n} objects")
+        
         corr = treecorr.GGCorrelation(self.config)
         cat1 = treecorr.Catalog(
-            ra=ra, dec=dec, g1=q1[0], g2=q1[1], ra_units="deg", dec_units="deg",
+            ra=ra, dec=dec, g1=q1[0]*q3, g2=q1[1]*q3, ra_units="deg", dec_units="deg",
             patch_centers=self.get_input("patch_centers")
         )
         cat2 = treecorr.Catalog(
-            ra=ra, dec=dec, g1=q2[0], g2=q2[1], ra_units="deg", dec_units="deg",
+            ra=ra, dec=dec, g1=q2[0]*q4, g2=q2[1]*q4, ra_units="deg", dec_units="deg",
             patch_centers=self.get_input("patch_centers")
         )
         corr.process(cat1, cat2)
         return corr.meanr, corr.xip, corr.xim, corr.varxip**0.5, corr.varxim**0.5
+    
+    def load_galaxies():
+        with self.open_input("binned_shear_catalog") as f:
+        g     = f[f'shear/bin_{zbin}/']
+        ra    = g['ra'][:]
+        dec   = g['dec'][:]
+        Tgal = g['mcal_T'][:]
+        Tpsf = g['mcal_psf_T_mean'][:]
+        w     = g['weight'][:]          
+
+        return ra, dec, Tgal, Tpsf, w
 
     def load_stars(self):
         with self.open_input("star_catalog") as f:
@@ -1095,24 +1126,40 @@ class TXPHStatistics(PipelineStage):
             de2    = e2meas - e2mod
              
             if self.config["psf_size_units"] == "sigma":
-                dT = (g["measured_T"][:] ** 2 - g["model_T"][:] ** 2) / g["measured_T"][:] ** 2
+                Tmeas  =  g["measured_T"][:] ** 2
+                dT     = (g["measured_T"][:] ** 2 - g["model_T"][:] ** 2) / g["measured_T"][:] ** 2
             else:
-                dT = (g["measured_T"][:] - g["model_T"][:])
+                Tmeas  =  g["measured_T"][:]
+                dT     = (g["measured_T"][:] - g["model_T"][:])
 
             if self.config['subtract_mean']:
                 e_meas = np.array((e1meas-np.mean(e1meas), e2meas-np.mean(e2meas)))
-                e_mod  = np.array((e1mod-np.mean(e1mod)  , e2mod-np.mean(e2mod)))
                 de     = np.array((de1-np.mean(de1)      , de2-np.mean(de2)))
 
             else:
                 e_meas = np.array((e1meas, e2meas ))
-                e_mod  = np.array((e1mod , e2mod  ))
                 de     = np.array((de1   , de2    ))
 
             star_type = load_star_type(g)
 
-        return ra, dec, e_meas, e_mod, de, dT, star_type
+        return ra, dec, e_meas, de, Tmeas, dT, star_type
         
+    def save_stats(self, ph_stats):
+        f = self.open_output("ph_stats")
+        g = f.create_group("ph_statistics")
+        for i in 0, 1, 2, 3, 4, 5:
+            for s in STAR_TYPES:
+                if STAR_TYPE_NAMES[s] != self.config.star_type:
+                    continue
+                theta, xip, xim, xip_err, xim_err = ph_stats[i, s]
+                name = STAR_TYPE_NAMES[s]
+                h = g.create_group(f"ph_{i}_{name}")
+                h.create_dataset("theta", data=theta)
+                h.create_dataset("xi_plus", data=xip)
+                h.create_dataset("xi_minus", data=xim)
+                h.create_dataset("xip_err", data=xip_err)
+                h.create_dataset("xim_err", data=xim_err)
+        f.close()    
 
 class TXGalaxyStarShear(PipelineStage):
     """
