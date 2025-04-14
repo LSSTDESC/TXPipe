@@ -342,9 +342,9 @@ class TXAuxiliarySSIMaps(TXBaseMaps):
         # Create depth maps using dask and true magnitudes
         depth_map_results = make_dask_depth_map(
             ra, dec, mag_true, snr, self.config["snr_threshold"], self.config["snr_delta"], pixel_scheme)
-        maps["depth_meas/depth"] = (depth_map_results["pix"], depth_map_results["depth_map"][depth_map_results["pix"]])
-        maps["depth_meas/depth_count"] = (depth_map_results["pix"], depth_map_results["count_map"][depth_map_results["pix"]])
-        maps["depth_meas/depth_var"] = (depth_map_results["pix"], depth_map_results["depth_var"][depth_map_results["pix"]])
+        maps["depth_true/depth"] = (depth_map_results["pix"], depth_map_results["depth_map"][depth_map_results["pix"]])
+        maps["depth_true/depth_count"] = (depth_map_results["pix"], depth_map_results["count_map"][depth_map_results["pix"]])
+        maps["depth_true/depth_var"] = (depth_map_results["pix"], depth_map_results["depth_var"][depth_map_results["pix"]])
 
         # Create depth maps using injection catalog
         # depth is defined at given detection probability
