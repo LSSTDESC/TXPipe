@@ -46,16 +46,18 @@ class TXShearCalibration(PipelineStage):
         extra_cols = [c for c in self.config["extra_cols"] if c]
         subtract_mean_shear = self.config["subtract_mean_shear"]
 
-        with self.open_input("shear_catalog", wrapper=True) as f:
-            bands = f.get_bands()
-
         shear_prefix = self.config["shear_prefix"]
+        print('shear_prefix', shear_prefix)
+        with self.open_input("shear_catalog", wrapper=True) as f:
+            bands = f.get_bands(shear_prefix)
+
         # this is the names of the columns in the input catalog
         mag_cols_out = [f"mag_{b}" for b in bands] + [f"mag_err_{b}" for b in bands]
         mag_cols_in = [f"{shear_prefix}{c}" for c in mag_cols_out]
 
         if self.rank == 0:
             print("Copying extra columns: ", extra_cols)
+            print("Copying magnitude: ", mag_cols_in)
 
         # Prepare the output file, and create a splitter object,
         # whose job is to save the separate bins to separate HDF5
