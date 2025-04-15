@@ -100,10 +100,14 @@ class PZRailSummarize(PipelineStage):
             run_nzdir.run()
             run_nzdir.finalize()
 
+            if self.comm is not None:
+                self.comm.Barrier()
+
             # read the result. This is small so can stay in memory.
             main_ensemble_results.append(qp.read(stack_output))
             realizations_results.append(qp.read(realizations_output))
 
+            
         # Only the root process writes the data, so the others are done now.
         if self.rank != 0:
             return

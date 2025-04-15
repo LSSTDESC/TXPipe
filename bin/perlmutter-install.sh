@@ -10,7 +10,6 @@ module load mpich/4.2.2
 conda env  create --yes -p ${ENV_PATH} python=3.10
 
 
-
 # we manually install firecrown as we have to remove numcosmo to avoid clashes
 FIRECROWN_DIR=firecrown-tmp-${RANDOM}
 git clone --branch v1.7.5 https://github.com/LSSTDESC/firecrown  ${FIRECROWN_DIR}

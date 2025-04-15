@@ -56,6 +56,7 @@ stages:
 
   - name: PZRailSummarizeLens      # Run the DIR method on the lens sample to find n(z)
     classname: PZRailSummarize
+    nprocess: 32
     aliases:
         tomography_catalog: lens_tomography_catalog
         binned_catalog: binned_lens_catalog
@@ -72,6 +73,7 @@ stages:
 
   - name: PZRailSummarizeSource    # Run the DIR method on the lens sample to find n(z)
     classname: PZRailSummarize
+    nprocess: 32
     aliases:
         tomography_catalog: shear_tomography_catalog
         binned_catalog: binned_shear_catalog
@@ -94,7 +96,7 @@ stages:
         photoz_stack: lens_photoz_stack
         nz_plot: lens_nz
   - name: TXLensCatalogSplitter
-    nprocess: 32
+    nprocess: 6
   - name: TXSimpleMask
   - name: TXAuxiliaryLensMaps
     nprocess: 8
