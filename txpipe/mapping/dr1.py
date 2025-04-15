@@ -104,11 +104,11 @@ def make_dask_depth_map_det_prob(
     Parameters
     ----------
     ra : dask.array
-        Right Ascension coordinates in degrees.
+        Right Ascension coordinates of injected SSI objects in degrees.
     dec : dask.array
-        Declination coordinates in degrees.
+        Declination coordinates of injected SSI objects in degrees.
     mag : dask.array
-        Magnitudes of the objects, in band of user's choice
+        True magnitudes of the injected objects, in band of user's choice
     det : dask.array
         dask array of boolean detection parameter
     det_prob_threshold : float
@@ -181,12 +181,13 @@ def make_dask_depth_map_det_prob(
     has_low = (frac_stack < det_prob_threshold).any(axis=0)
     valid_pix_mask = has_high & has_low
 
-    # find the first element smaller than the threshold
+    # We define det frac depth as the magnitude at which detection fraction drops below the given threshold
+    # If detection fraction fluctuates around the threshold (e.g. due to noise) we choose the brightest magnitude with det_frac < threshold
     below_threshold = frac_stack < det_prob_threshold
     masked = da.where(
         below_threshold, da.arange(frac_stack.shape[0])[:, None], n_depth_bins - 1
-    )
-    thres_index = da.nanmin(masked, axis=0)
+    )  #if below_threshold is True -> magnitude index, if False -> set to index of maximum depth 
+    thres_index = da.nanmin(masked, axis=0) #the index of the magnitude where det frac drops below threshold
 
     depth_map = mag_edges[thres_index]
     depth_map[~valid_pix_mask] = np.nan
