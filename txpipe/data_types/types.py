@@ -272,11 +272,16 @@ class MapsFile(HDFFile):
             self.file.create_group("maps")
         if not "pixelization" in metadata:
             raise ValueError("Map metadata should include pixelization")
-        if not pixel.shape == value.shape:
-            raise ValueError(
-                f"Map pixels and values should be same shape "
-                f"but are {pixel.shape} vs {value.shape}"
-            )
+        pixerr = ValueError(
+                    f"Map pixels and values should be same shape "
+                    f"but are {pixel.shape} vs {value.shape}"
+                )
+        if value.ndim == 2: #value.ndim == 2 allows for 2d stacked maps
+            if not pixel.shape[0] == value.shape[1]:
+                raise pixerr
+        else:
+            if not pixel.shape == value.shape:
+                raise pixerr
 
         if not 'maps' in self.file.keys():
             self.file.create_group('maps')

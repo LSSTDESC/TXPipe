@@ -1,7 +1,7 @@
 from .maps import TXBaseMaps, map_config_options
 import numpy as np
 from .base_stage import PipelineStage
-from .mapping import make_dask_shear_maps, make_dask_flag_maps, make_dask_bright_object_map, make_dask_depth_map
+from .mapping import make_dask_shear_maps, make_dask_flag_maps, make_dask_bright_object_map, make_dask_depth_map, make_dask_depth_map_det_prob
 from .data_types import MapsFile, HDFFile, ShearCatalog
 from .utils import choose_pixelization, import_dask
 from .maps import map_config_options
@@ -191,12 +191,11 @@ class TXAuxiliaryLensMaps(TXBaseMaps):
         maps["bright_objects/count"] = (pix1, bright_object_count_map[pix1])
 
         # Create depth maps using dask
-        pix2, count_map, depth_map, depth_var = make_dask_depth_map(
+        depth_map_results = make_dask_depth_map(
             ra, dec, mag, snr, self.config["snr_threshold"], self.config["snr_delta"], pixel_scheme)
-        maps["depth/depth"] = (pix2, depth_map[pix2])
-        maps["depth/depth_count"] = (pix2, count_map[pix2])
-        maps["depth/depth_var"] = (pix2, depth_var[pix2])
-
+        maps["depth/depth"] = (depth_map_results["pix"], depth_map_results["depth_map"][depth_map_results["pix"]])
+        maps["depth/depth_count"] = (depth_map_results["pix"], depth_map_results["count_map"][depth_map_results["pix"]])
+        maps["depth/depth_var"] = (depth_map_results["pix"], depth_map_results["depth_var"][depth_map_results["pix"]])
 
         maps, = da.compute(maps)
 
@@ -268,8 +267,9 @@ class TXAuxiliarySSIMaps(TXBaseMaps):
     name = "TXAuxiliarySSIMaps"
     dask_parallel = True
     inputs = [
-        ("injection_catalog", HDFFile),  # for injection locations
-        ("matched_ssi_photometry_catalog", HDFFile),
+        ("matched_ssi_photometry_catalog", HDFFile), # injected objhects that were detected
+        ("injection_catalog", HDFFile),  # injection locations
+        ("ssi_detection_catalog", HDFFile), # detection info on each injection
     ]
     outputs = [
         ("aux_ssi_maps", MapsFile),
@@ -283,12 +283,17 @@ class TXAuxiliarySSIMaps(TXBaseMaps):
         "depth_band": "i",  # Make depth maps for this band
         "snr_threshold": 10.0,  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)
         "snr_delta": 1.0,  # The range threshold +/- delta is used for finding objects at the boundary
+        "det_prob_threshold": 0.8, #detection probability threshold for SSI depth (i.e. 0.9 for magnitude at which 90% of brighter objects are detected)
+        "mag_delta": 0.01,  # Size of the magnitude bins used to determine detection probability depth
+        "min_depth": 18, # Min magnitude used in detection probability depth
+        "max_depth": 26, # Max magnitude used in detection probability depth
+        "smooth_det_frac": True, # Apply savgol filtering to frac det vs magnitude for each pixel
+        "smooth_window":0.5 # Size of smoothing window in magnitudes
     }
 
     def run(self):
         # Import dask and alias it as 'da'
         _, da = import_dask()
-        
         
         # Retrieve configuration parameters
         block_size = self.config["block_size"]
@@ -296,19 +301,28 @@ class TXAuxiliarySSIMaps(TXBaseMaps):
             block_size = "auto"
         band = self.config["depth_band"]
 
-        # Open the input photometry catalog file.
-        # We can't use a "with" statement because we need to keep the file open
+        # Open the input catalog files
+        # We can't use "with" statements because we need to keep the file open
         # while we're using dask.
-        f = self.open_input("matched_ssi_photometry_catalog", wrapper=True)
+        f_matched = self.open_input("matched_ssi_photometry_catalog", wrapper=True)
+        f_inj = self.open_input("injection_catalog", wrapper=True)
+        f_det = self.open_input("ssi_detection_catalog", wrapper=True)
         
-        # Load photometry data into dask arrays.
+        # Load matched catalog data into dask arrays.
         # This is lazy in dask, so we're not actually loading the data here.
-        ra = da.from_array(f.file["photometry/ra"], block_size)
+        ra = da.from_array(f_matched.file["photometry/ra"], block_size)
         block_size = ra.chunksize
-        dec = da.from_array(f.file["photometry/dec"], block_size)
-        snr = da.from_array(f.file[f"photometry/snr_{band}"], block_size)
-        mag_meas = da.from_array(f.file[f"photometry/mag_{band}"], block_size)
-        mag_true = da.from_array(f.file[f"photometry/inj_mag_{band}"], block_size)
+        dec = da.from_array(f_matched.file["photometry/dec"], block_size)
+        snr = da.from_array(f_matched.file[f"photometry/snr_{band}"], block_size)
+        mag_meas = da.from_array(f_matched.file[f"photometry/mag_{band}"], block_size)
+        mag_true = da.from_array(f_matched.file[f"photometry/inj_mag_{band}"], block_size)
+
+        # Load detection catalog data into dask arrays.
+        # This is lazy in dask, so we're not actually loading the data here.
+        ra_inj = da.from_array(f_inj.file["photometry/ra"], block_size)
+        dec_inj = da.from_array(f_inj.file["photometry/dec"], block_size)
+        inj_mag = da.from_array(f_inj.file[f"photometry/inj_mag_{band}"], block_size)
+        det = da.from_array(f_det.file[f"photometry/detected"], block_size)
 
         # Choose the pixelization scheme based on the configuration.
         # Might need to review this to make sure we use the same scheme everywhere
@@ -319,19 +333,29 @@ class TXAuxiliarySSIMaps(TXBaseMaps):
         maps = {}
 
         # Create depth maps using dask and measured magnitudes
-        pix2, count_map, depth_map, depth_var = make_dask_depth_map(
+        depth_map_results = make_dask_depth_map(
             ra, dec, mag_meas, snr, self.config["snr_threshold"], self.config["snr_delta"], pixel_scheme)
-        maps["depth/depth_meas"] = (pix2, depth_map[pix2])
-        maps["depth/depth_meas_count"] = (pix2, count_map[pix2])
-        maps["depth/depth_meas_var"] = (pix2, depth_var[pix2])
+        maps["depth_meas/depth"] = (depth_map_results["pix"], depth_map_results["depth_map"][depth_map_results["pix"]])
+        maps["depth_meas/depth_count"] = (depth_map_results["pix"], depth_map_results["count_map"][depth_map_results["pix"]])
+        maps["depth_meas/depth_var"] = (depth_map_results["pix"], depth_map_results["depth_var"][depth_map_results["pix"]])
 
-
-        # Create depth maps using daskand true magnitudes
-        pix2, count_map, depth_map, depth_var = make_dask_depth_map(
+        # Create depth maps using dask and true magnitudes
+        depth_map_results = make_dask_depth_map(
             ra, dec, mag_true, snr, self.config["snr_threshold"], self.config["snr_delta"], pixel_scheme)
-        maps["depth/depth_true"] = (pix2, depth_map[pix2])
-        maps["depth/depth_true_count"] = (pix2, count_map[pix2])
-        maps["depth/depth_true_var"] = (pix2, depth_var[pix2])
+        maps["depth_true/depth"] = (depth_map_results["pix"], depth_map_results["depth_map"][depth_map_results["pix"]])
+        maps["depth_true/depth_count"] = (depth_map_results["pix"], depth_map_results["count_map"][depth_map_results["pix"]])
+        maps["depth_true/depth_var"] = (depth_map_results["pix"], depth_map_results["depth_var"][depth_map_results["pix"]])
+
+        # Create depth maps using injection catalog
+        # depth is defined at given detection probability
+        depth_map_results = make_dask_depth_map_det_prob(
+            ra_inj, dec_inj, inj_mag, det, self.config["det_prob_threshold"], self.config["mag_delta"], 
+            self.config["min_depth"], self.config["max_depth"], pixel_scheme, 
+            self.config["smooth_det_frac"], self.config["smooth_window"], )
+        maps["depth_det_prob/depth"] = (depth_map_results["pix"], depth_map_results["depth_map"][depth_map_results["pix"]])
+        maps["depth_det_prob/depth_det_count"] = (depth_map_results["pix"], depth_map_results["det_count_map"][depth_map_results["pix"]] )
+        maps["depth_det_prob/depth_inj_count"] = (depth_map_results["pix"], depth_map_results["inj_count_map"][depth_map_results["pix"]] )
+        maps["depth_det_prob/det_frac_by_mag_thres"] = (depth_map_results["pix"], depth_map_results["det_frac_by_mag_thres"][:,depth_map_results["pix"]] )
 
         maps, = da.compute(maps)
 
@@ -346,6 +370,10 @@ class TXAuxiliarySSIMaps(TXBaseMaps):
         metadata["depth_band"] = band
         metadata["depth_snr_threshold"] = self.config["snr_threshold"]
         metadata["depth_snr_delta"] = self.config["snr_delta"]
+        metadata["mag_delta"] = self.config["mag_delta"]
+        metadata["min_depth"] = self.config["min_depth"]
+        metadata["max_depth"] = self.config["max_depth"]
+        metadata["mag_edges"] = depth_map_results["mag_edges"]
         metadata.update(pixel_scheme.metadata)
 
         # Write the output maps to the output file
