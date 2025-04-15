@@ -355,7 +355,7 @@ class TXAuxiliarySSIMaps(TXBaseMaps):
         maps["depth_det_prob/depth"] = (depth_map_results["pix"], depth_map_results["depth_map"][depth_map_results["pix"]])
         maps["depth_det_prob/depth_det_count"] = (depth_map_results["pix"], depth_map_results["det_count_map"][depth_map_results["pix"]] )
         maps["depth_det_prob/depth_inj_count"] = (depth_map_results["pix"], depth_map_results["inj_count_map"][depth_map_results["pix"]] )
-        maps["depth_det_prob/frac_stack"] = (depth_map_results["pix"], depth_map_results["frac_stack"][:,depth_map_results["pix"]] )
+        maps["depth_det_prob/det_frac_by_mag_thres"] = (depth_map_results["pix"], depth_map_results["det_frac_by_mag_thres"][:,depth_map_results["pix"]] )
 
         maps, = da.compute(maps)
 
