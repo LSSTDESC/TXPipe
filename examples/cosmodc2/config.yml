@@ -1,6 +1,7 @@
 global:
     pixelization: healpix
     chunk_rows: 1000000
+    chunk_size: 200000
 
 TXGCRTwoCatalogInput:
     metacal_dir: /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/metacal_table_summary
@@ -21,6 +22,8 @@ TXDiagnosticQuantiles:
     shear_prefix: mcal_
     nbins: 20
 
+TXShearCalibration:
+    shear_prefix: mcal_
 
 TXCosmoDC2Mock:
     cat_name: cosmoDC2_v1.1.4_image

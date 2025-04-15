@@ -33,7 +33,7 @@ stages:
   - name: TXSourceSelectorMetacal
     nprocess: 32
   - name: TXShearCalibration
-    nprocess: 32
+    nprocess: 8
   - name: PZPrepareEstimatorLens     # Prepare the p(z) estimator
     classname: BPZliteInformer
     aliases:
