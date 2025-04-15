@@ -193,9 +193,9 @@ class TXAuxiliaryLensMaps(TXBaseMaps):
         # Create depth maps using dask
         depth_map_results = make_dask_depth_map(
             ra, dec, mag, snr, self.config["snr_threshold"], self.config["snr_delta"], pixel_scheme)
-        maps["depth_meas/depth"] = (depth_map_results["pix"], depth_map_results["depth_map"][depth_map_results["pix"]])
-        maps["depth_meas/depth_count"] = (depth_map_results["pix"], depth_map_results["count_map"][depth_map_results["pix"]])
-        maps["depth_meas/depth_var"] = (depth_map_results["pix"], depth_map_results["depth_var"][depth_map_results["pix"]])
+        maps["depth/depth"] = (depth_map_results["pix"], depth_map_results["depth_map"][depth_map_results["pix"]])
+        maps["depth/depth_count"] = (depth_map_results["pix"], depth_map_results["count_map"][depth_map_results["pix"]])
+        maps["depth/depth_var"] = (depth_map_results["pix"], depth_map_results["depth_var"][depth_map_results["pix"]])
 
         maps, = da.compute(maps)
 
