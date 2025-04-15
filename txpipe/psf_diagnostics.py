@@ -1018,7 +1018,7 @@ class TXRoweStatistics(PipelineStage):
                 h.create_dataset("xim_err", data=xim_err)
         f.close()
 
-
+#########################################################################################################################
 class TXPHStatistics(PipelineStage):
     """
     Compute and plot PSF Statistics as described in Paulin-Henricksson et. al 2008 
@@ -1030,6 +1030,7 @@ class TXPHStatistics(PipelineStage):
     inputs   = [("binned_shear_catalog"    , ShearCatalog),
                 ("star_catalog"            , HDFFile),
                 ("patch_centers"           , TextFile),
+                ("twopoint_theory_real"    , SACCFile),
                ]
 
     outputs  = [
@@ -1065,27 +1066,28 @@ class TXPHStatistics(PipelineStage):
         # Load star properties
         sra, sdec, e_psf, de, T_psf, dT, star_type = self.load_stars()
 
-        # Compute size values
-        self.compute_Tquantities()
+        # Compute size quantities
+        dT_Tg_ratio, Tg_invsq, dT_Tg_ratio_tot, Tg_invsq_tot, nzbin, nzbin_tot = self.compute_Tquantities()
         
         # Compute PH correlations
-        ph_stats = {}
+        ph_corr, ph_stats = {}, {}
         for t in STAR_TYPES:
             s = np.where(star_type==t)[0]
             if len(s)==0:
                 continue
-            ph_stats[0, t] = self.compute_PHstat(0, s, sra, sdec, e_meas, e_meas, dT, dT)
-            ph_stats[1, t] = self.compute_PHstat(1, s, sra, sdec, e_meas, de, dT, T_psf)
-            ph_stats[2, t] = self.compute_PHstat(2, s, sra, sdec, de, de, T_psf, T_psf)
+            ph_corr[0, t] = self.compute_PHCorr(0, s, sra, sdec, e_meas, e_meas, dT, dT)
+            ph_corr[1, t] = self.compute_PHCorr(1, s, sra, sdec, e_meas, de, dT, T_psf)
+            ph_corr[2, t] = self.compute_PHCorr(2, s, sra, sdec, de, de, T_psf, T_psf)
         
+            ph_stats[t] = self.compute_PHStats(ph_corr, dT_Tg_ratio, Tg_invsq, dT_Tg_ratio_tot, Tg_invsq_tot, nzbin, nzbin_tot)
         
         self.save_stats(ph_stats)
         self.ph_plots(ph_stats)
 
     def compute_Tquantities(self, sra, sec, dT):
         # Compute mean dT/T_g, 1/T_g**2 & errors for each redshift bin
-        dT_Tg_ratio = np.zeros([ 2, num_zbins ])      
-        Tg_invsq = np.zeros_like( dT_Tg_ratio )       
+        dT_Tg_ratio = np.zeros([2, num_zbins])      
+        Tg_invsq = np.zeros_like(dT_Tg_ratio)       
 
         # RA values that cross 0 causes issues with interpolation. Convert.
         sra[((sra<360) & (sra>300))] += -360.
@@ -1122,7 +1124,7 @@ class TXPHStatistics(PipelineStage):
                     Tg_invsq_tot[0,k] = (Tg_invsq[0,i] + Tg_invsq[0,j])/2
                     Tg_invsq_tot[1,k] = np.sqrt(Tg_invsq[0,i]**2 + Tg_invsq[0,j]**2)
                     k+=1
-        return dT_Tg_ratio, Tg_invsq, dT_Tg_ratio_tot, Tg_invsq_tot
+        return dT_Tg_ratio, Tg_invsq, dT_Tg_ratio_tot, Tg_invsq_tot, nzbin, nzbin_tot
         
     def interpolate_dT(self, sra, sdec, dT, gra, gdec):
         from scipy.stats import binned_statistic_2d
@@ -1168,7 +1170,7 @@ class TXPHStatistics(PipelineStage):
             samples[i] = np.sum( weights[idx]*Tquant[idx] ) /np.sum (weights[idx])
         return np.std(samples)
     
-    def compute_PHStat(self, i, s, ra, dec, q1, q2, q3, q4):
+    def compute_PHCorr(self, i, s, ra, dec, q1, q2, q3, q4):
         # Select a subset of the stars
         ra, dec, n = ra[s], dec[s], len(ra)
         q1 = q1[:, s]
@@ -1188,8 +1190,76 @@ class TXPHStatistics(PipelineStage):
         )
         corr.process(cat1, cat2)
         return corr.meanr, corr.xip, corr.xim, corr.varxip**0.5, corr.varxim**0.5
-    
-    def load_galaxies():
+
+    def compute_PHStat(self, phcorr, dT_Tg_ratio, Tg_invsq, dT_Tg_ratio_tot, Tg_invsq_tot, nzbin, nzbin_tot):
+        # Finally combine theory data vector, correlations, and T quantities to create \delta\xi as shown in Eq.10 of Giblin et al. 2021 
+        
+        dxip, dxim = np.zeros([nzbin_tot, self.config["nbins"]]), np.zeros([nzbin_tot, self.config["nbins"]])
+        err_dxip,err_dxim = np.zeros_like(dxip), np.zeros_like(dxip)
+        
+        dxip_terms, dxim_terms = np.zeros([nzbin_tot, self.config["nbins"], 4]), np.zeros([nzbin_tot, self.config["nbins"], 4])
+        err_dxip_terms,err_dxim_terms = np.zeros_like(dxip_terms), np.zeros_like(dxip_terms)
+        
+        for s in STAR_TYPES:
+                if STAR_TYPE_NAMES[s] != self.config.star_type:
+                    continue
+                    
+        # Load theory data vector
+        ttht, txip, txim = self.load_theory(nbin,nzbin_tot)
+        
+        for n in range(nzbin_tot):
+                # Also interpolate the theory vector onto the theta bins of the PH-stats                
+                dxip_terms[n,:,0] = 2* np.interp(phcorr[0, s][0], ttht[j], txip[j]) * deltaT_ratio_tot[0,n]
+                dxim_terms[n,:,0] = 2* np.interp(phcorr[0, s][0], ttht[j], txip[j]) * deltaT_ratio_tot[0,n]
+                dxip_terms[n,:,1] =   Tg_invsq_tot[0,n] *(phcorr[0, s][1])
+                dxim_terms[n,:,1] =   Tg_invsq_tot[0,n] *(phcorr[0, s][2])
+                dxip_terms[n,:,2] = 2*Tg_invsq_tot[0,n] *(phcorr[1, s][1])
+                dxim_terms[n,:,2] = 2*Tg_invsq_tot[0,n] *(phcorr[1, s][2])
+                dxip_terms[n,:,3] =   Tg_invsq_tot[0,n] *(phcorr[2, s][1])
+                dxim_terms[n,:,3] =   Tg_invsq_tot[0,n] *(phcorr[2, s][2])
+                
+                # Total
+                dxip[n,:] = dxip_terms[n,:,0] + dxip_terms[n,:,1] + dxip_terms[n,:,2] + dxip_terms[n,:,3]
+                dxim[n,:] = dxim_terms[n,:,0] + dxim_terms[n,:,1 ]+ dxim_terms[n,:,2] + dxim_terms[n,:,3]
+            
+                # Propagate Errors
+                #err_delta_xip_terms[ j,:,0] = 2 * np.interp(theta, theta_theory, xip_theory[j,:]) * deltaT_ratio_tot[ 1,j]
+                err_dxip_terms[ j,:,0] = np.zeros(len(Tg_invsq_tot[0,j] *(phcorr[0, s][0])))
+                err_dxim_terms[ j,:,0] = np.zeros(len(Tg_invsq_tot[0,j] *(phcorr[0, s][0])))
+            
+                # PH term 2 has a factor of 2
+                scale = [1,2,1] 
+                # cycle through 3 ph terms - same error form
+                for t in range(1,4): 
+                        part1 = scale[t-1] * Tg_invsq_tot[1,j]**2 * phcorr[t-1, s][1]**2  
+                        part2 = scale[t-1] * Tg_invsq_tot[0,j]**2 * phcorr[t-1, s][3]**2 
+                        err_dxip_terms[ j,:,t] = (part1 + part2)**0.5
+                        
+                        part1 = scale[t-1] * Tg_invsq_tot[1,j]**2 * phcorr[t-1, s][2]**2  
+                        part2 = scale[t-1] * Tg_invsq_tot[0,j]**2 * phcorr[t-1, s][4]**2 
+                        err_dxim_terms[n,:,t] = (part1 + part2)**0.5
+
+                err_dxip[n,:] = ( err_dxip_terms[n,:,0]**2 + err_dxip_terms[n,:,1]**2 + err_dxip_terms[n,:,2]**2 + err_dxip_terms[n,:,3]**2 )**0.5
+                err_dxim[n,:] = ( err_dxim_terms[n,:,0]**2 + err_dxim_terms[n,:,1]**2 + err_dxim_terms[n,:,2]**2 + err_dxim_terms[n,:,3]**2 )**0.5
+        return phcorr[0, s][0], dxip, dxim, err_dxip, err_dxim dxip_terms, dxim_terms, err_dxip_terms, err_dxim_terms    
+
+    def load_theory(self,nzbin,nzbin_tot):
+        filename_theory = self.get_input("twopoint_theory_real")
+        s = sacc.Sacc.load_fits(filename_theory)
+        theta = np.zeros(len(nzbin_tot),)
+        xip, xim = np.zeros_like(theta), np.zeros_like(theta)
+        k = 0
+        for i in range(0,nzbin):
+                for j in range(0,nzbin):
+                    if j>=i:
+                        theta_, xip_ = s.get_theta_xi('galaxy_shear_xi_plus','source_' + f'{i-1}','source_' + f'{j-1}')
+                        theta_, xim_ = s.get_theta_xi('galaxy_shear_xi_minus','source_' + f'{i-1}','source_' + f'{j-1}')
+                        if len(xip_) != 0:
+                            theta[k], xip[k],xim[k] = theta_, xip_, xim_
+                            k+=1
+        return theta, xip, xim
+                        
+    def load_galaxies(self):
         with self.open_input("binned_shear_catalog") as f:
             cat_cols, _ = f.get_primary_catalog_names()
             if "T" and "psf_T" not in cat_cols:
@@ -1239,18 +1309,29 @@ class TXPHStatistics(PipelineStage):
     def save_stats(self, ph_stats):
         f = self.open_output("ph_stats")
         g = f.create_group("ph_statistics")
-        for i in 0, 1, 2, 3, 4, 5:
-            for s in STAR_TYPES:
-                if STAR_TYPE_NAMES[s] != self.config.star_type:
-                    continue
-                theta, xip, xim, xip_err, xim_err = ph_stats[i, s]
-                name = STAR_TYPE_NAMES[s]
-                h = g.create_group(f"ph_{i}_{name}")
-                h.create_dataset("theta", data=theta)
-                h.create_dataset("xi_plus", data=xip)
-                h.create_dataset("xi_minus", data=xim)
-                h.create_dataset("xip_err", data=xip_err)
-                h.create_dataset("xim_err", data=xim_err)
+        for s in STAR_TYPES:
+            if STAR_TYPE_NAMES[s] != self.config.star_type:
+                continue
+            tdxip, dxim, err_dxip, err_dxim dxip_terms, dxim_terms, err_dxip_terms, err_dxim_terms = ph_stats[s]
+            name = STAR_TYPE_NAMES[s]
+            h = g.create_group(f"ph_{name}")
+            h.create_dataset("theta", data=theta)
+            h.create_dataset("dxip_tot", data=xip)
+            h.create_dataset("dxim_tot", data=xim)
+            h.create_dataset("dxip_tot_err", data=xip_err)
+            h.create_dataset("dxim_tot_err", data=xim_err)
+            h.create_dataset("dxip_1", data=xip)
+            h.create_dataset("dxim_1", data=xim)
+            h.create_dataset("dxip_1_err", data=xip_err)
+            h.create_dataset("dxim_1_err", data=xim_err)
+            h.create_dataset("dxip_2", data=xip)
+            h.create_dataset("dxim_2", data=xim)
+            h.create_dataset("dxip_2_err", data=xip_err)
+            h.create_dataset("dxim_2_err", data=xim_err)
+            h.create_dataset("dxip_3", data=xip)
+            h.create_dataset("dxim_3", data=xim)
+            h.create_dataset("dxip_3_err", data=xip_err)
+            h.create_dataset("dxim_3_err", data=xim_err)
         f.close()    
 
 class TXGalaxyStarShear(PipelineStage):
