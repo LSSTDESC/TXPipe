@@ -114,6 +114,12 @@ def make_dask_depth_map_det_prob(
     det_prob_threshold : float
         Detection probability threshold for SSI depth 
         (i.e. 0.9 to get magnitude at which 90% of brighter objects are detected)
+    mag_delta : float
+        size of the magnitude increments at which to compute detection fraction
+    min_depth : float
+        minimum magnitude at which to compute detection fraction
+    max_depth : float
+        maximum magnitude at which to compute detection fraction
     pixel_scheme : PixelScheme
         An object that provides pixelization scheme with methods `npix` and `ang2pix`.
     smooth_det_frac: bool

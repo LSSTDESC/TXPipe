@@ -199,8 +199,9 @@ class TXMapPlotsSSI(TXMapPlots):
     Make plots of all the available maps that use SSI inputs
 
     This makes plots of:
-    - depth (meas mag)
-    - depth (true mag)
+    - depth (using meas mag)
+    - depth (using true mag)
+    - depth (using detection fraction)
     """
     name = "TXMapPlotsSSI"
 
