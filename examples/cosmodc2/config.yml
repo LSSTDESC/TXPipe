@@ -3,16 +3,6 @@ global:
     chunk_rows: 1000000
     chunk_size: 200000
 
-TXGCRTwoCatalogInput:
-    metacal_dir: /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/metacal_table_summary
-    photo_dir: /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/object_table_summary
-
-TXMetacalGCRInput:
-    cat_name: dc2_object_run2.1i_dr1b_with_metacal_griz
-
-TXExposureInfo:
-    dc2_name: 1.2p
-
 TXLSSWeightsUnit:
     nside: 2048
     pixelization: healpix
@@ -85,17 +75,6 @@ TXSimpleMask:
     depth_cut: 23.0
     bright_object_max: 10.0
 
-
-PZPDFMLZ:
-    nz: 301
-    zmax: 3.0
-
-
-
-# Mock version of stacking:
-TXTrueNumberDensity:
-    nz: 301
-    zmax: 3.0
 
 
 TXSourceSelectorMetacal:
@@ -174,22 +153,11 @@ TXTwoPoint:
     var_method: jackknife
 
 
-TXClusteringNoiseMaps:
-    n_realization: 30
+TXLensNoiseMaps:
+    clustering_realizations: 30
 
-TXLensingNoiseMaps:
-    n_realization: 30
-
-TXTruthLensSelector:
-    # Mag cuts
-    lens_zbin_edges: [0.0, 0.2, 0.4]
-    cperp_cut: 0.2
-    r_cpar_cut: 13.5
-    r_lo_cut: 16.0
-    r_hi_cut: 21.6
-    i_lo_cut: 17.5
-    i_hi_cut: 21.9
-    r_i_cut: 2.0
+TXSourceNoiseMaps:
+    lensing_realizations: 30
 
 
 TXRandomForestLensSelector:
@@ -212,8 +180,6 @@ FlowCreator:
     seed: 5763248
 
 
-InvRedshiftIncompleteness:
-    pivot_redshift: 0.8
 GridSelection:
     redshift_cut: 5.1
     ratio_file: data/example/inputs/hsc_ratios_and_specz.hdf5
