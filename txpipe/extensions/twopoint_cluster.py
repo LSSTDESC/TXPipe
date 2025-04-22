@@ -4,8 +4,8 @@ import numpy as np
 import treecorr
 import h5py
 import sacc
-from txpipe.base_stage import PipelineStage
-from txpipe.data_types import HDFFile, SACCFile
+from ..base_stage import PipelineStage
+from ..data_types import HDFFile, SACCFile
 
 
 class TXTwoPointCluster(PipelineStage):
