@@ -47,7 +47,6 @@ class TXShearCalibration(PipelineStage):
         subtract_mean_shear = self.config["subtract_mean_shear"]
 
         shear_prefix = self.config["shear_prefix"]
-        print('shear_prefix', shear_prefix)
         with self.open_input("shear_catalog", wrapper=True) as f:
             bands = f.get_bands(shear_prefix)
 
