@@ -1,9 +1,15 @@
+import sys
+import os
+
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, parent_dir)
+
 import numpy as np
 import treecorr
 import h5py
 import sacc
-from .base_stage import PipelineStage
-from .data_types import HDFFile, SACCFile
+from txpipe.base_stage import PipelineStage
+from txpipe.data_types import HDFFile, SACCFile
 
 
 class TXTwoPointCluster(PipelineStage):
