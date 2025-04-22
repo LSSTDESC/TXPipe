@@ -15,3 +15,4 @@ from .calibration_tools import read_shear_catalog_type, band_variants, metacal_v
 from .calibration_tools import MetacalCalculator, LensfitCalculator, MeanShearInBins
 from .conversion import nanojansky_err_to_mag_ab, nanojansky_to_mag_ab, moments_to_shear, mag_ab_to_nanojansky
 from .timer import Timer
+from .debuggable_dask import import_dask

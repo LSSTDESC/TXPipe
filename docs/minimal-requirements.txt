@@ -6,3 +6,7 @@ h5py
 pyyaml
 sphinx_rtd_theme
 recommonmark
+ceci>=2.2
+psutil
+autoclasstoc
+sphinx-toolbox

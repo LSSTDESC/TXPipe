@@ -125,6 +125,7 @@ class PZRailSummarize(PipelineStage):
                 
 class PZRealizationsPlot(PipelineStage):
     name = "PZRealizationsPlot"
+    parallel = False
 
     inputs = [
         ("photoz_realizations", QPMultiFile),

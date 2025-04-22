@@ -68,7 +68,7 @@ The name of the class and the attribute ``name`` should be the same, and be desc
 
 You need to decide on the inputs and outputs for the file, and give them tags and types. 
 
-* For inputs, search the page on :ref:`current TXPipe files<TXPipe File Tags and Types>`. 
+* For inputs, search the page on :ref:`current TXPipe files<TXPipe File Tags>`. 
 
 * For each output, you can choose a tag, which will determine the name of the output file, and choose a file type from the various classes in the data\_types page in the stages listing for details.
 

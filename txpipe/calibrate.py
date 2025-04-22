@@ -13,15 +13,7 @@ class TXShearCalibration(PipelineStage):
 
     Once that stage has run and computed both the tomographic bin for each sample
     and the calibration factors, this stage takes the full catalog and splits it
-    into one HDF5 group per bin.  This has several advantages:
-    - all the calibration can happen in one place rather than
-      differently in real space and Fourier
-    - we can load just the galaxies we want for a single bin in later TreeCorr
-      stages, rather than loading the full catalog and then splitting and calibrating
-      it.
-    - the low_mem option in TreeCorr can be used because the catalogs are on disc
-      and contiguous.
-    - it opens up other memory saving options planned for TreeCorr.
+    into one HDF5 group per bin.
 
     We are not (yet) saving per-patch catalogs for TreeCorr here. We might want to
     do that later.
@@ -74,6 +66,7 @@ class TXShearCalibration(PipelineStage):
         # is needed
         tomo_file = self.get_input("shear_tomography_catalog")
         cals, cal2d = Calibrator.load(tomo_file, null=use_true)
+        print("Using calibration method:", cal2d.__class__.__name__)
 
         # The catalog columns are named differently in different cases
         #  Get the correct shear catalogs

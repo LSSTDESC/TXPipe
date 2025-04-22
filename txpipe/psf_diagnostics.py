@@ -332,7 +332,7 @@ class TXPSFMomentCorr(PipelineStage):
 
 class TXTauStatistics(PipelineStage):
     """
-    Compute and plot PSF Tau statistics where the definition of Tau stats are eq.20-22
+    Compute and plot PSF Tau statistics where the definition of Tau stats are eq. 20-22
     of Gatti et al 2023.
     """
     name     = "TXTauStatistics"
@@ -752,7 +752,7 @@ class TXRoweStatistics(PipelineStage):
 
     People sometimes think that these statistics are called the Rho statistics,
     because we usually use that letter for them.  Not so.  They are named after
-    the wonderfully incorrigible rogue Barney Rowe, now sadly lost to high finance,
+    the wonderful Barney Rowe, now sadly lost to high finance,
     who presented the first two of them in MNRAS 404, 350 (2010).
     """
 

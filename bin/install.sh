@@ -2,6 +2,7 @@
 
 # Stop on error
 set -e
+set -x
 
 if [ -d "./conda" ]
 then
@@ -37,12 +38,8 @@ chmod +x Mambaforge3.sh
 ./Mambaforge3.sh -b -p ./conda
 source ./conda/bin/activate
 
-# It seems to be a bug on conda that if our required pip-installable
-# packages depend on the conda-forge packages they don't detect them
-# properly if they are all in the same environment file. So we need to
-# split them up
-mamba env update --file environment-nopip.yml
-mamba env update --file environment-piponly.yml 
+# Install everything
+mamba env update --file environment.yml
 
 # We do this to get around a bug in the healpy installation
 # where it installs its own copy of libomp instead of using
