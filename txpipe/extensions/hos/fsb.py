@@ -31,6 +31,8 @@ class TXFSB(PipelineStage):
         ells_per_bin = self.config["ells_per_bin"]
         include_n32 = self.config["include_n32"]
 
+        # TODO: add downgrading nside to something specific
+        # to FSB depending on runtimes
         # Load mask information
         with self.open_input("mask", wrapper=True) as f:
             info = f.read_map_info("mask")
@@ -45,16 +47,16 @@ class TXFSB(PipelineStage):
             print(f"Loaded {nbin_lens} overdensity maps")
 
         filters = fsb_2fields.get_filters(nfilters, pixel_scheme.nside)
-        print("Filter shape", filters.shape)
-        print("filter sums", np.sum(filters, axis=1))
-        measurements = []
 
+        # TODO: Parallelize this loop
+        # TODO: Add tomo bin cross-correlations
+        measurements = []
         for i in range(nbin_lens):
             # Convert NaNs and Healpix Unsees values to zero
             density_map = self.tidy_map(density_maps[i])
 
+            # Initialize the main calculator object
             calculator = fsb_2fields.FSB(density_map, mask, filters, ells_per_bin=ells_per_bin)
-
     
             # get ancilliary information
             ells = calculator.bb.get_effective_ells()
