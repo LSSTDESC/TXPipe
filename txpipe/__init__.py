@@ -44,4 +44,5 @@ from .magnification import TXSSIMagnification
 # such as the self-calibration of Intrinsic alignment.
 from .extensions.twopoint_scia import TXSelfCalibrationIA
 from .extensions.cluster_counts import CLClusterShearCatalogs, CLClusterBinningRedshiftRichness
+from .extensions.hos.fsb import TXFSB
 from .covariance_nmt import TXFourierNamasterCovariance, TXRealNamasterCovariance
