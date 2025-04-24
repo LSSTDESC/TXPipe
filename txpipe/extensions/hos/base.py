@@ -5,7 +5,17 @@ import numpy as np
 
 
 class HOSStage(PipelineStage):
+    """A stage intended as a base for higher-order statistics (HOS) measurements.
+
+    This class provides methods for loading input data, including masks and
+    over-density maps, and for preparing output SACC files with metadata.
+
+    It is designed to be subclassed for specific HOS measurements that operate
+    at the map level (convergence or over-density maps).
+
+    """
     name = "HOSStage"
+
     def load_mask(self):
         """
         Load the mask from the input file.
@@ -33,7 +43,8 @@ class HOSStage(PipelineStage):
 
         pixel_scheme = choose_pixelization(**info)
         return mask, pixel_scheme
-    
+
+
     def load_overdensity_maps(self, set_bad_pixels_to_zero=False):
         """
         Load the over-density maps from the density maps file.
@@ -60,7 +71,8 @@ class HOSStage(PipelineStage):
             density_maps = [self.clean_map(m) for m in density_maps]
 
         return density_maps, nbin_lens
-    
+
+
     def load_convergence_maps(self):
         """
         Load the convergence maps from the convergence_maps file.
@@ -85,6 +97,7 @@ class HOSStage(PipelineStage):
             print(f"Loaded {nbin_source} convergence maps")
         return convergence_maps, nbin_source        
 
+
     def clean_map(self, m):
         """
         Convert NaNs and Healpix Unseen values in a map to zero.
@@ -104,6 +117,7 @@ class HOSStage(PipelineStage):
         m[m == healpy.UNSEEN] = 0
         return m
     
+
     def prepare_output_sacc(self, nbin_lens=0, nbin_source=0):
         """Set up a SACC object to be saved with important metadata.
         
