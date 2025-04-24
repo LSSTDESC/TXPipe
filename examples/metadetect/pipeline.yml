@@ -117,7 +117,7 @@ stages:
   - name: TXApertureMass          # Compute aperture-mass statistics
     threads_per_process: 2
   - name: TXTwoPointFourier      # Compute power spectra C_ell
-  - name: TXFSB
+  - name: HOSFSB
     # Disabled since not yet synchronised with new Treecorr MPI
     # - name: TXSelfCalibrationIA   # Self-calibration intrinsic alignments of galaxies
 

@@ -362,7 +362,7 @@ TXPhotozPlotLens:
 TXTauStatistics:
     npatch: 150
 
-TXFSB:
+HOSFSB:
     ells_per_bin: 10
     nfilters: 5
     include_n32: false
