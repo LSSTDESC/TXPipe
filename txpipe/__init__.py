@@ -45,4 +45,5 @@ from .extensions.twopoint_cluster import TXTwoPointCluster
 # such as the self-calibration of Intrinsic alignment.
 from .extensions.twopoint_scia import TXSelfCalibrationIA
 from .extensions.cluster_counts import CLClusterShearCatalogs, CLClusterBinningRedshiftRichness
+from .extensions.hos.fsb import HOSFSB
 from .covariance_nmt import TXFourierNamasterCovariance, TXRealNamasterCovariance
