@@ -19,11 +19,18 @@ pip install .
 cd ..
 rm -rf ${FIRECROWN_DIR}
 
-# Add some things that are set up automatically
+# Files in the etc/conda/activate.d directory in a conda environment
+# are sourced when the environment is activated.
+# So we can put other environment variables and modules loads in there
+# that TXPipe needs to run.
+# The MPI4PY_RC_RECV_MPROBE variable is set to False because the CRAY
+# MPI implementation does not support a feature that otherwise mpi4py
+# tries to use. The HDF5_USE_FILE_LOCKING variable is set to FALSE because
+# the lustre filesystem does not support file locking.
 cat >  ./conda/etc/conda/activate.d/activate-txpipe.sh <<EOF
-module load mpich/4.2.2
-export MPI4PY_RC_RECV_MPROBE='False'
-export HDF5_USE_FILE_LOCKING=FALSE
+    module load mpich/4.2.2
+    export MPI4PY_RC_RECV_MPROBE='False'
+    export HDF5_USE_FILE_LOCKING=FALSE
 EOF
 
 echo ""
