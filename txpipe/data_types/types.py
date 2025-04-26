@@ -112,14 +112,21 @@ class ShearCatalog(HDFFile):
 
         return shear_cols, rename
 
-    def get_bands(self):
+    def get_bands(self, shear_prefix=''):
         group = self.file[self.get_primary_catalog_group()]
         if "bands" in group.attrs:
             return group.attrs["bands"]
+
+        # If we don't have it listed correctly then we have to do this
+        # messy check. We look for all the columns that start with
+        # mag_ and don't have an extra underscore in, which would indicate
+        # that they are an error like mag_z_err
         bands = []
+        nunderscore = shear_prefix.count("_")
+        l = len(shear_prefix + "mag_")
         for col in group.keys():
-            if col.startswith("mag_") and col.count("_") == 1:
-                bands.append(col[4:])
+            if col.startswith(f"{shear_prefix}mag_") and (col.count("_") == 1 + nunderscore):
+                bands.append(col[l:])
         return bands
 
 

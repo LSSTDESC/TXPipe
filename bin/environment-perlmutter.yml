@@ -3,7 +3,7 @@ channels:
 dependencies:
   - astropy=6.1.*
   - camb=1.5.*
-  - cosmosis=3.7.*
+  - cosmosis=3.19.*
   - cmake
   - dask=2024.5.2
   - dm-tree=0.1.8
@@ -16,7 +16,7 @@ dependencies:
   - jupyter=1.0.*
   - matplotlib=3.8.*
   - mpi4py>=3
-  - mpich=*=external_*
+  - mpich=4.2.2=external_*
   - namaster=2.0.*
   - numpy=1.26.*
   - pandas>=2.0
@@ -51,19 +51,4 @@ dependencies:
     - jaxlib==0.4.23
     - glass==2023.7
     - git+https://github.com/beckermr/hybrideb@a3198ea5bc8175542b058e5c1289d910f05fd99d
-    # we must specifically request versions of rail algorithms
-    # to ensure that we get the ceci v2 versions
-    - pz-rail[algos] @ git+https://github.com/LSSTDESC/RAIL@v1.0.1
-    - pz-rail-astro-tools==1.0.4
-    - pz-rail-base==1.0.4
-    - pz-rail-bpz==1.0.1
-    - pz-rail-cmnn==1.0.1
-    - pz-rail-dsps==0.0.3 # no pypi release for more than 0.3
-    - pz-rail-flexzboost==1.0.1
-    - pz-rail-fsps==1.0.1
-    - pz-rail-gpz-v1==1.0.2
-    - pz-rail-lephare==0.2 # no release for ceci2 yet - cannot use
-    - pz-rail-pzflow==1.0.1
-    - pz-rail-sklearn==1.0.1
-    - pz-rail-som==1.0.1
-    - qp-prob==0.9.1
+    - pz-rail[algos] @ git+https://github.com/LSSTDESC/RAIL@v1.1.2
