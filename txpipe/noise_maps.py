@@ -18,177 +18,150 @@ from .utils import (
 )
 
 
-class TXSourceNoiseMaps(TXBaseMaps):
-    """
-    Generate realizations of shear noise maps with random rotations
+map_config_options = {
+    "chunk_rows": 100000,  # The number of rows to read in each chunk of data at a time
+    "pixelization": "healpix",  # The pixelization scheme to use, currently just healpix
+    "nside": 0,  # The Healpix resolution parameter for the generated maps. Only req'd if using healpix
+    "sparse": True,  # Whether to generate sparse maps - faster and less memory for small sky areas,
+    "ra_cent": np.nan,  # These parameters are only required if pixelization==tan
+    "dec_cent": np.nan,
+    "npix_x": -1,
+    "npix_y": -1,
+    "pixel_size": np.nan,  # Pixel size of pixelization scheme
+}
 
-    This takes the shear catalogs and tomography and randomly spins the
-    shear values in it, removing the shear signal and leaving only shape noise
+
+class TXSourceNoiseMaps(PipelineStage):
+    """
+    Generate source noise maps directly from binned *calibrated* shear 
+    catalogs using the same approach as TXSourceMaps. Previous version 
+    generated this from unbinned and uncalibrated shear catalogs.  
     """
     name = "TXSourceNoiseMaps"
+    dask_parallel = True
 
     inputs = [
-        ("shear_catalog", ShearCatalog),
-        ("shear_tomography_catalog", TomographyCatalog),
-        # We get the pixelization info from the diagnostic maps
-        ("mask", MapsFile),
+        ("binned_shear_catalog", HDFFile),
     ]
-
     outputs = [
         ("source_noise_maps", LensingNoiseMaps),
     ]
-
     config_options = {
-        "chunk_rows": 100000,
+        "block_size": 0,
         "lensing_realizations": 30,
-        "true_shear": False,
+        **map_config_options
     }
+        
+    def run(self):
+        import dask
+        import dask.array as da
+        import healpy
+        from tqdm import tqdm
 
-    # instead of reading from config we match the basic maps
-    def choose_pixel_scheme(self):
-        with self.open_input("mask", wrapper=True) as maps_file:
-            pix_info = maps_file.read_map_info("mask")
+        # Configuration options
+        pixel_scheme = choose_pixelization(**self.config)
+        nside = self.config["nside"]
+        npix = healpy.nside2npix(nside)
+        block_size = self.config["block_size"]
 
-        return choose_pixelization(**pix_info)
-
-    def prepare_mappers(self, pixel_scheme):
-        read_shear_catalog_type(self)
-
-        with self.open_input("mask", wrapper=True) as maps_file:
-            mask = maps_file.read_map("mask")
-
-        with self.open_input("shear_tomography_catalog", wrapper=True) as f:
-            nbin_source = f.file["tomography"].attrs["nbin"]
-
-        # Mapping from 0 .. nhit - 1 to healpix indices
-        reverse_map = np.where(mask > 0)[0]
-        # Get a mapping from healpix indices to masked pixel indices
-        # This reduces memory usage.  We could use a healsparse array
-        # here, but I'm not sure how to do that best with our
-        # many realizations.  Possiby a recarray?
-        index_map = np.zeros(pixel_scheme.npix, dtype=np.int64) - 1
-        index_map[reverse_map] = np.arange(reverse_map.size)
-
-        # Number of unmasked pixels
-        npix = reverse_map.size
+        if block_size == 0:
+            block_size = "auto"
         lensing_realizations = self.config["lensing_realizations"]
 
-        # lensing g1, g2
-        G1 = np.zeros((npix, nbin_source, lensing_realizations))
-        G2 = np.zeros((npix, nbin_source, lensing_realizations))
-        # lensing weight
-        GW = np.zeros((npix, nbin_source))
+        # We have to keep this open throughout the process, because
+        # dask will internally load chunks of the input hdf5 data.
+        f = self.open_input("binned_shear_catalog")
+        nbin = f['shear'].attrs['nbin_source']
 
-        return (npix, G1, G2, GW, index_map, reverse_map, nbin_source)
+        # The "all" bin is the non-tomographic case.
+        bins = list(range(nbin)) + ["all"]
+        output = {}
 
-    def data_iterator(self):
+        for i in bins:
+            ra = da.from_array(f[f"shear/bin_{i}/ra"], block_size)
+            dec = da.from_array(f[f"shear/bin_{i}/dec"], block_size)
+            g1 = da.from_array(f[f"shear/bin_{i}/g1"], block_size)
+            g2 = da.from_array(f[f"shear/bin_{i}/g2"], block_size)
+            weight = da.from_array(f[f"shear/bin_{i}/weight"], block_size)
 
-        with self.open_input("shear_catalog", wrapper=True) as f:
-            shear_cols, renames = f.get_primary_catalog_names(self.config["true_shear"])
+            g1 = g1-da.mean(g1)
+            g2 = g2-da.mean(g2)
+            
+            pix = pixel_scheme.ang2pix(ra, dec)
 
-        it = self.combined_iterators(
-            self.config["chunk_rows"],
-            "shear_catalog",
-            "shear",
-            shear_cols,
-            "shear_tomography_catalog",
-            "tomography",
-            ["bin"],
-        )
-        return rename_iterated(it, renames)
+            # For the other map we use bincount with weights - these are the
+            # various maps by pixel. bincount gives the number of objects in each
+            # vaue of the first argument, weighted by the weights keyword, so effectively
+            # it gives us
+            # p_i = sum_{j} x[j] * delta_{pix[j], i}
+            # which is out map
+            for seed in range(lensing_realizations):
+                phi = da.random.uniform(0, 2 * np.pi, len(ra))
+                c = da.cos(phi)
+                s = da.sin(phi)
+                g1r = c * g1 + s * g2
+                g2r = -s * g1 + c * g2
 
-    def accumulate_maps(self, pixel_scheme, data, mappers):
-        npix, G1, G2, GW, index_map, _, _ = mappers
-        lensing_realizations = self.config["lensing_realizations"]
-        source_bin = data["bin"]
+                weight_map = da.bincount(pix, weights=weight, minlength=npix)
+                g1_map = da.bincount(pix, weights=weight * g1r, minlength=npix)
+                g2_map = da.bincount(pix, weights=weight * g2r, minlength=npix)
+                
+                # normalize by weights to get the mean map value in each pixel
+                g1_map /= weight_map
+                g2_map /= weight_map
 
-        # Get the pixel index for each object and convert
-        # to the reduced index
-        ra = data["ra"]
-        dec = data["dec"]
-        orig_pixels = pixel_scheme.ang2pix(ra, dec)
-        pixels = index_map[orig_pixels]
+                # slight change in output name
+                if i == "all": i = "2D"
 
-        # Pull out some columns we need
-        n = len(ra)
-        w = data["weight"]
-        # Pre-weight the g1 values so we don't have to
-        # weight each realization again
-        g1 = data["g1"] * w
-        g2 = data["g2"] * w
+                # replace nans with UNSEEN.  The NaNs can occur if there are
+                # no objects in a pixel, so the value is undefined.
+                g1_map[da.isnan(g1_map)] = healpy.UNSEEN
+                g2_map[da.isnan(g2_map)] = healpy.UNSEEN
 
-        # random rotations of the g1, g2 values
-        phi = np.random.uniform(0, 2 * np.pi, (n, lensing_realizations))
-        c = np.cos(phi)
-        s = np.sin(phi)
-        g1r = c * g1[:, np.newaxis] + s * g2[:, np.newaxis]
-        g2r = -s * g1[:, np.newaxis] + c * g2[:, np.newaxis]
+                # Save all the stuff we want here.
+                output[f"rotation_{seed}/g1_{i}"] = g1_map
+                output[f"rotation_{seed}/g2_{i}"] = g2_map
 
-        for i in range(n):
-            sb = source_bin[i]
+            output[f"lensing_weight_{i}"] = weight_map
 
-            # Skip objects we don't use
-            if sb < 0:
-                continue
+        # mask is where a pixel is hit in any of the tomo bins
+        mask = da.zeros(npix, dtype=bool)
+        for i in bins:
+            if i == "all":
+                i = "2D"
+            mask |= output[f"lensing_weight_{i}"] > 0
 
-            # convert to the index in the partial space
-            pix = pixels[i]
+        output["mask"] = mask
 
-            # The sentinel value for pixels is -1
-            if pix < 0:
-                continue
+        # Everything above is lazy - this forces the computation.
+        # It works out an efficient (we hope) way of doing everything in parallel
+        output, = dask.compute(output)
+        f.close()
 
-            # build up the rotated map for each bin
-            G1[pix, sb, :] += g1r[i]
-            G2[pix, sb, :] += g2r[i]
-            GW[pix, sb] += w[i]
+        # collate metadata
+        metadata = {
+            key: self.config[key]
+            for key in map_config_options
+        }
+        metadata['nbin'] = nbin
+        metadata['nbin_source'] = nbin
 
-    def finalize_mappers(self, pixel_scheme, mappers):
-        # only one mapper here - we call its finalize method
-        # to collect everything
-        npix, G1, G2, GW, index_map, reverse_map, nbin_source = mappers
-        lensing_realizations = self.config["lensing_realizations"]
+        pix = np.where(output["mask"])[0]
+        
+        # write the output maps
+        with self.open_output("source_noise_maps", wrapper=True) as out:
+            for seed in range(lensing_realizations):
+                for i in bins:
+                    # again rename "all" to "2D"
+                    if i == "all":
+                        i = "2D"
 
-        # Sum everything at root
-        if self.comm is not None:
-            mpi_reduce_large(
-                G1, self.comm, max_chunk_count=2**26
-            )  # fiducial is 2**30
-            mpi_reduce_large(G2, self.comm, max_chunk_count=2**26)
-            mpi_reduce_large(GW, self.comm, max_chunk_count=2**26)
-            if self.rank != 0:
-                del G1, G2, GW
+                    # We save the pixels in the mask - i.g. any pixel that is hit in any
+                    # tomographic bin is included. Some will be UNSEEN.
+                    for key in "g1", "g2":
+                        out.write_map(f"rotation_{seed}/{key}_{i}", pix, output[f"rotation_{seed}/{key}_{i}"][pix], metadata)
 
-        # build up output
-        maps = {}
-
-        # only master gets full stuff
-        if self.rank != 0:
-            return maps
-
-        # We need to calibrate the shear maps
-        cal, _ = Calibrator.load(self.get_input("shear_tomography_catalog"))
-
-        for b in range(nbin_source):
-            for i in range(lensing_realizations):
-
-                bin_mask = np.where(GW[:, b] > 0)
-
-                g1 = G1[:, b, i] / GW[:, b]
-                g2 = G2[:, b, i] / GW[:, b]
-
-                g1, g2 = cal[b].apply(g1, g2, subtract_mean=False)
-
-                maps["source_noise_maps", f"rotation_{i}/g1_{b}"] = (
-                    reverse_map[bin_mask],
-                    g1[bin_mask],
-                )
-
-                maps["source_noise_maps", f"rotation_{i}/g2_{b}"] = (
-                    reverse_map[bin_mask],
-                    g2[bin_mask],
-                )
-        return maps
+            out.file['maps'].attrs.update(metadata)
 
 
 class TXLensNoiseMaps(TXBaseMaps):
