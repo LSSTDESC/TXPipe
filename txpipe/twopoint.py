@@ -79,6 +79,7 @@ class TXTwoPoint(PipelineStage):
         "metric": "Euclidean",
         "gaussian_sims_factor": [1.], 
         "use_subsampled_randoms": True, #use subsampled randoms file for RR
+        "save_treecorr": True
     }
 
     def run(self):
@@ -512,6 +513,14 @@ class TXTwoPoint(PipelineStage):
         else:
             raise ValueError(f"Unknown correlation function {k}")
 
+        # Occasionally we want to reuse the treecorr calculation
+        # We use teh option "write_patch_results" to also save 
+        # the jackknife results otherwise, it only saves the
+        # combined results.
+        if self.config["save_treecorr"]:
+            dir = os.path.dirname(self.get_output("twopoint_data_real_raw"))
+            xx.write(dir+f'/treecorr_{k}_{i}_{j}.out',write_patch_results=True) 
+
         # Force garbage collection here to make sure all the
         # catalogs are definitely freed
         gc.collect()
@@ -793,14 +802,14 @@ class TXTwoPoint(PipelineStage):
             if self.rank == 0:
                 print("Empty catalog: returning None")
             return None
-
+        
         gg = treecorr.GGCorrelation(self.config)
+
         t1 = perf_counter()
         gg.process(cat_i, cat_j, low_mem=self.config["low_mem"], comm=self.comm)
         t2 = perf_counter()
         if self.rank == 0:
             print(f"Processing took {t2 - t1:.1f} seconds")
-
         return gg
 
     def calculate_shear_pos(self, i, j):

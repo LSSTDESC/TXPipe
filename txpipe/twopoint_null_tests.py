@@ -961,6 +961,7 @@ class TXShearBmode(PipelineStage):
         import pickle
         import sacc
         import os
+        import treecorr
 
         print('running hybrideb')        
         Nell = self.config['Nell']
@@ -973,12 +974,13 @@ class TXShearBmode(PipelineStage):
 
         # Computing the weights takes a few minutes so its a lot faster
         # to precompute them and load them again in subsequent runs.
-        file_precomputed_weights = self.get_output("twopoint_data_fourier_pureB")+ f".precomputedweights.pkl"
+        file_precomputed_weights = self.get_output("twopoint_data_fourier_shearbmode")+ f".precomputedweights.pkl"
 
         if os.path.exists(file_precomputed_weights):
             print(f"{self.rank} WARNING: Using precomputed weights from revious run: {file_precomputed_weights}")
             with open(file_precomputed_weights, "rb") as f:
                 geb_dict = pickle.load(f)
+            Nl = len(geb_dict.keys())
 
         else:
             # To run this method we need to first compute the Fourier and real-space windows
@@ -988,14 +990,15 @@ class TXShearBmode(PipelineStage):
             heb = hybrideb.HybridEB(self.config['theta_min'], self.config['theta_max'], Ntheta)
             beb = hybrideb.BinEB(self.config['theta_min'], self.config['theta_max'], Ntheta)
             geb = hybrideb.GaussEB(beb, heb)
+            Nl = geb.Nl
 
             # geb is in a fromat that can not be naturally saved so we convert it to a regular dictionary.
             geb_dict = {}
-            for i in range(0,Nell):
+            for i in range(0,geb.Nl):
                 geb_dict[f"{i+1}"] = {}
                 for j in range(0,6):
                     geb_dict[f"{i+1}"][f"{j+1}"]=geb(i)[j]
-
+            
             # geb_dict stores the following information in a regular dictionary format
             # 1: theta in radians
             # 2: Fp  plus component of the real-space window function
@@ -1012,13 +1015,72 @@ class TXShearBmode(PipelineStage):
             with open(file_precomputed_weights, 'wb') as handle:
                 pickle.dump(geb_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
+        En0  = np.zeros(Nl)
+        Bn0  = np.zeros(Nl)
+        ell  = np.zeros(Nl)
+
+        def get_Xm(corrs):
+            vec = []
+            for gg in corrs:
+                xip, xim = gg.xip, gg.xim
+                Bn = np.empty(Nl)
+                for i in range(Nl):
+                    filt = geb_dict[f"{i+1}"]
+                    Bn[i] = 0.5 * np.sum(filt['2'] * xip - filt['3'] * xim)
+                vec.append(Bn)
+            return np.concatenate(vec)    
+            
+        filename   = self.get_input("twopoint_data_real_raw")
+        data_twopt = sacc.Sacc.load_fits(filename)
+        Qxip       = sacc.standard_types.galaxy_shear_xi_plus
+
+        source_tracers = set()
+        for b1, b2 in data_twopt.get_tracer_combinations(Qxip):
+            source_tracers.add(b1)
+            source_tracers.add(b2)
+
+        nbin_source = max(len(source_tracers), 1)
+
+        results = np.zeros((nbin_source,nbin_source,Nl))
+
+        # Load precomputed treecorr outputs from TXtwopoint
+        # The 0 in the name 0_{i}_{j} correspoinds to shear-shear correlation
+        # which is the only case we run hybrideb.
+        corr = []
+        for zi in range(0,nbin_source):
+            for zj in range(0,zi+1):
+
+                print(zi,zj)
+                # Load treecorr correlation    
+                dir = os.path.dirname(self.get_input("twopoint_data_real_raw"))
+                gg = treecorr.GGCorrelation.from_file(dir+f'/treecorr_0_{zi}_{zj}.out') 
+                corr.append(gg)
+
+                # Data vector part. Note here we are setting 'ell'  
+                # to be the peak of the Gaussian window function.
+                for i in range(Nl):
+                    filt = geb_dict[f"{i+1}"]   
+                    Fp = filt['2']
+                    Fm = filt['3']
+                    Bn0[i] = np.sum(Fp*gg.xip - Fm*gg.xim)/2
+                    ell[i] = filt['4'][np.argmax(filt['5'])] 
+
+                results[zj,zi,:]= Bn0[:]
+
+        # Covariance part. We feed in xip/xim measurements and let
+        # the custom func convert it to a hybrideb Xm covariance.
+        cov = treecorr.estimate_multi_cov(corr, 'jackknife', func = get_Xm)
+        np.savez('/global/cfs/cdirs/lsst/groups/WL/users/yomori/repo/txpipe/testbb2/data/hscy3/outputs/hsc_hybrideb_newcov.npz',ell=ell,results=results,cov=cov)
+        
+
+        # Load xip/xim that were computed in the TXTwopoint stage and check length required for covariance
         En0  = np.zeros(Nell)
         Bn0  = np.zeros(Nell)
         En   = np.zeros((Nell,Nsims))
         Bn   = np.zeros((Nell,Nsims))
         ell  = np.zeros(Nell)
+        print('Nell',Nell)
 
-        # Load xip/xim that were computed in the TXTwopoint stage and check length required for covariance
         filename   = self.get_input("twopoint_data_real_raw")
         data_twopt = sacc.Sacc.load_fits(filename)
         Qxip       = sacc.standard_types.galaxy_shear_xi_plus
@@ -1037,6 +1099,7 @@ class TXShearBmode(PipelineStage):
         c = 0
         for zi in range(0,nbin_source):
             for zj in range(zi,nbin_source):
+                print(zi,zj)
 
                 # Initial and final row indices of the resulting array (covarr) to fill.
                 # For each tomographic bin we have Nell bins to fill.
@@ -1080,8 +1143,11 @@ class TXShearBmode(PipelineStage):
                 c+=1
 
             cov = np.cov(corvarr)
-
-        print('Saving pureB Cls in sacc file')   
+            
+        np.savez('/global/cfs/cdirs/lsst/groups/WL/users/yomori/repo/txpipe/testbb2/data/hscy3/outputs/hsc_hybrideb_oldcov.npz',ell=ell,results=results,cov=cov)
+        
+        
+        print('Saving pureB Cls in sacc file')
         self.save_power_spectra(nbin_source, ell, results, cov)
 
 
