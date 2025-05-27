@@ -8,53 +8,6 @@ class TXIngestCatalogBase(PipelineStage):
     """
     name = "TXIngestCatalogBase"
 
-
-    def create_h5_from_fits(self, input_name, output_name, column_names, dummy_columns):
-        """
-        Create an h5 file and save the columns of a fits file to it as datasets
-
-        This method sets up the output HDF5 file structure and processes column
-        data from the input catalog. It iterates over chunks of data to save them in the output file.
-
-        Parameters
-        ----------
-        input_name : str
-            label name of (FITS) input
-
-        output_name : str
-            label name of (HDF5) output
-
-        column_names : dict
-            A dictionary mapping the input column names to the desired output column names.
-            Keys are input column names, and values are the corresponding output names.
-
-        dummy_columns : dict
-            A dictionary of columns to be added to the output with fixed values.
-            Keys are the names of the dummy columns, and values are the constant values
-            to fill those columns.
-
-        """
-        # get some basic onfo about the input file
-        f = self.open_input(input_name)
-        n = f[1].get_nrows()
-        dtypes = f[1].get_rec_dtype()[0]
-        f.close()
-
-        chunk_rows = self.config["chunk_rows"]
-
-        # set up the output file columns 
-        output, g = self.setup_output(output_name, column_names, dtypes, n)
-
-        # iterate over the input file and save to the output columns
-        self.add_columns(g, input_name, column_names, chunk_rows, n)
-
-        # Set up any dummy columns with sentinal values
-        # that were not in the original files
-        for col_name in dummy_columns.keys():
-            g.create_dataset(col_name, data=np.full(n, dummy_columns[col_name]))
-
-        output.close()
-
     def setup_output(self, output_name, column_names, dtypes, n):
         """
         Set up the output HDF5 file structure.
@@ -86,6 +39,69 @@ class TXIngestCatalogBase(PipelineStage):
             g.create_dataset(column_names[col], (n,), dtype=dtype)
         
         return output, g
+
+    def process_catalog(self, input_name, output_name, column_names, dummy_columns):
+        """
+        Iterate over an input catalog, saving columns to a new h5 file
+
+        Parameters
+        ----------
+        input_name : str
+            label name of (FITS) input
+
+        output_name : str
+            label name of (HDF5) output
+
+        column_names : dict
+            A dictionary mapping the input column names to the desired output column names.
+            Keys are input column names, and values are the corresponding output names.
+
+        dummy_columns : dict
+            A dictionary of columns to be added to the output with fixed values.
+            Keys are the names of the dummy columns, and values are the constant values
+            to fill those columns.
+
+        """
+        # get some basic info about the input file
+        n, dtypes = self.get_meta(input_name)
+
+        chunk_rows = self.config["chunk_rows"]
+
+        # set up the output file columns 
+        output, g = self.setup_output(output_name, column_names, dtypes, n)
+
+        # iterate over the input file and save to the output columns
+        self.add_columns(g, input_name, column_names, chunk_rows, n)
+
+        # Set up any dummy columns with sentinal values
+        # that were not in the original files
+        for col_name in dummy_columns.keys():
+            g.create_dataset(col_name, data=np.full(n, dummy_columns[col_name]))
+
+        output.close()
+
+class TXIngestCatalogFits(PipelineStage):
+    """
+    Base-Class for ingesting catalogs from external sources and saving to a format 
+    TXPipe will understand
+    """
+    name = "TXIngestCatalogFits"
+    
+    def get_meta(self, input_name):
+        """
+        Get some basic info about the input file
+
+        returns:
+            n (int):
+                number of rows in input data
+            dtypes
+                data types for each input column
+        """
+        f = self.open_input(input_name)
+        n = f[1].get_nrows()
+        dtypes = f[1].get_rec_dtype()[0]
+        f.close()
+        return n, dtypes
 
     def add_columns(self, g, input_name, column_names, chunk_rows, n):
         """

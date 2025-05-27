@@ -7,7 +7,7 @@ from ..utils import (
     nanojansky_to_mag_ab,
     nanojansky_err_to_mag_ab,
 )
-from .base import TXIngestCatalogBase
+from .base import TXIngestCatalogBase, TXIngestCatalogFits
 import numpy as np
 import warnings
 
@@ -281,7 +281,7 @@ class TXMatchSSI(PipelineStage):
         outfile.close()
         return
 
-class TXIngestSSIDESBalrog(TXIngestCatalogBase):
+class TXIngestSSIDESBalrog(TXIngestCatalogFits):
     """
     Base-stage for ingesting a DES SSI catalog AKA "Balrog"
     """
@@ -379,7 +379,7 @@ class TXIngestSSIMatchedDESBalrog(TXIngestSSIDESBalrog):
             "mag_err_z":-99.,
         }
 
-        self.create_h5_from_fits(
+        self.process_catalog(
             "balrog_matched_catalog",
             "matched_ssi_photometry_catalog",
             column_names,
@@ -419,7 +419,7 @@ class TXIngestSSIDetectionDESBalrog(TXIngestSSIDESBalrog):
             "meas_EXTENDED_CLASS_SOF": "meas_EXTENDED_CLASS_SOF",  # star galaxy separator
         }
 
-        self.create_h5_from_fits(
+        self.process_catalog(
             "balrog_detection_catalog", "injection_catalog", column_names_inj, {}
         )
 
@@ -437,6 +437,6 @@ class TXIngestSSIDetectionDESBalrog(TXIngestSSIDESBalrog):
             "match_flag_2.0_asec": "match_flag_2.0_asec",
         }
 
-        self.create_h5_from_fits(
+        self.process_catalog(
             "balrog_detection_catalog", "ssi_detection_catalog", column_names_det, {}
         )
