@@ -80,14 +80,14 @@ class TXIngestCatalogBase(PipelineStage):
 
         output.close()
 
-class TXIngestCatalogFits(PipelineStage):
+class TXIngestCatalogFits(TXIngestCatalogBase):
     """
-    Base-Class for ingesting catalogs from external sources and saving to a format 
+    Class for ingesting catalogs from FITS format and saving to a format 
     TXPipe will understand
     """
     name = "TXIngestCatalogFits"
     
-    def get_meta(self, input_name):
+    def get_meta(self, input_name, ):
         """
         Get some basic info about the input file
 
@@ -129,6 +129,73 @@ class TXIngestCatalogFits(PipelineStage):
         """
         cols = list(column_names.keys())
         for s, e, data in self.iterate_fits(input_name, 1, cols, chunk_rows):
+            print(s, e, n)
+            for col in cols:
+                g[column_names[col]][s:e] = data[col]
+
+
+class TXIngestCatalogH5(TXIngestCatalogBase):
+    """
+    Class for ingesting catalogs from HDF5 files and saving to a format 
+    TXPipe will understand
+    """
+    name = "TXIngestCatalogH5"
+    
+    def get_meta(self, input_name):
+        """
+        Get some basic info about the input file
+
+        for h5 files I will assume the length of the longest dataset in the
+        specified group is the number of objects in the catalog
+
+        returns:
+            n (int):
+                number of rows in input data
+            dtypes
+                data types for each input column
+        """
+        import h5py 
+
+        group = self.config['input_group_name']
+
+        with self.open_input(input_name) as f:
+            dtype_list = []
+            n_list = []
+            for name, item in f[group].items():
+                if isinstance(item, h5py.Dataset):
+                    dtype_list.append((name, item.dtype))
+                    n_list.append(item.shape[0])
+            assert len(n_list) > 0, f"No datasets found in group {group}"
+        return np.max(n_list), np.dtype(dtype_list)
+
+    def add_columns(self, g, input_name, column_names, chunk_rows, n):
+        """
+        Add data to the HDF5 output file in chunks.
+
+        This method reads chunks of data from the input file and writes them
+        to the corresponding datasets in the output file.
+
+        Parameters
+        ----------
+        g : h5py.Group
+            The HDF5 group where data will be written.
+
+        input_name : str
+            The name of the input file (e.g., a FITS file).
+
+        column_names : dict
+            Dict of column names to read from the input file.
+
+        chunk_rows : int
+            Number of rows to process in each chunk.
+
+        n : int
+            Total number of rows in the dataset.
+        """
+        group = self.config['input_group_name']
+
+        cols = list(column_names.keys())
+        for s, e, data in self.iterate_hdf(input_name, group, cols, chunk_rows):
             print(s, e, n)
             for col in cols:
                 g[column_names[col]][s:e] = data[col]
