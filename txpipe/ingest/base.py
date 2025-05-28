@@ -35,8 +35,8 @@ class TXIngestCatalogBase(PipelineStage):
         output = self.open_output(output_name)
         g = output.create_group("photometry")
         for col in cols:
-            dtype = dtypes[col]
-            g.create_dataset(column_names[col], (n,), dtype=dtype)
+            dtype = dtypes[column_names[col]]
+            g.create_dataset(col, (n,), dtype=dtype)
         
         return output, g
 
@@ -53,8 +53,8 @@ class TXIngestCatalogBase(PipelineStage):
             label name of (HDF5) output
 
         column_names : dict
-            A dictionary mapping the input column names to the desired output column names.
-            Keys are input column names, and values are the corresponding output names.
+            A dictionary mapping the desired output column names to the input column names.
+            Keys are output column names, and values are input column names.
 
         dummy_columns : dict
             A dictionary of columns to be added to the output with fixed values.
@@ -128,11 +128,11 @@ class TXIngestCatalogFits(TXIngestCatalogBase):
             Total number of rows in the dataset.
         """
         cols = list(column_names.keys())
-        for s, e, data in self.iterate_fits(input_name, 1, cols, chunk_rows):
+        input_cols = np.unique(list(column_names.values()))
+        for s, e, data in self.iterate_fits(input_name, 1, input_cols, chunk_rows):
             print(s, e, n)
             for col in cols:
-                g[column_names[col]][s:e] = data[col]
-
+                g[col][s:e] = data[column_names[col]]
 
 class TXIngestCatalogH5(TXIngestCatalogBase):
     """
@@ -195,7 +195,8 @@ class TXIngestCatalogH5(TXIngestCatalogBase):
         group = self.config['input_group_name']
 
         cols = list(column_names.keys())
-        for s, e, data in self.iterate_hdf(input_name, group, cols, chunk_rows):
+        input_cols = np.unique(list(column_names.values()))
+        for s, e, data in self.iterate_hdf(input_name, group, input_cols, chunk_rows):
             print(s, e, n)
             for col in cols:
-                g[column_names[col]][s:e] = data[col]
+                g[col][s:e] = data[column_names[col]]

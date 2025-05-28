@@ -291,21 +291,21 @@ class TXIngestSSIDESBalrog(TXIngestCatalogFits):
     def setup_output(self, output_name, column_names, dtypes, n):
         """
         For balrog, we need to include if statements to catch the 2D data entries
-        and possibly add an extendedness column
+        and add an extendedness column
         """
         cols = list(column_names.keys())
         output = self.open_output(output_name)
         g = output.create_group("photometry")
         for col in cols:
-            dtype = dtypes[col]
+            dtype = dtypes[column_names[col]]
 
             if dtype.subdtype is not None: #this is a multi-dimentional column
                 assert dtype.subdtype[1]==(4,) #We are assuming this entry is a 2D array with 4 columns (corresponding to griz)
                 dtype = dtype.subdtype[0]
                 for b in "griz":
-                    g.create_dataset(column_names[col] + f"_{b}", (n,), dtype=dtype)
+                    g.create_dataset(col + f"_{b}", (n,), dtype=dtype)
             else:
-                g.create_dataset(column_names[col], (n,), dtype=dtype)
+                g.create_dataset(col, (n,), dtype=dtype)
 
             if col == "meas_EXTENDED_CLASS_SOF":
                 #also create an "extendedness" column
@@ -319,22 +319,22 @@ class TXIngestSSIDESBalrog(TXIngestCatalogFits):
         and possibly add a extendedness column
         """
         cols = list(column_names.keys())
-        for s, e, data in self.iterate_fits(input_name, 1, cols, chunk_rows):
+        input_cols = np.unique(list(column_names.values()))
+        for s, e, data in self.iterate_fits(input_name, 1, input_cols, chunk_rows):
             print(s, e, n)
             for col in cols:
-                if len(data[col].shape) == 2:
-                    assert data[col].shape[1] == 4
+                if len(data[column_names[col]].shape) == 2:
+                    assert data[column_names[col]].shape[1] == 4
                     for iband, b in enumerate("griz"):
-                        g[column_names[col] + f"_{b}"][s:e] = data[col][:, iband]
+                        g[col + f"_{b}"][s:e] = data[column_names[col]][:, iband]
                 else:
-                    g[column_names[col]][s:e] = data[col]
+                    g[col][s:e] = data[column_names[col]]
                 
-                if col == "meas_EXTENDED_CLASS_SOF":
-                    # "meas_EXTENDED_CLASS_SOF" is (0 or 1) for star, (2 or 3) for galaxy
-                    # extendedness is 0 for star, 1 for galaxy
-                    extendedness = np.where((data[col] == 2) | (data[col] == 3), 1, 0) 
-                    g["extendedness"][s:e] = extendedness
-
+                if col == "extendedness":
+                    # The DES classifier "meas_EXTENDED_CLASS_SOF" is (0 or 1) for star, (2 or 3) for galaxy
+                    # The current TXPipe classifier "extendedness" is 0 for star, 1 for galaxy
+                    extendedness = np.where((data[column_names[col]] == 2) | (data[column_names[col]] == 3), 1, 0) 
+                    g[col][s:e] = extendedness
 
 class TXIngestSSIMatchedDESBalrog(TXIngestSSIDESBalrog):
     """
@@ -360,16 +360,16 @@ class TXIngestSSIMatchedDESBalrog(TXIngestSSIDESBalrog):
         # we will only load a subset of columns to save space
         column_names = {
             "bal_id": "bal_id",  # Unique identifier for object (created during balrog process)
-            "true_bdf_mag_deredden": "inj_mag",  # Magnitude of the original deep field object, dereddened
-            "true_id": "inj_id",  # Original coadd_obj_id of deep field object
-            "meas_id": "id",  # Coadd_object_id of injection
-            "meas_ra": "ra",  # measured RA of the injection
-            "meas_dec": "dec",  # measured DEC of the injection
-            "meas_cm_mag_deredden": "mag",  # measured magnitude of the injection
-            "meas_cm_max_flux_s2n": "snr", # measured S2N of the injection
-            "meas_cm_T": "cm_T",  # measured size parameter T (x^2+y^2)
-            "meas_EXTENDED_CLASS_SOF": "EXTENDED_CLASS_SOF",  # Star galaxy classifier (0,1=star, 2,3=Galaxy)
-            "meas_FLAGS_GOLD_SOF_ONLY": "FLAGS_GOLD",  # Measured flags (short version)
+            "inj_mag": "true_bdf_mag_deredden",  # Magnitude of the original deep field object, dereddened
+            "inj_id": "true_id",  # Original coadd_obj_id of deep field object
+            "id": "meas_id",  # Coadd_object_id of injection
+            "ra": "meas_ra",  # measured RA of the injection
+            "dec": "meas_dec",  # measured DEC of the injection
+            "mag": "meas_cm_mag_deredden",  # measured magnitude of the injection
+            "snr": "meas_cm_max_flux_s2n",  # measured S2N of the injection
+            "cm_T": "meas_cm_T",  # measured size parameter T (x^2+y^2)
+            "EXTENDED_CLASS_SOF": "meas_EXTENDED_CLASS_SOF",  # Star galaxy classifier (0,1=star, 2,3=Galaxy)
+            "FLAGS_GOLD": "meas_FLAGS_GOLD_SOF_ONLY",  # Measured flags (short version)
         }
         dummy_columns = {
             "redshift_true": 10.0,
@@ -412,10 +412,10 @@ class TXIngestSSIDetectionDESBalrog(TXIngestSSIDESBalrog):
         ## Extract the injection catalog
         column_names_inj = {
             "bal_id": "bal_id",  # Unique identifier for object (created during balrog process)
-            "true_ra": "ra",  # *injected* ra
-            "true_dec": "dec",  # *injected* dec
-            "true_bdf_mag_deredden": "inj_mag",  # true magnitude (de-reddened)
-            "meas_FLAGS_GOLD_SOF_ONLY": "flags",  # measured data flags
+            "ra": "true_ra",  # *injected* ra
+            "dec": "true_dec",  # *injected* dec
+            "inj_mag": "true_bdf_mag_deredden",  # true magnitude (de-reddened)
+            "flags": "meas_FLAGS_GOLD_SOF_ONLY",  # measured data flags
             "meas_EXTENDED_CLASS_SOF": "meas_EXTENDED_CLASS_SOF",  # star galaxy separator
         }
 
