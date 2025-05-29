@@ -1,5 +1,5 @@
-from ..data_types import HDFFile
-from .base import TXIngestCatalogH5
+from ..data_types import HDFFile, MapsFile
+from .base import TXIngestCatalogH5, TXIngestMapsHsp
 
 class TXIngestDESY3Gold(TXIngestCatalogH5):
     """
@@ -62,3 +62,33 @@ class TXIngestDESY3Gold(TXIngestCatalogH5):
             column_names,
             dummy_columns,
         )
+
+class TXIngestDESY3Footprint(TXIngestMapsHsp):
+    """
+    Ingest the DES Y3 Footprint maps (incl. badregions, foregrounds etc) from healsparse format
+    """
+    name = "TXIngestDESY3Footprint"
+    parallel = False
+    inputs = [
+    ]
+
+    outputs = [
+        ("aux_lens_maps", MapsFile),
+    ]
+
+    config_options = {
+        "input_filepaths" : [""],
+        "input_labels" : [""],
+        "chunk_rows": 100_000,
+    }
+
+    def run(self):
+        """
+        Run the analysis for this stage.
+        """
+        print(self.config["input_filepaths"])
+        print(self.config["input_labels"])
+        assert len(self.config["input_filepaths"]) == len(self.config["input_labels"])
+
+        self.process_maps( self.config["input_filepaths"], self.config["input_labels"], "aux_lens_maps")
+        

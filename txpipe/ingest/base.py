@@ -200,3 +200,95 @@ class TXIngestCatalogH5(TXIngestCatalogBase):
             print(s, e, n)
             for col in cols:
                 g[col][s:e] = data[column_names[col]]
+
+class TXIngestMapsBase(PipelineStage):
+    """
+    Base-Class for ingesting maps from external sources and saving to a format 
+    TXPipe will understand
+    """
+    name = "TXIngestMapsBase"
+
+    def setup_output(self, output_name, groups):
+        """
+        Set up the output HDF5 file structure.
+
+        Parameters
+        ----------
+        output_name : str
+            The name of the output HDF5 file.
+
+        groups : list of str
+            names of the ingested maps
+        """
+
+        output = self.open_output(output_name)
+        maps_group = output.create_group("maps")
+
+        for group_name in groups:
+            maps_group.create_group(group_name)
+        
+        return output
+
+    def process_maps(self, input_filepaths, input_labels, output_name):
+        """
+        Add some input maps to an HDF5 file
+
+        Parameters
+        ----------
+        input_filepaths : list of str
+            List of input healsparse map files
+
+        input_labels : list of str
+            List of labels for each map. These will be the group names in the output file
+            Same ordering as input_filepaths
+        
+        output_name : str
+            The name of the output HDF5 file.
+        """
+        #output = self.setup_output(output_name, input_labels)
+
+        maps = {}
+
+        for ifile, input_file in enumerate(input_filepaths):
+            print(f'Processing map {input_labels[ifile]}')
+            #self.add_map(input_file, input_labels[ifile], output)
+            pixel, value = self.load_map(input_file)
+            maps[input_labels[ifile]] = (pixel, value)
+
+        metadata = {
+            "pixelization":"healpix",
+        }
+
+        # Write the output maps to the output file
+        with self.open_output(output_name, wrapper=True) as out:
+            for map_name, (pix, m) in maps.items():
+                out.write_map(map_name, pix, m, metadata)
+            out.file['maps'].attrs.update(metadata)
+
+class TXIngestMapsHsp(TXIngestMapsBase):
+    """
+    Class for ingesting maps from external healsparse files and saving to a format 
+    TXPipe will understand
+    """
+    name = "TXIngestMapsHsp"
+
+    def load_map(self, input_filepath):
+        """
+        Add a single map to the HDF5 file 
+
+        Parameters
+        ----------
+        input_filepath : str
+            input healsparse map files
+
+        input_label : str
+            labels for this map
+        
+        output_name : str
+            The name of the output HDF5 file.
+        """
+        import healsparse as hsp
+
+        hsmap = hsp.HealSparseMap.read(input_filepath)
+        valid_pix = hsmap.valid_pixels
+        return valid_pix, hsmap[valid_pix]
