@@ -155,3 +155,84 @@ class TXSimpleMaskFrac(TXSimpleMask):
         with self.open_output("mask", wrapper=True) as f:
             f.file.create_group("maps")
             f.write_map("mask", pix, mask, metadata)
+
+class TXCustomMask(TXSimpleMaskFrac):
+    """
+    Make a mask from a custom list of cuts to aux maps (e.g depth cut and bright object cuts)
+
+    Fracdet currently taken from aux_lens_maps TODO: add option to compute this from hsp map
+    """
+    name = "TXCustomMask"
+    # make a mask from the auxiliary maps
+    inputs = [("aux_lens_maps", MapsFile),
+    ]
+    outputs = [("mask", MapsFile)]
+    config_options = {
+        "fracdet_name": "footprint/fracdet_griz",
+        "cuts": [
+            "footprint/fracdet_griz > 0"
+            ], 
+    }
+
+    def run(self):
+
+        pix, mask, metadata = self.compute_binary_mask()
+
+        fracdet = self.get_fracdet()
+
+        #assign fracdec for all selected pixels
+        assert (mask==1.).all()
+        if metadata['nest']:
+            mask = fracdet[pix]
+        else:
+            import healpy as hp 
+            mask = fracdet[hp.ring2nest(metadata['nside'], pix)]
+
+        with self.open_output("mask", wrapper=True) as f:
+            f.file.create_group("maps")
+            f.write_map("mask", pix, mask, metadata)
+
+    def make_binary_mask(self):
+        import healpy
+        import re
+
+        #get a list of quantities to be cut
+        cuts = self.config["cuts"]
+        compare_pattern = r'(==|!=|>=|<=|>|<)'
+        names = np.unique([re.split(compare_pattern, cut_string)[0].strip() for cut_string in cuts])
+
+        # load the values into a dict 
+        # We will assume these can all be held in memory, but note very high-res maps will not allow this
+        values = {}
+        with self.open_input("aux_lens_maps", wrapper=True) as f:
+            metadata = dict(f.file["maps"].attrs)
+            for name in names:
+                values[name] = f.read_map(name)
+            pixel_scheme = choose_pixelization(**metadata)
+
+        # evaluate the mask for each cut
+        masks = []
+        for cut_string in cuts:
+            name = re.split(compare_pattern, cut_string)[0].strip()
+            cut_string_eval = cut_string.replace(name, f"values['{name}']")
+            print(cut_string_eval)
+            masks.append( (name, eval(cut_string_eval)))
+
+        # hit is only used to print fraction of pixels removed from each cut
+        # Arbitrarily choose the first map specified
+        hit = values[names[0]] > healpy.UNSEEN
+
+        for name, m in masks:
+            frac = 1 - (m & hit).sum() / hit.sum()
+            print(f"Mask '{name}' removes fraction {frac:.3f} of {names[0]} pixels")
+
+        # Overall mask
+        mask = np.logical_and.reduce([mask for _, mask in masks])
+
+        return mask, pixel_scheme, metadata
+
+    def get_fracdet(self, ):
+        with self.open_input("aux_lens_maps", wrapper=True) as f:
+            fracdet = f.read_map(self.config["fracdet_name"])
+        return fracdet
+
