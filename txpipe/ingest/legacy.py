@@ -77,6 +77,7 @@ class TXIngestDESY3Footprint(TXIngestMapsHsp):
     ]
 
     config_options = {
+        **TXIngestMapsHsp.config_options,
         "input_filepaths" : [""],
         "input_labels" : [""],
         "chunk_rows": 100_000,
@@ -91,4 +92,3 @@ class TXIngestDESY3Footprint(TXIngestMapsHsp):
         assert len(self.config["input_filepaths"]) == len(self.config["input_labels"])
 
         self.process_maps( self.config["input_filepaths"], self.config["input_labels"], "aux_lens_maps")
-        

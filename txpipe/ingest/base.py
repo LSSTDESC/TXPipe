@@ -208,6 +208,11 @@ class TXIngestMapsBase(PipelineStage):
     """
     name = "TXIngestMapsBase"
 
+    config_options = {
+        "input_nside": int,
+        "input_nest": True,
+    }
+
     def setup_output(self, output_name, groups):
         """
         Set up the output HDF5 file structure.
@@ -252,12 +257,15 @@ class TXIngestMapsBase(PipelineStage):
         for ifile, input_file in enumerate(input_filepaths):
             print(f'Processing map {input_labels[ifile]}')
             #self.add_map(input_file, input_labels[ifile], output)
-            pixel, value = self.load_map(input_file)
+            pixel, value = self.load_map(input_file, nest=False)
             maps[input_labels[ifile]] = (pixel, value)
 
         metadata = {
             "pixelization":"healpix",
+            "nside":self.config["input_nside"],
+            "nest":False, #current TXPipe defaults to ring format
         }
+        print(f"Input nside {self.config['input_nside']}")
 
         # Write the output maps to the output file
         with self.open_output(output_name, wrapper=True) as out:
@@ -272,7 +280,7 @@ class TXIngestMapsHsp(TXIngestMapsBase):
     """
     name = "TXIngestMapsHsp"
 
-    def load_map(self, input_filepath):
+    def load_map(self, input_filepath, nest=False):
         """
         Add a single map to the HDF5 file 
 
@@ -281,14 +289,16 @@ class TXIngestMapsHsp(TXIngestMapsBase):
         input_filepath : str
             input healsparse map files
 
-        input_label : str
-            labels for this map
-        
-        output_name : str
-            The name of the output HDF5 file.
+        nest: bool
+            if True output will be in nest format
         """
+        import healpy as hp
         import healsparse as hsp
 
         hsmap = hsp.HealSparseMap.read(input_filepath)
+        nside = hsmap.nside_sparse
         valid_pix = hsmap.valid_pixels
-        return valid_pix, hsmap[valid_pix]
+        if nest:
+            return valid_pix, hsmap[valid_pix]
+        else:
+            return hp.nest2ring(nside, valid_pix), hsmap[valid_pix]
