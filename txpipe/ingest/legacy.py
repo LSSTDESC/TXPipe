@@ -1,5 +1,5 @@
-from ..data_types import HDFFile, MapsFile
-from .base import TXIngestCatalogH5, TXIngestMapsHsp
+from ..data_types import HDFFile, MapsFile, FitsFile
+from .base import TXIngestCatalogH5, TXIngestMapsHsp, TXIngestCatalogFits
 
 class TXIngestDESY3Gold(TXIngestCatalogH5):
     """
@@ -92,3 +92,54 @@ class TXIngestDESY3Footprint(TXIngestMapsHsp):
         assert len(self.config["input_filepaths"]) == len(self.config["input_labels"])
 
         self.process_maps( self.config["input_filepaths"], self.config["input_labels"], "aux_lens_maps")
+
+
+class TXIngestDESY3SpeczCat(TXIngestCatalogFits):
+    """
+    Ingest the spectroscopic catalog used for DES Y3 training of DNF
+
+    file contains spectroscopic redshifts and DES *fluxes*
+    """
+    name = "TXIngestDESY3SpeczCat"
+    parallel = False
+    inputs = [
+        ("des_specz_catalog", FitsFile),
+    ]
+
+    outputs = [
+        ("spectroscopic_catalog", HDFFile),
+    ]
+
+    config_options = {
+        "chunk_rows": 100_000,
+    }
+
+    def run(self):
+        """
+        Run the analysis for this stage.
+        """
+        print("Ingesting DES Y3 spec-z catalog")
+
+        # we will only load a subset of columns to save space
+        # TODO: these are the y6 magnitudes, i need to match this to y3
+        column_names = {
+            'mag_g': "sof_cm_mag_corrected_g",
+            'mag_r': "sof_cm_mag_corrected_r",
+            'mag_i': "sof_cm_mag_corrected_i",
+            'mag_z': "sof_cm_mag_corrected_z",
+            'mag_err_g': "sof_cm_mag_err_g",
+            'mag_err_r': "sof_cm_mag_err_r",
+            'mag_err_i': "sof_cm_mag_err_i",
+            'mag_err_z': "sof_cm_mag_err_z",
+            'redshift': "Z",
+        }
+
+        dummy_columns = {
+        }
+
+        self.process_catalog(
+            "des_specz_catalog",
+            "spectroscopic_catalog",
+            column_names,
+            dummy_columns,
+        )
