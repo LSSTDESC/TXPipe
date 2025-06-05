@@ -633,7 +633,9 @@ class TXLensCatalogSplitter(PipelineStage):
         for s, e, data in iterator:
             z = data[z_col]
             a = 1.0 / (1 + z)
-            d = pyccl.comoving_radial_distance(cosmo, a)
+            #if redshift estimate is negative set radial distance to 0
+            d = np.zeros(len(a))
+            d[z>0] = pyccl.comoving_radial_distance(cosmo, a[z>0]) 
             data["comoving_distance"] = d
             yield s, e, data
 
