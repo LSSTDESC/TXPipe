@@ -44,11 +44,11 @@ class TXIngestDESY3Gold(TXIngestCatalogH5):
             # "sof_flags": "sof_flags",  # Flags from SOF photometry 
             "EXTENDED_CLASS_SOF": "extended_class_sof",  # star galaxy separator using SOF photometry
             "EXTENDED_CLASS_MASH_SOF": "extended_class_mash_sof",  # alternative star galaxy separator using SOF photometry as primary source
-            "flags": "flags",  # combined flags column TODO: confirm if this combines all of the below flags
+            "flags": "flags",
             # "flags_badregions": "flags_badregions",
             # "flags_footprint": "flags_footprint",
             # "flags_foreground": "flags_foreground",
-            # "flags_gold": "flags_gold",
+            "FLAGS_GOLD": "flags_gold",
             # "flags_phot": "flags_phot",
             # "hpix_16384": "hpix_16384",
             "tilename": "tilename",  # Name of DES tile
