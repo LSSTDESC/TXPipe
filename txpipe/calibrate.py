@@ -1,6 +1,6 @@
 from .base_stage import PipelineStage
-from .data_types import ShearCatalog, TomographyCatalog
-from .utils import read_shear_catalog_type, Calibrator, Splitter, rename_iterated
+from .data_types import ShearCatalog, TomographyCatalog, FiducialCosmology
+from .utils import read_shear_catalog_type, Calibrator, Splitter, rename_iterated, SourceNumberDensityStats
 import numpy as np
 
 
@@ -23,6 +23,7 @@ class TXShearCalibration(PipelineStage):
     inputs = [
         ("shear_catalog", ShearCatalog),
         ("shear_tomography_catalog", TomographyCatalog),
+        ("fiducial_cosmology", FiducialCosmology),
     ]
 
     outputs = [
@@ -33,6 +34,9 @@ class TXShearCalibration(PipelineStage):
         "use_true_shear": False,
         "chunk_rows": 100_000,
         "subtract_mean_shear": True,
+        'redshift_shearcatalog': False,
+        '3Dcoords': False,
+        'redshift_name': 'redshift_true',
         "extra_cols": [""],
         "shear_catalog_type": '',
         "shear_prefix": "",
@@ -45,6 +49,9 @@ class TXShearCalibration(PipelineStage):
         use_true = self.config["use_true_shear"]
         extra_cols = [c for c in self.config["extra_cols"] if c]
         subtract_mean_shear = self.config["subtract_mean_shear"]
+        Dcoords = self.config['3Dcoords']
+        redshift_shearcatalog = self.config["redshift_shearcatalog"]
+        z_name = self.config['redshift_name']
 
         shear_prefix = self.config["shear_prefix"]
         with self.open_input("shear_catalog", wrapper=True) as f:
@@ -84,19 +91,22 @@ class TXShearCalibration(PipelineStage):
                 cat_cols = cat_cols + extra_cols + mag_cols_in
 
             renames.update(zip(mag_cols_in, mag_cols_out))
+            if Dcoords:
+                if redshift_shearcatalog:
+                    cat_cols += [z_name]
+                else:
+                    raise ValueError(f"To use 3Dcoords the shear catalog needs a redshift")
 
+        
         if cat_type!='hsc':
             output_cols = ["ra", "dec", "weight", "g1", "g2"] + extra_cols + mag_cols_out
         else:
-            output_cols = ["ra", "dec", "weight", "g1", "g2", "c1", "c2"]  + extra_cols + mag_cols_out
+            output_cols = ["ra", "dec", "weight", "g1", "g2","c1","c2"] + extra_cols
 
-        if self.rank == 0:
-            print("Reading these columns from the 'shear' group:")
-            for c in cat_cols:
-                print(f" - {c}")
-            print("Renaming these columns:")
-            for k, v in renames.items():
-                print(f" - {k} -> {v}")
+        if Dcoords:
+            output_cols.append("r")
+            output_cols.append("z")
+            print("Using 3D coords, hopefully a mean readshift is defined")
 
         # We parallelize by bin.  This isn't ideal but we don't know the number
         # of objects in each bin per chunk, so we can't parallelize in full.  This
@@ -134,6 +144,8 @@ class TXShearCalibration(PipelineStage):
 
             # Rename mcal_g1 -> g1 etc
             self.rename_metacal(data)
+            if Dcoords:
+                self.redshift_to_comoving(data, z_name)
 
             #  Now output the calibrated bin data for this processor
             for b in my_bins:
@@ -171,6 +183,7 @@ class TXShearCalibration(PipelineStage):
         output_file.close()
 
     def setup_output(self, extra_cols):
+        Dcoords = self.config['3Dcoords']
         # count the expected number of objects per bin from the tomo data
         with self.open_input("shear_tomography_catalog") as f:
             counts = f["tomography/counts"][:]
@@ -181,7 +194,10 @@ class TXShearCalibration(PipelineStage):
         f = self.open_output("binned_shear_catalog", parallel=True)
 
         #  we only retain these columns
-        cols = ["ra", "dec", "weight", "g1", "g2"] + extra_cols
+        if Dcoords: 
+            cols = ["ra", "dec", "r", "z", "weight", "g1", "g2"] + extra_cols
+        else:
+            cols = ["ra", "dec", "weight", "g1", "g2"] + extra_cols
 
         # structure is /shear/bin_1, /shear/bin_2, etc
         g = f.create_group("shear")
@@ -217,3 +233,14 @@ class TXShearCalibration(PipelineStage):
         d["g1"] = d[f"{prefix}_g1"]
         d["g2"] = d[f"{prefix}_g2"]
         del d[f"{prefix}_g1"], d[f"{prefix}_g2"]
+    
+    def redshift_to_comoving(self, d, name):
+        import pyccl as ccl
+        cosmo = self.open_input("fiducial_cosmology", wrapper=True).to_ccl() 
+        #renaming the redshift name
+        d["z"] = d[name]
+        d["r"] = ccl.background.comoving_radial_distance(cosmo, 1/(1+d[name]))
+
+
+
+
