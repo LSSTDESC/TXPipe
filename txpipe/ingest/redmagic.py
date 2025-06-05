@@ -10,6 +10,7 @@ class TXIngestRedmagic(PipelineStage):
     This starts with the FITS file format, but may be outdated.
     """
     name = "TXIngestRedmagic"
+    parallel = False
     inputs = [
         ("redmagic_catalog", FitsFile),
     ]
@@ -54,13 +55,15 @@ class TXIngestRedmagic(PipelineStage):
 
         # Create space in outputs
         g = cat.create_group("lens")
+        g.attrs["bands"] = bands
         g.create_dataset("ra", (n,), dtype=np.float64)
         g.create_dataset("dec", (n,), dtype=np.float64)
         g.create_dataset("chisq", (n,), dtype=np.float64)
         g.create_dataset("redshift", (n,), dtype=np.float64)
-        for b in "grizy":
+        for b in bands:
             g.create_dataset(f"mag_{b}", (n,), dtype=np.float64)
             g.create_dataset(f"mag_err_{b}", (n,), dtype=np.float64)
+        g.attrs["bands"]  = bands
 
         h = tomo.create_group("tomography")
         h.create_dataset("bin", (n,), dtype=np.int32)

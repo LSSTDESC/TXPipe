@@ -85,7 +85,6 @@ def calculate_shear_response(
     R = np.mean(R, axis=0)
     return R
 
-
 def apply_metacal_response(R, S, g1, g2):
     # The values of R are assumed to already
     # have had appropriate weights included
@@ -101,17 +100,6 @@ def apply_metacal_response(R, S, g1, g2):
     mcal_g = Rinv @ mcal_g.T
 
     return mcal_g[0], mcal_g[1]
-
-
-def apply_lensfit_calibration(g1, g2, weight, c1=0, c2=0, sigma_e=0, m=0):
-    w_tot = np.sum(weight)
-    m = np.sum(weight * m) / w_tot  # if m not provided, default is m=0, so one_plus_K=1
-    one_plus_K = 1.0 + m
-    R = 1.0 - np.sum(weight * sigma_e) / w_tot
-    g1 = (1.0 / (one_plus_K)) * ((g1 / R) - c1)
-    g2 = (1.0 / (one_plus_K)) * ((g2 / R) - c2)
-    return g1, g2, weight, one_plus_K
-
 
 class _DataWrapper:
     """
@@ -146,7 +134,10 @@ class _DataWrapper:
         return name in self.data
 
 
-class MetacalCalculator:
+class CalibrationCalculator:
+    pass
+
+class MetacalCalculator(CalibrationCalculator):
     """
     This class builds up the total response and selection calibration
     factors for Metacalibration from each chunk of data it is given.
@@ -183,7 +174,7 @@ class MetacalCalculator:
         self.selector = selector
         self.count = 0
         self.sum_weights    = 0
-        self.sum_weights_sq = 0
+        self.sum_sq_weights = 0
         self.delta_gamma = delta_gamma
         self.resp_mean_diag  = resp_mean_diag
         self.cal_bias_means = ParallelMean(size=4)
@@ -235,7 +226,7 @@ class MetacalCalculator:
         # Record the count for this chunk, for summation later
         self.count += n
         self.sum_weights    += np.sum(weight[sel_00])
-        self.sum_weights_sq += np.sum(weight[sel_00]**2)
+        self.sum_sq_weights += np.sum(weight[sel_00]**2)
         
 
         # This is the estimator response, correcting  bias of the shear estimator itself
@@ -278,32 +269,37 @@ class MetacalCalculator:
         """
         Finalize and sum up all the response values, returning separate
         R (estimator response) and S (selection bias) 2x2 matrices
+
         Parameters
         ----------
         comm: MPI Communicator
             If supplied, all processors response values will be combined together.
             All processes will return the same final value
+
         Returns
         -------
         R: 2x2 array
             Estimator response matrix
         S: 2x2 array
             Selection bias matrix
+
+        Neff: float
+            Sum(weights)**2 / Sum(weights**2)
         """
         # collect all the things we need
         if comm is not None:
             if allgather:
                 count = comm.allreduce(self.count)
                 sum_weights    = comm.allreduce(self.sum_weights)
-                sum_weights_sq = comm.allreduce(self.sum_weights_sq)
+                sum_sq_weights = comm.allreduce(self.sum_sq_weights)
             else:
                 count = comm.reduce(self.count)
                 sum_weights    = comm.reduce(self.sum_weights)
-                sum_weights_sq = comm.reduce(self.sum_weights_sq)
+                sum_sq_weights = comm.reduce(self.sum_sq_weights)
         else:
             count = self.count
             sum_weights    = self.sum_weights
-            sum_weights_sq = self.sum_weights_sq
+            sum_sq_weights = self.sum_sq_weights
 
         # Collect the mean values we need
         mode = "allgather" if allgather else "gather"
@@ -328,6 +324,11 @@ class MetacalCalculator:
         S_mean[1, 1] = S[6] - S[7]
         S_mean /= self.delta_gamma
 
+        if sum_weights is None:
+            Neff = None
+        else:
+            Neff = sum_weights**2/sum_sq_weights
+
         if self.resp_mean_diag:
             # Sets response to scalar R[0,0]==R[1,1] = (R[0,0]+R[1,1])/2 and nulls the off-diagonal elements (used in DES-Y3)
             print("Setting  R[0,0]==R[1,1] = (R[0,0]+R[1,1])/2")
@@ -339,10 +340,10 @@ class MetacalCalculator:
             S_mean[1,0]=S_mean[0,1]=0
             S_mean[0,0]=S_mean[1,1]=Savg
 
-        return R_mean, S_mean, count, sum_weights**2/sum_weights_sq
+        return R_mean, S_mean, count, Neff
 
 
-class MetaDetectCalculator:
+class MetaDetectCalculator(CalibrationCalculator):
     """ """
 
     def __init__(self, selector, delta_gamma):
@@ -360,7 +361,7 @@ class MetaDetectCalculator:
         self.mean_e = ParallelMean(size=10)
         self.counts = np.zeros(5, dtype=int)
         self.sum_weights    = np.zeros(5, dtype=int)
-        self.sum_weights_sq = np.zeros(5, dtype=int)
+        self.sum_sq_weights = np.zeros(5, dtype=int)
         
 
     def add_data(self, data, *args, **kwargs):
@@ -392,7 +393,7 @@ class MetaDetectCalculator:
             self.mean_e.add_data(2 * i + 1, g2, w)
             self.counts[i] += w.size
             self.sum_weights[i]    += np.sum(w)
-            self.sum_weights_sq[i] += np.sum(w**2)
+            self.sum_sq_weights[i] += np.sum(w**2)
             
         return sel_00
 
@@ -418,16 +419,19 @@ class MetaDetectCalculator:
             if allgather:
                 counts = comm.allreduce(self.counts)
                 sum_weights    = comm.allreduce(self.sum_weights)
-                sum_weights_sq = comm.allreduce(self.sum_weights_sq)
+                sum_sq_weights = comm.allreduce(self.sum_sq_weights)
             else:
                 counts = comm.reduce(self.counts)
                 sum_weights    = comm.reduce(self.sum_weights)
-                sum_weights_sq = comm.reduce(self.sum_weights_sq)
+                sum_sq_weights = comm.reduce(self.sum_sq_weights)
+
+                if comm.rank > 0:
+                    return None, None, None
 
         else:
             counts = self.counts
             sum_weights    = self.sum_weights
-            sum_weights_sq = self.sum_weights_sq
+            sum_sq_weights = self.sum_sq_weights
 
         # The ordering of these arrays is, from above:
         # 0: g1 (not actually used here)
@@ -440,7 +444,7 @@ class MetaDetectCalculator:
         # 7: g2_2p
         # 8: g1_2m
         # 9: g2_2m
-
+        
         # Compute the mean R components
         R = np.zeros((2, 2))
         R[0, 0] = mean_e[2] - mean_e[4]  # g1_1p - g1_1m
@@ -450,10 +454,10 @@ class MetaDetectCalculator:
         R /= self.delta_gamma
 
         # we just want the count of the 00 base catalog
-        return R, counts[0], sum_weights[0]**2/sum_weights_sq[0]
+        return R, counts[0], sum_weights[0]**2/sum_sq_weights[0]
 
 
-class LensfitCalculator:
+class LensfitCalculator(CalibrationCalculator):
     """
     This class builds up the total calibration
     factors for lensfit-convention shears from each chunk of data it is given.
@@ -464,7 +468,7 @@ class LensfitCalculator:
 
     """
 
-    def __init__(self, selector, input_m_is_weighted=False):
+    def __init__(self, selector, dec_cut=True, input_m_is_weighted=False):
         """
         Initialize the Calibrator using the function you will use to select
         objects. That function should take at least one argument,
@@ -484,11 +488,16 @@ class LensfitCalculator:
         # We create these, then add data to them below, then collect them
         # together over all the processes
         self.K = ParallelMean(1)
-        self.C = ParallelMean(2)
+        self.C_N = ParallelMean(2)
+        self.C_S = ParallelMean(2)
         self.count = 0
         self.sum_weights = 0
-        self.sum_weights_sq = 0
+        self.sum_sq_weights = 0
         
+        self.sum_weights_sq = 0
+        # In KiDS, the additive bias is calculated and removed per North and South field
+        # we have implemented a config to choose whether or not to do this split
+        self.dec_cut = dec_cut
         self.input_m_is_weighted = input_m_is_weighted
 
     def add_data(self, data, *args, **kwargs):
@@ -516,12 +525,13 @@ class LensfitCalculator:
         K = data["m"]
         g1 = data["g1"]
         g2 = data["g2"]
+        dec = data["dec"]
         n = g1[sel].size
-
+        
         # Record the count for this chunk, for summation later
         self.count += n
         self.sum_weights += np.sum(w[sel])
-        self.sum_weights_sq += np.sum(w[sel]**2)
+        self.sum_sq_weights += np.sum(w[sel]**2)
 
         # Accumulate the calibration quantities so that later we
         # can compute the weighted mean of the values
@@ -531,9 +541,22 @@ class LensfitCalculator:
         else:
             # if not apply the weights
             self.K.add_data(0, K[sel], w[sel])
-        self.C.add_data(0, g1[sel], w[sel])
-        self.C.add_data(1, g2[sel], w[sel])
-        
+            
+        if self.dec_cut == True:
+            Nmask = (dec[sel] > -25.0)
+            Smask = (dec[sel] <= -25.0)
+            print('Computing additive bias for North and South fields')
+            self.C_N.add_data(0, g1[sel][Nmask], w[sel][Nmask])
+            self.C_N.add_data(1, g2[sel][Nmask], w[sel][Nmask])
+            self.C_S.add_data(0, g1[sel][Smask], w[sel][Smask])
+            self.C_S.add_data(1, g2[sel][Smask], w[sel][Smask])
+        else: 
+            print('Field split config set to False, computing additive bias for whole dataset')
+            self.C_N.add_data(0, g1[sel], w[sel])
+            self.C_N.add_data(1, g2[sel], w[sel])
+            self.C_S.add_data(0, np.zeros(n),np.zeros(n))
+            self.C_S.add_data(1, np.zeros(n),np.zeros(n))
+
         return sel
     
     def collect(self, comm=None, allgather=False):
@@ -556,6 +579,9 @@ class LensfitCalculator:
         C: float array
             c1, c2 additive biases (weighted average of g1 and g2)
 
+        Neff: float
+            Sum(weights)**2 / Sum(weights**2)
+
         """
         # The total number of objects is just the
         # number from all the processes summed together.
@@ -563,27 +589,34 @@ class LensfitCalculator:
             if allgather:
                 count = comm.allreduce(self.count)
                 sum_weights    = comm.allreduce(self.sum_weights)
-                sum_weights_sq = comm.allreduce(self.sum_weights_sq)
+                sum_sq_weights = comm.allreduce(self.sum_sq_weights)
             else:
                 count = comm.reduce(self.count)
                 sum_weights    = comm.reduce(self.sum_weights)
-                sum_weights_sq = comm.reduce(self.sum_weights_sq)
+                sum_sq_weights = comm.reduce(self.sum_sq_weights)
 
         else:
             count = self.count
             sum_weights    = self.sum_weights
-            sum_weights_sq = self.sum_weights_sq
+            sum_sq_weights = self.sum_sq_weights
 
         # Collect the weighted means of these numbers.
         # this collects all the values from the different
         # processes and over all the chunks of data
         mode = "allgather" if allgather else "gather"
         _, K = self.K.collect(comm, mode)
-        _, C = self.C.collect(comm, mode)
-        return K, C, count, sum_weights**2/sum_weights_sq
+        _, C_N = self.C_N.collect(comm, mode)
+        _, C_S = self.C_S.collect(comm, mode)
+
+        if sum_weights is None:
+            Neff = None
+        else:
+            Neff = sum_weights**2/sum_sq_weights
+
+        return K, C_N, C_S, count, Neff
 
 
-class HSCCalculator:
+class HSCCalculator(CalibrationCalculator):
     """
     This class builds up the total response calibration
     factors for HSC-convention shear-calibration from each chunk of data it is
@@ -616,7 +649,7 @@ class HSCCalculator:
         self.R = ParallelMean(1)
         self.count = 0
         self.sum_weights    = 0
-        self.sum_weights_sq = 0
+        self.sum_sq_weights = 0
         
 
     def add_data(self, data, *args, **kwargs):
@@ -647,15 +680,14 @@ class HSCCalculator:
         n = w[sel].size
         self.count += n
         self.sum_weights += np.sum(w[sel])
-        self.sum_weights_sq += np.sum(w[sel]**2)
-
+        self.sum_sq_weights += np.sum(w[sel]**2)
+        
         w = w[sel]
 
         # Accumulate the calibration quantities so that later we
         # can compute the weighted mean of the values
         self.R.add_data(0, R[sel], w)
         self.K.add_data(0, K[sel], w)
-
         return sel
 
     def collect(self, comm=None, allgather=False):
@@ -691,6 +723,115 @@ class HSCCalculator:
             if allgather:
                 count   = comm.allreduce(self.count)
                 sum_weights    = comm.allreduce(self.sum_weights)
+                sum_sq_weights = comm.allreduce(self.sum_sq_weights)
+                
+            else:
+                count = comm.reduce(self.count)
+                sum_weights    = comm.reduce(self.sum_weights)
+                sum_sq_weights = comm.reduce(self.sum_sq_weights)
+        else:
+            count = self.count
+            sum_weights    = self.sum_weights
+            sum_sq_weights = self.sum_sq_weights
+        # Collect the weighted means of these numbers.
+        # this collects all the values from the different
+        # processes and over all the chunks of data
+        mode = "allgather" if allgather else "gather"
+        _, R = self.R.collect(comm, mode)
+        _, K = self.K.collect(comm, mode)
+
+        if sum_weights is None:
+            Neff = None
+        else:
+            Neff = sum_weights**2/sum_sq_weights
+
+        return R, K, count, Neff
+
+
+class MockCalculator(CalibrationCalculator):
+    """
+    This class calculates tomographic statistics for mock catalogs
+    where no calibration is necessary.
+
+    It only accumulates the statistics of the selected object weights
+    instead of any calibration quantities like its sibling classes.
+
+    """
+
+    def __init__(self, selector):
+        """
+        Initialize the Calibrator using the function you will use to select
+        objects. That function should take at least one argument,
+        the chunk of data to select on.
+
+        The selector can take further *args and **kwargs, passed in when adding
+        data.
+
+        Parameters
+        ----------
+        selector: function
+            Function that selects objects
+        """
+        self.selector = selector
+        self.count = 0
+        self.sum_weights    = 0
+        self.sum_weights_sq = 0
+        
+
+    def add_data(self, data, *args, **kwargs):
+        """Select objects from a new chunk of data and tally their responses
+
+        Parameters
+        ----------
+        data: dict
+            Dictionary of data columns to select on and add
+
+        *args
+            Positional arguments to be passed to the selection function
+        **kwargs
+            Keyword arguments to be passed to the selection function
+
+        """
+        data = _DataWrapper(data, "")
+        sel = self.selector(data, *args, **kwargs)
+
+        # Extract the calibration quantities for the selected objects
+        w = data["weight"]
+        n = w[sel].size
+        self.count += n
+        w = w[sel]
+        self.sum_weights += np.sum(w)
+        self.sum_weights_sq += np.sum(w)
+
+        return sel
+
+    def collect(self, comm=None, allgather=False):
+        """
+        Finalize and sum up all the response values, returning calibration
+        quantities.
+
+        Parameters
+        ----------
+        comm: MPI Communicator
+            If supplied, all processors response values will be combined together.
+            All processes will return the same final value
+
+        Returns
+        -------
+        N: int
+            Total object count
+
+        Neff: float
+            Total effective number of galaxies
+
+
+        """
+        # The total number of objects is just the
+        # number from all the processes summed together.
+        if comm is not None:
+            if allgather:
+                count   = comm.allreduce(self.count)
+                sum_weights    = comm.allreduce(self.sum_weights)
                 sum_weights_sq = comm.allreduce(self.sum_weights_sq)
                 
             else:
@@ -705,9 +846,7 @@ class HSCCalculator:
         # this collects all the values from the different
         # processes and over all the chunks of data
         mode = "allgather" if allgather else "gather"
-        _, R = self.R.collect(comm, mode)
-        _, K = self.K.collect(comm, mode)
-        return R, K, count, sum_weights**2/sum_weights_sq
+        return count, sum_weights**2/sum_weights_sq
 
 
 class MeanShearInBins:
@@ -718,12 +857,14 @@ class MeanShearInBins:
         delta_gamma,
         cut_source_bin=False,
         shear_catalog_type="metacal",
+        psf_unit_conv= False
     ):
         self.x_name = x_name
         self.limits = limits
         self.delta_gamma = delta_gamma
         self.cut_source_bin = cut_source_bin
         self.shear_catalog_type = shear_catalog_type
+        self.psf_unit_conv = psf_unit_conv
         self.size = len(self.limits) - 1
         # We have to work out the mean g1, g2
         self.g1 = ParallelMeanVariance(self.size)
@@ -740,6 +881,7 @@ class MeanShearInBins:
                 for i in range(self.size)
             ]
         elif shear_catalog_type == "lensfit":
+            print("for i in range ", self.size)
             self.calibrators = [
                 LensfitCalculator(self.selector) for i in range(self.size)
             ]
@@ -752,13 +894,15 @@ class MeanShearInBins:
 
     def selector(self, data, i):
         x = data[self.x_name]
+        if ((self.shear_catalog_type=='lensfit') & (self.psf_unit_conv == True) & ("T" in self.x_name)):
+            pix2arcsec = 0.214
+            x = x * pix2arcsec**2
         w = (x > self.limits[i]) & (x < self.limits[i + 1])
         if self.cut_source_bin:
             w &= data["bin"] != -1
         return np.where(w)
 
     def add_data(self, data):
-
         for i in range(self.size):
             w = self.calibrators[i].add_data(data, i)
             if self.shear_catalog_type == "metacal":
@@ -789,7 +933,8 @@ class MeanShearInBins:
         # to apply to it.
         R = []
         K = []
-        C = []
+        C_N = []
+        C_S = []
         N = []
         Neff = []
         for i in range(self.size):
@@ -808,9 +953,10 @@ class MeanShearInBins:
                 N.append(n)
                 Neff.append(neff)
             elif self.shear_catalog_type == "lensfit":
-                k, c, n, neff = self.calibrators[i].collect(comm)
+                k, c_n,c_s, n, neff = self.calibrators[i].collect(comm)
                 K.append(k)
-                C.append(c)
+                C_N.append(c_n)
+                C_S.append(c_s)
                 N.append(n)
                 Neff.append(neff)
             else:

@@ -1,7 +1,7 @@
 
 from scipy.optimize import curve_fit
 import numpy as np
-
+import warnings
 
 def fit_straight_line(x, y, y_err=None):
     """
@@ -25,8 +25,18 @@ def fit_straight_line(x, y, y_err=None):
     c: float
         intercept
     """
+    if x.size == 0:
+        print("ERROR: No data for straight line fit. Returning m=0 c=0")
+        return 0.0, 0.0, np.array([[1.0, 0.0], [0.0, 1.0]])
+    
+    if x.size != y.size:
+        raise ValueError("x and y must have the same length")
 
-    popt, cov = curve_fit(line, x, y, sigma=y_err)
+    try:
+        popt, cov = curve_fit(line, x, y, sigma=y_err)
+    except RuntimeError:
+        print("ERROR: Straight line fit failed. Returning m=0 c=0")
+        return 0.0, 0.0, np.array([[1.0, 0.0], [0.0, 1.0]])
     m = popt[0]
     c = popt[1]
     return m,c, cov

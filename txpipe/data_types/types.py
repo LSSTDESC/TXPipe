@@ -18,6 +18,17 @@ def metacalibration_names(names):
         out += [name + "_" + s for s in suffices]
     return out
 
+class PhotometryCatalog(HDFFile):
+    def get_bands(self):
+        group = self.file["photometry"]
+        if "bands" in group.attrs:
+            return group.attrs["bands"]
+        bands = []
+        for col in group.keys():
+            if col.startswith("mag_") and col.count("_") == 1:
+                bands.append(col[4:])
+        return bands
+
 
 class ShearCatalog(HDFFile):
     """
@@ -70,11 +81,22 @@ class ShearCatalog(HDFFile):
         else:
             return "shear"
 
+    def get_true_redshift_column(self):
+        if self.catalog_type == "metadetect":
+            return "00/redshift_true"
+        else:
+            return "redshift_true"
 
     def get_primary_catalog_names(self, true_shear=False):
         if true_shear:
-            shear_cols = ["true_g1", "true_g2", "ra", "dec", "weight"]
-            rename = {"true_g1": "g1", "true_g2": "g2"}
+            if self.catalog_type == "metadetect":
+                shear_cols = ["00/true_g1", "00/true_g2", "00/ra", "00/dec", "00/weight"]
+                rename = {c: c[3:] for c in shear_cols}
+                rename["00/true_g1"] = "g1"
+                rename["00/true_g2"] = "g2"
+            else:
+                rename = {"true_g1": "g1", "true_g2": "g2"}
+                rename = {}
         elif self.catalog_type == "metacal":
             shear_cols = ["mcal_g1", "mcal_g2", "ra", "dec", "weight"]
             rename = {"mcal_g1": "g1", "mcal_g2": "g2"}
@@ -89,6 +111,37 @@ class ShearCatalog(HDFFile):
             rename = {}
 
         return shear_cols, rename
+
+    def get_bands(self, shear_prefix=''):
+        group = self.file[self.get_primary_catalog_group()]
+        if "bands" in group.attrs:
+            return group.attrs["bands"]
+
+        # If we don't have it listed correctly then we have to do this
+        # messy check. We look for all the columns that start with
+        # mag_ and don't have an extra underscore in, which would indicate
+        # that they are an error like mag_z_err
+        bands = []
+        nunderscore = shear_prefix.count("_")
+        l = len(shear_prefix + "mag_")
+        for col in group.keys():
+            if col.startswith(f"{shear_prefix}mag_") and (col.count("_") == 1 + nunderscore):
+                bands.append(col[l:])
+        return bands
+
+
+class BinnedCatalog(HDFFile):
+    required_datasets = []
+    def get_bins(self, group_name):
+        group = self.file[group_name]
+        info = dict(group.attrs)
+        bins = []
+        for i in range(info["nbin"]):
+            code = info[f"bin_{i}"]
+            name = f"bin_{code}"
+            bins.append(name)
+        return bins
+
 
 
 class TomographyCatalog(HDFFile):
@@ -197,9 +250,9 @@ class MapsFile(HDFFile):
             raise ValueError(f"Unknown map pixelization type {pixelization}")
         return m
 
-    def read_mask(self):
+    def read_mask(self, thresh=0):
         mask = self.read_map("mask")
-        mask[mask < 0] = 0
+        mask[mask <= thresh] = 0
         return mask
 
     def write_map(self, map_name, pixel, value, metadata):
@@ -226,11 +279,16 @@ class MapsFile(HDFFile):
             self.file.create_group("maps")
         if not "pixelization" in metadata:
             raise ValueError("Map metadata should include pixelization")
-        if not pixel.shape == value.shape:
-            raise ValueError(
-                f"Map pixels and values should be same shape "
-                f"but are {pixel.shape} vs {value.shape}"
-            )
+        pixerr = ValueError(
+                    f"Map pixels and values should be same shape "
+                    f"but are {pixel.shape} vs {value.shape}"
+                )
+        if value.ndim == 2: #value.ndim == 2 allows for 2d stacked maps
+            if not pixel.shape[0] == value.shape[1]:
+                raise pixerr
+        else:
+            if not pixel.shape == value.shape:
+                raise pixerr
 
         if not 'maps' in self.file.keys():
             self.file.create_group('maps')
@@ -239,12 +297,20 @@ class MapsFile(HDFFile):
         subgroup.create_dataset("pixel", data=pixel)
         subgroup.create_dataset("value", data=value)
 
-    def plot_healpix(self, map_name, view="cart", **kwargs):
+    def plot_healpix(self, map_name, view="cart", rot180=False, **kwargs):
         import healpy
         import numpy as np
 
         m, pix, nside = self.read_healpix(map_name, return_all=True)
         lon, lat = healpy.pix2ang(nside, pix, lonlat=True)
+        if rot180: #(optional) rotate 180 degrees in the lon direction
+            lon += 180
+            lon[lon > 360.] -= 360.
+            pix_rot = healpy.ang2pix(nside, lon, lat, lonlat=True)
+            m_rot = np.ones(healpy.nside2npix(nside))*healpy.UNSEEN
+            m_rot[pix_rot] = m[pix]
+            m = m_rot
+            pix = pix_rot
         npix = healpy.nside2npix(nside)
         if len(pix) == 0:
             print(f"Empty map {map_name}")
@@ -256,6 +322,7 @@ class MapsFile(HDFFile):
         lon_range = [lon[w].min() - 0.1, lon[w].max() + 0.1]
         lat_range = [lat[w].min() - 0.1, lat[w].max() + 0.1]
         lat_range = np.clip(lat_range, -90, 90)
+        lon_range = np.clip(lon_range, 0, 360.)
         m[m == 0] = healpy.UNSEEN
         title = kwargs.pop("title", map_name)
         if view == "cart":

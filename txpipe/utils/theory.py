@@ -185,13 +185,14 @@ def theory_3x2pt(
 
     # These stages are a copy of what is done inside the FireCrown connectors
     likelihood, tools = load_likelihood(theory_model, build_parameters)
-    tools.prepare(cosmo)
 
     systematic_params = {
         **make_bias_parameters(bias, sacc_data, cosmo)
     }
     # Apply the systematics parameters
     likelihood.update(ParamsMap(systematic_params))
+    tools.update(ParamsMap(systematic_params))
+    tools.prepare(cosmo)
 
     # Ask the likelihood for a theory vector. We don't want
     # to print the actual likelihood because for many applications
@@ -296,7 +297,7 @@ def make_bias_parameters(bias_option, sacc_data, cosmo):
         bias_dict = {}
         for name in lens_tracers.keys():
             i = int(name.split('_')[1])
-            bias_dict[name + "_bias"] = bias_values[i]
+            bias_dict[name + "_bias"] = bias_option[i]
 
     # Form 5: float
     else:

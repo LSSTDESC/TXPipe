@@ -13,15 +13,7 @@ class TXShearCalibration(PipelineStage):
 
     Once that stage has run and computed both the tomographic bin for each sample
     and the calibration factors, this stage takes the full catalog and splits it
-    into one HDF5 group per bin.  This has several advantages:
-    - all the calibration can happen in one place rather than
-      differently in real space and Fourier
-    - we can load just the galaxies we want for a single bin in later TreeCorr
-      stages, rather than loading the full catalog and then splitting and calibrating
-      it.
-    - the low_mem option in TreeCorr can be used because the catalogs are on disc
-      and contiguous.
-    - it opens up other memory saving options planned for TreeCorr.
+    into one HDF5 group per bin.
 
     We are not (yet) saving per-patch catalogs for TreeCorr here. We might want to
     do that later.
@@ -46,6 +38,8 @@ class TXShearCalibration(PipelineStage):
         '3Dcoords': False,
         'redshift_name': 'redshift_true',
         "extra_cols": [""],
+        "shear_catalog_type": '',
+        "shear_prefix": "",
     }
 
     def run(self):
@@ -62,29 +56,38 @@ class TXShearCalibration(PipelineStage):
         # Prepare the output file, and create a splitter object,
         # whose job is to save the separate bins to separate HDF5
         # extensions depending on the tomographic bin
-        output_file, splitter, nbin = self.setup_output(extra_cols)
+        output_file, splitter, nbin = self.setup_output(extra_cols + mag_cols_out)
 
         #  Load the calibrators.  If using the true shear no calibration
         # is needed
         tomo_file = self.get_input("shear_tomography_catalog")
         cals, cal2d = Calibrator.load(tomo_file, null=use_true)
+        print("Using calibration method:", cal2d.__class__.__name__)
 
         # The catalog columns are named differently in different cases
         #  Get the correct shear catalogs
         with self.open_input("shear_catalog", wrapper=True) as f:
             cat_cols, renames = f.get_primary_catalog_names()
+            g = f.get_primary_catalog_group()
 
-            cat_cols += [f"00/{c}" for c in extra_cols]
-            renames.update({f"00/{c}":c for c in extra_cols})
+            # cat_cols is everything we are reading in
+            if cat_type == "metadetect":
+                cat_cols = cat_cols + [f"00/{c}" for c in extra_cols + mag_cols_in]
+                mag_cols_in = [f"00/{c}" for c in mag_cols_in]
+                renames.update({f"00/{c}":c for c in extra_cols})
+            else:
+                cat_cols = cat_cols + extra_cols + mag_cols_in
+
+            renames.update(zip(mag_cols_in, mag_cols_out))
             if Dcoords:
                 if redshift_shearcatalog:
                     cat_cols += [z_name]
                 else:
                     raise ValueError(f"To use 3Dcoords the shear catalog needs a redshift")
 
-            
+        
         if cat_type!='hsc':
-            output_cols = ["ra", "dec", "weight", "g1", "g2"] + extra_cols
+            output_cols = ["ra", "dec", "weight", "g1", "g2"] + extra_cols + mag_cols_out
         else:
             output_cols = ["ra", "dec", "weight", "g1", "g2","c1","c2"] + extra_cols
 
@@ -122,6 +125,7 @@ class TXShearCalibration(PipelineStage):
 
         #  Main loop
         for s, e, data in rename_iterated(it, renames):
+            
 
             if self.rank == 0:
                 print(f"Rank 0 processing data {s:,} - {e:,}")
@@ -143,19 +147,22 @@ class TXShearCalibration(PipelineStage):
                     # otherwise just objects in this bin
                     w = np.where(data["bin"] == b)
                     cal = cals[b]
-
+                
                 # Cut down the data to just this selection for output
                 d = {name: data[name][w] for name in output_cols}
-
+                
                 # Calibrate the shear columns
                 if cat_type=='hsc':
+                    d["g1"], d["g2"] = cal.apply(d["g1"], d["g2"], d["c1"], d["c2"], d['aselepsf1'], d['aselepsf2'], d['msel'], subtract_mean=subtract_mean_shear)
+                elif cat_type=='lensfit':
+                    # In KiDS, the additive bias is calculated and removed per North and South field
+                    # therefore, we add dec to split data into these fields.
+                    # You can choose not to by setting dec_cut = 90 in the config, for example.
                     d["g1"], d["g2"] = cal.apply(
-                        d["g1"], d["g2"], d["c1"], d["c2"]
+                        d["dec"],d["g1"], d["g2"], subtract_mean=subtract_mean_shear
                     )
                 else:
-                    d["g1"], d["g2"] = cal.apply(
-                        d["g1"], d["g2"], subtract_mean=subtract_mean_shear
-                    )
+                    d["g1"], d["g2"] = cal.apply(d["g1"], d["g2"], subtract_mean=subtract_mean_shear)
 
                 # Write output, keeping track of sizes
                 splitter.write_bin(d, b)
@@ -170,7 +177,7 @@ class TXShearCalibration(PipelineStage):
             counts = f["tomography/counts"][:]
             count2d = f["tomography/counts_2d"][0]
             nbin = len(counts)
-
+        
         # Prepare the calibrated output catalog
         f = self.open_output("binned_shear_catalog", parallel=True)
 

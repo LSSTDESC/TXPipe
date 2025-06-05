@@ -1,4 +1,4 @@
-How TXPipe Works
+Concept Overview
 ================
 
 TXPipe is a collection of pipeline stages, which connect together and provide outputs to later stages.
@@ -51,6 +51,6 @@ A run of a TXPipe pipeline is defined by two files in YML format:
 
 * The configuration file chooses input parameters for the different stages.
 
-See :ref:`Running pipelines` for more details.
+See :ref:`Configuration Files` for more details.
 
 

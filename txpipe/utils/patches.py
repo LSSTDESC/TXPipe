@@ -54,6 +54,9 @@ class PatchMaker:
         # Different
         self.columns = columns
 
+        if initial_size <= 0:
+            raise ValueError("Error in patch creation - patch initial size must be > 0")
+
         # This is used to work out the nearest patch center to each galaxy
         self.ball = sklearn.neighbors.BallTree(patch_centers)
 
@@ -132,6 +135,8 @@ class PatchMaker:
             col = f["ra"]
             while col.size < e:
                 new_size = min(int(col.size * 1.5), self.max_size)
+                if new_size == 1:
+                    new_size = 2
                 self.resize(f, new_size)
 
             # At lat we can write out this chunk of data
@@ -283,6 +288,9 @@ class PatchMaker:
 
         initial_size = max_size // npatch
         patch_centers = cat.patch_centers
+
+        if initial_size == 0:
+            initial_size = 2
 
         # make the patchmaker object
         patchmaker = cls(

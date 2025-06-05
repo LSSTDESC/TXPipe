@@ -12,8 +12,6 @@ modules: txpipe
 # and any other code we need.
 python_paths:
     - submodules/WLMassMap/python/desc/
-    - submodules/FlexZPipe
-    - submodules/RAIL
 
 stages:
     - name: TXSourceSelectorMetadetect
