@@ -117,7 +117,14 @@ class TXLSSWeights(TXMapCorrelations):
         returns a healsparse object degraded to nside
         """
         import healsparse
-        import healpy
+        import os
+
+        #if this is a symlink, use the real path to access the file
+        if os.path.islink(map_path):
+            real_map_path = os.path.realpath(map_path)
+            print(f'{map_path} is a link, we will use the real path {real_map_path}')
+        else:
+            real_map_path = map_path
 
         # Convert to correct res healpix map
         m = healsparse.HealSparseMap.read(map_path)

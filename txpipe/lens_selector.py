@@ -424,6 +424,38 @@ class TXModeLensSelector(TXBaseLensSelector):
 
         return rename_iterated(it, rename)
 
+class TXCustomLensSelector(TXBaseLensSelector):
+    """
+    Select lens objects based on best-fit redshifts and BOSS criteria
+
+    This requires PDFs to have been estimated earlier.
+    """
+
+    name = "TXCustomLensSelector"
+    inputs = [
+        ("photometry_catalog", PhotometryCatalog),
+        ("lens_photoz_pdfs", HDFFile),
+    ]
+
+    def data_iterator(self):
+        chunk_rows = self.config["chunk_rows"]
+        phot_cols = ["mag_i", "mag_r", "mag_g"]
+        z_cols = [self.config['zcol']]
+        rename = {self.config['zcol']: "z"}
+        extra_cols = [c for c in self.config["extra_cols"] if c]
+        phot_cols += extra_cols
+
+        it = self.combined_iterators(
+            chunk_rows,
+            "photometry_catalog",
+            "photometry",
+            phot_cols,
+            "lens_photoz_pdfs",
+            "ancil",
+            z_cols,
+        )
+
+        return rename_iterated(it, rename)
 
 class TXRandomForestLensSelector(TXBaseLensSelector):
     name = "TXRandomForestLensSelector"
@@ -601,7 +633,9 @@ class TXLensCatalogSplitter(PipelineStage):
         for s, e, data in iterator:
             z = data[z_col]
             a = 1.0 / (1 + z)
-            d = pyccl.comoving_radial_distance(cosmo, a)
+            #if redshift estimate is negative set radial distance to 0
+            d = np.zeros(len(a))
+            d[z>0] = pyccl.comoving_radial_distance(cosmo, a[z>0]) 
             data["comoving_distance"] = d
             yield s, e, data
 
