@@ -51,7 +51,7 @@ site:
     max_threads: 2
 
 # configuration settings
-config: txpipe_utils/examples/desy3/config.yml
+config: examples/desy3/config_lens_test.yml
 
 inputs:
     #NERSC test data
