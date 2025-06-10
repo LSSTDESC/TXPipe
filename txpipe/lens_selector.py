@@ -165,10 +165,6 @@ class TXBaseLensSelector(PipelineStage):
         group.create_dataset("counts", (nbin_lens,), dtype="i")
         group.create_dataset("counts_2d", (1,), dtype="i")
 
-        group2 = outfile.create_group("classifier")
-        group2.create_dataset("class_id", (n,), dtype="i")
-        group2.create_dataset("lens_weight", (n,), dtype="f")
-
         group.attrs["nbin"] = nbin_lens
         group.attrs[f"zbin_edges"] = self.config["lens_zbin_edges"]
 
@@ -198,10 +194,6 @@ class TXBaseLensSelector(PipelineStage):
         group = outfile["tomography"]
         group["bin"][start:end] = lens_bin
         group["lens_weight"][start:end] = 1.0
-
-        group2 = outfile["classifier"]
-        group2["class_id"][start:end] = lens_bin
-        group2["lens_weight"][start:end] = 1.0
 
     def write_global_values(self, outfile, number_density_stats):
         """
