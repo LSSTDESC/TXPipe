@@ -162,8 +162,11 @@ class TXBaseLensSelector(PipelineStage):
         output.write_zbins(self.config["lens_zbin_edges"])
         group.create_dataset("bin", (n,), dtype="i")
         group.create_dataset("lens_weight", (n,), dtype="f")
-        group.create_dataset("counts", (nbin_lens,), dtype="i")
-        group.create_dataset("counts_2d", (1,), dtype="i")
+        group["class_id"] = group["bin"] #hard link to bin column. needed for RAIL masked summarizer stages
+        
+        group_counts = outfile.create_group("counts")
+        group_counts.create_dataset("counts", (nbin_lens,), dtype="i")
+        group_counts.create_dataset("counts_2d", (1,), dtype="i")
 
         group.attrs["nbin"] = nbin_lens
         group.attrs[f"zbin_edges"] = self.config["lens_zbin_edges"]
@@ -206,7 +209,7 @@ class TXBaseLensSelector(PipelineStage):
         lens_counts, lens_counts_2d = number_density_stats.collect()
 
         if self.rank == 0:
-            group = outfile["tomography"]
+            group = outfile["counts"]
             group["counts"][:] = lens_counts
             group["counts_2d"][:] = lens_counts_2d
             print("Final bin counts:")
@@ -544,8 +547,8 @@ class TXLensCatalogSplitter(PipelineStage):
 
         with self.open_input(self.get_lens_tomo_name()) as f:
             nbin = f["tomography"].attrs["nbin"]
-            counts = f["tomography/counts"][:]
-            count2d = f["tomography/counts_2d"][:]
+            counts = f["counts/counts"][:]
+            count2d = f["counts/counts_2d"][:]
 
         # We also copy over the magnitudes and their errors to tbe new
         # per-bin catalogs. This makes it easier to run photo-z with RAIL
