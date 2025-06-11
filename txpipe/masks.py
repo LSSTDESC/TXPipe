@@ -172,6 +172,7 @@ class TXCustomMask(TXSimpleMaskFrac):
         "cuts": [
             "footprint/fracdet_griz > 0"
             ], 
+        "degrade": False, #if input map Nside differs from config nside, degrade
     }
 
     def run(self):
@@ -182,11 +183,14 @@ class TXCustomMask(TXSimpleMaskFrac):
 
         #assign fracdec for all selected pixels
         assert (mask==1.).all()
-        if metadata['nest']:
-            mask = fracdet[pix]
-        else:
-            import healpy as hp 
-            mask = fracdet[hp.ring2nest(metadata['nside'], pix)]
+        mask = fracdet[pix]
+        
+        if self.config["degrade"]:
+            if self.config["nside"] == metadata["nside"]:
+                print('Nsides match, no degrading necessary')
+            else:
+                print(f'Input Nside={metadata["nside"]}, degrading to {self.config["nside"]}')
+                pix, mask, metadata = self.degrade(pix, mask, metadata, self.config["nside"])
 
         with self.open_output("mask", wrapper=True) as f:
             f.file.create_group("maps")
@@ -235,4 +239,48 @@ class TXCustomMask(TXSimpleMaskFrac):
         with self.open_input("aux_lens_maps", wrapper=True) as f:
             fracdet = f.read_map(self.config["fracdet_name"])
         return fracdet
+    
+    def degrade(self, pix, mask, metadata_in, nside_out):
+        """
+        Degrades a fracdet map to a low res fracdet map using healsparse 
+        """
+        import healsparse as hsp
+        import healpy as hp 
+        import copy
+
+        #convert our pixel, mask arrays into a healsparse map
+        nside_coverage = 32
+        map_hsp = hsp.HealSparseMap.make_empty(nside_coverage, metadata_in['nside'], dtype=type(mask[0]), sentinel=hp.UNSEEN )
+        if not metadata_in['nest']:
+            pix = hp.ring2nest(metadata_in['nside'], pix)
+        map_hsp.update_values_pix( pixels=pix, values=mask)
+
+        #do a "sum" degrade of the frac mask
+        map_degraded_sum = map_hsp.degrade(nside_out, reduction='sum')
+
+        # Divide the sum of the mask by the ratio of pixel areas
+        degraded_pixels = np.unique(map_degraded_sum.valid_pixels) #TODO: figure out why there are sometimes duplicates in valid_pixels
+        mask_out = map_degraded_sum[degraded_pixels]*(nside_out/metadata_in['nside'])**2.
+
+        select_nonzero = (mask_out != 0.)
+        if not metadata_in['nest']:
+            pix_out = hp.nest2ring(nside_out, degraded_pixels[select_nonzero])
+        else:
+            pix_out = degraded_pixels[select_nonzero]
+        mask_out = mask_out[select_nonzero]
+
+        metadata_out = copy.copy(metadata_in)
+        metadata_out['nside'] = nside_out
+
+        #sanity_check: make sure area in == area out
+        area_in  = np.sum(mask)*hp.nside2pixarea(metadata_in['nside'], degrees=True)
+        area_out = np.sum(mask_out)*hp.nside2pixarea(metadata_out['nside'], degrees=True)
+        assert np.round(area_in,3) == np.round(area_out,3)
+
+        return pix_out, mask_out, metadata_out
+
+
+
+
+        
 
