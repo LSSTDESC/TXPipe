@@ -407,6 +407,7 @@ class TXLSSWeights(TXMapCorrelations):
         tomo_output = self.open_output("lens_tomography_catalog", parallel=True)
         with self.open_input("lens_tomography_catalog_unweighted") as tomo_input:
             tomo_output.copy(tomo_input["tomography"], "tomography")
+            tomo_output.copy(tomo_input["counts"], "counts")
 
         lens_weight = tomo_output["tomography/lens_weight"][:]
         for ibin in range(self.Ntomo):

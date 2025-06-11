@@ -173,8 +173,8 @@ class TXShearCalibration(PipelineStage):
     def setup_output(self, extra_cols):
         # count the expected number of objects per bin from the tomo data
         with self.open_input("shear_tomography_catalog") as f:
-            counts = f["tomography/counts"][:]
-            count2d = f["tomography/counts_2d"][0]
+            counts = f["counts/counts"][:]
+            count2d = f["counts/counts_2d"][0]
             nbin = len(counts)
         
         # Prepare the calibrated output catalog
