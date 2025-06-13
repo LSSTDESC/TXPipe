@@ -7,6 +7,7 @@ from .data_types import (
     FiducialCosmology,
     PhotometryCatalog,
     FitsFile,
+    MapsFile,
 )
 from .utils import LensNumberDensityStats, Splitter, rename_iterated
 from .binning import build_tomographic_classifier, apply_classifier
@@ -50,7 +51,7 @@ class TXBaseLensSelector(PipelineStage):
         "maglim_band": "i",
         "maglim_limit": 24.1,
         "extra_cols": [""],
-
+        "apply_mask":False,
     }
 
     def run(self):
@@ -227,6 +228,10 @@ class TXBaseLensSelector(PipelineStage):
             s= self.select_lens_DESmaglim(phot_data)
         else:
             raise ValueError(f"Unknown lens selection type {t} - expected boss or maglim")
+        
+        #select only galaxies that are in the footprint
+        s *= self.select_in_footprint(phot_data)
+
         ntot = s.size
         nsel = s.sum()
         print(f"Rank {self.rank} selected {nsel} objects out of {ntot} as potential lenses with method {t}")
@@ -310,6 +315,24 @@ class TXBaseLensSelector(PipelineStage):
 
         s = (cut1 & cut2 & cut3 & cut4).astype(np.int8)
         return s
+
+    def select_in_footprint(self, phot_data):
+        """
+        Remove objects that fall outside of the mask
+        """
+        import healpy as hp
+        if self.config['apply_mask']:
+            assert ('mask' in self.input_tags()), "If apply_mask if True you must use a sub-class that uses 'mask' as an input"
+            
+            with self.open_input('mask', wrapper=True) as f:
+                mask, nside= f.read_healsparse('mask', return_all=True)
+
+            pix = hp.ang2pix(nside, phot_data['ra'], phot_data['dec'], lonlat=True)
+            s = np.where( mask[pix]==hp.UNSEEN,0,1 )
+            print(f'{len(s)-np.sum(s)}/{len(s)} objects removed because they are outside the mask')
+            return s
+        else:
+            return 1
 
     def calculate_tomography(self, pz_data, phot_data, lens_gals):
 
@@ -438,11 +461,12 @@ class TXCustomLensSelector(TXBaseLensSelector):
     inputs = [
         ("photometry_catalog", PhotometryCatalog),
         ("lens_photoz_pdfs", HDFFile),
+        ("mask", MapsFile),
     ]
 
     def data_iterator(self):
         chunk_rows = self.config["chunk_rows"]
-        phot_cols = ["mag_i", "mag_r", "mag_g"]
+        phot_cols = ["mag_i", "mag_r", "mag_g", "ra", "dec"]
         z_cols = [self.config['zcol']]
         rename = {self.config['zcol']: "z"}
         extra_cols = [c for c in self.config["extra_cols"] if c]
