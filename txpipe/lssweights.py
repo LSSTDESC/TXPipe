@@ -117,7 +117,14 @@ class TXLSSWeights(TXMapCorrelations):
         returns a healsparse object degraded to nside
         """
         import healsparse
-        import healpy
+        import os
+
+        #if this is a symlink, use the real path to access the file
+        if os.path.islink(map_path):
+            real_map_path = os.path.realpath(map_path)
+            print(f'{map_path} is a link, we will use the real path {real_map_path}')
+        else:
+            real_map_path = map_path
 
         # Convert to correct res healpix map
         m = healsparse.HealSparseMap.read(map_path)
@@ -400,6 +407,7 @@ class TXLSSWeights(TXMapCorrelations):
         tomo_output = self.open_output("lens_tomography_catalog", parallel=True)
         with self.open_input("lens_tomography_catalog_unweighted") as tomo_input:
             tomo_output.copy(tomo_input["tomography"], "tomography")
+            tomo_output.copy(tomo_input["counts"], "counts")
 
         lens_weight = tomo_output["tomography/lens_weight"][:]
         for ibin in range(self.Ntomo):
