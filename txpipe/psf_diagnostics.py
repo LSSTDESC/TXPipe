@@ -1019,7 +1019,6 @@ class TXRoweStatistics(PipelineStage):
                 h.create_dataset("xim_err", data=xim_err)
         f.close()
 
-#########################################################################################################################
 class TXPHStatistics(PipelineStage):
     """
     Compute and plot PSF Statistics as described in Paulin-Henricksson et. al 2008 
@@ -1071,7 +1070,6 @@ class TXPHStatistics(PipelineStage):
 
         # Compute size quantities
         dT_Tg_ratio, Tg_invsq, dT_Tg_ratio_tot, Tg_invsq_tot, num_zbin, nzbin_tot = self.compute_Tquantities(sra,sdec,dT)
-
         
         # Compute PH correlations
         ph_corr, ph_stats = {}, {}
@@ -1090,10 +1088,12 @@ class TXPHStatistics(PipelineStage):
         self.ph_plots(ph_stats, num_zbin)
         
     def compute_Tquantities(self, sra, sdec, dT):
+        '''
+        Compute average dT/T_g, 1/T_g**2 & estimate errors for each zbin pair
+        '''
         with self.open_input("binned_shear_catalog") as f:
             num_zbin = f["shear"].attrs["nbin_source"]
 
-         # Compute mean dT/T_g, 1/T_g**2 & errors for each redshift bin
         dT_Tg_ratio = np.zeros([2, num_zbin])      
         Tg_invsq = np.zeros_like(dT_Tg_ratio)       
 
@@ -1137,9 +1137,11 @@ class TXPHStatistics(PipelineStage):
         return dT_Tg_ratio, Tg_invsq, dT_Tg_ratio_tot, Tg_invsq_tot, num_zbin, nzbin_tot
         
     def interpolate_dT(self, sra, sdec, dT, gra, gdec):
+        '''
+        Makes grid for interpolating star delta T to the galaxy positions
+        '''
         from scipy.stats import binned_statistic_2d
-
-        # We need to make a grid for interpolation 
+        
         # Load angular size for 1 cell (default 5 arcmin) & make bins for the grid
         ang_cell = self.config["ang_cell"]
         nbins_x = int((sra.max() - sra.min()) / ang_cell)
@@ -1175,7 +1177,9 @@ class TXPHStatistics(PipelineStage):
         return dT_interpg
         
     def estimate_Terror(self, nboot, Tquant, weights):
-        # Bootstrapped error estimation for size quantity
+        '''
+        Bootstrapped error estimation for size quantity
+        '''
         N = len(Tquant)
         samples = np.zeros(nboot)       
         for i in range(nboot):
@@ -1189,7 +1193,6 @@ class TXPHStatistics(PipelineStage):
         
         # Select a subset of the stars
         ra, dec, n = ra[s], dec[s], len(ra)
-        print(np.shape(q1),np.shape(q2),np.shape(q3),np.shape(q4))
         q1 = q1[:, s]
         q2 = q2[:, s]
         q3 = q3[s]
@@ -1210,9 +1213,11 @@ class TXPHStatistics(PipelineStage):
         return corr.meanr, corr.xip, corr.xim, corr.varxip**0.5, corr.varxim**0.5
 
     def compute_PHStat(self, phcorr, dT_Tg_ratio, Tg_invsq, dT_Tg_ratio_tot, Tg_invsq_tot, num_zbin, nzbin_tot):
-        # Finally combine theory data vector, correlations, and T quantities
-        # to create \delta\xi as shown in Eq.10 of Giblin et al. 2021 
-        
+        '''
+        Finally combine theory data vector, correlations, and T quantities
+        to create delta xi as shown in Eq.10 of Giblin et al. 2021 
+        And do error propagation 
+        '''
         dxip = np.zeros([nzbin_tot, self.config["nbins"]])
         dxim = np.zeros_like(dxip)
         err_dxip = np.zeros_like(dxip)
@@ -1227,38 +1232,36 @@ class TXPHStatistics(PipelineStage):
                 if STAR_TYPE_NAMES[s] != self.config.star_type:
                     continue
                     
-        # Load theory data vector
         ttht, txip, txim = self.load_theory(num_zbin,nzbin_tot)
         
+        # now combine 1/Tg**2 and theory, PH correlations
         for n in range(nzbin_tot):
-                # Also interpolate the theory vector onto the theta bins of the PH-stats                
+                
+                # Interpolate the theory vector onto the theta bins of the PH-stats (in case they're different)
                 dxip_terms[n,:,0] = 2 * np.interp(phcorr[0, s][0], ttht[n], txip[n]) * dT_Tg_ratio_tot[0,n]
                 dxim_terms[n,:,0] = 2 * np.interp(phcorr[0, s][0], ttht[n], txim[n]) * dT_Tg_ratio_tot[0,n]
-                dxip_terms[n,:,1] =     Tg_invsq_tot[0,n] * (phcorr[0, s][1])
-                dxim_terms[n,:,1] =     Tg_invsq_tot[0,n] * (phcorr[0, s][2])
-                dxip_terms[n,:,2] = 2 * Tg_invsq_tot[0,n] * (phcorr[1, s][1])
-                dxim_terms[n,:,2] = 2 * Tg_invsq_tot[0,n] * (phcorr[1, s][2])
-                dxip_terms[n,:,3] =     Tg_invsq_tot[0,n] * (phcorr[2, s][1])
-                dxim_terms[n,:,3] =     Tg_invsq_tot[0,n] * (phcorr[2, s][2])
                 
-                # Total
+                # cycle through 3 PH terms (PH term 2 has factor of 2)
+                fac = [1,2,1] 
+                for t in range(1,4):
+                    dxip_terms[n,:,t] = fac[t-1] * Tg_invsq_tot[0,n] * (phcorr[t-1, s][1])
+                    dxim_terms[n,:,t] = fac[t-1] * Tg_invsq_tot[0,n] * (phcorr[t-1, s][2])
+                
+                #combine for total delta xi
                 dxip[n,:] = dxip_terms[n,:,0] + dxip_terms[n,:,1] + dxip_terms[n,:,2] + dxip_terms[n,:,3]
                 dxim[n,:] = dxim_terms[n,:,0] + dxim_terms[n,:,1 ]+ dxim_terms[n,:,2] + dxim_terms[n,:,3]
-            
-                # Propagate Errors
-                err_dxip_terms[ n,:,0] = 2*np.interp(phcorr[0, s][0], ttht[n], txip[n]) * dT_Tg_ratio_tot[ 1,j]
-                err_dxim_terms[ n,:,0] = 2*np.interp(phcorr[0, s][0], ttht[n], txim[n]) * dT_Tg_ratio_tot[ 1,j]
-            
-                # PH term 2 has a factor of 2
-                scale = [1,2,1] 
-                # cycle through 3 ph terms - same error form
+
+                # Repeat above steps for error propagation:
+                err_dxip_terms[n,:,0] = 2*np.interp(phcorr[0, s][0], ttht[n], txip[n]) * dT_Tg_ratio_tot[1,n]
+                err_dxim_terms[n,:,0] = 2*np.interp(phcorr[0, s][0], ttht[n], txim[n]) * dT_Tg_ratio_tot[1,n]
+                            
                 for t in range(1,4): 
-                        part1 = scale[t-1] * Tg_invsq_tot[1,n]**2 * phcorr[t-1, s][1]**2  
-                        part2 = scale[t-1] * Tg_invsq_tot[0,n]**2 * phcorr[t-1, s][3]**2 
+                        part1 = fac[t-1] * Tg_invsq_tot[1,n]**2 * phcorr[t-1, s][1]**2  
+                        part2 = fac[t-1] * Tg_invsq_tot[0,n]**2 * phcorr[t-1, s][3]**2 
                         err_dxip_terms[ n,:,t] = (part1 + part2)**0.5
                         
-                        part1 = scale[t-1] * Tg_invsq_tot[1,n]**2 * phcorr[t-1, s][2]**2  
-                        part2 = scale[t-1] * Tg_invsq_tot[0,n]**2 * phcorr[t-1, s][4]**2 
+                        part1 = fac[t-1] * Tg_invsq_tot[1,n]**2 * phcorr[t-1, s][2]**2  
+                        part2 = fac[t-1] * Tg_invsq_tot[0,n]**2 * phcorr[t-1, s][4]**2 
                         err_dxim_terms[n,:,t] = (part1 + part2)**0.5
 
                 err_dxip[n,:] = (  err_dxip_terms[n,:,0]**2 + err_dxip_terms[n,:,1]**2 
@@ -1270,34 +1273,30 @@ class TXPHStatistics(PipelineStage):
 
     def load_theory(self,num_zbin,nzbin_tot):
         import sacc
-        
         filename_theory = self.get_input("twopoint_theory_real")
         s = sacc.Sacc.load_fits(filename_theory)
-        theta = np.zeros((nzbin_tot,9)) #maybe read this in through the sacc info?
-        xip, xim = np.zeros_like(theta), np.zeros_like(theta)
-        k = 0
+
+        theta, xip, xim = [], [], []
         for i in range(num_zbin):
                 for j in range(num_zbin):
-                    #if j>=i:
-                    theta_, xip_ = s.get_theta_xi('galaxy_shear_xi_plus',
-                                                  'source_' + f'{i}','source_' + f'{j}')
+                    if j>=i:
+                        theta_, xip_ = s.get_theta_xi('galaxy_shear_xi_plus',
+                                                      'source_' + f'{j}','source_' + f'{i}')
                     
-                    theta_, xim_ = s.get_theta_xi('galaxy_shear_xi_minus',
-                                                  'source_' + f'{i}','source_' + f'{j}')
-                    if len(xip_) != 0:
-                        theta[k], xip[k],xim[k] = theta_, xip_, xim_
-                        k+=1
-                        
+                        theta_, xim_ = s.get_theta_xi('galaxy_shear_xi_minus',
+                                                      'source_' + f'{j}','source_' + f'{i}')
+                        if len(xip_) != 0:
+                            theta.append(theta_); xip.append(xip_); xim.append(xim_);
         return theta, xip, xim
                         
     def load_galaxies(self,zbin):
         with self.open_input("binned_shear_catalog") as f:
-        # probably need some kind of line here to load prefix    
+            prefix = self.config["shear_prefix"]    
             g     = f[f"shear/bin_{zbin}/"]
             ra    = g["ra"][:]
             dec   = g["dec"][:]
-            Tgal  = g["T"][:]
-            Tpsf  = g["psf_T_mean"][:]
+            Tgal  = g[f"{prefix}T"][:]
+            Tpsf  = g[f"{prefix}psf_T_mean"][:]
             w     = g["weight"][:]
             
         return ra, dec, Tgal, Tpsf, w
@@ -1374,7 +1373,7 @@ class TXPHStatistics(PipelineStage):
         import matplotlib.pyplot as plt
         # we're only going to produce plots for autocorrelation bin pairs
         k = np.linspace(2,num_zbin-1,num_zbin-2)
-        autocorrbins = np.concatenate(([0,num_zbin],k*num_zbin-k*(k-1)/2)
+        autocorrbins = np.concatenate(([0,num_zbin],k*num_zbin-k*(k-1)/2)).astype(int)
         
         f = self.open_output("PHstat_plus", wrapper=True,
                              figsize=(4 * num_zbin,6 * len(STAR_TYPES)))
@@ -1383,35 +1382,34 @@ class TXPHStatistics(PipelineStage):
                 continue
             _, axes = plt.subplots(num_zbin, len(STAR_TYPES),
                                    squeeze=False, num=f.file.number)
-            for j, bn in enumerate(autocorrbins): 
+            for j, n in enumerate(autocorrbins): 
                 plt.sca(axes[j, s])
-                plt.errorbar(
-                    ph_stats[s][0],
-                    np.abs(ph_stats[s][1][bn,:]),
-                    ph_stats[s][3][bn,:],
+                plt.errorbar(ph_stats[s][0],
+                    np.abs(ph_stats[s][1][n]),
+                    ph_stats[s][3][n],
                     fmt="o", capsize=3,color="black",
                     label=r"$\delta\xi_+^{\rm sys}$")
                 
                 plt.plot( ph_stats[s][0], 
-                    np.abs(ph_stats[s][5][bn,:,0]),
+                    np.abs(ph_stats[s][5][n,:,0]),
                     color="xkcd:taupe", linestyle="None", 
                     marker="o",ms=5,
                    label = r"PH$_1$")
         
                 plt.plot(ph_stats[s][0], 
-                    np.abs(ph_stats[s][5][bn,:,1]),
+                    np.abs(ph_stats[s][5][n,:,1]),
                     color="rosybrown", linestyle="None", 
                     marker="o", ms=5,
                     label = r"PH$_2$")
             
                 plt.plot( ph_stats[s][0],
-                    np.abs(ph_stats[s][5][bn,:,2]),
+                    np.abs(ph_stats[s][5][n,:,2]),
                     color="lightsteelblue", linestyle="None", 
                     marker="o",ms=5,
                     label = r"PH$_3$")
                 
                 plt.plot( ph_stats[s][0],
-                    np.abs(ph_stats[s][5][bn,:,3]),
+                    np.abs(ph_stats[s][5][n,:,3]),
                     color="slategray", linestyle="None", 
                     marker="o",ms=5,
                     label = r"PH$_4$")
@@ -1421,7 +1419,7 @@ class TXPHStatistics(PipelineStage):
                 plt.xlabel(r"$\theta$")
                 plt.ylabel(r"$|\delta\xi_+^{\rm sys},{\rm terms}|$")
             axes[0, s].set_title(STAR_TYPE_NAMES[s])
-            axes[0, 1].legend(bbox_to_anchor=(1.5, 1), loc="upper right")
+            axes[0, 1].legend(bbox_to_anchor=(1.1, 1), loc="upper right")
         f.close()
 
         f = self.open_output("PHstat_min", wrapper=True,
@@ -1431,35 +1429,34 @@ class TXPHStatistics(PipelineStage):
                 continue
             _, axes = plt.subplots(num_zbin, len(STAR_TYPES),
                                    squeeze=False, num=f.file.number)
-            for j, bn in enumerate(autocorrbins): 
+            for j, n in enumerate(autocorrbins): 
                 plt.sca(axes[j, s])
-                plt.errorbar(
-                    ph_stats[s][0],
-                    np.abs(ph_stats[s][2][bn,:]),
-                    ph_stats[s][4][bn,:],
+                plt.errorbar(ph_stats[s][0],
+                    np.abs(ph_stats[s][2][n]),
+                    ph_stats[s][4][n],
                     fmt="o",capsize=3,color="black",
                     label=r"$\delta\xi_-^{\rm sys}$")
                 
                 plt.plot( ph_stats[s][0], 
-                    np.abs(ph_stats[s][6][bn,:,0]),
+                    np.abs(ph_stats[s][6][n,:,0]),
                     color="xkcd:taupe", linestyle="None", 
                     marker="o",ms=5,
                     label = r"PH$_1$")
                 
                 plt.plot(ph_stats[s][0], 
-                    np.abs(ph_stats[s][6][bn,:,1]),
+                    np.abs(ph_stats[s][6][n,:,1]),
                     color="rosybrown", linestyle="None", 
                     marker="o", ms=5,
                     label = r"PH$_2$")
             
                 plt.plot( ph_stats[s][0],
-                    np.abs(ph_stats[s][6][bn,:,2]),
+                    np.abs(ph_stats[s][6][n,:,2]),
                     color="lightsteelblue", linestyle="None", 
                     marker="o",ms=5,
                     label = r"PH$_3$")
                 
                 plt.plot( ph_stats[s][0], 
-                    np.abs(ph_stats[s][6][bn,:,3]),
+                    np.abs(ph_stats[s][6][n,:,3]),
                     color="slategray", linestyle="None", 
                     marker="o",ms=5,
                     label = r"PH$_4$")
@@ -1469,7 +1466,7 @@ class TXPHStatistics(PipelineStage):
                 plt.xlabel(r"$\theta$")
                 plt.ylabel(r"$|\delta\xi_-^{\rm sys},{\rm terms}|$")
             axes[0, s].set_title(STAR_TYPE_NAMES[s])
-            axes[0, 1].legend(bbox_to_anchor=(1.5, 1), loc="upper right")
+            axes[0, 1].legend(bbox_to_anchor=(1.1, 1), loc="upper right")
         f.close()
         
 
