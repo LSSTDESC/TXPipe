@@ -63,19 +63,23 @@ class TXFourierNamasterCovariance(PipelineStage):
         cosmo = self.read_cosmology()
 
         # read binning
-        two_point_data = self.read_sacc()
+        two_point_data, any_source, any_lens = self.read_sacc()
 
         # read the n(z) and f_sky from the source summary stats
-        meta = self.read_number_statistics()
+        meta = self.read_number_statistics(any_source, any_lens)
 
         # read the mask
-        f = self.open_input("mask", wrapper=True)
-        m = f.read_map("mask")
+        with self.open_input("mask", wrapper=True) as f:
+            m = f.read_map("mask")
 
         nside = self.config["nside"]
-
+        if self.rank == 0:
+            print("Read map. Up/downgrading to nside =", nside)
+        
         m = hp.ud_grade(m, nside)
         msk = 1 * (m == 1)
+        if self.rank == 0:
+            print("Apodizing mask with 1 deg scale")
         msk = nmt.mask_apodization(msk, 1.0, apotype="Smooth")
 
         # get w-workspace
@@ -156,7 +160,7 @@ class TXFourierNamasterCovariance(PipelineStage):
 
     def save_outputs(self, two_point_data, cov):
         filename = self.get_output("summary_statistics_fourier")
-        two_point_data.add_covariance(cov)
+        two_point_data.add_covariance(cov, overwrite=True)
         two_point_data.save_fits(filename, overwrite=True)
 
     def read_cosmology(self):
@@ -181,27 +185,33 @@ class TXFourierNamasterCovariance(PipelineStage):
         print("Length after cuts = ", len(two_point_data))
         two_point_data.to_canonical_order()
 
-        return two_point_data
+        any_source = any(d.data_type in [sacc.standard_types.galaxy_shear_cl_ee, sacc.standard_types.galaxy_shearDensity_cl_e] for d in two_point_data.data)
+        any_lens = any(d.data_type in [sacc.standard_types.galaxy_shearDensity_cl_e, sacc.standard_types.galaxy_density_cl] for d in two_point_data.data)
 
-    def read_number_statistics(self):
-        input_data = self.open_input("tracer_metadata")
+        return two_point_data, any_source, any_lens
 
-        # per-bin quantities
-        N_eff = input_data["tracers/N_eff"][:]
-        N_lens = input_data["tracers/lens_counts"][:]
-        if self.config["use_true_shear"]:
-            nbins = len(input_data["tracers/sigma_e"][:])
-            sigma_e = np.array([0.0 for i in range(nbins)])
-        else:
-            sigma_e = input_data["tracers/sigma_e"][:]
+    def read_number_statistics(self, any_source, any_lens):
 
-        # area in sq deg
-        area_deg2 = input_data["tracers"].attrs["area"]
-        area_unit = input_data["tracers"].attrs["area_unit"]
+        # Read the bits of the metadata that we need
+        with self.open_input("tracer_metadata") as input_data:
+            # area in sq deg
+            area_deg2 = input_data["tracers"].attrs["area"]
+            area_unit = input_data["tracers"].attrs["area_unit"]
+
+            if any_source:
+                N_eff = input_data["tracers/N_eff"][:]
+                if self.config["use_true_shear"]:
+                    nbins = len(input_data["tracers/sigma_e"][:])
+                    sigma_e = np.array([0.0 for i in range(nbins)])
+                else:
+                    sigma_e = input_data["tracers/sigma_e"][:]
+
+            if any_lens:
+                N_lens = input_data["tracers/lens_counts"][:]
+                
         if area_unit != "deg^2":
             raise ValueError("Units of area have changed")
 
-        input_data.close()
 
         # area in steradians and sky fraction
         area = area_deg2 * np.radians(1) ** 2
@@ -209,31 +219,36 @@ class TXFourierNamasterCovariance(PipelineStage):
         full_sky = 4 * np.pi
         f_sky = area / full_sky
 
-        # Density information from counts
-        n_eff = N_eff / area
-        n_lens = N_lens / area
-
-        # for printing out only
-        n_eff_arcmin = N_eff / area_arcmin2
-        n_lens_arcmin = N_lens / area_arcmin2
-
-        # Feedback
-        print(f"area =  {area_deg2:.1f} deg^2")
-        print(f"f_sky:  {f_sky}")
-        print(f"N_eff:  {N_eff} (totals)")
-        print(f"N_lens: {N_lens} (totals)")
-        print(f"n_eff:  {n_eff} / steradian")
-        print(f"     =  {np.around(n_eff_arcmin,2)} / sq arcmin")
-        print(f"lens density: {n_lens} / steradian")
-        print(f"            = {np.around(n_lens_arcmin,2)} / arcmin")
-
-        # Pass all this back as a dictionary
+        # Output dict
         meta = {
             "f_sky": f_sky,
-            "sigma_e": sigma_e,
-            "n_eff": n_eff,
-            "n_lens": n_lens,
         }
+
+
+        # General bits
+        print(f"area =  {area_deg2:.1f} deg^2")
+        print(f"f_sky:  {f_sky}")
+
+        # Lens related bits
+        if any_lens:
+            n_lens = N_lens / area
+            n_lens_arcmin = N_lens / area_arcmin2
+            print(f"N_lens: {N_lens} (totals)")
+            print(f"lens density: {n_lens} / steradian")
+            print(f"            = {np.around(n_lens_arcmin,2)} / arcmin")
+            meta["n_lens"] = n_lens
+
+        # Source-related bits
+        if any_source:
+            n_eff = N_eff / area
+            n_eff_arcmin = N_eff / area_arcmin2
+            print(f"N_eff:  {N_eff} (totals)")
+            print(f"n_eff:  {n_eff} / steradian")
+            print(f"     =  {np.around(n_eff_arcmin,2)} / sq arcmin")
+            meta["sigma_e"] = sigma_e
+            meta["n_eff"] = n_eff
+
+
 
         return meta
 
@@ -244,11 +259,12 @@ class TXFourierNamasterCovariance(PipelineStage):
         for i, spins in enumerate(allspins):
             num = i % size
             spinlist[num].append(spins)
+        print("Spin list:", spinlist)
         return spinlist
 
     def get_w(self, msk, spinlist):
         import pymaster as nmt
-
+        print("Setting up workspaces")
         nside = self.config["nside"]
 
         self.f0 = nmt.NmtField(msk, [msk], n_iter=0)
@@ -262,6 +278,7 @@ class TXFourierNamasterCovariance(PipelineStage):
             s1 = spins[0]
             s2 = spins[1]
             self.w = nmt.NmtWorkspace()
+            print("Computing coupling matrix", s1, s2)
             self.w.compute_coupling_matrix(
                 getattr(self, f"f{s1}"), getattr(self, f"f{s2}"), self.b
             )
@@ -269,7 +286,7 @@ class TXFourierNamasterCovariance(PipelineStage):
 
     def read_w(self):
         import pymaster as nmt
-
+        print("Rank", self.rank, "reading workspaces")
         # These are accessed via getattr in compute_covariance_block
         self.w00 = nmt.NmtWorkspace()
         self.w00.read_from(f"{self.scratch_dir}/w00.fits")
@@ -302,7 +319,7 @@ class TXFourierNamasterCovariance(PipelineStage):
             s2 = spins[1]
             s3 = spins[2]
             s4 = spins[3]
-
+            print("Rank", self.rank, "getting covariance workspace", s1, s2, s3, s4)
             cw = nmt.NmtCovarianceWorkspace()
             cw.compute_coupling_coefficients(
                 getattr(self, f"f{s1}"),
@@ -409,6 +426,8 @@ class TXFourierNamasterCovariance(PipelineStage):
         from tjpcov.wigner_transform import bin_cov
         import pymaster as nmt
         import scipy
+
+        print("Computing cov block for ", tracer_comb1, tracer_comb2)
 
         cl = {}
 
@@ -624,8 +643,8 @@ class TXFourierNamasterCovariance(PipelineStage):
                 s1_s2_1,
                 s1_s2_2,
             )
-            th, cov["final"] = WT.projected_covariance2(
-                l_cl=ell, s1_s2=s1_s2_1, s1_s2_cross=s1_s2_2, cl_cov=cov["final"]
+            th, cov["final"] = WT.projected_covariance(
+                ell_cl=ell, s1_s2=s1_s2_1, s1_s2_cross=s1_s2_2, cl_cov=cov["final"]
             )
 
         # Normalize
@@ -792,8 +811,8 @@ class TXFourierNamasterCovariance(PipelineStage):
         num_processes = int(os.environ.get("OMP_NUM_THREADS", 1))
         print("Generating Wigner Transform.")
         with threadpoolctl.threadpool_limits(1):
-            WT = wigner_transform(
-                l=meta["ell"],
+            WT = wigner_transform.WignerTransform(
+                ell=meta["ell"],
                 theta=meta["theta"] * d2r,
                 s1_s2=[(2, 2), (2, -2), (0, 2), (2, 0), (0, 0)],
                 ncpu=num_processes,
@@ -1027,6 +1046,7 @@ class TXRealNamasterCovariance(TXFourierNamasterCovariance):
         "pickled_wigner_transform": "",
         "use_true_shear": False,
         "galaxy_bias": [0.0],
+        "scratch_dir": "temp",
     }
 
     def run(self):
@@ -1058,9 +1078,12 @@ class TXRealNamasterCovariance(TXFourierNamasterCovariance):
 
         two_point_data.to_canonical_order()
 
-        return two_point_data
+        any_source = any(d.data_type in [sacc.standard_types.galaxy_shearDensity_xi_t, sacc.standard_types.galaxy_shear_xi_plus, sacc.standard_types.galaxy_shear_xi_minus] for d in two_point_data.data)
+        any_lens = any(d.data_type in [sacc.standard_types.galaxy_density_xi, sacc.standard_types.galaxy_shearDensity_xi_t] for d in two_point_data.data)
+
+        return two_point_data, any_source, any_lens
 
     def save_outputs(self, two_point_data, cov):
         filename = self.get_output("summary_statistics_real")
-        two_point_data.add_covariance(cov)
+        two_point_data.add_covariance(cov, overwrite=True)
         two_point_data.save_fits(filename, overwrite=True)
