@@ -4,16 +4,18 @@ global:
     # This is read by many stages that read complete
     # catalog data, and tells them how many rows to read
     # at once
-    chunk_rows: 1_000_000
+    chunk_rows: 1_000_000 #default for TXPipe stages (can be overwritten in individual stages)
+    chunk_size: 100_000 #default for RAIL stages (can be overwritten in individual stages)
     # These mapping options are also read by a range of stages
     pixelization: healpix
-    nside: 256
+    nside: 4096
     sparse: true  # Generate sparse maps - faster if using small areas
 
 
 TXIngestDESY3Gold:
     name: TXIngestDESY3Gold
     input_group_name: catalog/gold/
+    chunk_rows: 10_000_000
 
 TXIngestDESY3Footprint:
     name: TXIngestDESY3Footprint
@@ -50,6 +52,7 @@ TXCustomMask:
             zmax/highlum >= 0.95,
             depth/depth_i > 22.2, 
         ]
+    degrade: True
 
 PZPrepareEstimatorLens:
     name: PZPrepareEstimatorLens
@@ -75,14 +78,15 @@ PZRailSummarizeLens:
     classname: PZRailPZSummarize
     catalog_group: lens
     tomography_name: lens
-    nsamples: 1000
+    nsamples: 0
     zmin: 0.0
-    zmax: 3.0
-    nzbins: 70
+    zmax: 2.0
+    nzbins: 150
     point_estimate: DNF_ZN
-    hdf5_groupname: classifier
+    hdf5_groupname: tomography
     summarizer: PointEstHistMaskedSummarizer
     module: "rail.estimation.algos.point_est_hist"
+    chunk_size: 100_000
 
 TXCustomLensSelector:
     name: TXCustomLensSelector
@@ -94,6 +98,7 @@ TXCustomLensSelector:
     a: 4
     b: 18
     extra_cols: [EXTENDED_CLASS_SOF, FLAGS_GOLD] #extra columns that are used in the sample selection #TO DO: make this automatic
+    apply_mask: True
 
 TXLensCatalogSplitter:
     name: TXLensCatalogSplitter
@@ -101,8 +106,8 @@ TXLensCatalogSplitter:
 
 TXLSSWeightsLinBinned:
     name: TXLSSWeightsLinBinned
-    supreme_path_root: data/desy3/survey_properties/test_subset/
-    nbin: 2 #on this small example make bins very wide (empty bins can cause issues)
+    supreme_path_root: /global/cfs/cdirs/lsst/groups/WL/users/jelvinpo/data/desy3/survey_properties/y3_subset/
+    nbin: 10 
     outlier_fraction: 0.05
     pvalue_threshold: 0.05  # max p-value for maps to be included in the corrected (a very simple form of regularization)
     equal_area_bins: True  # if you are using binned 1d correlations, should the bins have equal area (set False for equal spacing)
@@ -111,4 +116,10 @@ TXLSSWeightsLinBinned:
     b0: [1.5, 1.8, 1.8, 1.9, 2.3, 2.3]
     allow_weighted_input: False
     nside_coverage: 32
-    nside: 4096
+
+TXMapPlots:
+    name: TXMapPlots
+    rot180: True
+
+TXPhotozPlotLens:
+    name: TXPhotozPlotLens
