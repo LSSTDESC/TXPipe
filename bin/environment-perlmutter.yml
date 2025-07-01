@@ -10,7 +10,7 @@ dependencies:
   - fitsio=1.2.*
  # Firecrown is here in the regular env file, but not perlmutter, where we have to hack later 
   - h5py>=3=mpi_mpich_*
-  - healpy=1.16.*
+  - healpy=1.18.*
   - healsparse=1.10.*
   - jax=0.6.0
   - jaxlib=0.6.0
@@ -32,6 +32,7 @@ dependencies:
   - treecorr=5.0.*
   - pip=24.0.*
   - pygraphviz=1.13.*
+  - qp-prob=1.0.*
   - nbconvert
   - ipykernel
   - lsstdesc-gcr-catalogs
