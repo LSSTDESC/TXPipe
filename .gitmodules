@@ -4,3 +4,4 @@
 [submodule "submodules/pyfsb"]
 	path = submodules/pyfsb
 	url = https://github.com/ashaeres/pyfsb
+	ignore = untracked
