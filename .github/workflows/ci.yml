@@ -96,7 +96,7 @@ jobs:
         cache-name: cache-conda-environment
       with:
         path: ./conda
-        key: ${{ matrix.os }}-conda-${{ hashFiles('bin/install.sh','environment*.yml' ) }}
+        key: ${{ matrix.os }}-conda-${{ hashFiles('bin/install.sh','bin/environment*.yml' ) }}
         fail-on-cache-miss: true
 
     - name: Test with pytest
@@ -136,7 +136,7 @@ jobs:
         cache-name: cache-conda-environment
       with:
         path: ./conda
-        key: ${{ matrix.os }}-conda-${{ hashFiles('bin/install.sh','environment*.yml' ) }}
+        key: ${{ matrix.os }}-conda-${{ hashFiles('bin/install.sh','bin/environment*.yml' ) }}
         fail-on-cache-miss: true
 
     - name: Restore example data
