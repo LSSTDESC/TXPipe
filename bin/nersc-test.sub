@@ -1,0 +1,17 @@
+#!/bin/bash
+#SBATCH --qos=debug
+#SBATCH --time=00:30:00
+#SBATCH --nodes=2
+#SBATCH --account=m1727
+#SBATCH --constraint=cpu
+#SBATCH --job-name=cosmodc2-test
+#SBATCH --output=cosmodc2-test.log
+#SBATCH --mail-type=END
+
+# You can create this environment as described in the readme.
+module load python
+conda activate ./conda
+
+export OMP_PROC_BIND=true
+export OMP_PLACES=threads
+ceci examples/metadetect/pipeline.yml site.name=nersc-interactive
