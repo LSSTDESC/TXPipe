@@ -16,10 +16,10 @@ dependencies:
   - jaxlib=0.6.0
   - jupyter=1.0.*
   - matplotlib=3.8.*
-  - mpi4py>=3
-  - mpich>=4.*
+  - mpi4py=4.0.*
+  - mpich=4.3.*
   - namaster=2.4.*
-  - numpy=2.*
+  - numpy=2.2.*
   - pandas=2.2.*
   - psutil=5.9.*
   - pyccl=3.2.*
