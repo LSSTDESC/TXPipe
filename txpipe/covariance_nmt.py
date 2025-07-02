@@ -4,7 +4,7 @@ import numpy as np
 import warnings
 import os
 import pickle
-
+import sys
 
 # require TJPCov to be in PYTHONPATH
 d2r = np.pi / 180
@@ -1040,9 +1040,6 @@ class TXRealNamasterCovariance(TXFourierNamasterCovariance):
     ]
 
     config_options = {
-        "min_sep": 2.5,  # arcmin
-        "max_sep": 250,
-        "nbins": 20,
         "pickled_wigner_transform": "",
         "use_true_shear": False,
         "galaxy_bias": [0.0],
@@ -1053,11 +1050,14 @@ class TXRealNamasterCovariance(TXFourierNamasterCovariance):
         super().run()
 
     def get_angular_bins(self, two_point_data):
-        # this should be changed to read from sacc file
+        min_sep = float(two_point_data.metadata["provenance/config/min_sep"])
+        max_sep = float(two_point_data.metadata["provenance/config/max_sep"])
+        nbins = int(two_point_data.metadata["provenance/config/nbins"])
+
         th_arcmin = np.logspace(
-            np.log10(self.config["min_sep"]),
-            np.log10(self.config["max_sep"]),
-            self.config["nbins"] + 1,
+            np.log10(min_sep),
+            np.log10(max_sep),
+            nbins + 1,
         )
         return th_arcmin / 60.0
 
