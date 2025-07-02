@@ -54,8 +54,8 @@ class TXFourierNamasterCovariance(PipelineStage):
         size = self.size
         rank = self.rank
 
+        self.scratch_dir = self.config["scratch_dir"]
         if rank == 0:
-            self.scratch_dir = self.config["scratch_dir"]
             if not os.path.exists(self.scratch_dir):
                 os.makedirs(self.scratch_dir)
 
@@ -73,13 +73,9 @@ class TXFourierNamasterCovariance(PipelineStage):
             m = f.read_map("mask")
 
         nside = self.config["nside"]
-        if self.rank == 0:
-            print("Read map. Up/downgrading to nside =", nside)
         
         m = hp.ud_grade(m, nside)
         msk = 1 * (m == 1)
-        if self.rank == 0:
-            print("Apodizing mask with 1 deg scale")
         msk = nmt.mask_apodization(msk, 1.0, apotype="Smooth")
 
         # get w-workspace
@@ -259,12 +255,10 @@ class TXFourierNamasterCovariance(PipelineStage):
         for i, spins in enumerate(allspins):
             num = i % size
             spinlist[num].append(spins)
-        print("Spin list:", spinlist)
         return spinlist
 
     def get_w(self, msk, spinlist):
         import pymaster as nmt
-        print("Setting up workspaces")
         nside = self.config["nside"]
 
         self.f0 = nmt.NmtField(msk, [msk], n_iter=0)
@@ -278,7 +272,6 @@ class TXFourierNamasterCovariance(PipelineStage):
             s1 = spins[0]
             s2 = spins[1]
             self.w = nmt.NmtWorkspace()
-            print("Computing coupling matrix", s1, s2)
             self.w.compute_coupling_matrix(
                 getattr(self, f"f{s1}"), getattr(self, f"f{s2}"), self.b
             )
@@ -286,7 +279,6 @@ class TXFourierNamasterCovariance(PipelineStage):
 
     def read_w(self):
         import pymaster as nmt
-        print("Rank", self.rank, "reading workspaces")
         # These are accessed via getattr in compute_covariance_block
         self.w00 = nmt.NmtWorkspace()
         self.w00.read_from(f"{self.scratch_dir}/w00.fits")
@@ -319,7 +311,6 @@ class TXFourierNamasterCovariance(PipelineStage):
             s2 = spins[1]
             s3 = spins[2]
             s4 = spins[3]
-            print("Rank", self.rank, "getting covariance workspace", s1, s2, s3, s4)
             cw = nmt.NmtCovarianceWorkspace()
             cw.compute_coupling_coefficients(
                 getattr(self, f"f{s1}"),
@@ -426,8 +417,6 @@ class TXFourierNamasterCovariance(PipelineStage):
         from tjpcov.wigner_transform import bin_cov
         import pymaster as nmt
         import scipy
-
-        print("Computing cov block for ", tracer_comb1, tracer_comb2)
 
         cl = {}
 
