@@ -72,7 +72,7 @@ class TXFourierNamasterCovariance(PipelineStage):
         with self.open_input("mask", wrapper=True) as f:
             m = f.read_map("mask")
 
-        nside = self.config["nside"]        
+        nside = self.config["nside"]
         m = hp.ud_grade(m, nside)
         msk = 1 * (m == 1)
         msk = nmt.mask_apodization(msk, 1.0, apotype="Smooth")
@@ -258,6 +258,7 @@ class TXFourierNamasterCovariance(PipelineStage):
 
     def get_w(self, msk, spinlist):
         import pymaster as nmt
+
         nside = self.config["nside"]
 
         self.f0 = nmt.NmtField(msk, [msk], n_iter=0)
@@ -278,6 +279,7 @@ class TXFourierNamasterCovariance(PipelineStage):
 
     def read_w(self):
         import pymaster as nmt
+
         # These are accessed via getattr in compute_covariance_block
         self.w00 = nmt.NmtWorkspace()
         self.w00.read_from(f"{self.scratch_dir}/w00.fits")
@@ -310,6 +312,7 @@ class TXFourierNamasterCovariance(PipelineStage):
             s2 = spins[1]
             s3 = spins[2]
             s4 = spins[3]
+
             cw = nmt.NmtCovarianceWorkspace()
             cw.compute_coupling_coefficients(
                 getattr(self, f"f{s1}"),
