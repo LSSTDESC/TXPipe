@@ -16,10 +16,10 @@ dependencies:
   - jaxlib=0.6.0
   - jupyter=1.0.*
   - matplotlib=3.8.*
-  - mpi4py>=3
-  - mpich>=4.*
+  - mpi4py=4.0.*
+  - mpich=4.3.*
   - namaster=2.4.*
-  - numpy=2.*
+  - numpy=2.2.*
   - pandas=2.2.*
   - psutil=5.9.*
   - pyccl=3.2.*
@@ -34,8 +34,9 @@ dependencies:
   - pygraphviz=1.13.*
   - mockmpi
   - qp-prob=1.0.*
+  - tabulate # used for generating output report in CI
   - pip:
-    - ceci==2.2
+    - ceci==2.2.*
     - git+https://github.com/jlvdb/hyperbolic@b88b107a291fa16c2006cf971ce610248d58e94c
     - dask-mpi>=2022.4.0
     - git+https://github.com/LSSTDESC/CLMM.git@1.14.1
@@ -46,3 +47,4 @@ dependencies:
     - glass==2023.7
     - git+https://github.com/beckermr/hybrideb@a3198ea5bc8175542b058e5c1289d910f05fd99d
     - pz-rail[algos] @ git+https://github.com/LSSTDESC/RAIL@v1.1.2
+    - numpy==2.2.*

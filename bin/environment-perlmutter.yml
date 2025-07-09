@@ -3,34 +3,36 @@ channels:
 dependencies:
   - astropy=6.1.*
   - camb=1.5.*
-  - cosmosis=3.19.*
+  - cosmosis=3.20.*
   - cmake
   - dask=2024.5.2
-  - dm-tree=0.1.8
+  - dm-tree=0.1.9
   - fitsio=1.2.*
+ # Firecrown is here in the regular env file, but not perlmutter, where we have to hack later 
   - h5py>=3=mpi_mpich_*
-  - healpy=1.16.*
+  - healpy=1.18.*
   - healsparse=1.10.*
-  - jax=0.4.27
-  - jaxlib=0.4.23
+  - jax=0.6.0
+  - jaxlib=0.6.0
   - jupyter=1.0.*
   - matplotlib=3.8.*
-  - mpi4py>=3
+  - mpi4py=4.0.*
   - mpich=4.2.2=external_*
-  - namaster=2.0.*
-  - numpy=1.26.*
-  - pandas>=2.0
+  - namaster=2.4.*
+  - numpy=2.2.*
+  - pandas=2.2.*
   - psutil=5.9.*
-  - pyccl=3.0.*
+  - pyccl=3.2.*
   - python=3.10.*
   - scikit-learn=1.5.*
   - scipy=1.13.*
-  - tables-io-full=0.9.*
+  - tables-io-full=1.0.*
   - threadpoolctl=3.5.*
   - tjpcov=0.4.*
   - treecorr=5.0.*
   - pip=24.0.*
   - pygraphviz=1.13.*
+  - qp-prob=1.0.*
   - nbconvert
   - ipykernel
   - lsstdesc-gcr-catalogs
@@ -41,14 +43,15 @@ dependencies:
   - pytables
   - somoclu
   - pip:
-    - ceci==2.0.1
+    - ceci==2.2.*
     - git+https://github.com/jlvdb/hyperbolic@b88b107a291fa16c2006cf971ce610248d58e94c
     - dask-mpi>=2022.4.0
-    - git+https://github.com/LSSTDESC/CLMM.git@1.12.5
+    - git+https://github.com/LSSTDESC/CLMM.git@1.14.1
     - parallel-statistics==0.13
     - sacc[all]==0.14
-    - jax==0.4.27
-    - jaxlib==0.4.23
+    - jax==0.6.0
+    - jaxlib==0.6.0
     - glass==2023.7
     - git+https://github.com/beckermr/hybrideb@a3198ea5bc8175542b058e5c1289d910f05fd99d
     - pz-rail[algos] @ git+https://github.com/LSSTDESC/RAIL@v1.1.2
+    - numpy==2.2.*

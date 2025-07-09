@@ -436,7 +436,7 @@ class TXTauStatistics(PipelineStage):
         
         return rowe_stats
 
-    def sample(self, tau_stats, rowe_stats, ranges, nwalkers=100, ndim=3):
+    def sample(self, tau_stats, rowe_stats, ranges, nwalkers=32, ndim=3):
         '''
         Run a simple mcmc chain to detemine the best-fit values for alpha, beta, eta  
         '''
@@ -465,7 +465,7 @@ class TXTauStatistics(PipelineStage):
 
         print("Computing best-fit alpha, beta, eta")
         sampler = emcee.EnsembleSampler(nwalkers, ndim, self.logProb, args=(tau_stats, rowe_stats, ranges, invcov, mask))
-        sampler.run_mcmc(initpos, nsteps=5000, progress=False);
+        sampler.run_mcmc(initpos, nsteps=4000, progress=False);
         flat_samples = sampler.get_chain(discard=2000,flat=True)
         
         ret = {}
@@ -587,6 +587,8 @@ class TXTauStatistics(PipelineStage):
         
         # Estimate covariance using bootstrap. The ordering is xip0,xim0,xip2,xim2,xip5,xim5.
         cov = treecorr.estimate_multi_cov([corr0,corr2,corr5], self.config.cov_method)
+        if self.config["cov_method"] == "shot":
+            cov = np.diag(cov)
         
         return corr0.meanr, corr0.xip, corr0.xim, corr2.xip, corr2.xim, corr5.xip, corr5.xim, cov
         
