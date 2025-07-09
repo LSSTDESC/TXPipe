@@ -90,6 +90,10 @@ class TXIngestDataPreview1(PipelineStage):
                 created_files = True
                 photo_outfile = self.setup_output("photometry_catalog", "photometry", photo_data, n)
                 shear_outfile = self.setup_output("shear_catalog", "shear", shear_data, n)
+                # We don't have a good shear catalog yet, so all our shears are going to be
+                # uncalibrated. So let's not even try to calibrate them, and instead just 
+                # pretend they are precalibrated.
+                shear_outfile["shear"].attrs["catalog_type"] = "precalibrated"
 
             # Output these chunks to the output files
             photo_end = photo_start + len(photo_data['ra'])
@@ -124,6 +128,9 @@ class TXIngestDataPreview1(PipelineStage):
         print("Repacking files")
         repack(self.get_output("photometry_catalog"))
         repack(self.get_output("shear_catalog"))
+
+    def ingest_visits(self, butler):
+        pass
 
 
 
@@ -196,10 +203,10 @@ class TXIngestDataPreview1(PipelineStage):
 
         # Fake numbers! These need to be derived from simulation.
         # In this case 
-        output["m"] = np.repeat(-1.184445e-01, f.size)
-        output["c1"] = np.repeat(-2.316957e-04, f.size)
-        output["c2"] = np.repeat(-8.629799e-05, f.size)
-        output["sigma_e"] = np.repeat(1.342084e-01, f.size)
+        # output["m"] = np.repeat(0.0, f.size)
+        # output["c1"] = np.repeat(-2.316957e-04, f.size)
+        # output["c2"] = np.repeat(-8.629799e-05, f.size)
+        # output["sigma_e"] = np.repeat(1.342084e-01, f.size)
         output["weight"] = np.ones_like(f)
 
         # PSF components
