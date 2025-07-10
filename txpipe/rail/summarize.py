@@ -203,14 +203,9 @@ class PZRailPZSummarize(PZRailSummarizeBase):
         """
         Additional config options needed by the PZSummarizers
         """
-        if bin == "bin_all":
-            tomo_path = "none"
-            bin_index = -1
-        else:
-            with self.open_input("tomography_catalog",wrapper=True) as f:
-                pass
-                tomo_path = f.path
-            bin_index = int(bin.split('_')[-1])
+        with self.open_input("tomography_catalog",wrapper=True) as f:
+            tomo_path = f.path
+        bin_index = int(bin.split('_')[-1])
         
         extra_sub_config = {
             "selected_bin": bin_index, 
