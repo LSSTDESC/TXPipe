@@ -84,6 +84,11 @@ class TXBaseLensSelector(PipelineStage):
 
         selector = self.prepare_selector()
 
+        # If we are going to remove lens galaxies that sit outside the mask, load the mask
+        if self.config["apply_mask"]:
+            with self.open_input('mask', wrapper=True) as f:
+                    self.mask, self.mask_nside= f.read_healsparse('mask', return_all=True)
+
         # We will collect the selection biases for each bin
         # as a matrix.  We will collect together the different
         # matrices for each chunk and do a weighted average at the end.
@@ -324,11 +329,11 @@ class TXBaseLensSelector(PipelineStage):
         if self.config['apply_mask']:
             assert ('mask' in self.input_tags()), "If apply_mask if True you must use a sub-class that uses 'mask' as an input"
             
-            with self.open_input('mask', wrapper=True) as f:
-                mask, nside= f.read_healsparse('mask', return_all=True)
+            #with self.open_input('mask', wrapper=True) as f:
+                #mask, nside= f.read_healsparse('mask', return_all=True)
 
-            pix = hp.ang2pix(nside, phot_data['ra'], phot_data['dec'], lonlat=True)
-            s = np.where( mask[pix]==hp.UNSEEN,0,1 )
+            pix = hp.ang2pix(self.mask_nside, phot_data['ra'], phot_data['dec'], lonlat=True)
+            s = np.where( self.mask[pix]==hp.UNSEEN,0,1 )
             print(f'{len(s)-np.sum(s)}/{len(s)} objects removed because they are outside the mask')
             return s
         else:
