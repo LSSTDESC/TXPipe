@@ -14,14 +14,14 @@ class TXBaseMask(PipelineStage):
 
     def run(self):
 
-        pix, mask, metadata = self.compute_binary_mask()
+        mask, pixel_scheme, metadata = self.make_binary_mask()
+        pix, mask, metadata = self.finalize_mask(mask, pixel_scheme, metadata)
 
         with self.open_output("mask", wrapper=True) as f:
             f.file.create_group("maps")
             f.write_map("mask", pix, mask, metadata)
 
-    def compute_binary_mask(self):
-        mask, pixel_scheme, metadata = self.make_binary_mask()
+    def finalize_mask(self, mask, pixel_scheme, metadata):
 
         # Total survey area calculation. This is simplistic:
         # TODO: account for weights / hit fractions here, and allow
