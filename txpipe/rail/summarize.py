@@ -196,7 +196,7 @@ class PZRailPZSummarize(PZRailSummarizeBase):
         bins = []
         with self.open_input("tomography_catalog") as f:
             unique_bins = np.unique(f[f'{group_name}/class_id'][:])
-            bins = unique_bins[unique_bins != -1] #do not include the "unselected" bin
+            bins =  [f"bin_{bin_index}" for bin_index in unique_bins[unique_bins != -1]] #do not include the "unselected" bin, -1
         return bins
 
     def get_extra_sub_config(self, bin):
