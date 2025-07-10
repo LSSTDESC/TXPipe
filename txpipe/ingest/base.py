@@ -262,10 +262,10 @@ class TXIngestMapsBase(PipelineStage):
 
         maps = {}
 
-        for ifile, input_file in enumerate(input_filepaths):
-            print(f'Processing map {input_labels[ifile]}')
+        for input_label, input_file in zip(input_labels, input_filepaths):
+            print(f'Processing map {input_label}')
             pixel, value = self.load_map(input_file, return_nest=False)
-            maps[input_labels[ifile]] = (pixel, value)
+            maps[input_label] = (pixel, value)
 
         metadata = {
             "pixelization":"healpix",
