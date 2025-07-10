@@ -19,9 +19,10 @@ class TXIngestCatalogBase(PipelineStage):
 
         column_names : dict
             dict of column names to include in the output file.
+            dict keys and items should be <column name in input file>:<desired column name in output file>
 
         dtypes : dict
-            A dictionary mapping column names to their corresponding data types.
+            A dictionary mapping the input catalog column names to their corresponding data types.
 
         n : int
             The total number of rows in the dataset.
