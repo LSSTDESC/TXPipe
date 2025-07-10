@@ -34,9 +34,9 @@ class PZRailSummarizeBase(PipelineStage):
         bins = self.get_bin_list()
 
         # These parameters are common to all the bins runs
-        if "binned_catalog" in [input[0] for input in self.inputs]:
+        if "binned_catalog" in self.input_tags():
             input_name = self.get_input("binned_catalog")
-        elif "photoz_pdfs" in [input[0] for input in self.inputs]:
+        elif "photoz_pdfs" in self.input_tags():
             input_name = self.get_input("photoz_pdfs")
         else:
             raise RuntimeError('class inputs should contain either binned_catalog or photoz_pdfs')
@@ -194,16 +194,9 @@ class PZRailPZSummarize(PZRailSummarizeBase):
         """
         group_name = self.config['hdf5_groupname']
         bins = []
-        add_all = False
         with self.open_input("tomography_catalog") as f:
             unique_bins = np.unique(f[f'{group_name}/class_id'][:])
-            for bin_index in unique_bins:
-                if bin_index == -1:
-                    add_all = True
-                else:
-                    bins.append(f"bin_{bin_index}")
-        if add_all:
-            bins.append(f"bin_all")
+            bins = unique_bins[unique_bins != -1] #do not include the "unselected" bin
         return bins
 
     def get_extra_sub_config(self, bin):
