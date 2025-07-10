@@ -5,7 +5,10 @@ from .data_types import MapsFile
 
 class TXBaseMask(PipelineStage):
     """
-    Base-class for making masks using auxiliary maps as inputs
+    Base class for generating binary survey masks using auxiliary input maps.
+    Subclasses should implement `make_binary_mask`, which defines the logic for mask construction.
+
+    The base class handles writing the mask to output and computing metadata such as area and f_sky.
     """
     name = "TXBaseMask"
     parallel = False
@@ -13,7 +16,10 @@ class TXBaseMask(PipelineStage):
     outputs = [("mask", MapsFile)]
 
     def run(self):
-
+        """
+        Run the pipeline stage: generate a binary mask, finalize it,
+        and write to output.
+        """
         mask, pixel_scheme, metadata = self.make_binary_mask()
         pix, mask, metadata = self.finalize_mask(mask, pixel_scheme, metadata)
 
@@ -22,6 +28,28 @@ class TXBaseMask(PipelineStage):
             f.write_map("mask", pix, mask, metadata)
 
     def finalize_mask(self, mask, pixel_scheme, metadata):
+        """
+        Finalize the binary mask by flattening, cleaning NaNs/negatives,
+        and extracting unmasked pixel indices. Computes area and f_sky.
+
+        Parameters
+        ----------
+        mask : np.ndarray
+            Raw binary mask array.
+        pixel_scheme : PixelScheme
+            Pixelization scheme used for area calculations.
+        metadata : dict
+            Metadata dictionary to update with area and f_sky.
+
+        Returns
+        -------
+        pix : np.ndarray
+            Indices of unmasked pixels.
+        mask : np.ndarray
+            Final mask values corresponding to `pix`.
+        metadata : dict
+            Updated metadata.
+        """
 
         # Total survey area calculation. This is simplistic:
         # TODO: account for weights / hit fractions here, and allow
@@ -49,6 +77,16 @@ class TXBaseMask(PipelineStage):
     def compute_fracdet_from_hsp(self, metadata):
         """
         Computes detection fraction from an input healsparse map (higher resolution, binary)
+        
+        Parameters
+        ----------
+        metadata : dict
+            Metadata with target resolution (e.g. 'nside').
+
+        Returns
+        -------
+        fracdet : np.ndarray
+            Fractional detection array at the config nside.
         """
         import healsparse 
 
@@ -64,8 +102,7 @@ class TXBaseMask(PipelineStage):
 
 class TXSimpleMask(TXBaseMask):
     """
-    Make a simple binary mask using a depth cut and bright object cut
-
+    Generate a simple binary mask using cuts on depth and bright object maps.
     """
     name = "TXSimpleMask"
     inputs = [("aux_lens_maps", MapsFile)]
@@ -75,6 +112,18 @@ class TXSimpleMask(TXBaseMask):
     }
     
     def make_binary_mask(self):
+        """
+        Create a binary mask by applying cuts to depth and bright object count maps.
+
+        Returns
+        -------
+        mask : np.ndarray
+            Boolean mask array.
+        pixel_scheme : PixelScheme
+            Pixelization object.
+        metadata : dict
+            Metadata from input file.
+        """
         import healpy
 
         with self.open_input("aux_lens_maps", wrapper=True) as f:
@@ -98,6 +147,10 @@ class TXSimpleMask(TXBaseMask):
         return mask, pixel_scheme, metadata
 
 class TXSimpleMaskSource(TXBaseMask):
+    """
+    Generate a binary mask for source galaxies using positive lensing weights
+    across source bins.
+    """
     name = "TXSimpleMaskSource"
     # make a mask from the source maps
     inputs = [("source_maps", MapsFile)]
@@ -105,6 +158,18 @@ class TXSimpleMaskSource(TXBaseMask):
     }
 
     def make_binary_mask(self):
+        """
+        Mask all pixels where lensing weights are zero for any source bin.
+
+        Returns
+        -------
+        mask : np.ndarray
+            Boolean mask array.
+        pixel_scheme : PixelScheme
+            Pixelization object.
+        metadata : dict
+            Metadata from input file.
+        """
         lensing_weights = []
         with self.open_input("source_maps", wrapper=True) as f:
             metadata = dict(f.file["maps"].attrs)
@@ -139,8 +204,12 @@ class TXSimpleMaskFrac(TXSimpleMask):
     }
 
     def run(self):
+        """
+        Apply mask logic and replace selected pixels with fractional coverage values.
+        """
 
-        pix, mask, metadata = self.compute_binary_mask()
+        mask, pixel_scheme, metadata = self.make_binary_mask()
+        pix, mask, metadata = self.finalize_mask(mask, pixel_scheme, metadata)
 
         fracdet = self.compute_fracdet_from_hsp(metadata)
 
@@ -176,8 +245,12 @@ class TXCustomMask(TXSimpleMaskFrac):
     }
 
     def run(self):
+        """
+        Apply custom mask logic, assign fracdet values, and optionally degrade resolution.
+        """
 
-        pix, mask, metadata = self.compute_binary_mask()
+        mask, pixel_scheme, metadata = self.make_binary_mask()
+        pix, mask, metadata = self.finalize_mask(mask, pixel_scheme, metadata)
 
         fracdet = self.get_fracdet()
 
@@ -197,6 +270,18 @@ class TXCustomMask(TXSimpleMaskFrac):
             f.write_map("mask", pix, mask, metadata)
 
     def make_binary_mask(self):
+        """
+        Create a binary mask from arbitrary user-defined cuts on auxiliary maps.
+
+        Returns
+        -------
+        mask : np.ndarray
+            Boolean mask array.
+        pixel_scheme : PixelScheme
+            Pixelization object.
+        metadata : dict
+            Metadata from input.
+        """
         import healpy
         import re
 
@@ -235,14 +320,42 @@ class TXCustomMask(TXSimpleMaskFrac):
 
         return mask, pixel_scheme, metadata
 
-    def get_fracdet(self, ):
+    def get_fracdet(self):
+        """
+        Load fractional detection map from auxiliary maps input.
+
+        Returns
+        -------
+        fracdet : np.ndarray
+            Fracdet array.
+        """
         with self.open_input("aux_lens_maps", wrapper=True) as f:
             fracdet = f.read_map(self.config["fracdet_name"])
         return fracdet
     
     def degrade(self, pix, mask, metadata_in, nside_out):
         """
-        Degrades a fracdet map to a low res fracdet map using healsparse 
+        Degrade a high-resolution fractional mask to lower resolution using healsparse
+
+        Parameters
+        ----------
+        pix : np.ndarray
+            Input pixel indices.
+        mask : np.ndarray
+            Input mask values.
+        metadata_in : dict
+            Input metadata.
+        nside_out : int
+            Desired lower-resolution nside.
+
+        Returns
+        -------
+        pix_out : np.ndarray
+            Output pixel indices at lower resolution.
+        mask_out : np.ndarray
+            Degraded mask values.
+        metadata_out : dict
+            Updated metadata.
         """
         import healsparse as hsp
         import healpy as hp 
