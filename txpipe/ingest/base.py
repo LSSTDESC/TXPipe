@@ -19,7 +19,7 @@ class TXIngestCatalogBase(PipelineStage):
 
         column_names : dict
             dict of column names to include in the output file.
-            dict keys and items should be <column name in input file>:<desired column name in output file>
+            Keys are output column names, and values are input column names.
 
         dtypes : dict
             A dictionary mapping the input catalog column names to their corresponding data types.
@@ -32,12 +32,11 @@ class TXIngestCatalogBase(PipelineStage):
         tuple
             A tuple containing the open HDF5 output file object and the "photometry" group.
         """
-        cols = list(column_names.keys())
         output = self.open_output(output_name)
         g = output.create_group("photometry")
-        for col in cols:
-            dtype = dtypes[column_names[col]]
-            g.create_dataset(col, (n,), dtype=dtype)
+        for new_col, old_col in column_names.items():
+            dtype = dtypes[old_col]
+            g.create_dataset(new_col, (n,), dtype=dtype)
         
         return output, g
 
@@ -76,8 +75,8 @@ class TXIngestCatalogBase(PipelineStage):
 
         # Set up any dummy columns with sentinal values
         # that were not in the original files
-        for col_name in dummy_columns.keys():
-            g.create_dataset(col_name, data=np.full(n, dummy_columns[col_name]))
+        for col_name, dummy_val in dummy_columns.keys():
+            g.create_dataset(col_name, data=np.full(n, dummy_val))
 
         output.close()
 
@@ -90,13 +89,20 @@ class TXIngestCatalogFits(TXIngestCatalogBase):
     
     def get_meta(self, input_name, ):
         """
-        Get some basic info about the input file
+        Get some basic info about the input FITS file.
 
-        returns:
-            n (int):
-                number of rows in input data
-            dtypes
-                data types for each input column
+        Parameters
+        ----------
+        input_name : str
+            The path to the input FITS file.
+
+        Returns
+        -------
+        n : int
+            Number of rows in the input data table.
+
+        dtypes : numpy.dtype
+            Numpy dtype object describing the data types of each column in the input.
         """
         f = self.open_input(input_name)
         n = f[1].get_nrows()
@@ -186,6 +192,7 @@ class TXIngestCatalogH5(TXIngestCatalogBase):
 
         column_names : dict
             Dict of column names to read from the input file.
+            Keys are output column names, and values are input column names.
 
         chunk_rows : int
             Number of rows to process in each chunk.
