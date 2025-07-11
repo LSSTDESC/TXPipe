@@ -1,6 +1,6 @@
 from ..base_stage import PipelineStage
 from ..data_types import ShearCatalog, PhotometryCatalog, HDFFile
-from ..utils import nanojansky_err_to_mag_ab, nanojansky_to_mag_ab, moments_to_shear, mag_ab_to_nanojansky
+from .lsst import process_photometry_data, process_shear_data
 import numpy as np
 
 class TXIngestDataPreview1(PipelineStage):
@@ -20,9 +20,15 @@ class TXIngestDataPreview1(PipelineStage):
 
     def run(self):
         from lsst.daf.butler import Butler
+
+        # Configure and create the butler. There seem to be several ways
+        # to do this, and there is a central collective butler yaml file
+        # on NERSC
         butler_config_file = self.config["butler_config_file"]
         butler = Butler(butler_config_file, collections="LSSTComCam/DP1")
+
         self.ingest_photometry(butler)
+        self.ingest_visits(butler)
 
 
     def ingest_photometry(self, butler):
@@ -80,8 +86,8 @@ class TXIngestDataPreview1(PipelineStage):
             # This renames columns, and does some selection and
             # processing like fluxes to magnitudes and shear moments
             # to shear components.
-            photo_data = self.process_photometry_data(d)
-            shear_data = self.process_shear_data(d)
+            photo_data = process_photometry_data(d)
+            shear_data = process_shear_data(d)
 
             # If this is the first chunk, we need to create the output files.
             # We only create these here so that if we change the process_photometry_data
@@ -130,14 +136,24 @@ class TXIngestDataPreview1(PipelineStage):
         repack(self.get_output("shear_catalog"))
 
     def ingest_visits(self, butler):
-        pass
 
+        # There aren't that many columns, we can just dump the whole thing
+        with self.open_output("exposures") as f:
+            d1 = butler.get("visit_table")
+            g = f.create_group("visits")
+            for col in d1.columns:
+                g.create_dataset(col, data=d1[col])
+
+            # Let's also save the detector visits table as we can use
+            # if for null tests on chip center tangential shear.
+            g = f.create_group("detector_visits")
+            d2 = butler.get("visit_detector_table")
+            for col in d2.columns:
+                g.create_dataset(col, data=d2[col])
 
 
 
     def setup_output(self, tag, group, first_chunk, n):
-        import h5py
-
         f = self.open_output(tag)
         g = f.create_group(group)
 
@@ -149,76 +165,6 @@ class TXIngestDataPreview1(PipelineStage):
         g = outfile[group]
         for name, col in data.items():
             g[name][start:end] = col
-
-    def process_photometry_data(self, data):
-        cut = data['refExtendedness'] == 1
-        cols = {
-            'ra': 'coord_ra',
-            'dec': 'coord_dec',
-            'tract': 'tract',
-            'id': 'objectId',
-            'extendedness': 'refExtendedness'
-        }
-        output = {new_name: data[old_name][cut] for new_name, old_name in cols.items()}
-        for band in "ugrizy":
-            f = data[f"{band}_cModelFlux"][cut]
-            f_err = data[f"{band}_cModelFluxErr"][cut]
-            output[f'mag_{band}'] = nanojansky_to_mag_ab(f)
-            output[f'mag_err_{band}'] = nanojansky_err_to_mag_ab(f, f_err)
-            output[f'snr_{band}'] = f / f_err
-
-            # for undetected objects we use a mock mag of 30
-            # to choose mag errors
-            f_mock = mag_ab_to_nanojansky(30.0)
-            undetected = f <= 0
-            output[f'mag_{band}'][undetected] = np.inf
-            output[f'mag_err_{band}'][undetected] = nanojansky_err_to_mag_ab(f_mock, f_err[undetected])
-            output[f'snr_{band}'][undetected] = 0.0
-        return output
-
-    def process_shear_data(self, data):
-        cut = data['refExtendedness'] == 1
-        cols = {
-            'ra': 'coord_ra',
-            'dec': 'coord_dec',
-            'tract': 'tract',
-            'id': 'objectId',
-            'extendedness': 'refExtendedness'
-        }
-        output = {new_name: data[old_name][cut] for new_name, old_name in cols.items()}
-        for band in "ugrizy":
-            f = data[f"{band}_cModelFlux"][cut]
-            f_err = data[f"{band}_cModelFluxErr"][cut]
-            output[f'mag_{band}'] = nanojansky_to_mag_ab(f)
-            output[f'mag_err_{band}'] = nanojansky_err_to_mag_ab(f, f_err)
-
-            if band == "i":
-                output['s2n'] = f / f_err
-        
-        output["g1"] = data['i_hsmShapeRegauss_e1'][cut]
-        output["g2"] = data['i_hsmShapeRegauss_e2'][cut]
-        output["T"] = data['i_ixx'][cut] + data['i_iyy'][cut]
-        output["flags"] = data["i_hsmShapeRegauss_flag"][cut]
-
-
-        # Fake numbers! These need to be derived from simulation.
-        # In this case 
-        # output["m"] = np.repeat(0.0, f.size)
-        # output["c1"] = np.repeat(-2.316957e-04, f.size)
-        # output["c2"] = np.repeat(-8.629799e-05, f.size)
-        # output["sigma_e"] = np.repeat(1.342084e-01, f.size)
-        output["weight"] = np.ones_like(f)
-
-        # PSF components
-        output["psf_T_mean"] = data['i_ixxPSF'][cut] + data['i_iyyPSF'][cut]
-        psf_g1, psf_g2 = moments_to_shear(data['i_ixxPSF'][cut], data['i_iyyPSF'][cut], data['i_ixyPSF'][cut])
-        output["psf_g1"] = psf_g1
-        output["psf_g2"] = psf_g2
-
-            
-            
-        return output
-
 
 
 
