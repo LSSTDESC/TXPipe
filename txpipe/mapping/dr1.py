@@ -1,6 +1,5 @@
 import numpy as np
 from ..utils import import_dask
-from parallel_statistics import ParallelMeanVariance
 
 def make_dask_bright_object_map(ra, dec, mag, extended, threshold, pixel_scheme):
     """
