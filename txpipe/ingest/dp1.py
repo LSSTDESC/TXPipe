@@ -142,14 +142,21 @@ class TXIngestDataPreview1(PipelineStage):
             d1 = butler.get("visit_table")
             g = f.create_group("visits")
             for col in d1.columns:
-                g.create_dataset(col, data=d1[col])
+                data = d1[col]
+                # convert unicode to strings
+                if data.dtype.kind == "U":
+                    data = data.astype("S")
+                g.create_dataset(col, data=data)
 
             # Let's also save the detector visits table as we can use
             # if for null tests on chip center tangential shear.
             g = f.create_group("detector_visits")
             d2 = butler.get("visit_detector_table")
             for col in d2.columns:
-                g.create_dataset(col, data=d2[col])
+                data = d2[col]
+                if data.dtype.kind == "U":
+                    data = data.astype("S")
+                g.create_dataset(col, data=data)
 
 
 
