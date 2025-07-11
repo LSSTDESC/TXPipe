@@ -142,10 +142,7 @@ class TXIngestDataPreview1(PipelineStage):
             d1 = butler.get("visit_table")
             g = f.create_group("visits")
             for col in d1.columns:
-                data = d1[col]
-                # convert unicode to strings
-                if data.dtype.kind == "U":
-                    data = data.astype("S")
+                data = sanitize(d1[col])
                 g.create_dataset(col, data=data)
 
             # Let's also save the detector visits table as we can use
@@ -153,9 +150,7 @@ class TXIngestDataPreview1(PipelineStage):
             g = f.create_group("detector_visits")
             d2 = butler.get("visit_detector_table")
             for col in d2.columns:
-                data = d2[col]
-                if data.dtype.kind == "U":
-                    data = data.astype("S")
+                data = sanitize(d2[col])
                 g.create_dataset(col, data=data)
 
 
@@ -185,3 +180,17 @@ class TXIngestDataPreview1(PipelineStage):
             with pyarrow.parquet.ParquetFile(uri.path) as f:
                 n += f.metadata.num_rows
         return n
+
+
+def sanitize(data):
+    """
+    Convert unicode arrays into types that h5py can save
+    """
+    # convert unicode to strings
+    if data.dtype.kind == "U":
+        data = data.astype("S")
+    # convert dates to integers
+    elif data.dtype.kind == "M":
+        data = data.astype(int)
+
+    return data
