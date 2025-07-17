@@ -39,7 +39,7 @@ chmod +x Mambaforge3.sh
 source ./conda/bin/activate
 
 # Install everything
-mamba env update --file environment.yml
+mamba env update --yes --file bin/environment-local.yml
 
 # We do this to get around a bug in the healpy installation
 # where it installs its own copy of libomp instead of using

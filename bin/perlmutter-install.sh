@@ -7,8 +7,8 @@ ENV_PATH=./conda
 module load python
 module load mpich/4.2.2
 
-conda env  create --yes -p ${ENV_PATH} python=3.10
-
+mamba env  create --yes -f bin/environment-perlmutter.yml -p ${ENV_PATH} python=3.10
+mamba activate ./conda
 
 # we manually install firecrown as we have to remove numcosmo to avoid clashes
 FIRECROWN_DIR=firecrown-tmp-${RANDOM}
