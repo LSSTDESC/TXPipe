@@ -39,9 +39,11 @@ from .spatial_diagnostics import TXFocalPlanePlot
 from .lssweights import TXLSSWeights
 from .simulation import TXLogNormalGlass
 from .magnification import TXSSIMagnification
+from .extensions.twopoint_cluster import TXTwoPointCluster
 
 # Here are the stages that mostly will be used for other projects
 # such as the self-calibration of Intrinsic alignment.
 from .extensions.twopoint_scia import TXSelfCalibrationIA
-from .extensions.clmm import CLClusterShearCatalogs, CLClusterBinningRedshiftRichness
+from .extensions.cluster_counts import CLClusterShearCatalogs, CLClusterBinningRedshiftRichness
+from .extensions.hos.fsb import HOSFSB
 from .covariance_nmt import TXFourierNamasterCovariance, TXRealNamasterCovariance

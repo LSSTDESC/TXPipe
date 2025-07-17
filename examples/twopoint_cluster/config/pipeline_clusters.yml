@@ -1,0 +1,22 @@
+config: examples/twopoint_cluster/config/config_clusters.yml
+inputs:
+  cluster_data_catalog: examples/twopoint_cluster/catalogs/data_tomographic.hdf5
+  cluster_random_catalog: examples/twopoint_cluster/catalogs/random_tomographic.hdf5
+  fiducial_cosmology: examples/twopoint_cluster/config/fiducial_cosmology.yml
+launcher:
+  interval: 1.0
+  name: mini
+log_dir: examples/twopoint_cluster/
+modules: txpipe rail.creation.degraders.grid_selection rail.creation.engines.flowEngine
+  rail.estimation.algos.nz_dir rail.estimation.algos.bpz_lite
+output_dir: examples/twopoint_cluster/outputs/test/
+pipeline_log: examples/twopoint_cluster/log.txt
+python_paths:
+- submodules/WLMassMap/python/desc/
+resume: true
+site:
+  max_threads: 2
+  name: local
+stages:
+- name: TXTwoPointCluster
+  outputs: test_out_name

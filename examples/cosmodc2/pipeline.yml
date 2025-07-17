@@ -6,33 +6,85 @@ site:
     name: nersc-interactive
 
 
-modules: txpipe
+modules: >
+    txpipe
+    rail.creation.degraders.grid_selection
+    rail.creation.engines.flowEngine
+    rail.estimation.algos.nz_dir
+    rail.estimation.algos.bpz_lite
 
 python_paths:
   - submodules/WLMassMap/python/desc/
 
 stages:
-  - name: TXRandomCat
-    nprocess: 16
+  # Simulating spectroscopic sample
+  - name: FlowCreator
+    aliases:
+        output: ideal_specz_catalog
+        model: flow
+  - name: GridSelection
+    aliases:
+        input: ideal_specz_catalog
+        output: specz_catalog_pq
+  - name: TXParqetToHDF
+    aliases:
+        input: specz_catalog_pq
+        output: spectroscopic_catalog
   - name: TXSourceSelectorMetacal
     nprocess: 32
+  - name: TXShearCalibration
+    nprocess: 32
+  - name: PZPrepareEstimatorLens     # Prepare the p(z) estimator
+    classname: BPZliteInformer
+    aliases:
+        input: spectroscopic_catalog
+        model: lens_photoz_model
+
+  - name: PZEstimatorLens
+    classname: BPZliteEstimator
+    nprocess: 32
+    aliases:
+        model: lens_photoz_model
+        input: photometry_catalog
+        output: lens_photoz_pdfs
+
+  - name: NZDirInformerLens         # Prepare the DIR method inputs for the lens sample     
+    classname: NZDirInformer
+    aliases:
+        input: spectroscopic_catalog
+        model: lens_direct_calibration_model
+
+  - name: PZRailSummarizeLens      # Run the DIR method on the lens sample to find n(z)
+    classname: PZRailSummarize
+    aliases:
+        tomography_catalog: lens_tomography_catalog
+        binned_catalog: binned_lens_catalog
+        model: lens_direct_calibration_model
+        photoz_stack: lens_photoz_stack
+        photoz_realizations: lens_photoz_realizations
+
+
+  - name: NZDirInformerSource       # Prepare the DIR method inputs for the source sample
+    classname: NZDirInformer
+    aliases:
+        input: spectroscopic_catalog
+        model: source_direct_calibration_model
+
+  - name: PZRailSummarizeSource    # Run the DIR method on the lens sample to find n(z)
+    classname: PZRailSummarize
+    aliases:
+        tomography_catalog: shear_tomography_catalog
+        binned_catalog: binned_shear_catalog
+        model: source_direct_calibration_model
+        photoz_stack: shear_photoz_stack
+        photoz_realizations: source_photoz_realizations
+
+
+  - name: TXRandomCat
+    nprocess: 16
   - name: TXLSSWeightsUnit
   - name: TXRandomForestLensSelector
     nprocess: 32
-  - name: TXLensTrueNumberDensity
-    classname: TXTruePhotozStack
-    aliases:
-        tomography_catalog: lens_tomography_catalog
-        catalog: photometry_catalog
-        weights_catalog: none
-        photoz_stack: lens_photoz_stack
-  - name: TXSourceTrueNumberDensity
-    classname: TXTruePhotozStack
-    aliases:
-        tomography_catalog: shear_tomography_catalog
-        catalog: shear_catalog
-        weights_catalog: shear_catalog
-        photoz_stack: shear_photoz_stack
   - name: TXPhotozPlotSource
     classname: TXPhotozPlot
     aliases:
@@ -43,9 +95,7 @@ stages:
     aliases:
         photoz_stack: lens_photoz_stack
         nz_plot: lens_nz
-  - name: TXShearCalibration
-    nprocess: 32
-  - name: TXTruthLensCatalogSplitter
+  - name: TXLensCatalogSplitter
     nprocess: 32
   - name: TXTwoPointFourier
     nprocess: 8
@@ -112,6 +162,7 @@ inputs:
     fiducial_cosmology: data/fiducial_cosmology.yml
     calibration_table: /global/cfs/cdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/sample_cosmodc2_w10year_errors.dat
     none: none
+    flow: data/example/inputs/example_flow.pkl
 
 resume: true
 log_dir: data/cosmodc2/logs

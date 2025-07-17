@@ -19,7 +19,18 @@ These stages compute covariances of measurements
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - fiducial_cosmology: FiducialCosmology
+    - twopoint_data_fourier: SACCFile
+    - tracer_metadata: HDFFile
+
+    Outputs: 
+
+    - summary_statistics_fourier: SACCFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -38,7 +49,18 @@ These stages compute covariances of measurements
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - fiducial_cosmology: FiducialCosmology
+    - twopoint_data_real: SACCFile
+    - tracer_metadata: HDFFile
+
+    Outputs: 
+
+    - summary_statistics_real: SACCFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -60,7 +82,21 @@ These stages compute covariances of measurements
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - fiducial_cosmology: FiducialCosmology
+    - twopoint_data_fourier: SACCFile
+    - tracer_metadata_yml: YamlFile
+    - mask: MapsFile
+    - density_maps: MapsFile
+    - source_maps: MapsFile
+
+    Outputs: 
+
+    - summary_statistics_fourier: SACCFile
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -79,7 +115,19 @@ These stages compute covariances of measurements
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - fiducial_cosmology: FiducialCosmology
+    - twopoint_data_fourier: SACCFile
+    - tracer_metadata: HDFFile
+    - mask: MapsFile
+
+    Outputs: 
+
+    - summary_statistics_fourier: SACCFile
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -98,7 +146,19 @@ These stages compute covariances of measurements
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - fiducial_cosmology: FiducialCosmology
+    - twopoint_data_real: SACCFile
+    - tracer_metadata: HDFFile
+    - mask: MapsFile
+
+    Outputs: 
+
+    - summary_statistics_real: SACCFile
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
