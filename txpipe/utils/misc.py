@@ -6,7 +6,12 @@ import numpy as np
 def array_hash(x):
     b = x.tobytes()
     # We do not need a cryptographic hash here
-    return int(hashlib.md5(b).hexdigest(), 16)
+    h = int(hashlib.md5(b).hexdigest(), 16)
+    # if h is bigger than 2**63, we need to take the last
+    # 63 bits, otherwise we can just return it
+    if h > 2**63:
+        h = h & ((1 << 63) - 1)
+    return h
 
 
 def unique_list(seq):
