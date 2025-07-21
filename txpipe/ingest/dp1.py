@@ -111,7 +111,7 @@ class TXIngestDataPreview1(PipelineStage):
             photo_start = photo_end
             shear_start = shear_end
 
-        print("Final selected objects: {photo_end:,} in photometry and {shear_end:,} in shear")
+        print(f"Final selected objects: {photo_end:,} in photometry and {shear_end:,} in shear")
 
         # When we created the files we used the maximum possible length
         # for the column sizes (which is what we would get if there were
@@ -166,8 +166,10 @@ class TXIngestDataPreview1(PipelineStage):
     def write_output(self, outfile, group, data, start, end):
         g = outfile[group]
         for name, col in data.items():
+            # replace masked values with nans
+            if np.ma.isMaskedArray(col):
+                col = col.filled(np.nan)
             g[name][start:end] = col
-
 
 
     def get_catalog_size(self, butler, dataset_type):
