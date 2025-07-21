@@ -3,6 +3,36 @@ from ..data_types import ShearCatalog, PhotometryCatalog, HDFFile
 from .lsst import process_photometry_data, process_shear_data
 import numpy as np
 
+
+
+# From https://rtn-095.lsst.io/
+# The three main fields we want for cosmology are
+# the ones in the wide-fast-deep region, excluding
+# the globular cluster field and nebula field. That leaves:
+#   Euclid Deep Field South
+#   Extended Chandra Deep Field South
+#   Low Galactic Latitude Field aka Rubin_SV_095_-25
+
+# The tract values are listed in table 2 of that paper:
+DP1_COSMOLOGY_TRACTS = [
+    5062, 5063, 5064, 4848, 4849,
+    2393, 2234, 2235, 2394,
+    5305, 5306, 5525, 5526,
+]
+
+# In case useful later:
+DP1_FIELD_CENTERS = {
+    "47 Tuc Globular Cluster": (6.02, -72.08),
+    "Low Ecliptic Latitude Field": (37.86, 6.98),
+    "Fornax Dwarf Spheroidal Galaxy": (40.00, -34.45),
+    "Extended Chandra Deep Field South": (53.13, -28.10),
+    "Euclid Deep Field South": (59.10, -48.73),
+    "Low Galactic Latitude Field": (95.00, -25.00),
+    "Seagull Nebula": (106.23, -10.51),
+}
+
+
+
 class TXIngestDataPreview1(PipelineStage):
     """
     Ingest galaxy catalogs from DP1
@@ -16,6 +46,7 @@ class TXIngestDataPreview1(PipelineStage):
     ]
     config_options = {
         "butler_config_file": "/global/cfs/cdirs/lsst/production/gen3/rubin/DP1/repo/butler.yaml",
+        "cosmology_tracts_only": True,
     }
 
     def run(self):
@@ -76,7 +107,12 @@ class TXIngestDataPreview1(PipelineStage):
         shear_start = 0
         data_set_refs = butler.query_datasets("object")
         n_chunks = len(data_set_refs)
+        cosmo_tracts_only = self.config["cosmology_tracts_only"]
         for i, ref in enumerate(data_set_refs):
+
+            if cosmo_tracts_only and (ref.dataId.tract not in DP1_COSMOLOGY_TRACTS):
+                continue
+
             d = butler.get("object", dataId=ref.dataId, parameters={'columns': columns})
             chunk_size = len(d)
 
