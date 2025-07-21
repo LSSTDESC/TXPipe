@@ -15,7 +15,7 @@ class TXIngestDataPreview1(PipelineStage):
         ("exposures", HDFFile),
     ]
     config_options = {
-        "butler_config_file": "/global/cfs/cdirs/lsst/production/gen3/rubin/dp1/repo/butler.yaml",
+        "butler_config_file": "/global/cfs/cdirs/lsst/production/gen3/rubin/DP1/repo/butler.yaml",
     }
 
     def run(self):
@@ -99,7 +99,7 @@ class TXIngestDataPreview1(PipelineStage):
                 # We don't have a good shear catalog yet, so all our shears are going to be
                 # uncalibrated. So let's not even try to calibrate them, and instead just 
                 # pretend they are precalibrated.
-                shear_outfile["shear"].attrs["catalog_type"] = "precalibrated"
+                shear_outfile["shear"].attrs["catalog_type"] = "simple"
 
             # Output these chunks to the output files
             photo_end = photo_start + len(photo_data['ra'])
