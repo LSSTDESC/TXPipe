@@ -25,6 +25,12 @@ def process_photometry_data(data):
         output[f'mag_{band}'][undetected] = np.inf
         output[f'mag_err_{band}'][undetected] = nanojansky_err_to_mag_ab(f_mock, f_err[undetected])
         output[f'snr_{band}'][undetected] = 0.0
+
+        # mask out object that have nan errors, we have
+        # no way of dealing with these
+        err_is_nan = np.isnan(output[f'mag_err_{band}'])
+        output[f'mag_{band}'][err_is_nan] = np.nan
+
     return output
 
 def process_shear_data(data):
@@ -40,24 +46,8 @@ def process_shear_data(data):
     for band in "ugrizy":
         f = data[f"{band}_cModelFlux"][cut]
         f_err = data[f"{band}_cModelFluxErr"][cut]
-
-        mag = nanojansky_to_mag_ab(f)
-        mag_err = nanojansky_err_to_mag_ab(f, f_err)
-
-        w = np.where(mag > 35)
-        mag[w] = np.inf
-        
-        # If the error is nan we can't use the magnitude
-        # reasonably. This has happened where the flux is tiny
-        # in a few cases, I guess some kind of overflow.
-        w = np.where(np.isnan(mag_err))
-        mag[w] = np.nan
-        mag_err[w] = np.nan
-
-
-        output[f'mag_{band}'] = mag
-        output[f'mag_err_{band}'] = mag_err
-
+        output[f'mag_{band}'] = nanojansky_to_mag_ab(f)
+        output[f'mag_err_{band}'] = nanojansky_err_to_mag_ab(f, f_err)
 
         if band == "i":
             output['s2n'] = f / f_err
