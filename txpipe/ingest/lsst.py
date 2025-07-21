@@ -41,14 +41,22 @@ def process_shear_data(data):
         f = data[f"{band}_cModelFlux"][cut]
         f_err = data[f"{band}_cModelFluxErr"][cut]
 
-        # The data seems to have some rows where the flux is
-        # tiny but unmasked, and the error has overflowed to nan
-        # and is masked. We mask these out.
-        bad = (~f.mask) & (f_err.mask)
-        f[bad] = np.ma.masked
+        mag = nanojansky_to_mag_ab(f)
+        mag_err = nanojansky_err_to_mag_ab(f, f_err)
 
-        output[f'mag_{band}'] = nanojansky_to_mag_ab(f)
-        output[f'mag_err_{band}'] = nanojansky_err_to_mag_ab(f, f_err)
+        w = np.where(mag > 35)
+        mag[w] = np.inf
+        
+        # If the error is nan we can't use the magnitude
+        # reasonably. This has happened where the flux is tiny
+        # in a few cases, I guess some kind of overflow.
+        w = np.where(np.isnan(mag_err))
+        mag[w] = np.nan
+        mag_err[w] = np.nan
+
+
+        output[f'mag_{band}'] = mag
+        output[f'mag_err_{band}'] = mag_err
 
 
         if band == "i":
