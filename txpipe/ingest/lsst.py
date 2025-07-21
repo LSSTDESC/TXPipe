@@ -40,8 +40,16 @@ def process_shear_data(data):
     for band in "ugrizy":
         f = data[f"{band}_cModelFlux"][cut]
         f_err = data[f"{band}_cModelFluxErr"][cut]
+
+        # The data seems to have some rows where the flux is
+        # tiny but unmasked, and the error has overflowed to nan
+        # and is masked. We mask these out.
+        bad = (~f.mask) & (f_err.mask)
+        f[bad] = np.ma.masked
+
         output[f'mag_{band}'] = nanojansky_to_mag_ab(f)
         output[f'mag_err_{band}'] = nanojansky_err_to_mag_ab(f, f_err)
+
 
         if band == "i":
             output['s2n'] = f / f_err
