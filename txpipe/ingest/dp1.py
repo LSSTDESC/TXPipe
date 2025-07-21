@@ -110,7 +110,7 @@ class TXIngestDataPreview1(PipelineStage):
         cosmo_tracts_only = self.config["cosmology_tracts_only"]
         for i, ref in enumerate(data_set_refs):
 
-            if cosmo_tracts_only and (ref.dataId.tract not in DP1_COSMOLOGY_TRACTS):
+            if cosmo_tracts_only and (ref.dataId["tract"] not in DP1_COSMOLOGY_TRACTS):
                 continue
 
             d = butler.get("object", dataId=ref.dataId, parameters={'columns': columns})
