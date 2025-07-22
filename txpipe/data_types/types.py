@@ -254,6 +254,19 @@ class MapsFile(HDFFile):
         mask = self.read_map("mask")
         mask[mask <= thresh] = 0
         return mask
+    
+    def read_healsparse(self, map_name, return_all=True):
+        import healpy
+        import healsparse as hsp
+        import numpy as np
+        group = self.file[f"maps/{map_name}"]
+        nside = group.attrs["nside"]
+        m = hsp.HealSparseMap.make_empty(32, nside, dtype=type(group["value"][0]), sentinel=healpy.UNSEEN)
+        m.update_values_pix(group["pixel"][:], group["value"][:])
+        if return_all:
+            return m, nside
+        else:
+            return m
 
     def write_map(self, map_name, pixel, value, metadata):
         """
