@@ -106,7 +106,7 @@ class TXIngestDataPreview1(PipelineStage):
 
         if self.config["select_field"]:
             selected_tracts = DP1_TRACTS[self.config["select_field"]]
-        elif self.config["cosmo_tracts_only"]:
+        elif self.config["cosmology_tracts_only"]:
             selected_tracts = DP1_COSMOLOGY_TRACTS
         else:
             selected_tracts = ALL_TRACTS
