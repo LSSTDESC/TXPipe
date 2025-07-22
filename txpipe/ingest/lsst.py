@@ -31,7 +31,7 @@ def process_photometry_data(data):
         err_is_nan = np.isnan(output[f'mag_err_{band}'])
         output[f'mag_{band}'][err_is_nan] = np.nan
 
-    output["flags"] = output["deblend_skipped"] | data["deblend_failed"] | (output['extendedness'] != 1)
+    output["flags"] = data["deblend_skipped"][cut] | data["deblend_failed"][cut] | (output['extendedness'] != 1)
 
     return output
 
