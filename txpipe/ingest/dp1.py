@@ -29,7 +29,7 @@ DP1_TRACTS = {
     "ECDFS": [5062, 5063, 5064, 4848, 4849], 
 
     # Low Galactic Latitude Field / Rubin_SV_095_-25
-    "LGLF": [2393, 2234, 2235, 2394],
+    "LGLF": [5305, 5306, 5525, 5526],
 
     # Fornax Dwarf Spheroidal Galaxy
     "FDSG": [4016, 4217, 4218, 4017],
