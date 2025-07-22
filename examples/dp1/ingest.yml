@@ -25,8 +25,10 @@ stages:
   - name: TXIngestDataPreview1
 
 
-# Where to put outputs
-output_dir: data/dp1/outputs
+# Where to put outputs - this is not a mistake!
+# This pipeline ingests data to use as the inputs
+# for other pipelines
+output_dir: data/dp1/inputs
 
 # How to run the pipeline: mini, parsl, or cwl
 launcher:
@@ -43,17 +45,8 @@ modules: >
     txpipe
 
 python_paths: []
-
 config: examples/dp1/config.yml
-
-
-inputs:
-    none: none
-
-# if supported by the launcher, restart the pipeline where it left off
-# if interrupted
-resume: true
-# where to put output logs for individual stages
+inputs: {}
+resume: restart
 log_dir: data/dp1/logs
-# where to put an overall parsl pipeline log
-pipeline_log: data/dp1/log.txt
+pipeline_log: data/dp1/ingest_log.txt
