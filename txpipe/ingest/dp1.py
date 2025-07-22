@@ -1,5 +1,5 @@
 from ..base_stage import PipelineStage
-from ..data_types import ShearCatalog, PhotometryCatalog, HDFFile
+from ..data_types import ShearCatalog, PhotometryCatalog, HDFFile, FileCollection
 from .lsst import process_photometry_data, process_shear_data
 import numpy as np
 
@@ -88,6 +88,7 @@ class TXIngestDataPreview1(PipelineStage):
         ("photometry_catalog", PhotometryCatalog),
         ("shear_catalog", ShearCatalog),
         ("exposures", HDFFile),
+        ("survey_property_maps", FileCollection),
     ]
     config_options = {
         "butler_config_file": "/global/cfs/cdirs/lsst/production/gen3/rubin/DP1/repo/butler.yaml",
@@ -114,6 +115,7 @@ class TXIngestDataPreview1(PipelineStage):
 
         self.ingest_photometry(butler, selected_tracts)
         self.ingest_visits(butler, selected_tracts)
+        self.ingest_survey_property_maps(butler, selected_tracts)
 
 
     def ingest_photometry(self, butler, tracts):
@@ -153,8 +155,10 @@ class TXIngestDataPreview1(PipelineStage):
             'z_cModelFlux',
             'z_cModelFluxErr',
             'z_cModel_flag',
-        ]
+            'deblend_skipped',
+            'deblend_failed',
 
+        ]
         n = self.get_catalog_size(butler, "object")
 
         created_files = False
@@ -228,6 +232,38 @@ class TXIngestDataPreview1(PipelineStage):
         print("Repacking files")
         repack(self.get_output("photometry_catalog"))
         repack(self.get_output("shear_catalog"))
+
+    def ingest_survey_property_maps(self, butler, selected_tracts):
+        import healpy
+        skymap = butler.get("skyMap")
+
+        map_types = butler.registry.queryDatasetTypes(expression="*consolidated_map*")
+
+        f: FileCollection = self.open_output("survey_property_maps", wrapper=True)
+        filenames = []
+
+        for map_type in map_types:
+            for band in "ugrizy":
+                # Read this map from the butler
+                m = butler.get(map_type, band=band)
+
+                # get the tract for each pixel
+                ra, dec = healpy.pix2ang(m.nside_sparse, m.valid_pixels, nest=True, lonlat=True)
+                tract = skymap.findTractIdArray(ra, dec, degrees=True)
+
+                # filter out pixels not in our selected traccts
+                select = np.isin(tract, selected_tracts)
+                pixels_to_remove = m.valid_pixels[~select]
+                m.update_values_pix(pixels_to_remove, None)
+
+                filename = f.path_for_file(map_type + "_" + band + ".fits")
+                m.write(filename, clobber=True)
+                filenames.append(filename)
+
+        f.write_listing(filenames)
+        f.close()
+
+
 
     def ingest_visits(self, butler, selected_tracts):
 

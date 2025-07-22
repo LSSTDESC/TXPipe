@@ -30,17 +30,13 @@ stages:
 # for other pipelines
 output_dir: data/dp1/inputs
 
-# How to run the pipeline: mini, parsl, or cwl
 launcher:
     name: mini
     interval: 1.0
 
-# Where to run the pipeline: cori-interactive, cori-batch, or local
 site:
     name: local
 
-# modules and packages to import that have pipeline
-# stages defined in them
 modules: >
     txpipe
 
