@@ -60,6 +60,23 @@ DP1_FIELD_CENTERS = {
 }
 
 
+DP1_SURVEY_PROPERTIES = {
+    "deepCoadd_exposure_time_consolidated_map_sum": "Total exposure time accumulated per sky position (second)",
+    "deepCoadd_epoch_consolidated_map_min": "Earliest observation epoch (MJD)",
+    "deepCoadd_epoch_consolidated_map_max":  "Latest observation epoch (MJD)",
+    "deepCoadd_epoch_consolidated_map_mean": "Mean observation epoch (MJD)",
+    "deepCoadd_psf_size_consolidated_map_weighted_mean": "Weighted mean of PSF characteristic width as computed from the determinant radius (pixel)",
+    "deepCoadd_psf_e1_consolidated_map_weighted_mean": "Weighted mean of PSF ellipticity component e1",
+    "deepCoadd_psf_e2_consolidated_map_weighted_mean": "Weighted mean of PSF ellipticity component e2",
+    "deepCoadd_psf_maglim_consolidated_map_weighted_mean": "Weighted mean of PSF flux 5σ magnitude limit (magAB)",
+    "deepCoadd_sky_background_consolidated_map_weighted_mean": "Weighted mean of background light level from the sky (nJy)",
+    "deepCoadd_sky_noise_consolidated_map_weighted_mean": "Weighted mean of standard deviation of the sky level (nJy)",
+    "deepCoadd_dcr_dra_consolidated_map_weighted_mean": "Weighted mean of DCR-induced astrometric shift in right ascension direction, expressed as a proportionality factor",
+    "deepCoadd_dcr_ddec_consolidated_map_weighted_mean": "Weighted mean of DCR-induced astrometric shift in declination direction, expressed as a proportionality factor",
+    "deepCoadd_dcr_e1_consolidated_map_weighted_mean": "Weighted mean of DCR-induced change in PSF ellipticity (e1), expressed as a proportionality factor",
+    "deepCoadd_dcr_e2_consolidated_map_weighted_mean": "Weighted mean of DCR-induced change in PSF ellipticity (e2), expressed as a proportionality factor",
+}
+
 
 class TXIngestDataPreview1(PipelineStage):
     """
@@ -150,12 +167,14 @@ class TXIngestDataPreview1(PipelineStage):
         for i, ref in enumerate(data_set_refs):
             tract = ref.dataId["tract"]
             if tract not in tracts:
+                print(f"Skipping chunk {i+1} / {n_chunks} since tract {tract} is not selected")
                 continue
 
             d = butler.get("object", dataId=ref.dataId, parameters={'columns': columns})
             chunk_size = len(d)
 
             if chunk_size == 0:
+                print(f"Skipping chunk {i+1} / {n_chunks} since it is empty")
                 continue
 
             # This renames columns, and does some selection and
