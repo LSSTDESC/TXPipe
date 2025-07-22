@@ -256,7 +256,7 @@ class TXIngestDataPreview1(PipelineStage):
                 pixels_to_remove = m.valid_pixels[~select]
                 m.update_values_pix(pixels_to_remove, None)
 
-                filename = f.path_for_file(map_type + "_" + band + ".fits")
+                filename = f.path_for_file(map_type.name + "_" + band + ".fits")
                 m.write(filename, clobber=True)
                 filenames.append(filename)
 
