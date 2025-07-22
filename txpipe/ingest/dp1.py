@@ -14,11 +14,39 @@ import numpy as np
 #   Low Galactic Latitude Field aka Rubin_SV_095_-25
 
 # The tract values are listed in table 2 of that paper:
-DP1_COSMOLOGY_TRACTS = [
-    5062, 5063, 5064, 4848, 4849,
-    2393, 2234, 2235, 2394,
-    5305, 5306, 5525, 5526,
+DP1_COSMOLOGY_FIELDS = [
+    "EDFS",
+    "ECDFS",
+    "LGLF",
 ]
+
+
+DP1_TRACTS = {
+    # Euclid Deep Field South
+    "EDFS": [2393, 2234, 2235, 2394],
+
+    # Extended Chandra Deep Field South
+    "ECDFS": [5062, 5063, 5064, 4848, 4849], 
+
+    # Low Galactic Latitude Field / Rubin_SV_095_-25
+    "LGLF": [2393, 2234, 2235, 2394],
+
+    # Fornax Dwarf Spheroidal Galaxy
+    "FDSG": [4016, 4217, 4218, 4017],
+
+    # Low Ecliptic Latitude Field / Rubin_SV_38_7
+    "LELF": [10464, 10221, 10222, 10704, 10705, 10463],
+
+    # Seagull Nebula
+    "Seagull": [7850, 7849, 7610, 7611],
+
+    # 47 Tuc Globular Cluster
+    "47Tuc": [531, 532, 453, 454],
+}
+
+DP1_COSMOLOGY_TRACTS = sum([DP1_TRACTS[_field] for _field in DP1_COSMOLOGY_FIELDS], [])
+ALL_TRACTS = sum(DP1_TRACTS.values(), [])
+
 
 # In case useful later:
 DP1_FIELD_CENTERS = {
@@ -47,6 +75,7 @@ class TXIngestDataPreview1(PipelineStage):
     config_options = {
         "butler_config_file": "/global/cfs/cdirs/lsst/production/gen3/rubin/DP1/repo/butler.yaml",
         "cosmology_tracts_only": True,
+        "select_field": "",  # If set, only select objects in this field. Overrides cosmology_tracts_only.
     }
 
     def run(self):
@@ -58,15 +87,24 @@ class TXIngestDataPreview1(PipelineStage):
         butler_config_file = self.config["butler_config_file"]
         butler = Butler(butler_config_file, collections="LSSTComCam/DP1")
 
-        self.ingest_photometry(butler)
-        self.ingest_visits(butler)
+        if self.config["select_field"]:
+            selected_tracts = DP1_TRACTS[self.config["select_field"]]
+        elif self.config["cosmo_tracts_only"]:
+            selected_tracts = DP1_COSMOLOGY_TRACTS
+        else:
+            selected_tracts = ALL_TRACTS
 
 
-    def ingest_photometry(self, butler):
+        self.ingest_photometry(butler, selected_tracts)
+        self.ingest_visits(butler, selected_tracts)
+
+
+    def ingest_photometry(self, butler, tracts):
         from ..utils.hdf_tools import h5py_shorten, repack
         columns = [
             'objectId',
             'tract',
+            'patch',
             'coord_dec',
             'coord_ra',
             'g_cModelFlux',
@@ -97,7 +135,7 @@ class TXIngestDataPreview1(PipelineStage):
             'y_cModel_flag',
             'z_cModelFlux',
             'z_cModelFluxErr',
-            'z_cModel_flag'
+            'z_cModel_flag',
         ]
 
         n = self.get_catalog_size(butler, "object")
@@ -107,10 +145,11 @@ class TXIngestDataPreview1(PipelineStage):
         shear_start = 0
         data_set_refs = butler.query_datasets("object")
         n_chunks = len(data_set_refs)
-        cosmo_tracts_only = self.config["cosmology_tracts_only"]
-        for i, ref in enumerate(data_set_refs):
 
-            if cosmo_tracts_only and (ref.dataId["tract"] not in DP1_COSMOLOGY_TRACTS):
+
+        for i, ref in enumerate(data_set_refs):
+            tract = ref.dataId["tract"]
+            if tract not in tracts:
                 continue
 
             d = butler.get("object", dataId=ref.dataId, parameters={'columns': columns})
@@ -171,11 +210,20 @@ class TXIngestDataPreview1(PipelineStage):
         repack(self.get_output("photometry_catalog"))
         repack(self.get_output("shear_catalog"))
 
-    def ingest_visits(self, butler):
+    def ingest_visits(self, butler, selected_tracts):
+
+        skymap = butler.get("skyMap")
 
         # There aren't that many columns, we can just dump the whole thing
         with self.open_output("exposures") as f:
             d1 = butler.get("visit_table")
+
+            # Filter the visits to only those in the selected tracts
+            ra = d1["ra"]
+            dec = d1["dec"]
+            tract = skymap.findTractIdArray(ra, dec, degrees=True)
+            d1 = d1[np.isin(tract, selected_tracts)]
+
             g = f.create_group("visits")
             for col in d1.columns:
                 data = sanitize(d1[col])
@@ -185,6 +233,12 @@ class TXIngestDataPreview1(PipelineStage):
             # if for null tests on chip center tangential shear.
             g = f.create_group("detector_visits")
             d2 = butler.get("visit_detector_table")
+
+            # Also cut down to the selected tracts
+            ra = d2["ra"]
+            dec = d2["dec"]
+            tract = skymap.findTractIdArray(ra, dec, degrees=True)
+            d2 = d2[np.isin(tract, selected_tracts)]
             for col in d2.columns:
                 data = sanitize(d2[col])
                 g.create_dataset(col, data=data)

@@ -1,0 +1,59 @@
+stages:
+  # Ingest the three fields separately
+  - name: IngestEDFS
+    classname: TXIngestDataPreview1
+    aliases:
+        photometry_catalog: photometry_catalog_edfs
+        shear_catalog: shear_catalog_edfs
+        exposures: exposures_edfs
+
+  - name: IngestECDFS
+    classname: TXIngestDataPreview1
+    aliases:
+        photometry_catalog: photometry_catalog_ecdfs
+        shear_catalog: shear_catalog_ecdfs
+        exposures: exposures_ecdfs
+
+  - name: IngestLGLF
+    classname: TXIngestDataPreview1
+    aliases:
+        photometry_catalog: photometry_catalog_lglf
+        shear_catalog: shear_catalog_lglf
+        exposures: exposures_lglf
+
+  # And also make a combined ingested catalog
+  - name: TXIngestDataPreview1
+
+
+# Where to put outputs
+output_dir: data/dp1/outputs
+
+# How to run the pipeline: mini, parsl, or cwl
+launcher:
+    name: mini
+    interval: 1.0
+
+# Where to run the pipeline: cori-interactive, cori-batch, or local
+site:
+    name: local
+
+# modules and packages to import that have pipeline
+# stages defined in them
+modules: >
+    txpipe
+
+python_paths: []
+
+config: examples/dp1/config.yml
+
+
+inputs:
+    none: none
+
+# if supported by the launcher, restart the pipeline where it left off
+# if interrupted
+resume: true
+# where to put output logs for individual stages
+log_dir: data/dp1/logs
+# where to put an overall parsl pipeline log
+pipeline_log: data/dp1/log.txt
