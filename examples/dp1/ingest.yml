@@ -6,6 +6,7 @@ stages:
         photometry_catalog: photometry_catalog_edfs
         shear_catalog: shear_catalog_edfs
         exposures: exposures_edfs
+        survey_property_maps: survey_property_maps_edfs
 
   - name: IngestECDFS
     classname: TXIngestDataPreview1
@@ -13,6 +14,7 @@ stages:
         photometry_catalog: photometry_catalog_ecdfs
         shear_catalog: shear_catalog_ecdfs
         exposures: exposures_ecdfs
+        survey_property_maps: survey_property_maps_ecdfs
 
   - name: IngestLGLF
     classname: TXIngestDataPreview1
@@ -20,6 +22,7 @@ stages:
         photometry_catalog: photometry_catalog_lglf
         shear_catalog: shear_catalog_lglf
         exposures: exposures_lglf
+        survey_property_maps: survey_property_maps_lglf
 
   # And also make a combined ingested catalog
   - name: TXIngestDataPreview1
