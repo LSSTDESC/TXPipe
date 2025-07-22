@@ -113,9 +113,9 @@ class TXIngestDataPreview1(PipelineStage):
             selected_tracts = ALL_TRACTS
 
 
+        self.ingest_survey_property_maps(butler, selected_tracts)
         self.ingest_photometry(butler, selected_tracts)
         self.ingest_visits(butler, selected_tracts)
-        self.ingest_survey_property_maps(butler, selected_tracts)
 
 
     def ingest_photometry(self, butler, tracts):
@@ -241,7 +241,7 @@ class TXIngestDataPreview1(PipelineStage):
 
         f: FileCollection = self.open_output("survey_property_maps", wrapper=True)
         filenames = []
-
+        print("Ingesting survey property maps:")
         for map_type in map_types:
             for band in "ugrizy":
                 # Read this map from the butler
@@ -256,12 +256,11 @@ class TXIngestDataPreview1(PipelineStage):
                 pixels_to_remove = m.valid_pixels[~select]
                 m.update_values_pix(pixels_to_remove, None)
 
-                filename = f.path_for_file(map_type.name + "_" + band + ".fits")
+                filename = f.path_for_file(map_type.name + "_" + band + ".hs")
+                print(f"    - {map_type.name}_{band}")
                 m.write(filename, clobber=True)
                 filenames.append(filename)
-
         f.write_listing(filenames)
-        f.close()
 
 
 
