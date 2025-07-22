@@ -9,7 +9,7 @@ from .data_types import (
     FitsFile,
 )
 from .utils import LensNumberDensityStats, Splitter, rename_iterated
-from .binning import build_tomographic_classifier, apply_classifier
+from .binning import build_tomographic_classifier, apply_classifier, read_training_data
 import numpy as np
 import warnings
 
@@ -429,7 +429,7 @@ class TXRandomForestLensSelector(TXBaseLensSelector):
     name = "TXRandomForestLensSelector"
     inputs = [
         ("photometry_catalog", PhotometryCatalog),
-        ("calibration_table", TextFile),
+        ("spectroscopic_catalog", HDFFile),
     ]
     config_options = TXBaseLensSelector.config_options.copy()
     config_options.update({
@@ -438,6 +438,8 @@ class TXRandomForestLensSelector(TXBaseLensSelector):
         "chunk_rows": 10000,
         "lens_zbin_edges": [float],
         "random_seed": 42,
+        "spec_mag_column_format": "photometry/{band}",
+        "spec_redshift_column": "photometry/redshift",
     })
 
     def data_iterator(self):
@@ -452,9 +454,18 @@ class TXRandomForestLensSelector(TXBaseLensSelector):
             yield s, e, data
 
     def prepare_selector(self):
+        with self.open_input("spectroscopic_catalog") as spec_file:
+            training_data = read_training_data(
+                spec_file,
+                self.config["bands"],
+                self.config["spec_mag_column_format"],
+                self.config["spec_redshift_column"],
+            )
+
+
         return build_tomographic_classifier(
             self.config["bands"],
-            self.get_input("calibration_table"),
+            training_data,
             self.config["lens_zbin_edges"],
             self.config["random_seed"],
             self.comm,
