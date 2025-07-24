@@ -161,12 +161,26 @@ class TXGammaTFieldCenters(TXTwoPoint):
     def get_lens_catalog(self, i):
         import treecorr
 
+        # check if we are using the old format exposures file
+        # or the new one
+        with self.open_input("exposures", wrapper=False) as f:
+            if "ratel" in f["exposures"].keys():
+                # This is the new format
+                ext = "visits"
+                ra_col = "ra"
+                dec_col = "dec"
+            else:
+                # This is the old format
+                ext = "exposures"
+                ra_col = "ratel"
+                dec_col = "dectel"
+
         assert i == 0
         cat = treecorr.Catalog(
             self.get_input("exposures"),
-            ext="exposures",
-            ra_col="ratel",
-            dec_col="dectel",
+            ext=ext,
+            ra_col=ra_col,
+            dec_col=dec_col,
             ra_units="degree",
             dec_units="degree",
             patch_centers=self.get_input("patch_centers"),

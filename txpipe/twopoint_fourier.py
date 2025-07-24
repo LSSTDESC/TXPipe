@@ -61,7 +61,7 @@ class TXTwoPointFourier(PipelineStage):
         ("shear_photoz_stack", QPNOfZFile),  # Photoz stack
         ("lens_photoz_stack", QPNOfZFile),  # Photoz stack
         ("fiducial_cosmology", FiducialCosmology),  # For the cosmological parameters
-        ("tracer_metadata", TomographyCatalog),  # For density info
+        ("tracer_metadata", HDFFile),  # For density info
         ("lens_maps", MapsFile),
         ("source_maps", MapsFile),
         ("density_maps", MapsFile),

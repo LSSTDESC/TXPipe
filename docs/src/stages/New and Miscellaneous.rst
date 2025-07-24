@@ -14,7 +14,20 @@ assigned to one.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - shear_catalog: ShearCatalog
+    - shear_tomography_catalog: TomographyCatalog
+    - lens_tomography_catalog: TomographyCatalog
+    - mask: MapsFile
+
+    Outputs: 
+
+    - tracer_metadata: HDFFile
+    - tracer_metadata_yml: YamlFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -29,7 +42,16 @@ assigned to one.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - input: ParquetFile
+
+    Outputs: 
+
+    - output: HDFFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 

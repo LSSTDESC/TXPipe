@@ -23,7 +23,16 @@ These stages make plots out TXPipe output data
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - photoz_stack: QPNOfZFile
+
+    Outputs: 
+
+    - nz_plot: PNGFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -40,7 +49,27 @@ These stages make plots out TXPipe output data
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - source_maps: MapsFile
+    - lens_maps: MapsFile
+    - density_maps: MapsFile
+    - mask: MapsFile
+    - aux_source_maps: MapsFile
+    - aux_lens_maps: MapsFile
+
+    Outputs: 
+
+    - depth_map: PNGFile
+    - lens_map: PNGFile
+    - shear_map: PNGFile
+    - flag_map: PNGFile
+    - psf_map: PNGFile
+    - mask_map: PNGFile
+    - bright_object_map: PNGFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -58,7 +87,16 @@ These stages make plots out TXPipe output data
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - convergence_maps: MapsFile
+
+    Outputs: 
+
+    - convergence_map: PNGFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -74,7 +112,16 @@ These stages make plots out TXPipe output data
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - photoz_realizations: QPMultiFile
+
+    Outputs: 
+
+    - photoz_realizations_plot: PNGFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -91,7 +138,21 @@ These stages make plots out TXPipe output data
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - twopoint_data_real: SACCFile
+    - twopoint_gamma_x: SACCFile
+
+    Outputs: 
+
+    - shear_xi_plus: PNGFile
+    - shear_xi_minus: PNGFile
+    - shearDensity_xi: PNGFile
+    - density_xi: PNGFile
+    - shearDensity_xi_x: PNGFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -108,7 +169,20 @@ These stages make plots out TXPipe output data
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - summary_statistics_fourier: SACCFile
+    - twopoint_theory_fourier: SACCFile
+
+    Outputs: 
+
+    - shear_cl_ee: PNGFile
+    - shearDensity_cl: PNGFile
+    - density_cl: PNGFile
+    - shear_cl_ee_ratio: PNGFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -125,7 +199,26 @@ These stages make plots out TXPipe output data
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - twopoint_data_real: SACCFile
+    - twopoint_gamma_x: SACCFile
+    - twopoint_theory_real: SACCFile
+
+    Outputs: 
+
+    - shear_xi_plus: PNGFile
+    - shear_xi_minus: PNGFile
+    - shearDensity_xi: PNGFile
+    - density_xi: PNGFile
+    - shear_xi_plus_ratio: PNGFile
+    - shear_xi_minus_ratio: PNGFile
+    - shearDensity_xi_ratio: PNGFile
+    - density_xi_ratio: PNGFile
+    - shearDensity_xi_x: PNGFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 

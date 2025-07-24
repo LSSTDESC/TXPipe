@@ -1,16 +1,7 @@
 global:
     pixelization: healpix
     chunk_rows: 1000000
-
-TXGCRTwoCatalogInput:
-    metacal_dir: /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/metacal_table_summary
-    photo_dir: /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/object_table_summary
-
-TXMetacalGCRInput:
-    cat_name: dc2_object_run2.1i_dr1b_with_metacal_griz
-
-TXExposureInfo:
-    dc2_name: 1.2p
+    chunk_size: 200000
 
 TXLSSWeightsUnit:
     nside: 2048
@@ -21,6 +12,8 @@ TXDiagnosticQuantiles:
     shear_prefix: mcal_
     nbins: 20
 
+TXShearCalibration:
+    shear_prefix: mcal_
 
 TXCosmoDC2Mock:
     cat_name: cosmoDC2_v1.1.4_image
@@ -82,17 +75,6 @@ TXSimpleMask:
     depth_cut: 23.0
     bright_object_max: 10.0
 
-
-PZPDFMLZ:
-    nz: 301
-    zmax: 3.0
-
-
-
-# Mock version of stacking:
-TXTrueNumberDensity:
-    nz: 301
-    zmax: 3.0
 
 
 TXSourceSelectorMetacal:
@@ -171,22 +153,11 @@ TXTwoPoint:
     var_method: jackknife
 
 
-TXClusteringNoiseMaps:
-    n_realization: 30
+TXLensNoiseMaps:
+    clustering_realizations: 30
 
-TXLensingNoiseMaps:
-    n_realization: 30
-
-TXTruthLensSelector:
-    # Mag cuts
-    lens_zbin_edges: [0.0, 0.2, 0.4]
-    cperp_cut: 0.2
-    r_cpar_cut: 13.5
-    r_lo_cut: 16.0
-    r_hi_cut: 21.6
-    i_lo_cut: 17.5
-    i_hi_cut: 21.9
-    r_i_cut: 2.0
+TXSourceNoiseMaps:
+    lensing_realizations: 30
 
 
 TXRandomForestLensSelector:
@@ -202,3 +173,112 @@ TXPhotozPlotLens:
     name: TXPhotozPlotLens
 TXPhotozPlotSource:
     name: TXPhotozPlotSource
+
+
+FlowCreator:
+    n_samples: 1000000
+    seed: 5763248
+
+
+GridSelection:
+    redshift_cut: 5.1
+    ratio_file: data/example/inputs/hsc_ratios_and_specz.hdf5
+    settings_file: data/example/inputs/HSC_grid_settings.pkl
+    random_seed: 66
+    pessimistic_redshift_cut: 1.0
+
+
+
+PZRailSummarizeLens:
+    leafsize: 20
+    zmin: 0.0
+    zmax: 3.0
+    nzbins: 50
+    name: PZRailSummarizeLens
+    catalog_group: lens
+    tomography_name: lens
+    bands: ugrizy
+
+
+PZRailSummarizeSource:
+    leafsize: 20
+    zmin: 0.0
+    zmax: 3.0
+    nzbins: 50
+    mag_prefix: /shear/mcal_mag_
+    tomography_name: source
+    catalog_group: shear
+    bands: riz
+    name: PZRailSummarizeSource
+
+
+
+PZPrepareEstimatorLens:
+    name: PZPrepareEstimatorLens
+    classname: BPZliteInformer
+    zmin: 0.0
+    zmax: 3.0
+    nzbins: 301
+    columns_file: ./data/bpz_ugrizy.columns
+    data_path: ./data/example/rail-bpz-inputs
+    spectra_file: CWWSB4.list
+    prior_band: i
+    ref_band: i
+    # Not sure about this
+    prior_file: hdfn_gen
+    p_min: 0.005
+    gauss_kernel: 0.0
+    mag_err_min: 0.005
+    inform_options: {save_train: false, load_model: false, modelfile: BPZpriormodel.out}
+    madau_reddening: no
+    bands: riz
+    zp_errors: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+    hdf5_groupname: photometry
+
+
+
+PZEstimatorLens:
+    name: PZEstimatorLens
+    classname: BPZliteEstimator
+    zmin: 0.0
+    zmax: 3.0
+    dz: 0.01
+    nzbins: 301
+    band_names: [mag_u, mag_g, mag_r, mag_i, mag_z, mag_y]
+    bands: [mag_u, mag_g, mag_r, mag_i, mag_z, mag_y]
+    err_bands: [mag_err_u, mag_err_g, mag_err_r, mag_err_i, mag_err_z, mag_err_y]
+    hdf5_groupname: photometry
+    nondetect_val: .inf
+    columns_file: ./data/bpz_ugrizy.columns
+    data_path: ./data/example/rail-bpz-inputs
+    spectra_file: CWWSB4.list
+    prior_band: mag_i
+    ref_band: mag_i
+    prior_file: hdfn_gen
+    p_min: 0.005
+    gauss_kernel: 0.0
+    zp_errors: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+    mag_err_min: 0.005
+    madau_reddening: false
+    mag_limits:
+        mag_u: 27.79
+        mag_g: 29.04
+        mag_r: 29.06
+        mag_i: 28.62
+        mag_z: 27.98
+        mag_y: 27.05
+
+
+
+TXParqetToHDF:
+    hdf_group: photometry
+
+NZDirInformerSource:
+    name: NZDirInformerSource
+    usecols: riz
+    hdf5_groupname: photometry
+
+NZDirInformerLens:
+    name: NZDirInformerLens
+    usecols: ugrizy
+    hdf5_groupname: photometry

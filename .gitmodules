@@ -1,3 +1,7 @@
 [submodule "WLMassMap"]
 	path = submodules/WLMassMap
 	url = https://github.com/LSSTDESC/WLMassMap
+[submodule "submodules/pyfsb"]
+	path = submodules/pyfsb
+	url = https://github.com/ashaeres/pyfsb
+	ignore = untracked

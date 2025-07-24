@@ -1,0 +1,51 @@
+stages:
+  # Ingest the three fields separately
+  - name: IngestEDFS
+    classname: TXIngestDataPreview1
+    aliases:
+        photometry_catalog: photometry_catalog_edfs
+        shear_catalog: shear_catalog_edfs
+        exposures: exposures_edfs
+        survey_property_maps: survey_property_maps_edfs
+
+  - name: IngestECDFS
+    classname: TXIngestDataPreview1
+    aliases:
+        photometry_catalog: photometry_catalog_ecdfs
+        shear_catalog: shear_catalog_ecdfs
+        exposures: exposures_ecdfs
+        survey_property_maps: survey_property_maps_ecdfs
+
+  - name: IngestLGLF
+    classname: TXIngestDataPreview1
+    aliases:
+        photometry_catalog: photometry_catalog_lglf
+        shear_catalog: shear_catalog_lglf
+        exposures: exposures_lglf
+        survey_property_maps: survey_property_maps_lglf
+
+  # And also make a combined ingested catalog
+  - name: TXIngestDataPreview1
+
+
+# Where to put outputs - this is not a mistake!
+# This pipeline ingests data to use as the inputs
+# for other pipelines
+output_dir: data/dp1/inputs
+
+launcher:
+    name: mini
+    interval: 1.0
+
+site:
+    name: local
+
+modules: >
+    txpipe
+
+python_paths: []
+config: examples/dp1/config.yml
+inputs: {}
+resume: restart
+log_dir: data/dp1/logs
+pipeline_log: data/dp1/ingest_log.txt

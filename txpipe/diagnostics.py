@@ -1,6 +1,5 @@
 from .base_stage import PipelineStage
 from .data_types import Directory, ShearCatalog, HDFFile, PNGFile, TomographyCatalog, TextFile
-from parallel_statistics import ParallelMeanVariance, ParallelHistogram
 from .utils.calibrators import Calibrator
 from .utils.calibration_tools import (
     calculate_selection_response,
@@ -667,6 +666,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         fig.close()
         
     def plot_g_histogram(self):
+        from parallel_statistics import ParallelHistogram
         print("plotting histogram")
         import matplotlib.pyplot as plt
         from scipy import stats
@@ -762,6 +762,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 plt.legend()
 
     def plot_snr_histogram(self):
+        from parallel_statistics import ParallelMeanVariance
         print("plotting snr histogram")
         import matplotlib.pyplot as plt
 

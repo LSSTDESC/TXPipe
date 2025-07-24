@@ -1,1 +1,1 @@
-from .clmm import *
+from .cluster_counts import *

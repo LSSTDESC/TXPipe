@@ -44,7 +44,7 @@ inputs:
     # See README for paths to download these files
     shear_catalog: ./data/cosmodc2/20deg2/shear_catalog.hdf5
     cluster_catalog: ./data/cosmodc2/20deg2/cluster_catalog.hdf5
-    shear_tomography_catalog: ./data/example/outputs_metadetect shear_tomography_catalog.hdf5
+    shear_tomography_catalog: ./data/example/outputs_metadetect/shear_tomography_catalog.hdf5
     source_photoz_pdfs: ./data/example/inputs/photoz_pdfs.hdf5
     fiducial_cosmology: ./data/fiducial_cosmology.yml
 

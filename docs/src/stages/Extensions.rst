@@ -5,7 +5,7 @@ These stages are written for TXPipe extension projects.
 
 * :py:class:`~txpipe.extensions.clmm.bin_cluster.CLClusterBinningRedshiftRichness` - Stage CLClusterBinningRedshiftRichness
 
-* :py:class:`~txpipe.extensions.clmm.sources_select_compute.CLClusterShearCatalogs` - Configuration Parameters:
+* :py:class:`~txpipe.extensions.clmm.sources_select_compute.CLClusterShearCatalogs` - Parameters
 
 * :py:class:`~txpipe.extensions.clmm.make_ensemble_profile.CLClusterEnsembleProfiles` - Stage CLClusterEnsembleProfiles
 
@@ -17,7 +17,16 @@ These stages are written for TXPipe extension projects.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - cluster_catalog: HDFFile
+
+    Outputs: 
+
+    - cluster_catalog_tomography: HDFFile
+    
     Parallel: No - Serial
+
 
     .. collapse:: Configuration
 
@@ -36,7 +45,20 @@ These stages are written for TXPipe extension projects.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - cluster_catalog: HDFFile
+    - shear_catalog: ShearCatalog
+    - fiducial_cosmology: FiducialCosmology
+    - shear_tomography_catalog: TomographyCatalog
+    - source_photoz_pdfs: PhotozPDFFile
+
+    Outputs: 
+
+    - cluster_shear_catalogs: HDFFile
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -59,7 +81,18 @@ These stages are written for TXPipe extension projects.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - cluster_catalog_tomography: HDFFile
+    - fiducial_cosmology: FiducialCosmology
+    - cluster_shear_catalogs: HDFFile
+
+    Outputs: 
+
+    - cluster_profiles: PickleFile
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -80,7 +113,25 @@ These stages are written for TXPipe extension projects.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - shear_catalog: ShearCatalog
+    - shear_tomography_catalog: TomographyCatalog
+    - shear_photoz_stack: QPNOfZFile
+    - random_cats_source: RandomsCatalog
+    - lens_tomography_catalog: TomographyCatalog
+    - patch_centers: TextFile
+    - photoz_pdfs: PhotozPDFFile
+    - fiducial_cosmology: FiducialCosmology
+    - tracer_metadata: HDFFile
+
+    Outputs: 
+
+    - twopoint_data_SCIA: SACCFile
+    - gammaX_scia: SACCFile
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 

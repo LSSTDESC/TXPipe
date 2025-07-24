@@ -135,6 +135,8 @@ class PatchMaker:
             col = f["ra"]
             while col.size < e:
                 new_size = min(int(col.size * 1.5), self.max_size)
+                if new_size == 1:
+                    new_size = 2
                 self.resize(f, new_size)
 
             # At lat we can write out this chunk of data

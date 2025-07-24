@@ -32,7 +32,17 @@ bins.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - shear_catalog: ShearCatalog
+    - calibration_table: TextFile
+
+    Outputs: 
+
+    - shear_tomography_catalog: TomographyCatalog
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -56,7 +66,17 @@ bins.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - shear_catalog: ShearCatalog
+    - calibration_table: TextFile
+
+    Outputs: 
+
+    - shear_tomography_catalog: TomographyCatalog
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -82,7 +102,17 @@ bins.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - shear_catalog: ShearCatalog
+    - calibration_table: TextFile
+
+    Outputs: 
+
+    - shear_tomography_catalog: TomographyCatalog
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -107,7 +137,17 @@ bins.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - shear_catalog: ShearCatalog
+    - calibration_table: TextFile
+
+    Outputs: 
+
+    - shear_tomography_catalog: TomographyCatalog
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -133,7 +173,17 @@ bins.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - shear_catalog: ShearCatalog
+    - calibration_table: TextFile
+
+    Outputs: 
+
+    - shear_tomography_catalog: TomographyCatalog
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -157,7 +207,17 @@ bins.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - shear_catalog: ShearCatalog
+    - calibration_table: TextFile
+
+    Outputs: 
+
+    - shear_tomography_catalog: TomographyCatalog
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -182,7 +242,14 @@ bins.
     :members:
     :exclude-members: run
 
+    Inputs: None
+
+    Outputs: 
+
+    - lens_tomography_catalog_unweighted: TomographyCatalog
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -212,7 +279,16 @@ bins.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - photometry_catalog: PhotometryCatalog
+
+    Outputs: 
+
+    - lens_tomography_catalog_unweighted: TomographyCatalog
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -242,7 +318,17 @@ bins.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - photometry_catalog: PhotometryCatalog
+    - lens_photoz_pdfs: HDFFile
+
+    Outputs: 
+
+    - lens_tomography_catalog_unweighted: TomographyCatalog
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -272,7 +358,17 @@ bins.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - photometry_catalog: PhotometryCatalog
+    - lens_photoz_pdfs: HDFFile
+
+    Outputs: 
+
+    - lens_tomography_catalog_unweighted: TomographyCatalog
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
@@ -302,7 +398,17 @@ bins.
     :members:
     :exclude-members: run
 
+    Inputs: 
+
+    - photometry_catalog: PhotometryCatalog
+    - calibration_table: TextFile
+
+    Outputs: 
+
+    - lens_tomography_catalog_unweighted: TomographyCatalog
+    
     Parallel: Yes - MPI
+
 
     .. collapse:: Configuration
 
