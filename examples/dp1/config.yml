@@ -101,6 +101,10 @@ TXTwoPoint:
     do_shear_shear: false
     do_shear_pos: false
     do_pos_pos: true
+    nbins: 10
+    verbose: 1
+    subtract_mean_shear: true
+
 
 IngestEDFS:
     name: IngestEDFS
@@ -117,3 +121,18 @@ IngestLGLF:
 TXIngestDataPreview1:
     name: TXIngestDataPreview1
     cosmology_tracts_only: true
+
+TXRandomCat:
+    density: 10 # gals per sq arcmin
+
+
+TXTwoPointFourier:
+    flip_g2: true
+    ell_min: 200
+    ell_max: 2200
+    bandwidth: 200
+    cache_dir: ./cache/workspaces
+    do_shear_shear: false
+    do_shear_pos: false
+    do_pos_pos: true
+    compute_theory: true

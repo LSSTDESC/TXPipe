@@ -1,3 +1,12 @@
+# This uses the Jinja2 template system, which was
+# recently added into ceci. It adds a suffix to input
+# and output paths if the "field" template parameter is used.
+{% if field == "" %}
+  {% set suffix = "" %}
+{% else %}
+  {% set suffix = "_" ~ field %}
+{% endif %}
+
 # Stages to run
 stages:
 #    - name: TXIngestDataPreview1
@@ -15,22 +24,17 @@ stages:
         input: photometry_catalog
         output: photoz_pdfs
 
-
   # Selection & Calibration
   - name: TXSourceSelectorSimple
     nprocess: 1
     threads_per_process: 1
-
   - name: TXShearCalibration
-
   - name: TXLSSWeightsUnit
-
   - name: TXRandomForestLensSelector
-
   - name: TXLensCatalogSplitter
     aliases:
         lens_photoz_pdfs: photoz_pdfs
-
+  - name: TXLensDiagnosticPlots
 
   # # Photo-z ensemble estimation
   - name: TXPhotozSourceStack
@@ -62,45 +66,35 @@ stages:
 
   # Mapping
   - name: TXSourceMaps
-
   - name: TXLensMaps
-
   - name: TXDensityMaps
-
   - name: TXAuxiliarySourceMaps    # make PSF and flag maps
-
   - name: TXAuxiliaryLensMaps      # make depth and bright object maps
-
   - name: TXSimpleMask           # combine maps to make a simple mask
-
   - name: TXMapPlots
 
-
-  - name: TXTracerMetadata       # collate metadata
-
   # Two-point estimation
+  - name: TXTracerMetadata       # collate metadata
+  - name: TXJackknifeCenters     # Split the area into jackknife regions
   - name: TXRandomCat            # generate lens bin random catalogs
     aliases:
         lens_photoz_pdfs: photoz_pdfs
 
-  - name: TXJackknifeCenters     # Split the area into jackknife regions
-
   - name: TXTwoPoint             # Compute real-space 2-point correlations
+    threads_per_process: 4
+  - name: TXSourceNoiseMaps      # Compute shear noise using rotations
+  - name: TXLensNoiseMaps        # Compute lens noise using half-splits
+  - name: TXTwoPointFourier
+    threads_per_process: 4
 
-  # - name: TXTwoPointPlotsTheory
-  #   aliases:
-  #       twopoint_data_real: summary_statistics_real
-
-  # - name: TXTwoPointTheoryReal
+  - name: TXTwoPointPlots
 
   # Blinding
   - name: TXNullBlinding
 
-  # # Additional plots
-  # - name: TXPhotozPlot
 
 # Where to put outputs
-output_dir: data/dp1/outputs
+output_dir: data/dp1/outputs{{ suffix }}
 
 # How to run the pipeline: mini, parsl, or cwl
 launcher:
@@ -132,8 +126,8 @@ config: examples/dp1/config.yml
 inputs:
     # See README for paths to download these files
     spectroscopic_catalog: data/dp1/inputs/dp1_matched_v4_train.hdf5
-    shear_catalog: data/dp1/inputs/shear_catalog.hdf5
-    photometry_catalog: data/dp1/inputs/photometry_catalog.hdf5
+    shear_catalog: data/dp1/inputs/shear_catalog{{ suffix }}.hdf5
+    photometry_catalog: data/dp1/inputs/photometry_catalog{{ suffix }}.hdf5
     fiducial_cosmology: data/fiducial_cosmology.yml
     none: none
 
@@ -141,6 +135,6 @@ inputs:
 # if interrupted
 resume: true
 # where to put output logs for individual stages
-log_dir: data/dp1/logs
+log_dir: data/dp1/logs{{suffix}}
 # where to put an overall parsl pipeline log
-pipeline_log: data/dp1/log.txt
+pipeline_log: data/dp1/log{{ suffix }}.txt
