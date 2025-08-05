@@ -130,9 +130,9 @@ TXTwoPointFourier:
     flip_g2: true
     ell_min: 200
     ell_max: 2200
-    bandwidth: 200
+    n_ell: 5
     cache_dir: ./cache/workspaces
     do_shear_shear: false
     do_shear_pos: false
     do_pos_pos: true
-    compute_theory: true
+    compute_theory: false
