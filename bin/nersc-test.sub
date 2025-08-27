@@ -14,4 +14,4 @@ conda activate ./conda
 
 export OMP_PROC_BIND=true
 export OMP_PLACES=threads
-ceci examples/metadetect/pipeline.yml site.name=nersc-interactive
+ceci examples/metadetect/pipeline.yml site.name=nersc-interactive resume=restart
