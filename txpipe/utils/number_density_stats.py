@@ -1,9 +1,9 @@
-from parallel_statistics import ParallelMeanVariance
 import numpy as np
 
 
 class SourceNumberDensityStats:
     def __init__(self, nbin_source, shear_type, comm=None):
+        from parallel_statistics import ParallelMeanVariance
         self.nbin_source = nbin_source
         self.comm = comm
         self.shear_type = shear_type

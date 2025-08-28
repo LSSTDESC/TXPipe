@@ -10,7 +10,6 @@ from .data_types import (
     TextFile
 
 )
-from parallel_statistics import ParallelHistogram, ParallelMeanVariance
 import numpy as np
 import sys
 import os
@@ -126,6 +125,7 @@ class TXPSFDiagnostics(PipelineStage):
 
     def plot_histogram(self, function, output_name, xlabel, edges):
         import matplotlib.pyplot as plt
+        from parallel_statistics import ParallelHistogram, ParallelMeanVariance
 
         print(f"Plotting {output_name}")
         counters = {s: ParallelHistogram(edges) for s in STAR_TYPES}
