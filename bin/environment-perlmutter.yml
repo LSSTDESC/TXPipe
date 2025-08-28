@@ -55,3 +55,4 @@ dependencies:
     - git+https://github.com/beckermr/hybrideb@a3198ea5bc8175542b058e5c1289d910f05fd99d
     - pz-rail[algos] @ git+https://github.com/LSSTDESC/RAIL@v1.1.2
     - numpy==2.2.*
+    - https://github.com/LSSTDESC/dataregistry.git

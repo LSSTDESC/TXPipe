@@ -27,6 +27,7 @@ It is designed to take catalogs of objects (as produced by the LSST Project), an
    :caption: Using & Contributing:
 
    running
+   data_sources
    adding
    parallel
    nersc
