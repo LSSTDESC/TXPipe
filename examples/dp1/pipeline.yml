@@ -128,6 +128,7 @@ inputs:
     spectroscopic_catalog: data/dp1/inputs/dp1_matched_v4_train.hdf5
     shear_catalog: data/dp1/inputs/shear_catalog{{ suffix }}.hdf5
     photometry_catalog: data/dp1/inputs/photometry_catalog{{ suffix }}.hdf5
+    exposures: data/dp1/inputs/exposures{{ suffix }}.hdf5
     fiducial_cosmology: data/fiducial_cosmology.yml
     none: none
 

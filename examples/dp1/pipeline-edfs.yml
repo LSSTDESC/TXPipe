@@ -59,6 +59,8 @@ stages:
         nz_plot: nz_lens
 
 
+
+
   # Mapping
   - name: TXSourceMaps
   - name: TXLensMaps
@@ -83,6 +85,7 @@ stages:
     threads_per_process: 4
 
   - name: TXTwoPointPlots
+  - name: TXGammaTFieldCenters
 
   # Blinding
   - name: TXNullBlinding
@@ -124,6 +127,7 @@ inputs:
     shear_catalog: data/dp1/inputs/shear_catalog_edfs.hdf5
     photometry_catalog: data/dp1/inputs/photometry_catalog_edfs.hdf5
     fiducial_cosmology: data/fiducial_cosmology.yml
+    exposures: data/dp1/inputs/exposures_edfs.hdf5
     none: none
 
 # if supported by the launcher, restart the pipeline where it left off
