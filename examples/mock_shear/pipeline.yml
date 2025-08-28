@@ -39,10 +39,9 @@ config: examples/mock_shear/config.yml
 # These are overall inputs to the whole pipeline, not generated within it
 inputs:
     mock_shear_catalog: data/example/inputs/mock_nfw_shear_catalog.txt
-    calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
     cluster_catalog: data/example/inputs/mock_single_cluster_catalog.hdf5
     fiducial_cosmology: data/fiducial_cosmology.yml
-
+    spectroscopic_catalog: data/example/inputs/mock_spectroscopic_catalog.hdf5
 
 
 # if supported by the launcher, restart the pipeline where it left off
