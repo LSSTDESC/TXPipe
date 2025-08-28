@@ -373,6 +373,9 @@ class Directory(DataFile):
                 raise ValueError(f"Directory input {path} does not exist")
         return p
 
+    def close(self):
+        pass
+
     def write_provenance(self):
         """
         Write provenance information to a new group,
