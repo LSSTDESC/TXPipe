@@ -1,7 +1,16 @@
 import numpy as np
 
+def read_training_data(spec_file, bands, spec_mag_column_format, spec_redshift_column):
+        fmt = spec_mag_column_format
+        zfmt = spec_redshift_column
+        training_data = {}
+        training_data["sz"] = spec_file[zfmt][:]
+        for band in bands:
+            col = spec_file[fmt.format(band=band)][:]
+            training_data[band] = col
+        return training_data
 
-def build_tomographic_classifier(bands, training_file, bin_edges, random_seed, comm):
+def build_tomographic_classifier(bands, training_data_table, bin_edges, random_seed, comm):
     # Load the training data
     # Build the SOM from the training data
     from astropy.table import Table
@@ -15,9 +24,6 @@ def build_tomographic_classifier(bands, training_file, bin_edges, random_seed, c
         classifier = comm.bcast(None)
         features = comm.bcast(None)
         return classifier, features
-
-    # Load the training data
-    training_data_table = Table.read(training_file, format="ascii")
 
     # Pull out the appropriate columns and combinations of the data
     print(f"Using these bands to train the tomography selector: {bands}")
