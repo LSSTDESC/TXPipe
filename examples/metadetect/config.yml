@@ -302,6 +302,7 @@ TXTwoPointFourierCatalog:
     do_shear_pos: true
     do_pos_pos: true
     compute_theory: true
+    analytic_noise: true
 
 
 TXSimpleMaskFrac:

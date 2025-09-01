@@ -590,6 +590,8 @@ class TXTwoPointFourier(PipelineStage):
                 cl_guess=cl_guess,
                 workspace=workspace,
             )
+            pcl = nmt.compute_coupled_cell(field_i, field_j)
+            c = workspace.decouple_cell(pcl)
             # noise to subtract (already decoupled)
             n_ell, n_ell_coupled = self.compute_noise_analytic(
                 i, j, k, maps, f_sky, workspace, mask
@@ -726,6 +728,7 @@ class TXTwoPointFourier(PipelineStage):
 
         if (i != j) or (k == SHEAR_POS):
             return None, None
+
         # This bit only works with healpix maps but it's checked beforehand so that's fine
         if k == SHEAR_SHEAR:
             with self.open_input("source_maps", wrapper=True) as f:
@@ -933,6 +936,8 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
         ("lens_photoz_stack", QPNOfZFile),  # Photoz stack
         ("mask", MapsFile),
         ("fiducial_cosmology", FiducialCosmology),
+        ("source_maps", MapsFile),
+        ("lens_maps", MapsFile),
     ]
 
     config_options = TXTwoPointFourier.config_options 
@@ -1077,6 +1082,7 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
             cache.put(i, j, k, space)
 
         return cache
+
 
 
 
