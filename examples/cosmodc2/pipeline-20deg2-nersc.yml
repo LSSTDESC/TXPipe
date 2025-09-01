@@ -103,12 +103,17 @@ config: examples/cosmodc2/config-20deg2.yml
 
 inputs:
     # See README for paths to download these files
-    shear_catalog: ./data/cosmodc2/20deg2/shear_catalog.hdf5
-    photometry_catalog: ./data/cosmodc2/20deg2/photometry_catalog.hdf5
+    # On NERSC these first three files are in the data registry
+    shear_catalog:
+        name: txpipe_cosmodc2_20deg2_shear_catalog.hdf5
+    photometry_catalog:
+        name: txpipe_cosmodc2_20deg2_photometry_catalog.hdf5
+    calibration_table:
+        name: txpipe_cosmodc2_20deg2_sample_cosmodc2_w10year_errors.dat
     fiducial_cosmology: data/fiducial_cosmology.yml
-    calibration_table: ./data/cosmodc2/20deg2/sample_cosmodc2_w10year_errors.dat
     none: none
 
+registry: {}
 resume: true
 log_dir: data/cosmodc2/logs
 pipeline_log: data/cosmodc2/log.txt
