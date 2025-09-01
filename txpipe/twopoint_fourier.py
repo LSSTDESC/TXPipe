@@ -110,7 +110,7 @@ class TXTwoPointFourier(PipelineStage):
             print("Loaded maps.")
 
         nbin_source = maps["nbin_source"]
-        nbin_lens = maps["nbin_lens"]w
+        nbin_lens = maps["nbin_lens"]
 
         # Do this at the beginning since its fast and sometimes crashes.
         # It is best to avoid losing running time later.
@@ -927,47 +927,82 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
     name = "TXTwoPointFourierCatalog"
     inputs = [
         ("binned_shear_catalog", HDFFile),
-        ("lens_catalog", HDFFile),
+        ("binned_lens_catalog", HDFFile),
         ("tracer_metadata", HDFFile),
-        ("shear_photoz_stack", HDFFile),
-        ("lens_photoz_stack", HDFFile),
+        ("shear_photoz_stack", QPNOfZFile),  # Photoz stack
+        ("lens_photoz_stack", QPNOfZFile),  # Photoz stack
+        ("mask", MapsFile),
+        ("fiducial_cosmology", FiducialCosmology),
     ]
 
+    config_options = TXTwoPointFourier.config_options 
     def load_maps(self):
         import pymaster as nmt
         import healpy as hp
-        lmax = ...
+        ell_max = self.config["ell_max"]
 
 
-        # First load the shear catalogs, if required. If this turns out to be
-        # too much data then 
-        if self.config["do_shear_shear"] or self.config["do_shear_pos"]:
-            pass
+        # Load the maps from their files.
+        # First the mask
+        with self.open_input("mask", wrapper=True) as f:
+            info = f.read_map_info("mask")
+            mask = f.read_mask(thresh=self.config["mask_threshold"])
 
-    def get_field(self, maps, i, kind):
+        if self.rank == 0:
+            print("Loaded mask")
+            area = info["area"]
+            f_sky = info["f_sky"]
+        pixel_scheme = choose_pixelization(**info)
+
+        with self.open_input("binned_lens_catalog", wrapper=True) as f:
+            nbin_lens = f.file["lens"].attrs["nbin_lens"]
+        with self.open_input("binned_shear_catalog", wrapper=True) as f:
+            nbin_source = f.file["shear"].attrs["nbin_source"]
+
+
+        maps = {
+            "mask": mask,
+            "nbin_source": nbin_source,
+            "nbin_lens": nbin_lens,
+        }
+
+        print(maps)
+
+        return pixel_scheme, maps, f_sky
+
+
+    def get_field(self, maps, i, kind, get_shears=True):
         # In this subclass we load the catalog field objects dynamically,
         # because they are much larger than the map objects, or can be
         # at full LSST scale
         import pymaster as nmt
         import healpy as hp
 
-        lmax = maps["ell_max"]
+        # If I don't do the -1 here I get an error in namaster
+        lmax = self.config["ell_max"] - 1
 
         if kind == "shear":
+            if self.rank == 0:
+                print("Loading shear catalog for bin", i)
             with self.open_input("binned_shear_catalog") as f:
                 group = f[f"shear/bin_{i}"]
                 n = group["ra"].size
-                g1 = group["g1"][:]
-                g2 = group["g2"][:]
                 weight = group["weight"][:]
                 positions = np.zeros((2, n))
                 positions[0] = np.radians(90 - group["dec"][:])
                 positions[1] = np.radians(group["ra"][:])
-                shear = [g1, g2]
+                if get_shears:
+                    g1 = group["g1"][:]
+                    g2 = group["g2"][:]
+                    shear = [g1, g2]
+                else:
+                    shear = None
                 field = nmt.NmtFieldCatalog(positions, weight, shear, lmax=lmax,
                             lmax_mask=lmax, spin=2)
         else:
-            with self.open("binned_lens_catalog.hdf5", wrapper=True) as f:
+            if self.rank == 0:
+                print("Loading lens catalog for bin", i)
+            with self.open_input("binned_lens_catalog") as f:
                 group = f[f"lens/bin_{i}"]
                 n = group["ra"].size
                 positions = np.zeros((2, n))
@@ -979,9 +1014,70 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
         
         return field
 
+    def get_uuid(self, kind):
+        if kind == "shear":
+            with self.open_input("binned_shear_catalog") as f:
+                return int(f['provenance'].attrs["uuid"], 16)
+        else:
+            with self.open_input("binned_lens_catalog") as f:
+                return int(f['provenance'].attrs["uuid"], 16)
 
     def make_workspaces(self, maps, calcs, ell_bins):
-        pass
+        import pymaster as nmt
+        from .utils.nmt_utils import WorkspaceCache
+
+        # Make the field object
+        if self.rank == 0:
+            print("Preparing workspaces")
+
+        # load the cache
+        cache = WorkspaceCache(self.config["cache_dir"], low_mem=self.config["low_mem"])
+        shear_id = self.get_uuid("shear")
+        lens_id = self.get_uuid("lens")
+
+        for (i, j, k) in calcs:
+            if k == SHEAR_SHEAR:
+                f1 = self.get_field(maps, i, "shear", get_shears=False)
+                f2 = self.get_field(maps, j, "shear", get_shears=False)
+                id1 = shear_id ^ hash(f"bin_{i}")
+                id2 = shear_id ^ hash(f"bin_{j}")
+            elif k == SHEAR_POS:
+                f1 = self.get_field(maps, i, "shear", get_shears=False)
+                f2 = self.get_field(maps, j, "density", get_shears=False)
+                id1 = shear_id ^ hash(f"bin_{i}")
+                id2 = lens_id ^ hash(f"bin_{j}")
+            else:
+                f1 = self.get_field(maps, i, "density", get_shears=False)
+                f2 = self.get_field(maps, j, "density", get_shears=False)
+                id1 = lens_id ^ hash(f"bin_{i}")
+                id2 = lens_id ^ hash(f"bin_{j}")
+
+            # Key on these shear and position catalogs and the ell binning
+            key = id1 ^ id2 ^ array_hash(ell_bins.get_effective_ells())
+
+            space = cache.get(i, j, k, key=key)
+        
+            # If not, compute it.  We will save it later
+            if space is None:
+                print(f"Rank {self.rank} computing coupling matrix " f"{i}, {j}, {k}")
+                space = nmt.NmtWorkspace.from_fields(f1, f2, ell_bins)
+            else:
+                print(
+                    f"Rank {self.rank} getting coupling matrix "
+                    f"{i}, {j}, {k} from cache."
+                )
+            # This is a bit awkward - we attach the key to the
+            # object to avoid more book-keeping.  This is used inside
+            # the workspace cache
+            space.txpipe_key = key
+
+
+            # We now automatically cache everything, non-optionally,
+            # but to save memory we don't keep them all loaded
+            cache.put(i, j, k, space)
+
+        return cache
+
 
 
 if __name__ == "__main__":

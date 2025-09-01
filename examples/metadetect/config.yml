@@ -292,6 +292,18 @@ TXTwoPointFourier:
     do_pos_pos: true
     compute_theory: true
 
+TXTwoPointFourierCatalog:
+    flip_g2: true
+    ell_min: 30
+    ell_max: 100
+    bandwidth: 20
+    cache_dir: ./cache/workspaces2
+    do_shear_shear: true
+    do_shear_pos: true
+    do_pos_pos: true
+    compute_theory: true
+
+
 TXSimpleMaskFrac:
     supreme_map_file: data/example/inputs/supreme_dc2_dr6d_v2_g_nexp_sum_1deg2.hs
     depth_cut: 23.5
