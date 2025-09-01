@@ -169,6 +169,7 @@ jobs:
 
     - name: Dry run DP1
       run: |
+        source ./conda/bin/activate
         ceci --dry-run examples/dp1/pipeline-edfs.yml
 
 
