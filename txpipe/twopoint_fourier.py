@@ -53,7 +53,6 @@ class TXTwoPointFourier(PipelineStage):
 
     - TODO: specify which cross-correlations in particular to include (e.g. which bin pairs and which source/lens combinations).
     - TODO: include flags for rejected objects. Is this included in the tomography_catalog?
-    - TODO: ell-binning is currently static.
     """
 
     name = "TXTwoPointFourier"
@@ -110,13 +109,13 @@ class TXTwoPointFourier(PipelineStage):
         if self.rank == 0:
             print("Loaded maps.")
 
-        nbin_source = len(maps["g"])
-        nbin_lens = len(maps["d"])
+        nbin_source = maps["nbin_source"]
+        nbin_lens = maps["nbin_lens"]w
 
-        # Do this at the beggining since its fast and sometimes crashes.
-        # It is best to avoid loosing running time later.
+        # Do this at the beginning since its fast and sometimes crashes.
+        # It is best to avoid losing running time later.
         # Load the n(z) values, which are both saved in the output
-        # file alongside the spectra, and then used to calcualate the
+        # file alongside the spectra, and then used to calculate the
         # fiducial theory C_ell, which is used in the deprojection calculation
         tracer_sacc = self.load_tracers(nbin_source, nbin_lens)
 
@@ -208,6 +207,7 @@ class TXTwoPointFourier(PipelineStage):
                     print(f"Loaded {nbin_source} lensing weight maps")
         else:
             g1_maps, g2_maps, lensing_weights = [], [], []
+            nbin_source = 0
 
 
         if self.config["do_shear_pos"] or self.config["do_pos_pos"]:
@@ -218,6 +218,8 @@ class TXTwoPointFourier(PipelineStage):
                 print(f"Loaded {nbin_lens} overdensity maps")
         else:
             d_maps = []
+            nbin_lens = 0
+
 
         # Choose pixelization and read mask and systematics maps
         pixel_scheme = choose_pixelization(**info)
@@ -341,6 +343,8 @@ class TXTwoPointFourier(PipelineStage):
             "d": d_maps,
             "lf": lensing_fields,
             "df": density_fields,
+            "nbin_source": nbin_source,
+            "nbin_lens": nbin_lens,
         }
 
         return pixel_scheme, maps, f_sky
@@ -553,35 +557,18 @@ class TXTwoPointFourier(PipelineStage):
         sys.stdout.flush()
 
         if k == SHEAR_SHEAR:
-            field_i = maps["lf"][i]
-            field_j = maps["lf"][j]
-            results_to_use = [
-                (
-                    0,
-                    CEE,
-                ),
-                (
-                    1,
-                    CEB,
-                ),
-                (
-                    2,
-                    CBE,
-                ),
-                (
-                    3,
-                    CBB,
-                ),
-            ]
+            field_i = self.get_field(maps, i, "shear")
+            field_j = self.get_field(maps, j, "shear")
+            results_to_use = [(0, CEE), (1, CEB), (2, CBE), (3, CBB)]
 
         elif k == POS_POS:
-            field_i = maps["df"][i]
-            field_j = maps["df"][j]
+            field_i = self.get_field(maps, i, "pos")
+            field_j = self.get_field(maps, j, "pos")
             results_to_use = [(0, Cdd)]
 
         elif k == SHEAR_POS:
-            field_i = maps["lf"][i]
-            field_j = maps["df"][j]
+            field_i = self.get_field(maps, i, "shear")
+            field_j = self.get_field(maps, j, "pos")
             results_to_use = [(0, CdE), (1, CdB)]
 
         workspace = workspace_cache.get(i, j, k)
@@ -663,6 +650,17 @@ class TXTwoPointFourier(PipelineStage):
                     j,
                 )
             )
+
+    def get_field(self, maps, i, kind):
+        # In this class this is very simple, just retrieving a map from
+        # the dictionary. But we want to avoid loading the full catalogs
+        # for all of the tomographic bins at once in the sub-class that
+        # uses them, so we make this a method that it can override to load
+        # them dynamically.
+        if kind == "shear":
+            return maps["lf"][i]
+        else:
+            return maps["df"][i]
 
     def compute_noise(self, i, j, k, ell_bins, maps, workspace):
 
@@ -923,6 +921,67 @@ class TXTwoPointFourier(PipelineStage):
         # And we're all done!
         output_filename = self.get_output("twopoint_data_fourier")
         S.save_fits(output_filename, overwrite=True)
+
+
+class TXTwoPointFourierCatalog(TXTwoPointFourier):
+    name = "TXTwoPointFourierCatalog"
+    inputs = [
+        ("binned_shear_catalog", HDFFile),
+        ("lens_catalog", HDFFile),
+        ("tracer_metadata", HDFFile),
+        ("shear_photoz_stack", HDFFile),
+        ("lens_photoz_stack", HDFFile),
+    ]
+
+    def load_maps(self):
+        import pymaster as nmt
+        import healpy as hp
+        lmax = ...
+
+
+        # First load the shear catalogs, if required. If this turns out to be
+        # too much data then 
+        if self.config["do_shear_shear"] or self.config["do_shear_pos"]:
+            pass
+
+    def get_field(self, maps, i, kind):
+        # In this subclass we load the catalog field objects dynamically,
+        # because they are much larger than the map objects, or can be
+        # at full LSST scale
+        import pymaster as nmt
+        import healpy as hp
+
+        lmax = maps["ell_max"]
+
+        if kind == "shear":
+            with self.open_input("binned_shear_catalog") as f:
+                group = f[f"shear/bin_{i}"]
+                n = group["ra"].size
+                g1 = group["g1"][:]
+                g2 = group["g2"][:]
+                weight = group["weight"][:]
+                positions = np.zeros((2, n))
+                positions[0] = np.radians(90 - group["dec"][:])
+                positions[1] = np.radians(group["ra"][:])
+                shear = [g1, g2]
+                field = nmt.NmtFieldCatalog(positions, weight, shear, lmax=lmax,
+                            lmax_mask=lmax, spin=2)
+        else:
+            with self.open("binned_lens_catalog.hdf5", wrapper=True) as f:
+                group = f[f"lens/bin_{i}"]
+                n = group["ra"].size
+                positions = np.zeros((2, n))
+                positions[0] = np.radians(90 - group["dec"][:])
+                positions[1] = np.radians(group["ra"][:])
+                weight = group["weight"][:]
+                field = nmt.NmtFieldCatalog(positions, weight, None, lmax=lmax,
+                            lmax_mask=lmax, spin=2)
+        
+        return field
+
+
+    def make_workspaces(self, maps, calcs, ell_bins):
+        pass
 
 
 if __name__ == "__main__":
