@@ -36,7 +36,7 @@ class CLClusterShearCatalogs(PipelineStage):
         "subtract_mean_shear": False, # Not clear if this is useful for clusters
         "coordinate_system": "celestial",
         "use_true_shear": False,
-        "delta_sigma": False,
+        "delta_sigma": False, # If True then we compute delta-sigma, otherwise we compute gamma
         "use_shape_noise": False,
     }
 
@@ -221,6 +221,7 @@ class CLClusterShearCatalogs(PipelineStage):
                 if self.config['delta_sigma']:
                     weights = np.concatenate([d[2] for d in per_cluster_data[i]])
                 else:
+                    #If we are using gamma, the weights do not deppend on each galaxy, so the function returns a float
                     weights = np.full(len(indices), per_cluster_data[i][0][2])
                 tangential_comps = np.concatenate([d[3] for d in per_cluster_data[i]])
                 cross_comps = np.concatenate([d[4] for d in per_cluster_data[i]])

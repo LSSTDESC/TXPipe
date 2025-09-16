@@ -28,6 +28,10 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         "r_min" : 0.2, #in Mpc
         "r_max" : 3.0, #in Mpc
         "nbins" : 5, # number of bins
+        #Angular bin definition
+        "angle_arcmin_min" : 25.0, #in arcmin
+        "angle_arcmin_max" : 45.0, #in arcmin
+        "nbins" : 5, # number of bins
         #type of profile
         "delta_sigma_profile" : True,
         "shear_profile" : False,
@@ -42,8 +46,13 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         import h5py
         import clmm
         import clmm.cosmology.ccl
-
-        self.radial_bins = clmm.dataops.make_bins(self.config["r_min"], self.config["r_max"], nbins=self.config["nbins"], method="evenlog10width")
+        if self.config["shear_profile"]:
+            bin_min = self.config["angle_arcmin_min"]
+            bin_max = self.config["angle_arcmin_max"]
+        else:
+            bin_min = self.config["r_min"]
+            bin_max = self.config["r_max"]
+        self.radial_bins = clmm.dataops.make_bins(bin_min, bin_max, nbins=self.config["nbins"], method="evenlog10width")
         print (self.radial_bins) 
 
         self.cluster_shears_cat, self.coordinate_system = self.load_cluster_shear_catalog() 
@@ -67,8 +76,10 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             pickle.dump(cluster_stack_dict, open(self.get_output("cluster_profiles"), 'wb'))
         
         #cluster_stack.save(self.get_output("cluster_profiles"))
+        elif self.config["shear_profile"]==True:
+            pass
         else :
-            print("Config option not supported, only delta_sigma_profiles supported")
+            print("Config option not supported, only delta_sigma_profiles and shear_profiles supported")
 
                     
 
@@ -143,8 +154,12 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
                 print ("!!! maximum radial distance of source smaller than radial_bins")
 
             # Compute radial profile for the current cluster
+            if self.config["delta_sigma_profile"]:
+                bin_units = 'Mpc'
+            elif self.config["shear_profile"]:
+                bin_units = 'arcmin'
             gc_object.make_radial_profile(
-                    "Mpc", 
+                    bin_units, 
                     bins=self.radial_bins,
                     cosmo=self.clmm_cosmo, 
                     tan_component_in = "tangential_comp_clmm", # name given in the CLClusterShearCatalogs stage
@@ -155,6 +170,8 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
                     weights_out = "W_l",
                     include_empty_bins = True 
                     )
+            if np.isnan(gc_object.galcat['W_l']).all():
+                print(gc_object.galcat['tangential_comp_clmm'], gc_object.z, gc_object.unique_id)
 
 
                 # Quick check - Print out the profile information for the first 2 cluster of the list
