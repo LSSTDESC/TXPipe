@@ -22,29 +22,25 @@ modules: >
 python_paths: []
 
 stages:
-#    - name: TXSourceSelectorMetadetect
-#      nprocess: 1
-#    - name: BPZliteInformer
-#      nprocess: 1
-#    - name: BPZ_lite
-#      nprocess: 1
+  - name: TXSourceSelectorMetadetect
+    nprocess: 1
+  - name: BPZliteInformer
+    nprocess: 1
+  - name: BPZ_lite
+    nprocess: 1
   - name: CLClusterBinningRedshiftRichness
     nprocess: 1
-  - name: CLClusterShearCatalogs
+  - name: TXTwoPointRLens
     nprocess: 1
-  - name: CLClusterEnsembleProfiles
-    nprocess: 1
-#    - name: CLClusterDataVector
-#      nprocess: 1
 
 
 
-output_dir: ./data/cosmodc2/outputs-1deg2-CL
-config: examples/cosmodc2/Cluster_pipelines/config-1deg2-CL.yml
+output_dir: notebooks/cluster_counts/gt_treecor_test/outputs-1deg2-CL
+config: notebooks/cluster_counts/gt_treecor_test/config-1deg2-CL.yml
 
 inputs:
     # See README for paths to download these files
-    shear_catalog: ./data/example/inputs/metadetect_shear_catalog.hdf5
+    #shear_catalog: ./data/example/inputs/metadetect_shear_catalog.hdf5
     #photometry_catalog:  ./data/example/inputs/photometry_catalog.hdf5
     fiducial_cosmology: ./data/fiducial_cosmology.yml
     #calibration_table: ./data/example/inputs/sample_cosmodc2_w10year_errors.dat
