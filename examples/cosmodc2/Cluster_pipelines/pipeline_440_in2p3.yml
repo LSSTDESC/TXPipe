@@ -1,0 +1,43 @@
+    site:
+        name: local
+        max_threads: 30
+    launcher:
+        name: mini
+        interval: 0.5
+    modules: >
+        txpipe
+        rail.estimation.algos.bpz_lite
+    python_paths: []
+    stages:
+      - name: TXSourceSelectorMetadetect
+            nprocess: 30
+      - name: CLClusterBinningRedshiftRichness
+            nprocess: 1
+      - name: CLClusterShearCatalogs
+            nprocess: 30   #>1 does not work with mpi
+      - name: CLClusterEnsembleProfiles
+            nprocess: 10
+      - name: CLClusterSACC
+            nprocess: 1
+            aliases:
+                cluster_profiles: cluster_profiles
+#    - name: CLClusterDataVector
+#      nprocess: 1
+    output_dir: /sps/lsst/groups/clusters/cl_pipeline_project/TXPipe_data/cosmodc2/pipeline_test/outputs-440deg2-CL-False-Shear/
+# Put the logs from the individual stages in this directory:
+    log_dir: ./logs
+
+# Put the logs from the individual stages in this directory:
+    config: ./config_440_in2p3.yml
+    inputs:
+    # See README for paths to download these files
+        shear_catalog: /sps/lsst/groups/clusters/cl_pipeline_project/TXPipe_data/cosmodc2/full/shear_catalog.hdf5
+    #photometry_catalog:  /sps/lsst/users/mricci/TXPipe_data/data_link/cosmodc2/20deg2/photometry_catalog.hdf5
+        fiducial_cosmology: /sps/lsst/groups/clusters/cl_pipeline_project/TXPipe_data/cosmodc2/fiducial_cosmology.yml
+        calibration_table: /sps/lsst/groups/clusters/cl_pipeline_project/TXPipe_data/cosmodc2/20deg2/sample_cosmodc2_w10year_errors.dat
+        spectroscopic_catalog: /sps/lsst/groups/clusters/cl_pipeline_project/TXPipe_data/cosmodc2/20deg2/spectroscopic_catalog.hdf5
+        cluster_catalog: /sps/lsst/groups/clusters/cl_pipeline_project/TXPipe_data/cosmodc2/full/cluster_catalog.hdf5
+    #shear_tomography_catalog: ./data/example/outputs_metadetect/shear_tomography_catalog.hdf5
+        source_photoz_pdfs: /sps/lsst/groups/clusters/cl_pipeline_project/TXPipe_data/cosmodc2/outputs-full/source_photoz_pdfs.hdf5
+    resume: true
+    pipeline_log: ./logs/log_440deg2.txt
