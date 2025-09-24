@@ -302,6 +302,7 @@ class PatchMaker:
             my_patches=my_patches,
         )
 
+
         # Read the data in the input catalog in chunks
         with h5py.File(cat.file_name, "r") as f:
             # Get the group within the file
