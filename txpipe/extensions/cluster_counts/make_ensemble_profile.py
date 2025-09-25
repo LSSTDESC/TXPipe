@@ -142,10 +142,9 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             # Instantiating a CLMM galaxy cluster object
             gc_object = clmm.GalaxyCluster(np.int(id_cl), ra_cl, dec_cl, z_cl, galcat)
             gc_object.richness = rich_cl
-
-
-            if (clmm.utils.convert_units(np.max(bg_cat["distance_arcmin"]), 'arcmin', 'Mpc', z_cl, self.clmm_cosmo)< self.distance_bins[-1]):
-                print ("!!! maximum radial distance of source smaller than distance_bins")
+            cat_max_distance = (clmm.utils.convert_units(np.max(bg_cat["distance_arcmin"]), "arcmin", "Mpc", z_cl, self.clmm_cosmo) if self.units == "mpc" else np.max(bg_cat["distance_arcmin"]))
+            if cat_max_distance < self.distance_bins[-1]:
+                print ("!!! maximum distance of source smaller than distance_bins")
 
             # Compute radial profile for the current cluster
             gc_object.make_radial_profile(
