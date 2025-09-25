@@ -36,6 +36,7 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         "delta_sigma_profile" : True,
         "shear_profile" : False,
         "magnification_profile" : False,
+        "units": "mpc" # options are mpc or arcmin
         #coordinate_system for shear
         #"coordinate_system" : 'euclidean' #Must be either 'celestial' or 'euclidean'
     }
@@ -46,14 +47,14 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         import h5py
         import clmm
         import clmm.cosmology.ccl
-        if self.config["shear_profile"]:
+        if self.config["units"].lower()== "mpc":
             bin_min = self.config["angle_arcmin_min"]
             bin_max = self.config["angle_arcmin_max"]
         else:
             bin_min = self.config["r_min"]
             bin_max = self.config["r_max"]
-        self.radial_bins = clmm.dataops.make_bins(bin_min, bin_max, nbins=self.config["nbins"], method="evenlog10width")
-        print (self.radial_bins) 
+        self.distance_bins = clmm.dataops.make_bins(bin_min, bin_max, nbins=self.config["nbins"], method="evenlog10width")
+        print (self.distance_bins) 
 
         self.cluster_shears_cat, self.coordinate_system = self.load_cluster_shear_catalog() 
 
@@ -69,18 +70,10 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         # load cluster catalog as an astropy table
         #clusters = self.load_cluster_catalog()
         
-        if self.config["delta_sigma_profile"]==True:
-            
-            cluster_stack_dict = self.load_cluster_catalog_tomography_group() 
 
-            pickle.dump(cluster_stack_dict, open(self.get_output("cluster_profiles"), 'wb'))
-        
-        #cluster_stack.save(self.get_output("cluster_profiles"))
-        elif self.config["shear_profile"]==True:
-            pass
-        else :
-            print("Config option not supported, only delta_sigma_profiles and shear_profiles supported")
-
+        cluster_stack_dict = self.load_cluster_catalog_tomography_group() 
+        pickle.dump(cluster_stack_dict, open(self.get_output("cluster_profiles"), 'wb'))
+        print(cluster_stack_dict)
                     
 
     def load_cluster_shear_catalog(self) :
@@ -96,19 +89,20 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             source_index = g['source_index'][:]
             weight = g['weight'][:]
             distance_arcmin = g['distance_arcmin'][:]
+            profile_type = g.attrs["profile_type"]
 
         print(len(cluster_index), len(tangential_comp), len(source_index))
         
         tab = Table({"cluster_index": cluster_index, "cluster_id" : cluster_id, "tangential_comp_clmm": tangential_comp,
                       "cross_comp_clmm": cross_comp, "source_index": source_index,
-                      "weight_clmm": weight, "distance_arcmin": distance_arcmin})
+                      "weight_clmm": weight, "distance_arcmin": distance_arcmin, "profile_type": profile_type})
     
                   
         return tab, meta_coord_sys
 
 
 
-    def create_cluster_ensemble(self, cluster_list, cluster_ensemble_id=0):
+    def create_cluster_ensemble(self, cluster_list, cluster_ensemtble_id=0):
         import clmm
 
         # load cluster shear catalog using similar astropy table set up as cluster catalog
@@ -150,17 +144,13 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             gc_object.richness = rich_cl
 
 
-            if (clmm.utils.convert_units(np.max(bg_cat["distance_arcmin"]), 'arcmin', 'Mpc', z_cl, self.clmm_cosmo)< self.radial_bins[-1]):
-                print ("!!! maximum radial distance of source smaller than radial_bins")
+            if (clmm.utils.convert_units(np.max(bg_cat["distance_arcmin"]), 'arcmin', 'Mpc', z_cl, self.clmm_cosmo)< self.distance_bins[-1]):
+                print ("!!! maximum radial distance of source smaller than distance_bins")
 
             # Compute radial profile for the current cluster
-            if self.config["delta_sigma_profile"]:
-                bin_units = 'Mpc'
-            elif self.config["shear_profile"]:
-                bin_units = 'arcmin'
             gc_object.make_radial_profile(
-                    bin_units, 
-                    bins=self.radial_bins,
+                    self.units, 
+                    bins=self.distance_bins,
                     cosmo=self.clmm_cosmo, 
                     tan_component_in = "tangential_comp_clmm", # name given in the CLClusterShearCatalogs stage
                     cross_component_in = "cross_comp_clmm", # name given in the CLClusterShearCatalogs stage

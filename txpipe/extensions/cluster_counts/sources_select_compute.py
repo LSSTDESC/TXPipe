@@ -31,7 +31,7 @@ class CLClusterShearCatalogs(PipelineStage):
         "max_radius": 10.0,  # Mpc
         "delta_z": 0.1,
         "redshift_cut_criterion": "zmode",  # pdf / mean / true / median
-        "redshift_weight_criterion": "zmode",  # pdf, point or nz
+        "redshift_weight_criterion": "zmode",  # pdf or point
         "redshift_cut_criterion_pdf_fraction": 0.9,  # pdf / mean / true / median
         "subtract_mean_shear": False, # Not clear if this is useful for clusters
         "coordinate_system": "celestial",
@@ -124,16 +124,6 @@ class CLClusterShearCatalogs(PipelineStage):
                 elif redshift_cut_criterion in ["ztrue", "zmode", "zmean"]:
                     zgal = z_info[0]
                     z_good = zgal > cluster_z + delta_z
-                elif redshift_cut_criterion == 'nz':
-                    with self.open_input("shear_tomography_catalog") as f:
-                        nbins = f['tomography'].attrs['nbin']
-                        zbins = [(f['tomography'].attrs[f'zmin_{i}'], f['tomography'].attrs[f'zmax_{i}'])for i in range(nbins)]
-                    cluster_bin = -1
-                    for i, (zmin, zmax) in enumerate(zbins):
-                        if zmin < cluster_z <= zmax:
-                            cluster_bin = i
-                    bin_gal = data["bin"][gal_index]
-                    z_good = bin_gal > cluster_bin
                 else:
                     raise NotImplementedError("Not implemented other z cuts")
                 
@@ -145,6 +135,7 @@ class CLClusterShearCatalogs(PipelineStage):
 
                 # Compute source quantities
                 #weights = self.compute_weights(clmm_cosmo, data, gal_index, cluster_z)
+                print("cluster_z and type", cluster_z, type(cluster_z))
                 weights, tangential_comp, cross_comp, g1, g2 = self.compute_sources_quantities(clmm_cosmo, data, gal_index, cluster_z, cluster_ra, cluster_dec)
                 # we want to save the index into the overall shear catalog,
                 # not just into this chunk of data
@@ -190,6 +181,10 @@ class CLClusterShearCatalogs(PipelineStage):
             index_group.create_dataset("g1", shape=(total_count,), dtype=np.float64)
             index_group.create_dataset("g2", shape=(total_count,), dtype=np.float64)
             index_group.create_dataset("distance_arcmin", shape=(total_count,), dtype=np.float64)
+            profile_group_name = "reduced_shear"
+            if self.config['delta_sigma'] == True:
+                profile_group_name = "delta_sigma"
+            index_group.attrs["profile_type"] = profile_group_name
 
 
         # Now we loop through each cluster and collect all the galaxies
@@ -270,10 +265,9 @@ class CLClusterShearCatalogs(PipelineStage):
             index_group["g1"][start:start + n] = g1
             index_group["g2"][start:start + n] = g2
             index_group["distance_arcmin"][start:start + n] = np.degrees(distances) * 60
-            print(index_group["tangential_comp"][start:start + n])   
+            print(index_group["tangential_comp"][start:start + n])
 
             start += n
-        
         if self.rank == 0:
             outfile.close()
 
@@ -411,8 +405,6 @@ class CLClusterShearCatalogs(PipelineStage):
             z_source = z_info[0]
             if is_deltasigma:
                 sigma_c = clmm_cosmo.eval_sigma_crit(z_cluster, z_source)
-        elif criterion == "nz":
-            pass
         else:
             raise NotImplementedError(f"Not implemented {criterion} weighting")
             
@@ -601,8 +593,6 @@ class CLClusterShearCatalogs(PipelineStage):
             zgal = data["redshift"][gal_index]
         elif criterion == "zmean":
             zgal = data["zmean"][gal_index]
-        elif criterion == "nz":
-            pass
         else:
             raise NotImplementedError("Not implemented other z cuts")
         return (zgal, pdf_z)
