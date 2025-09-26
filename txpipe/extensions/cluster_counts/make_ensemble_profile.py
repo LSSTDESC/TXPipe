@@ -46,19 +46,16 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         import astropy
         import h5py
         import clmm
-        import clmm.cosmology.ccl
-        if self.config["units"].lower()== "mpc":
+        import clmm.cosmology.ccl 
+        if self.config["units"].lower() == "arcmin":
             bin_min = self.config["angle_arcmin_min"]
             bin_max = self.config["angle_arcmin_max"]
         else:
             bin_min = self.config["r_min"]
             bin_max = self.config["r_max"]
         self.distance_bins = clmm.dataops.make_bins(bin_min, bin_max, nbins=self.config["nbins"], method="evenlog10width")
-        print (self.distance_bins) 
 
-        self.cluster_shears_cat, self.coordinate_system = self.load_cluster_shear_catalog() 
-
-        print (self.coordinate_system) 
+        self.cluster_shears_cat, self.coordinate_system, self.profile_type = self.load_cluster_shear_catalog() 
         
         with self.open_input("fiducial_cosmology", wrapper=True) as f:
             ccl_cosmo = f.to_ccl()
@@ -73,7 +70,7 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
 
         cluster_stack_dict = self.load_cluster_catalog_tomography_group() 
         pickle.dump(cluster_stack_dict, open(self.get_output("cluster_profiles"), 'wb'))
-        print(cluster_stack_dict)
+
                     
 
     def load_cluster_shear_catalog(self) :
@@ -91,20 +88,19 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             distance_arcmin = g['distance_arcmin'][:]
             profile_type = g.attrs["profile_type"]
 
-        print(len(cluster_index), len(tangential_comp), len(source_index))
         
         tab = Table({"cluster_index": cluster_index, "cluster_id" : cluster_id, "tangential_comp_clmm": tangential_comp,
                       "cross_comp_clmm": cross_comp, "source_index": source_index,
-                      "weight_clmm": weight, "distance_arcmin": distance_arcmin, "profile_type": profile_type})
+                      "weight_clmm": weight, "distance_arcmin": distance_arcmin})
     
                   
-        return tab, meta_coord_sys
+        return tab, meta_coord_sys, profile_type
 
 
 
-    def create_cluster_ensemble(self, cluster_list, cluster_ensemtble_id=0):
+    def create_cluster_ensemble(self, cluster_list, cluster_ensemble_id=0):
         import clmm
-
+        shear_units = self.config["units"].lower()
         # load cluster shear catalog using similar astropy table set up as cluster catalog
         #cluster_shears_cat, coordinate_system = self.load_cluster_shear_catalog() 
         
@@ -133,7 +129,7 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             
             
             # To use CLMM, need to have galaxy table in clmm.GCData type
-            galcat = clmm.GCData(bg_cat, meta={"coordinate_system": self.coordinate_system})
+            galcat = clmm.GCData(bg_cat, meta={"coordinate_system": self.coordinate_system, "profile_type": self.profile_type})
             print(galcat.meta)
             galcat['theta'] = galcat['distance_arcmin']*np.pi/(60*180) # CLMM galcat requires a column called "theta" in radians
             galcat['z'] = np.zeros(len(galcat)) # clmm needs a column named 'z' but all computation have been done 
@@ -142,13 +138,13 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             # Instantiating a CLMM galaxy cluster object
             gc_object = clmm.GalaxyCluster(np.int(id_cl), ra_cl, dec_cl, z_cl, galcat)
             gc_object.richness = rich_cl
-            cat_max_distance = (clmm.utils.convert_units(np.max(bg_cat["distance_arcmin"]), "arcmin", "Mpc", z_cl, self.clmm_cosmo) if self.units == "mpc" else np.max(bg_cat["distance_arcmin"]))
+            cat_max_distance = (clmm.utils.convert_units(np.max(bg_cat["distance_arcmin"]), "arcmin", "Mpc", z_cl, self.clmm_cosmo) if shear_units == "mpc" else np.max(bg_cat["distance_arcmin"]))
             if cat_max_distance < self.distance_bins[-1]:
                 print ("!!! maximum distance of source smaller than distance_bins")
 
             # Compute radial profile for the current cluster
             gc_object.make_radial_profile(
-                    self.units, 
+                    shear_units, 
                     bins=self.distance_bins,
                     cosmo=self.clmm_cosmo, 
                     tan_component_in = "tangential_comp_clmm", # name given in the CLClusterShearCatalogs stage
@@ -157,15 +153,11 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
                     cross_component_out = "cross_comp",
                     weights_in = "weight_clmm", # name given in the CLClusterShearCatalogs stage
                     weights_out = "W_l",
-                    include_empty_bins = True 
+                    include_empty_bins = True ,
+                    use_weights=True
                     )
-            if np.isnan(gc_object.galcat['W_l']).all():
-                print(gc_object.galcat['tangential_comp_clmm'], gc_object.z, gc_object.unique_id)
-
-
                 # Quick check - Print out the profile information for the first 2 cluster of the list
-            #if cluster_index == 0 or cluster_index == 1:
-            #if cluster_index <2:  
+            # if cluster_index == 0 or cluster_index == 1:
             #    print(gc_object.profile)
 
                 # Add the profile to the ensemble
@@ -198,7 +190,6 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             for key in k :
                 group = f["cluster_bin"][key]
                 clusters = self.load_cluster_list(group=group) #elf.get_cluster_indice( DOES THIS FUNCTION COMES FROM ?
-                print(key, group, dict(group.attrs), len(clusters), clusters)
                 
                 if  len(clusters)>1:
                     cluster_stack = self.create_cluster_ensemble(clusters, cluster_ensemble_id=key)

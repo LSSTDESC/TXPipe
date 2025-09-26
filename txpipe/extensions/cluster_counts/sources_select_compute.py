@@ -135,7 +135,6 @@ class CLClusterShearCatalogs(PipelineStage):
 
                 # Compute source quantities
                 #weights = self.compute_weights(clmm_cosmo, data, gal_index, cluster_z)
-                print("cluster_z and type", cluster_z, type(cluster_z))
                 weights, tangential_comp, cross_comp, g1, g2 = self.compute_sources_quantities(clmm_cosmo, data, gal_index, cluster_z, cluster_ra, cluster_dec)
                 # we want to save the index into the overall shear catalog,
                 # not just into this chunk of data
@@ -265,7 +264,6 @@ class CLClusterShearCatalogs(PipelineStage):
             index_group["g1"][start:start + n] = g1
             index_group["g2"][start:start + n] = g2
             index_group["distance_arcmin"][start:start + n] = np.degrees(distances) * 60
-            print(index_group["tangential_comp"][start:start + n])
 
             start += n
         if self.rank == 0:
@@ -373,7 +371,6 @@ class CLClusterShearCatalogs(PipelineStage):
             print("Min search angle = ", theta_max_arcmin.min(), "arcmin")
             print("Mean search angle = ", theta_max_arcmin.mean(), "arcmin")
             print("Max search angle = ", theta_max_arcmin.max(), "arcmin")
-        print(f"Max angle {theta_max} rad, and ")
         return theta_max
 
 
