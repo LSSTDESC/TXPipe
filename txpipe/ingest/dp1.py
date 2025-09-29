@@ -94,16 +94,28 @@ class TXIngestDataPreview1(PipelineStage):
         "butler_config_file": "/global/cfs/cdirs/lsst/production/gen3/rubin/DP1/repo/butler.yaml",
         "cosmology_tracts_only": True,
         "select_field": "",  # If set, only select objects in this field. Overrides cosmology_tracts_only.
+        "collections": "LSSTComCam/DP1",
     }
 
     def run(self):
-        from lsst.daf.butler import Butler
+        error_msg = "The LSST Science Pipelines are not installed in this environment, " \
+                              "or are not configured correctly to access the data. " \
+                              "See the note in the file example/dp1/ingest.yml for how to set "\
+                              "this up on NERSC."
+        try:
+            from lsst.daf.butler import Butler
+        except:
+            raise ImportError(error_msg)
 
         # Configure and create the butler. There seem to be several ways
         # to do this, and there is a central collective butler yaml file
         # on NERSC
         butler_config_file = self.config["butler_config_file"]
-        butler = Butler(butler_config_file, collections="LSSTComCam/DP1")
+        collections = self.config["collections"]
+        try:
+            butler = Butler(butler_config_file, collections=collections)
+        except:
+            raise RuntimeError(error_msg)
 
         if self.config["select_field"]:
             selected_tracts = DP1_TRACTS[self.config["select_field"]]

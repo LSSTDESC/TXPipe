@@ -1,3 +1,12 @@
+# To run this ingestion step you need to:
+# 1. Be on NERSC
+# 2. Have an environment with the LSST Science Pipelines (formerly the DM Stack) active
+# 3. Have followed the instructions here to set up access:
+# https://confluence.slac.stanford.edu/spaces/LSSTDESC/pages/610481917/Rubin+Data+Preview+1+DP1
+
+# (In theory you could do this on another system where the data and code are
+# available, but we have not tried this)
+
 stages:
   # Ingest the three fields separately
   - name: IngestEDFS
