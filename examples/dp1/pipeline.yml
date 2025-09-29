@@ -1,5 +1,18 @@
 # This uses the Jinja2 template system, which was
-# recently added into ceci. It adds a suffix to input
+# recently added into ceci. It allows us to use the
+# same pipeline file for the three DP1 wide-field cosmology fields
+# (EDFS, ECDFS, LGLF)
+
+# To run this pipeline:
+# ceci -t field=ecdfs examples/dp1/pipeline.yml
+# where "ecdfs" can also be one of the other fields (lower case)
+
+# See the ceci docs here for more info:
+# https://ceci.readthedocs.io/en/latest/config.html#templates
+
+
+
+# This adds a suffix to input
 # and output paths if the "field" template parameter is used.
 {% if field == "" %}
   {% set suffix = "" %}
