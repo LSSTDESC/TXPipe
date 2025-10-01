@@ -24,24 +24,18 @@ class TXIngestPlanckLensingMaps(PipelineStage):
         "alm_file": "data/planck/PR4_klm_dat_p.fits",
         "mask_file": "data/planck/mask.fits.gz",
         "noise_file": "data/planck/PR4_klm_dat_p_noise.fits",
+        "nside": 512,
     }
 
     def run(self):
-        import healpy
-
-        # Read in the CMB lensing alms and mask
-        alms = healpy.read_alm("data/planck/PR4_klm_dat_p.fits")
-        mask = healpy.read_map("data/planck/mask.fits.gz")
-        nside = healpy.get_nside(mask)
-        alms[0] = 0
-        kappa_map = healpy.alm2map(alms, nside=nside)
+        kappa_map = self.ingest_kappa()
+        mask = self.ingest_mask()
 
         kappa_pix = np.where(mask > 0)[0]
         kappa_val = kappa_map[kappa_pix]
         mask_val = mask[kappa_pix]
 
-        kappa_noise_spectrum = np.loadtxt("data/planck/PR4_klm_dat_p_noise.fits")
-        ell = np.arange(len(kappa_noise_spectrum))
+        noise_ell, noise_spectrum = self.ingest_noise_spectrum()
 
         with self.open_output("cmb_lensing_map", wrapper=True) as f:
             f.write_map("kappa_cmb", kappa_pix, kappa_val)
@@ -49,5 +43,166 @@ class TXIngestPlanckLensingMaps(PipelineStage):
 
             # add a separate section for the noise
             g = f.file.create_group("noise_spectrum")
-            g.create_dataset("noise_n_ell", data=kappa_noise_spectrum)
-            g.create_dataset("ell", data=ell)
+            g.create_dataset("noise_n_ell", data=noise_ell)
+            g.create_dataset("noise_spectrum", data=noise_spectrum)
+
+
+    def ingest_kappa(self):
+        import healpy as hp
+        alm_file = self.config['alm_file']
+        nside = self.config['nside']
+
+        # Read in the CMB lensing alms
+        alms, lmax = hp.read_alm(alm_file, return_mmax=True)
+
+        # correct for the monopole
+        alms[0] = 0 + 0j
+
+        # Rotate from Galactic to Celestial coordinates
+        rot = hp.Rotator(coord=['G', 'C'])
+        alms = rot.rotate_alm(alms)
+
+        # Low-pass filter: remove power above ell = 3 * Nside
+        fl = np.ones(lmax+1)
+        fl[3*nside:] = 0
+        alms = hp.almxfl(alms, fl, inplace=True)
+
+        # convert to map space
+        kappa = hp.alm2map(alms, nside)
+        return kappa
+
+    def ingest_mask(self):
+        import healpy as hp
+        import pymaster as nmt
+        mask_file = self.config['mask_file']
+        nside = self.config['nside']
+
+        # Read the Planck lensing mask
+        mask = hp.read_map(mask_file)
+
+        # Rotate from Galactic to Celestial coordinates
+        rot = hp.Rotator(coord=['G', 'C'])
+        mask = rot.rotate_map_pixel(mask)
+
+        # Apodize. The size is the scale in degrees.
+        # The type means the definition listed here:
+        # https://namaster.readthedocs.io/en/latest/api/pymaster.utils.html#pymaster.utils.mask_apodization
+        mask = nmt.mask_apodization(mask, aposize=0.2, apotype="C1")
+
+        # Convert to a binary mask
+        mask[mask > 0.5] = 1
+        mask[mask <= 0.5] = 0
+
+        # Downgrade to desired nside and return
+        mask = hp.ud_grade(mask, nside_out=nside)
+        return mask
+    
+    def ingest_noise_spectrum(self):
+        noise_file = self.config['noise_file']
+        noise_spectrum = np.loadtxt(noise_file)
+        ell = np.arange(len(noise_spectrum))
+        return ell, noise_spectrum
+
+
+
+class TXIngestQuaia(PipelineStage):
+    """Ingest Quaia lensing maps as TXPipe overdensity (delta) maps."""
+
+    config_options = {
+        "quaia_file": "data/quaia_G20.5.fits",
+        "selection_function_template": "data/selection_function_NSIDE64_G20.5_zsplit2bin{}.fits",
+        "nside": 512,
+        "sel_threshold": 0.5,
+        "num_z_bins": 500,
+        "zname": "redshift_quaia",
+    }
+
+
+    
+    def run(self):
+        import healpy as hp
+        from astropy.table import Table
+        
+
+        nside = self.config['nside']
+        npix = hp.nside2npix(nside)
+        zname = self.config['zname']
+
+        cat = Table.read('data/quaia_G20.5.fits')
+        zs = sorted(cat[zname])
+
+        # The quasar catalog is sorted by redshift already so the
+        # median redshift is just the middle element
+        z_edges = np.array([0, zs[int(len(cat)/2)], 5])
+
+        # Low and high redshift bins
+        cat1 = cat[(cat[zname] < z_edges[1]) & (cat[zname] >= z_edges[0])]
+        cat2 = cat[(cat[zname] < z_edges[2]) & (cat[zname] >= z_edges[1])]
+
+        print("Redshift edges: ", z_edges)
+        cats = [cat1, cat2]
+
+        sel_file_name = self.config['selection_function_template']
+        sels = [hp.ud_grade(hp.read_map(sel_file_name.format(i)), nside_out=nside) for i in range(2)]
+        
+        maps = {}
+        for i in range(2):
+            maps[f'qso{i}'] = self.process_catalog(cats[i], sels[i])
+
+    def process_catalog(self, cat, sel):
+        import healpy as hp
+        import pymaster as nmt
+
+        sel_threshold = self.config['sel_threshold']
+        nside = self.config['nside']
+        npix = hp.nside2npix(nside)
+        num_z_bins = self.config['num_z_bins']
+        zname = self.config['zname']
+
+        # Threshold selection function
+        mask_b = sel > sel_threshold
+        mask = sel.copy()
+        mask[~mask_b] = 0.0
+
+        # Get angular mask and cut catalog
+        ipix = hp.ang2pix(nside, cat['ra'], cat['dec'], lonlat=True)
+        maskflag = mask_b[ipix]
+        c = cat[maskflag]
+        ipix = ipix[maskflag]
+
+        # Get redshift distribution via PDF stacking
+        zs = np.linspace(0., 4.5, num_z_bins)
+        sz = c[zname+'_err']
+        zm = c[zname]
+        nz = np.array([np.sum(np.exp(-0.5*((z-zm)/sz)**2)/sz)
+                    for z in zs])
+
+        # Calculate overdensity field
+        nmap = np.bincount(ipix, minlength=npix)
+        nmean = np.sum(nmap*mask_b)/np.sum(mask*mask_b)
+        delta = np.zeros(npix)
+
+
+        delta[mask_b] = nmap[mask_b]/(nmean*mask[mask_b])-1
+
+        # Calculate coupled noise power spectrum
+        nmean_srad = nmean * npix / (4*np.pi)
+        nl_coupled = np.mean(mask) / nmean_srad * np.ones((1, 3*nside))
+
+        # Compute NaMaster field
+        f = nmt.NmtField(mask, [delta], n_iter=0)
+
+        # Return everything in a dictionary
+        return {
+            'map': delta,
+            'mask': mask,
+            'field': f,
+            'cat': c,
+            'nl_coupled': nl_coupled,
+            'dndz': (zs, nz)
+        }
+
+    maps = {}
+    for i in range(2):
+        maps[f'qso{i}'] = process_catalog(cats[i], sels[i])
+
