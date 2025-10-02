@@ -48,7 +48,7 @@ dependencies:
     - dask-mpi>=2022.4.0
     - git+https://github.com/LSSTDESC/CLMM.git@1.14.1
     - parallel-statistics==0.13
-    - sacc[all]==1.0.*
+    - git+https://github.com/LSSTDESC/sacc.git@ab2e781
     - jax==0.6.0
     - jaxlib==0.6.0
     - glass==2023.7
