@@ -134,11 +134,16 @@ class TXLSSWeights(TXMapCorrelations):
         """
         By default prepare sysmaps will just load and mask the maps
 
-        subclasses for differnet methods can modify this behaviour
+        subclasses for different methods can modify this behaviour
         (e.g. adding a normalization of the maps)
         """
         sys_maps, sys_names = self.load_and_mask_sysmaps()
         sys_meta = {"masked": True, "normed": False}
+        
+        sys_meta["edges"] = []
+        for sys_map in enumerate(sys_maps):
+            sys_meta["edges"].append(self.compute_bin_edges(sys_map))
+        
         return sys_maps, sys_names, sys_meta
 
     def get_deltag(self, tomobin):
@@ -259,16 +264,11 @@ class TXLSSWeights(TXMapCorrelations):
             DensityCorrelation instance containing the number
             counts/density vs sysmap for all sysmaps
         """
-        import scipy.stats
         import healpy as hp
         import numpy as np
         from . import lsstools
 
         s = time.time()
-
-        nsysbins = self.config["nbin"]
-        f = 0.5 * self.config["outlier_fraction"]
-        percentiles = np.linspace(f, 1 - f, nsysbins + 1)
 
         with self.open_input("mask", wrapper=True) as map_file:
             mask_map_info = map_file.read_map_info("mask")
@@ -313,16 +313,9 @@ class TXLSSWeights(TXMapCorrelations):
             else:
                 frac = mask[hp.nest2ring(nside, sys_map.valid_pixels)]
 
-            if self.config["equal_area_bins"]:
-                edges = scipy.stats.mstats.mquantiles(sys_vals, percentiles)
-            else:
-                edges = np.linspace(
-                    np.percentile(sys_vals, 100.0 * percentiles[0]),
-                    np.percentile(sys_vals, 100.0 * percentiles[-1]),
-                    nsysbins + 1,
-                )
-
             sys_name = None if self.sys_names is None else self.sys_names[imap]
+
+            edges = self.sys_meta["edges"][imap]
 
             density_corrs.add_correlation(
                 imap,
@@ -504,6 +497,53 @@ class TXLSSWeights(TXMapCorrelations):
             chi2_threshold=chi2_threshold,
         )
 
+    def compute_bin_edges(self, sys_map):
+        import scipy.stats
+        import numpy as np
+
+        nsysbins = self.config["nbin"] # nominal number of SP bins (this can change if too many pixels have the same value)
+        f = 0.5 * self.config["outlier_fraction"]
+        percentiles = np.linspace(f, 1 - f, nsysbins + 1)
+
+        sys_vals = sys_map[sys_map.valid_pixels]  # SP value in each valid pixel
+
+        if self.config["equal_area_bins"]:
+            edges = scipy.stats.mstats.mquantiles(sys_vals, percentiles)
+        else:
+            edges = np.linspace(
+                np.percentile(sys_vals, 100.0 * percentiles[0]),
+                np.percentile(sys_vals, 100.0 * percentiles[-1]),
+                nsysbins + 1,
+            )
+       
+        # Remove any duplciates from the edges array
+        # This can occur when a large fraction of the survey has the same value in the SP map
+        u_edges, idx = self.unique_tol(edges, tol=np.finfo(edges.dtype).eps, return_index=True)
+        if len(u_edges) != len(edges):
+            edges = edges[np.sort(idx)]
+        
+        return edges
+
+    @staticmethod
+    def unique_tol(arr, tol=1e-8, return_index=False):
+        """
+        Simple replacement for np.unique that allows for a small tolerance
+        Useful when SP map values differ only by machine precision
+        """
+        import numpy as np
+        out = []
+        idx = []
+        for i, x in enumerate(arr):
+            if not any(np.isclose(x, y, atol=tol, rtol=0) for y in out):
+                out.append(x)
+                idx.append(i)
+        out = np.array(out, dtype=arr.dtype)
+        idx = np.array(idx, dtype=int)
+
+        if return_index:
+            return out, idx
+        return out   
+
 
 class TXLSSWeightsLinBinned(TXLSSWeights):
     """
@@ -549,6 +589,10 @@ class TXLSSWeightsLinBinned(TXLSSWeights):
         # normalize sysmaps (and keep track of the normalization factors)
         mean, std = self.normalize_sysmaps(sys_maps)
         sys_meta = {"masked": True, "normed": True, "mean": mean, "std": std}
+
+        sys_meta["edges"] = []
+        for i, sys_map in enumerate(sys_maps):
+            sys_meta["edges"].append(self.compute_bin_edges(sys_map))
 
         return sys_maps, sys_names, sys_meta
 
