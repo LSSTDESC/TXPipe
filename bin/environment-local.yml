@@ -36,12 +36,12 @@ dependencies:
   - qp-prob=1.0.*
   - tabulate # used for generating output report in CI
   - pip:
-    - ceci==2.2.*
+    - ceci==2.3.*
     - git+https://github.com/jlvdb/hyperbolic@b88b107a291fa16c2006cf971ce610248d58e94c
     - dask-mpi>=2022.4.0
     - git+https://github.com/LSSTDESC/CLMM.git@1.14.1
     - parallel-statistics==0.13
-    - sacc[all]==0.14
+    - sacc[all]==1.0.*
     - jax==0.6.0
     - jaxlib==0.6.0
     - glass==2023.7
