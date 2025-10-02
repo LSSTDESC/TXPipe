@@ -117,8 +117,6 @@ class TXIngestQuaia(PipelineStage):
         "zname": "redshift_quaia",
     }
 
-
-    
     def run(self):
         import healpy as hp
         from astropy.table import Table
@@ -127,27 +125,38 @@ class TXIngestQuaia(PipelineStage):
         nside = self.config['nside']
         npix = hp.nside2npix(nside)
         zname = self.config['zname']
+        quaia_file = self.config['quaia_file']
 
-        cat = Table.read('data/quaia_G20.5.fits')
-        zs = sorted(cat[zname])
+        cat = Table.read(quaia_file)
+        cat.sort(zname)
+        zs = cat[zname]
 
         # The quasar catalog is sorted by redshift already so the
         # median redshift is just the middle element
-        z_edges = np.array([0, zs[int(len(cat)/2)], 5])
+        zmedian = zs[len(cat)//2]
+        z_edges = np.array([0, zmedian, 5])
 
         # Low and high redshift bins
-        cat1 = cat[(cat[zname] < z_edges[1]) & (cat[zname] >= z_edges[0])]
-        cat2 = cat[(cat[zname] < z_edges[2]) & (cat[zname] >= z_edges[1])]
+        cat1 = cat[(zs < z_edges[1]) & (zs >= z_edges[0])]
+        cat2 = cat[(zs < z_edges[2]) & (zs >= z_edges[1])]
 
         print("Redshift edges: ", z_edges)
         cats = [cat1, cat2]
 
         sel_file_name = self.config['selection_function_template']
-        sels = [hp.ud_grade(hp.read_map(sel_file_name.format(i)), nside_out=nside) for i in range(2)]
+        sels = [
+            hp.ud_grade(hp.read_map(sel_file_name.format(i)), nside_out=nside) 
+            for i in range(2)
+        ]
         
         maps = {}
         for i in range(2):
-            maps[f'qso{i}'] = self.process_catalog(cats[i], sels[i])
+            pix, delta = self.process_catalog(cats[i], sels[i])
+            maps[f'delta_{i}'] = (pix, delta)
+
+        with self.open_output("density_maps", wrapper=True) as f:
+            for name, (pix, delta) in maps.items():
+                f.write_map(name, pix, delta)
 
     def process_catalog(self, cat, sel):
         import healpy as hp
@@ -182,25 +191,10 @@ class TXIngestQuaia(PipelineStage):
         nmean = np.sum(nmap*mask_b)/np.sum(mask*mask_b)
         delta = np.zeros(npix)
 
-
         delta[mask_b] = nmap[mask_b]/(nmean*mask[mask_b])-1
 
-        # Calculate coupled noise power spectrum
-        nmean_srad = nmean * npix / (4*np.pi)
-        nl_coupled = np.mean(mask) / nmean_srad * np.ones((1, 3*nside))
+        return np.where(mask_b), delta
 
-        # Compute NaMaster field
-        f = nmt.NmtField(mask, [delta], n_iter=0)
-
-        # Return everything in a dictionary
-        return {
-            'map': delta,
-            'mask': mask,
-            'field': f,
-            'cat': c,
-            'nl_coupled': nl_coupled,
-            'dndz': (zs, nz)
-        }
 
     maps = {}
     for i in range(2):
