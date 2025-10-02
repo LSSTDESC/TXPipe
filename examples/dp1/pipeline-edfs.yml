@@ -1,0 +1,139 @@
+# This version of this file is specialized to the EDFS field.
+# The more general pipeline.yml requires a newer ceci version and
+# a template parameter to be set.
+
+# Stages to run
+stages:
+#    - name: TXIngestDataPreview1
+
+  # Photo-z stages
+  - name: BPZliteInformer     # Prepare the p(z) estimator
+    aliases:
+        input: spectroscopic_catalog
+        model: photoz_model
+
+  - name: BPZliteEstimator          # Measure lens galaxy PDFs
+    threads_per_process: 1
+    aliases:
+        model: photoz_model
+        input: photometry_catalog
+        output: photoz_pdfs
+
+  # Selection & Calibration
+  - name: TXSourceSelectorSimple
+    nprocess: 1
+    threads_per_process: 1
+  - name: TXShearCalibration
+  - name: TXLSSWeightsUnit
+  - name: TXRandomForestLensSelector
+  - name: TXLensCatalogSplitter
+    aliases:
+        lens_photoz_pdfs: photoz_pdfs
+  - name: TXLensDiagnosticPlots
+
+  # # Photo-z ensemble estimation
+  - name: TXPhotozSourceStack
+    classname: TXPhotozStack
+    aliases:
+        tomography_catalog: shear_tomography_catalog
+        photoz_stack: shear_photoz_stack
+        weights_catalog: none
+
+  - name: TXPhotozLensStack
+    classname: TXPhotozStack
+    aliases:
+        tomography_catalog: lens_tomography_catalog_unweighted
+        photoz_stack: lens_photoz_stack
+        weights_catalog: none
+
+  - name: TXPhotozPlotSource
+    classname: TXPhotozPlot
+    aliases:
+        photoz_stack: shear_photoz_stack
+        nz_plot: nz_source
+
+  - name: TXPhotozPlotLens
+    classname: TXPhotozPlot
+    aliases:
+        photoz_stack: lens_photoz_stack
+        nz_plot: nz_lens
+
+
+
+
+  # Mapping
+  - name: TXSourceMaps
+  - name: TXLensMaps
+  - name: TXDensityMaps
+  - name: TXAuxiliarySourceMaps    # make PSF and flag maps
+  - name: TXAuxiliaryLensMaps      # make depth and bright object maps
+  - name: TXSimpleMask           # combine maps to make a simple mask
+  - name: TXMapPlots
+
+  # Two-point estimation
+  - name: TXTracerMetadata       # collate metadata
+  - name: TXJackknifeCenters     # Split the area into jackknife regions
+  - name: TXRandomCat            # generate lens bin random catalogs
+    aliases:
+        lens_photoz_pdfs: photoz_pdfs
+
+  - name: TXTwoPoint             # Compute real-space 2-point correlations
+    threads_per_process: 4
+  - name: TXSourceNoiseMaps      # Compute shear noise using rotations
+  - name: TXLensNoiseMaps        # Compute lens noise using half-splits
+  - name: TXTwoPointFourier
+    threads_per_process: 4
+
+  - name: TXTwoPointPlots
+  - name: TXGammaTFieldCenters
+
+  # Blinding
+  - name: TXNullBlinding
+
+
+# Where to put outputs
+output_dir: data/dp1/outputs_edfs
+
+# How to run the pipeline: mini, parsl, or cwl
+launcher:
+    name: mini
+    interval: 1.0
+
+# Where to run the pipeline: cori-interactive, cori-batch, or local
+site:
+    name: local
+
+# modules and packages to import that have pipeline
+# stages defined in them
+modules: >
+    txpipe
+    txpipe.extensions.hos.fsb
+    rail.creation.degraders.grid_selection
+    rail.creation.engines.flowEngine
+    rail.estimation.algos.nz_dir
+    rail.estimation.algos.bpz_lite
+
+# where to find any modules that are not in this repo,
+# and any other code we need.
+python_paths: []
+
+# configuration settings
+config: examples/dp1/config.yml
+
+
+inputs:
+    # See README for paths to download these files
+    spectroscopic_catalog: data/dp1/inputs/dp1_matched_v4_train.hdf5
+    shear_catalog: data/dp1/inputs/shear_catalog_edfs.hdf5
+    photometry_catalog: data/dp1/inputs/photometry_catalog_edfs.hdf5
+    fiducial_cosmology: data/fiducial_cosmology.yml
+    exposures: data/dp1/inputs/exposures_edfs.hdf5
+    none: none
+
+# if supported by the launcher, restart the pipeline where it left off
+# if interrupted
+resume: true
+# where to put output logs for individual stages
+log_dir: data/dp1/logs_edfs
+# where to put an overall parsl pipeline log
+pipeline_log: data/dp1/log_edfs.txt

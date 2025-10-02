@@ -51,7 +51,7 @@ def repack(filename):
     In-place HDF5 repack operation on file.
     """
     with tempfile.TemporaryDirectory() as tmpdir:
-        tmp_name = os.path.join(tmpdir, filename)
+        tmp_name = os.path.join(tmpdir, os.path.basename(filename))
         subprocess.check_call(f"h5repack {filename} {tmp_name}", shell=True)
         shutil.move(tmp_name, filename)
 

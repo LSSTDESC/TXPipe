@@ -167,6 +167,12 @@ jobs:
           test -f data/example/outputs_${{ matrix.pipeline }}/shear_xi_plus.png
         fi
 
+    - name: Dry run DP1
+      run: |
+        source ./conda/bin/activate
+        ceci --dry-run examples/dp1/pipeline-edfs.yml
+
+
     - name: Show logs
       if: always()
       run: |

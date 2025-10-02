@@ -133,6 +133,7 @@ stages:
 # stages defined in them
 modules: >
     txpipe
+    txpipe.extensions
     txpipe.extensions.hos.fsb
     rail.creation.degraders.grid_selection
     rail.creation.engines.flowEngine

@@ -14,6 +14,7 @@ stages:
 # stages defined in them
 modules: >
     txpipe
+    txpipe.extensions
 
 # where to find any modules that are not in this repo,
 # and any other code we need.
