@@ -85,7 +85,6 @@ stages:
     threads_per_process: 4
 
   - name: TXTwoPointPlots
-  - name: TXGammaTFieldCenters
 
   # Blinding
   - name: TXNullBlinding
