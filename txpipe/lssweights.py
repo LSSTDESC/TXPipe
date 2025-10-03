@@ -51,6 +51,8 @@ class TXLSSWeights(TXMapCorrelations):
         "outlier_fraction": 0.01,
         "allow_weighted_input": False,
         "nside_coverage": 32,
+        "fill_missing_pix": False, 
+        "skip_regression": False, #will compute the 1d correlations but will skip the weights/regression step (for testing)
     }
 
     def run(self):
@@ -91,18 +93,21 @@ class TXLSSWeights(TXMapCorrelations):
 
             # compute covariance of data vector
             self.calc_covariance(density_corrs)  # matrix added to density_corrs
+            if self.config["skip_regression"]:
+                weighted_density_corrs = fit_output = None
+            else:
+                # compute the weights
+                mean_density_map, fit_output = self.compute_weights(density_corrs)
+                mean_density_map_list.append(mean_density_map)
 
-            # compute the weights
-            mean_density_map, fit_output = self.compute_weights(density_corrs)
-            mean_density_map_list.append(mean_density_map)
-
-            weighted_density_corrs = self.calc_1d_density(
-                ibin, mean_density_map=mean_density_map
-            )
-            if weighted_density_corrs is not None:
-                weighted_density_corrs.postprocess(
-                    density_corrs
-                )  # adds needed info from unweighted density_corrs to weighted
+                weighted_density_corrs = self.calc_1d_density(
+                    ibin, mean_density_map=mean_density_map
+                )
+                if weighted_density_corrs is not None:
+                    weighted_density_corrs.postprocess(
+                        density_corrs
+                    )  # adds needed info from unweighted density_corrs to weighted
+            
 
             # make summary stats and plots
             self.summarize(
@@ -110,7 +115,8 @@ class TXLSSWeights(TXMapCorrelations):
             )
 
         # save object weights and weight maps
-        self.save_weights(output_dir, mean_density_map_list)
+        if not self.config["skip_regression"]:
+            self.save_weights(output_dir, mean_density_map_list)
 
     def read_healsparse(self, map_path, nside):
         """
@@ -221,8 +227,8 @@ class TXLSSWeights(TXMapCorrelations):
                 nside_coverage=self.config["nside_coverage"],
                 healpix_map=(mask == hp.UNSEEN).astype("int"),
                 nest=mask_nest,
-                sentinel=0,
-            )
+                sentinel=1,
+            ) # in this mask, 1 = bad pixel!
 
         nside = mask_map_info["nside"]
 
@@ -235,6 +241,18 @@ class TXLSSWeights(TXMapCorrelations):
 
             # get actual data for this map
             sys_map = self.read_healsparse(map_path, nside)
+
+            #insist all "good" pixels in the mask have an SP map value for this map
+            n_missing = np.sum(sys_map[mask.valid_pixels]==hp.UNSEEN)
+            if self.config["fill_missing_pix"]:
+                if n_missing != 0:
+                    print(f"Found {n_missing}/{mask.n_valid} mask pixels with missing {sys_name} values", end="")
+                    missing_pix = mask.valid_pixels[sys_map[mask.valid_pixels]==hp.UNSEEN]
+                    mean_sys = np.mean( sys_map.get_values_pix(sys_map.valid_pixels) )
+                    print(f", filling with mean value {mean_sys}")
+                    sys_map.update_values_pix(missing_pix, mean_sys)
+            else:
+                assert n_missing == 0, f"Found {n_missing}/{mask.n_valid} mask pixels with missing {sys_name} values, and fill_missing_pix was False"
 
             sys_map.apply_mask(mask, mask_bits=1)
 
@@ -439,10 +457,14 @@ class TXLSSWeights(TXMapCorrelations):
         # make 1d density plots
         for imap in np.unique(density_correlation.map_index):
             filepath = output_dir.path_for_file(f"sys1D_lens{ibin}_SP{imap}.png")
+            if self.config["skip_regression"]:
+                extra_density = None
+            else:
+                extra_density = [weighted_density_correlation]
             density_correlation.plot1d_singlemap(
                 filepath,
                 imap,
-                extra_density_correlations=[weighted_density_correlation],
+                extra_density_correlations=extra_density,
             )
 
         # save the 1D density trends
@@ -453,49 +475,50 @@ class TXLSSWeights(TXMapCorrelations):
         weighted_dens_corr_file_name = output_dir.path_for_file(
             f"weighted_density_correlation_lens{ibin}.hdf5"
         )
-        weighted_density_correlation.save_to_hdf5(weighted_dens_corr_file_name)
+        if not self.config["skip_regression"]:
+            weighted_density_correlation.save_to_hdf5(weighted_dens_corr_file_name)
 
-        # save map names, coefficients and chi2 from the fit into an hdf5 file
-        fit_summary_file_name = output_dir.path_for_file(f"fit_summary_lens{ibin}.hdf5")
-        fit_summary_file = h5py.File(fit_summary_file_name, "w")
-        fit_summary_file.file.create_group("fit_summary")
-        summary_group = fit_summary_file["fit_summary"]
-        if len(fit_output["sig_map_index"]) != 0:
-            summary_group.create_dataset(
-                "fitted_map_id", data=fit_output["sig_map_index"]
-            )
-            fitted_maps_names = np.array(
-                [density_correlation.mapnames[i] for i in fit_output["sig_map_index"]]
-            )
-            summary_group.create_dataset(
-                "fitted_map_names", data=fitted_maps_names.astype(np.string_)
-            )
-            summary_group.create_dataset(
-                "all_map_names", data=self.sys_names.astype(np.string_)
-            )
-            summary_group.create_dataset("coeff", data=fit_output["coeff"])
-            if fit_output["coeff_cov"] is not None:
-                summary_group.create_dataset("coeff_cov", data=fit_output["coeff_cov"])
-            for model in density_correlation.chi2.keys():
+            # save map names, coefficients and chi2 from the fit into an hdf5 file
+            fit_summary_file_name = output_dir.path_for_file(f"fit_summary_lens{ibin}.hdf5")
+            fit_summary_file = h5py.File(fit_summary_file_name, "w")
+            fit_summary_file.file.create_group("fit_summary")
+            summary_group = fit_summary_file["fit_summary"]
+            if len(fit_output["sig_map_index"]) != 0:
                 summary_group.create_dataset(
-                    f"chi2_{model}",
-                    data=np.array(list(density_correlation.chi2[model].items())).T,
+                    "fitted_map_id", data=fit_output["sig_map_index"]
                 )
-            fit_summary_file.close()
+                fitted_maps_names = np.array(
+                    [density_correlation.mapnames[i] for i in fit_output["sig_map_index"]]
+                )
+                summary_group.create_dataset(
+                    "fitted_map_names", data=fitted_maps_names.astype(np.string_)
+                )
+                summary_group.create_dataset(
+                    "all_map_names", data=self.sys_names.astype(np.string_)
+                )
+                summary_group.create_dataset("coeff", data=fit_output["coeff"])
+                if fit_output["coeff_cov"] is not None:
+                    summary_group.create_dataset("coeff_cov", data=fit_output["coeff_cov"])
+                for model in density_correlation.chi2.keys():
+                    summary_group.create_dataset(
+                        f"chi2_{model}",
+                        data=np.array(list(density_correlation.chi2[model].items())).T,
+                    )
+                fit_summary_file.close()
 
-        # plot the un-weighted and weighted chi2 distribution
-        filepath = output_dir.path_for_file(f"chi2_hist_lens{ibin}.png")
-        if "pvalue_threshold" in self.config.keys():
-            chi2_threshold = scipy.stats.chi2(self.config["nbin"]).isf(
-                self.config["pvalue_threshold"]
+            # plot the un-weighted and weighted chi2 distribution
+            filepath = output_dir.path_for_file(f"chi2_hist_lens{ibin}.png")
+            if "pvalue_threshold" in self.config.keys():
+                chi2_threshold = scipy.stats.chi2(self.config["nbin"]).isf(
+                    self.config["pvalue_threshold"]
+                )
+            else:
+                chi2_threshold = None
+            density_correlation.plot_chi2_hist(
+                filepath,
+                extra_density_correlations=[weighted_density_correlation],
+                chi2_threshold=chi2_threshold,
             )
-        else:
-            chi2_threshold = None
-        density_correlation.plot_chi2_hist(
-            filepath,
-            extra_density_correlations=[weighted_density_correlation],
-            chi2_threshold=chi2_threshold,
-        )
 
     def compute_bin_edges(self, sys_map):
         import scipy.stats
@@ -578,6 +601,8 @@ class TXLSSWeightsLinBinned(TXLSSWeights):
         "b0": [1.0],
         "allow_weighted_input": False,
         "nside_coverage": 32,
+        "fill_missing_pix": False, 
+        "skip_regression": False, #will compute the 1d correlations but will skip the weights/regression step (for testing)
     }
 
     def prepare_sys_maps(self):
@@ -1069,6 +1094,8 @@ class TXLSSWeightsLinPix(TXLSSWeightsLinBinned):
         "regression_class": "LinearRegression",  # sklearn.linear_model class to use in regression
         "allow_weighted_input": False,
         "nside_coverage": 32,
+        "fill_missing_pix": False, 
+        "skip_regression": False, #will compute the 1d correlations but will skip the weights/regression step (for testing)
     }
 
     def compute_weights(self, density_correlation):

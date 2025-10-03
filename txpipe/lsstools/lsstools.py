@@ -238,14 +238,17 @@ class DensityCorrelation:
         if self.ndens_err is None:
             ax.plot(smean, ndens, ".", color="b")
         else:
-            chi2_null = self.chi2["null"][map_index]
-            ndata = len(ndens)
-            legend_label = (
+            try:
+                chi2_null = self.chi2["null"][map_index]
+                legend_label = (
                 "null"
                 + ": "
                 + r"$\chi^2=$"
                 + "{0}/{1}".format(np.round(chi2_null, 1), ndata)
-            )
+                )
+            except KeyError:
+                legend_label = 'null'
+            ndata = len(ndens)
             ndens_err = self.ndens_err[select_map]
             ax.errorbar(
                 smean,
