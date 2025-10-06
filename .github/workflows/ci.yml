@@ -10,7 +10,7 @@ on:
     - cron: '0 12 * * 1'
 
 env:
-  EXAMPLE_DATA_FILE_VERSION: v6
+  EXAMPLE_DATA_FILE_VERSION: v7
 
 jobs:
   # Run a download step first so that it is in
