@@ -25,7 +25,9 @@ jobs:
       env:
         cache-name: cache-example-data
       with:
-        path: example.tar.gz example-cmb-lensing.tar.gz
+        path: |
+          example.tar.gz
+          example-cmb-lensing.tar.gz
         # update this when we change package contents and want
         # to force an update
         key: example-data-${{ env.EXAMPLE_DATA_FILE_VERSION }}
@@ -125,7 +127,9 @@ jobs:
     - name: Restore example data
       uses: actions/cache@v4
       with:
-        path: example.tar.gz example-cmb-lensing.tar.gz
+        path: |
+          example.tar.gz
+          example-cmb-lensing.tar.gz
         key: example-data-${{ env.EXAMPLE_DATA_FILE_VERSION }}
         fail-on-cache-miss: true
 
@@ -184,7 +188,9 @@ jobs:
     - name: Restore example data
       uses: actions/cache@v4
       with:
-        path: example.tar.gz example-cmb-lensing.tar.gz
+        path: |
+          example.tar.gz
+          example-cmb-lensing.tar.gz
         key: example-data-${{ env.EXAMPLE_DATA_FILE_VERSION }}
         fail-on-cache-miss: true
 
