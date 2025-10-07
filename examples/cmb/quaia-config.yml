@@ -1,0 +1,19 @@
+global:
+    nside: 512
+
+
+TXIngestQuaia:
+    quaia_file: "data/cmb/quaia/quaia_G20.5.fits"
+    selection_function_template: "data/cmb/quaia/selection_function_NSIDE64_G20.5_zsplit2bin{}.fits"
+
+
+
+TXIngestPlanckLensingMaps:
+    alm_file: "data/cmb/planck/PR4_klm_dat_p.fits"
+    mask_file: "data/cmb/planck/mask.fits.gz"
+    noise_file: "data/cmb/planck/PR42018like_nlkk_p.dat"
+
+TXTwoPointFourierCMBLensingCrossDensity:
+    bandpower_width: 30
+    mask_threshold: 0.0
+
