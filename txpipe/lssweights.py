@@ -1254,6 +1254,7 @@ class TXLSSWeightsUnit(TXLSSWeights):
 
     config_options = {
         "nside_coverage": 32,
+        "skip_regression": False,
     }
 
     def prepare_sys_maps(self):
