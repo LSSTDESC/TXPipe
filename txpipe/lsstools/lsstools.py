@@ -78,7 +78,7 @@ class DensityCorrelation:
             If False will compute the density in bins using numpy histogram
         """
         if sys_name is not None:
-            self.mapnames[map_index] = sys_name
+            self.mapnames[map_index] = str(sys_name)
         if weight is None:
             weight = np.ones(len(data))
 
@@ -396,36 +396,82 @@ class DensityCorrelation:
         Save this DensityCorrelation to an HDF5 group within an existing file.
         Returns the created group (e.g. f["density_0"]).
         """
-        import ipdb; ipdb.set_trace()
         group_name = f"density_{self.tomobin}"
         g = parent_group.create_group(group_name)
-
-        # Save metadata
         g.attrs.update({"tomobin": self.tomobin})
 
-        # Save all numpy array attributes
-        for att_name, att in self.__dict__.items():
-            if isinstance(att, np.ndarray):
-                g.create_dataset(att_name, data=att)
+        for key, val in self.__dict__.items():
+            self._save_item(g, key, val)
 
         return g
+
+    def _save_item(self, group, key, val):
+        """
+        Save item into group
+        all arrays -> group datasets
+        all values -> group attributes
+        dicts -> make a subgroup then loop over the entries
+        """
+        import json
+        if isinstance(val, np.ndarray):
+            group.create_dataset(key, data=val)
+        elif isinstance(val, (int, float, str, bool, np.generic)):
+            group.attrs[key] = val
+        elif isinstance(val, dict):
+            subgrp = group.create_group(key)
+            for k, v in val.items():
+                self._save_item(subgrp, str(k), v)
+        else:
+            # Fallback: JSON serialize (e.g. for None, np.bool_, etc.)
+            group.attrs[key] = json.dumps(val, default=str)
 
     @classmethod
     def load_from_group(cls, group):
         """
         Load a DensityCorrelation object from an existing HDF5 group.
         """
-        self = cls( group.attrs["tomobin"])
+        import json
+        self = cls(group.attrs["tomobin"])
 
-        # Load datasets
-        for name, dataset in group.items():
-            setattr(self, name, np.array(dataset))
+        for key, item in group.items():
+            setattr(self, key, cls._load_item(item))
 
-        # Load attributes
-        for k, v in group.attrs.items():
-            setattr(self, k, v)
+        for key, val in group.attrs.items():
+            if key != "tomobin":  # already used
+                try:
+                    # try JSON decode if it was encoded
+                    setattr(self, key, json.loads(val))
+                except Exception:
+                    setattr(self, key, val)
 
         return self
+
+    @classmethod
+    def _load_item(cls, item):
+        """
+        load item from hdf5 group
+        we are trying to reconstruct the saving that was done in _save_item, i.e.
+            all arrays -> group datasets
+            all values -> group attributes (dealt with separately)
+            dicts -> make a subgroup then loop over the entries
+        """
+        import h5py
+        import json
+
+        if isinstance(item, h5py.Dataset):
+            return np.array(item)
+        elif isinstance(item, h5py.Group):
+            out = {}
+            for k, v in item.items():
+                out[k] = cls._load_item(v)
+            for k, v in item.attrs.items():
+                try:
+                    out[k] = json.loads(v)
+                except Exception:
+                    out[k] = v
+            return out
+        else:
+            raise TypeError(f"Cannot load unknown item type: {type(item)}")
 
     def postprocess(self, density_correlation):
         """
