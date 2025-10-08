@@ -391,23 +391,41 @@ class DensityCorrelation:
                 chi2_map = calc_chi2(ndens, covmat, model[select_map])
                 self.chi2[model_name][map_index] = chi2_map
 
-    def save_to_hdf5(self, filename):
+    def save_to_group(self, parent_group):
         """
-        Save the density correlation to an hdf5 object including covariance
+        Save this DensityCorrelation to an HDF5 group within an existing file.
+        Returns the created group (e.g. f["density_0"]).
         """
-        import h5py
+        import ipdb; ipdb.set_trace()
+        group_name = f"density_{self.tomobin}"
+        g = parent_group.create_group(group_name)
 
-        output_file = h5py.File(filename, "w")
-        output_file.file.create_group("density")
+        # Save metadata
+        g.attrs.update({"tomobin": self.tomobin})
 
-        output_file["density"].attrs.update({"tomobin": self.tomobin})
-
-        # save all the attribute that are numpy array
-        for att_name in self.__dict__.keys():
-            att = getattr(self, att_name)
+        # Save all numpy array attributes
+        for att_name, att in self.__dict__.items():
             if isinstance(att, np.ndarray):
-                output_file["density"].create_dataset(att_name, data=att)
-        output_file.close()
+                g.create_dataset(att_name, data=att)
+
+        return g
+
+    @classmethod
+    def load_from_group(cls, group):
+        """
+        Load a DensityCorrelation object from an existing HDF5 group.
+        """
+        self = cls( group.attrs["tomobin"])
+
+        # Load datasets
+        for name, dataset in group.items():
+            setattr(self, name, np.array(dataset))
+
+        # Load attributes
+        for k, v in group.attrs.items():
+            setattr(self, k, v)
+
+        return self
 
     def postprocess(self, density_correlation):
         """
