@@ -90,7 +90,6 @@ class TXLSSDensityBase(TXMapCorrelations):
             stds
         )  # return means and stds to help reconstruct the original maps later
 
-
     def get_deltag(self, tomobin):
         """
         convert the ra, dec of the lens sample to pixel number counts
@@ -155,6 +154,7 @@ class TXLSSDensityBase(TXMapCorrelations):
 
         root = self.config["supreme_path_root"]
         sys_files = glob.glob(f"{root}*.hs")
+        sys_files = np.sort(sys_files)
         nsys = len(sys_files)
         print(f"Found {nsys} total systematic maps")
 
@@ -412,10 +412,20 @@ class TXLSSDensityNull(TXLSSDensityBase):
             # compute covariance of data vector
             self.calc_covariance(density_corrs)  # matrix added to density_corrs
 
+            self.calc_null(density_corrs)
+
             # make summary stats and plots
             self.summarize_density(
                 output_dir, density_corrs
             )
+
+    def calc_null(self, density_correlation):
+        """
+        Add the null model n_dens/<n_dens> = 1 to the DensityCorrelation object and compute it's chi2
+        """
+        import numpy as np
+        null_model = np.ones(len(density_correlation.ndens))
+        density_correlation.add_model(null_model, "null")
 
     def summarize_density(self, output_dir, density_correlation):
         """
@@ -439,15 +449,18 @@ class TXLSSDensityNull(TXLSSDensityBase):
 
         # plot 1d density trends
         for imap in np.unique(density_correlation.map_index):
-            filepath = output_dir.path_for_file(f"sys1D_lens{ibin}_SP{imap}.png")
+            try:
+                splabel = density_correlation.mapnames[imap]
+            except KeyError:
+                splabel = imap
+            filepath = output_dir.path_for_file(f"sys1D_lens{ibin}_SP{splabel}.png")
             density_correlation.plot1d_singlemap(
                 filepath,
                 imap,
             )
 
-        #TODO: plot the un-weighted chi2 distribution
-        #filepath = output_dir.path_for_file(f"chi2_hist_lens{ibin}.png")
-        #density_correlation.plot_chi2_hist(filepath, chi2_threshold=None )
+        filepath = output_dir.path_for_file(f"chi2_hist_lens{ibin}.png")
+        density_correlation.plot_chi2_hist(filepath, chi2_threshold=None )
 
     def calc_covariance(self, density_correlation):
         """
@@ -933,11 +946,17 @@ class TXLSSWeights(TXLSSDensityBase):
 
         # make 1d density plots
         for imap in np.unique(density_correlation.map_index):
-            filepath = output_dir.path_for_file(f"sys1D_lens{ibin}_SP{imap}.png")
+            try:
+                splabel = density_correlation.mapnames[imap]
+            except KeyError:
+                splabel = imap
+            filepath = output_dir.path_for_file(f"sys1D_lens{ibin}_SP{splabel}.png")
             density_correlation.plot1d_singlemap(
                 filepath,
                 imap,
+                label=None, 
                 extra_density_correlations=[weighted_density_correlation],
+                extra_density_labels=["weighted"]
             )
 
         # save the weighted 1D density trends
@@ -958,10 +977,10 @@ class TXLSSWeights(TXLSSDensityBase):
                 [density_correlation.mapnames[i] for i in fit_output["sig_map_index"]]
             )
             summary_group.create_dataset(
-                "fitted_map_names", data=fitted_maps_names.astype(np.string_)
+                "fitted_map_names", data=fitted_maps_names.astype(np.bytes_)
             )
             summary_group.create_dataset(
-                "all_map_names", data=self.sys_names.astype(np.string_)
+                "all_map_names", data=self.sys_names.astype(np.bytes_)
             )
             summary_group.create_dataset("coeff", data=fit_output["coeff"])
             if fit_output["coeff_cov"] is not None:
@@ -1074,8 +1093,8 @@ class TXLSSWeightsLinBinned(TXLSSWeights):
         s = time.time()
 
         # first add the null signal as the first model
-        null_model = np.ones(len(density_correlation.ndens))
-        density_correlation.add_model(null_model, "null")
+        #null_model = np.ones(len(density_correlation.ndens))
+        #density_correlation.add_model(null_model, "null")
 
         # select only the significant trends
         sig_map_index = self.select_maps(density_correlation)
