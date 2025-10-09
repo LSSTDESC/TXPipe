@@ -219,10 +219,11 @@ class DensityCorrelation:
         select_map = self.map_index == map_index
         return np.array([line[select_map] for line in self.covmat[select_map]])
 
-    def plot1d_singlemap(self, filepath, map_index, extra_density_correlations=None):
+    def plot1d_singlemap(self, filepath, map_index, label=None, extra_density_correlations=None, extra_density_labels=None):
         import matplotlib.pyplot as plt
+        import textwrap
 
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(4,4))
         ax.axhline(1, color="k", ls="--")
 
         ##### plot data from this object
@@ -238,9 +239,13 @@ class DensityCorrelation:
         if self.ndens_err is None:
             ax.plot(smean, ndens, ".", color="b")
         else:
+            ndata = len(ndens)
             try:
                 chi2_null = self.chi2["null"][map_index]
+                if label is None:
+                    label = ""
                 legend_label = (
+                label + " "
                 "null"
                 + ": "
                 + r"$\chi^2=$"
@@ -248,7 +253,6 @@ class DensityCorrelation:
                 )
             except KeyError:
                 legend_label = 'null'
-            ndata = len(ndens)
             ndens_err = self.ndens_err[select_map]
             ax.errorbar(
                 smean,
@@ -266,7 +270,8 @@ class DensityCorrelation:
                 select_map_extra = dc.map_index == map_index
                 smean_extra = dc.smean[select_map_extra]
                 ndens_extra = dc.ndens[select_map_extra]
-                offset = (idc + 1) * 0.05 * (smean_extra[1:] - smean_extra[:-1]).min()
+                #offset = (idc + 1) * 0.05 * np.min(np.diff(smean_extra))
+                offset = 0
                 if dc.sys_meta["normed"]:
                     sys_width_extra = dc.sys_meta["std"][int(map_index)]
                     sys_mean_extra = dc.sys_meta["mean"][int(map_index)]
@@ -277,20 +282,27 @@ class DensityCorrelation:
                 else:
                     chi2_null_extra = dc.chi2["null"][map_index]
                     ndata_extra = len(ndens_extra)
-                    legend_label_extra = (
-                        "null"
-                        + ": "
-                        + r"$\chi^2=$"
-                        + "{0}/{1}".format(np.round(chi2_null_extra, 1), ndata_extra)
-                    )
+                    if extra_density_labels is None:
+                        label_extra = ""
+                    else:
+                        label_extra = extra_density_labels[idc]
+                    try:
+                        legend_label_extra = (
+                            label_extra + " "
+                            "null"
+                            + ": "
+                            + r"$\chi^2=$"
+                            + "{0}/{1}".format(np.round(chi2_null_extra, 1), ndata_extra)
+                        )
+                    except KeyError:
+                        legend_label_extra = "null"
                     ndens_err_extra = dc.ndens_err[select_map_extra]
-                    ax.errorbar(
-                        offset + smean_extra,
-                        ndens_extra,
-                        ndens_err_extra,
-                        fmt=".",
+                    ax.fill_between(
+                        smean_extra,
+                        ndens_extra-ndens_err_extra,
+                        ndens_extra+ndens_err_extra,
+                        alpha=0.3,
                         color="green",
-                        capsize=3,
                         label=legend_label_extra,
                     )
 
@@ -314,6 +326,10 @@ class DensityCorrelation:
             xlabel = self.mapnames[map_index]
         else:
             xlabel = f"SP {map_index}"
+        
+        #wrap the x axis label in case it is too big
+        xlabel = "\n".join(textwrap.wrap(xlabel, 40)) 
+
         ax.set_xlabel(xlabel)
         ax.set_ylabel(r"$n_{\rm gal}/n_{\rm gal \ mean}$", fontsize=16)
         ax.legend()
@@ -323,7 +339,7 @@ class DensityCorrelation:
         plt.close()
 
     def plot_chi2_hist(
-        self, filepath, extra_density_correlations=None, chi2_threshold=None
+        self, filepath, extra_density_correlations=None, chi2_threshold=None, nbins=10
     ):
         import matplotlib.pyplot as plt
         import scipy.stats
@@ -331,7 +347,7 @@ class DensityCorrelation:
         fig, ax = plt.subplots(1, 1, figsize=(5, 5))
         ax.hist(
             self.chi2["null"].values(),
-            bins=10,
+            bins=nbins,
             density=True,
             histtype="step",
             color="blue",
@@ -340,7 +356,7 @@ class DensityCorrelation:
             for extra_density_correlation in extra_density_correlations:
                 ax.hist(
                     extra_density_correlation.chi2["null"].values(),
-                    bins=10,
+                    bins=nbins,
                     density=True,
                     histtype="step",
                     color="green",
@@ -422,8 +438,7 @@ class DensityCorrelation:
             for k, v in val.items():
                 self._save_item(subgrp, str(k), v)
         else:
-            # Fallback: JSON serialize (e.g. for None, np.bool_, etc.)
-            group.attrs[key] = json.dumps(val, default=str)
+            raise RuntimeError('I dont know how to save {key}={val}')
 
     @classmethod
     def load_from_group(cls, group):
@@ -438,11 +453,7 @@ class DensityCorrelation:
 
         for key, val in group.attrs.items():
             if key != "tomobin":  # already used
-                try:
-                    # try JSON decode if it was encoded
-                    setattr(self, key, json.loads(val))
-                except Exception:
-                    setattr(self, key, val)
+                setattr(self, key, val)
 
         return self
 
@@ -463,11 +474,14 @@ class DensityCorrelation:
         elif isinstance(item, h5py.Group):
             out = {}
             for k, v in item.items():
-                out[k] = cls._load_item(v)
+                try:
+                    out[int(k)] = cls._load_item(v) #if the key can be interpreted as an int, do it
+                except ValueError:
+                    out[k] = cls._load_item(v)
             for k, v in item.attrs.items():
                 try:
-                    out[k] = json.loads(v)
-                except Exception:
+                    out[int(k)] = v #if the key can be interpreted as an int, do it
+                except ValueError:
                     out[k] = v
             return out
         else:
