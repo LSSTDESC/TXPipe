@@ -54,21 +54,42 @@ class TXLSSDensityBase(TXMapCorrelations):
 
     def prepare_sys_maps(self):
         """
-        By default prepare sysmaps will just load and mask the maps
-
-        subclasses for different methods can modify this behaviour
-        (e.g. adding a normalization of the maps)
+        For this method we need sys maps to be normalized to mean 0
         """
         import numpy as np
         sys_maps, sys_names = self.load_and_mask_sysmaps()
-        sys_meta = {"masked": True, "normed": False}
-        
-        sys_meta["edges"] = []
+
+        # normalize sysmaps (and keep track of the normalization factors)
+        mean, std = self.normalize_sysmaps(sys_maps)
+        sys_meta = {"masked": True, "normed": True, "mean": mean, "std": std}
+
         for imap, sys_map in enumerate(sys_maps):
-            sys_meta["edges"].append(self.compute_bin_edges(sys_map))
-        sys_meta["edges"] = np.array(sys_meta["edges"])
-        
+            sys_meta[f"edges_{imap}"] = self.compute_bin_edges(sys_map)
+
         return sys_maps, sys_names, sys_meta
+
+    @staticmethod
+    def normalize_sysmaps(sys_maps):
+        """
+        Normalize a list of healsparse maps to mean=0, std=1
+        """
+        import numpy as np
+
+        means = []
+        stds = []
+        for sys_map in sys_maps:
+            vpix = sys_map.valid_pixels
+            sys_vals = sys_map[vpix]
+            mean = np.mean(sys_vals)
+            std = np.std(sys_vals)
+            sys_map.update_values_pix(vpix, (sys_vals - mean) / std)
+            means.append(mean)
+            stds.append(std)
+
+        return np.array(means), np.array(
+            stds
+        )  # return means and stds to help reconstruct the original maps later
+
 
     def get_deltag(self, tomobin):
         """
@@ -251,7 +272,7 @@ class TXLSSDensityBase(TXMapCorrelations):
 
             sys_name = None if self.sys_names is None else self.sys_names[imap]
 
-            edges = self.sys_meta["edges"][imap]
+            edges = self.sys_meta[f"edges_{imap}"]
 
             density_corrs.add_correlation(
                 imap,
@@ -294,9 +315,15 @@ class TXLSSDensityBase(TXMapCorrelations):
        
         # Remove any duplciates from the edges array
         # This can occur when a large fraction of the survey has the same value in the SP map
-        u_edges, idx = self.unique_tol(edges, tol=2*np.finfo(edges.dtype).eps*np.abs(edges).max(), return_index=True)
+        u_edges, idx = self.unique_tol(edges, tol=10*np.finfo(edges.dtype).eps*np.abs(edges).max(), return_index=True)
         if len(u_edges) != len(edges):
             edges = edges[np.sort(idx)]
+
+        #remove empty bins
+        counts, _ = np.histogram(sys_vals, bins=edges)
+        nonempty = counts > 0
+        keep = np.concatenate(([True], nonempty)) #always keep 1st and last bin edge
+        edges = edges[keep]
         
         return edges
 
@@ -622,17 +649,17 @@ class TXLSSDensityNull(TXLSSDensityBase):
                 print("SV covariance for map", imap)
                 for isp in range(len(edges_i) - 1):
                     cat_i = cats[imap, isp]
-                    indexi = imap * (len(edges_i) - 1) + isp
+                    indexi = np.where(density_correlation.map_index==imap)[0][isp]
 
                     for jmap in map_list:
                         edges_j = density_correlation.get_edges(jmap)
                         for jsp in range(len(edges_j) - 1):
-                            indexj = jmap * (len(edges_j) - 1) + jsp
+                            indexj = np.where(density_correlation.map_index==jmap)[0][jsp]
                             if indexi > indexj:
                                 continue
                             if (
                                 diag_blocks_only and imap != jmap
-                            ):  # sometimes we dont need the covarinace between maps
+                            ):  # sometimes we dont need the covariance between maps
                                 continue
                             cat_j = cats[jmap, jsp]
 
@@ -646,17 +673,17 @@ class TXLSSDensityNull(TXLSSDensityBase):
                             self.sys_meta["sp_pixel_twopoint"][indexi, indexj] = nn
                             self.sys_meta["sp_pixel_twopoint"][indexj, indexi] = nn
 
-        # now contruct the covariance from the Npairs and theory curve
+        # now construct the covariance from the Npairs and theory curve
         # Covariance matrix on number *counts*
         covmat_N = np.zeros((nbinstotal, nbinstotal))
         for imap in map_list:
             edges_i = density_correlation.get_edges(imap)
             for isp in range(len(edges_i) - 1):
-                indexi = imap * (len(edges_i) - 1) + isp
+                indexi = np.where(density_correlation.map_index==imap)[0][isp]
                 for jmap in map_list:
                     edges_j = density_correlation.get_edges(jmap)
                     for jsp in range(len(edges_j) - 1):
-                        indexj = jmap * (len(edges_j) - 1) + jsp
+                        indexj = np.where(density_correlation.map_index==jmap)[0][jsp]
                         if indexi > indexj:
                             continue
                         if (
@@ -987,46 +1014,6 @@ class TXLSSWeightsLinBinned(TXLSSWeights):
         **TXLSSWeights.config_options, 
         "pvalue_threshold": 0.05,  # max p-value for maps to be included in the corrected (a very simple form of regularization)
     }
-
-    def prepare_sys_maps(self):
-        """
-        For this method we need sys maps to be normalized to mean 0
-        """
-        import numpy as np
-        sys_maps, sys_names = self.load_and_mask_sysmaps()
-
-        # normalize sysmaps (and keep track of the normalization factors)
-        mean, std = self.normalize_sysmaps(sys_maps)
-        sys_meta = {"masked": True, "normed": True, "mean": mean, "std": std}
-
-        sys_meta["edges"] = []
-        for i, sys_map in enumerate(sys_maps):
-            sys_meta["edges"].append(self.compute_bin_edges(sys_map))
-        sys_meta["edges"] = np.array(sys_meta["edges"])
-
-        return sys_maps, sys_names, sys_meta
-
-    @staticmethod
-    def normalize_sysmaps(sys_maps):
-        """
-        Normalize a list of healsparse maps to mean=0, std=1
-        """
-        import numpy as np
-
-        means = []
-        stds = []
-        for sys_map in sys_maps:
-            vpix = sys_map.valid_pixels
-            sys_vals = sys_map[vpix]
-            mean = np.mean(sys_vals)
-            std = np.std(sys_vals)
-            sys_map.update_values_pix(vpix, (sys_vals - mean) / std)
-            means.append(mean)
-            stds.append(std)
-
-        return np.array(means), np.array(
-            stds
-        )  # return means and stds to help reconstruct the original maps later
 
     def select_maps(self, density_correlation):
         """
