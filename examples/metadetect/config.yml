@@ -374,6 +374,7 @@ TXPhotozPlotLens:
 
 TXTauStatistics:
     npatch: 150
+    cov_method: shot
 
 HOSFSB:
     ells_per_bin: 10

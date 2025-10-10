@@ -5,10 +5,10 @@ set -e
 ENV_PATH=./conda
 
 module load python
-module load mpich/4.2.2
+module load mpich/4.3.0
 
-conda env  create --yes -p ${ENV_PATH} python=3.10
-
+mamba env  create --yes -f bin/environment-perlmutter.yml -p ${ENV_PATH} python=3.10
+mamba activate ./conda
 
 # we manually install firecrown as we have to remove numcosmo to avoid clashes
 FIRECROWN_DIR=firecrown-tmp-${RANDOM}
@@ -28,7 +28,7 @@ rm -rf ${FIRECROWN_DIR}
 # tries to use. The HDF5_USE_FILE_LOCKING variable is set to FALSE because
 # the lustre filesystem does not support file locking.
 cat >  ./conda/etc/conda/activate.d/activate-txpipe.sh <<EOF
-    module load mpich/4.2.2
+    module load mpich/4.3.0
     export MPI4PY_RC_RECV_MPROBE='False'
     export HDF5_USE_FILE_LOCKING=FALSE
 EOF

@@ -67,7 +67,7 @@ jobs:
         cache-name: cache-conda-environment
       with:
         path: ./conda
-        key: ${{ matrix.os }}-conda-${{ hashFiles('bin/install.sh','environment*.yml' ) }}
+        key: ${{ matrix.os }}-conda-${{ hashFiles('bin/install.sh','bin/environment*.yml' ) }}
         fail-on-cache-miss: false
 
     - name: Run installer
@@ -96,7 +96,7 @@ jobs:
         cache-name: cache-conda-environment
       with:
         path: ./conda
-        key: ${{ matrix.os }}-conda-${{ hashFiles('bin/install.sh','environment*.yml' ) }}
+        key: ${{ matrix.os }}-conda-${{ hashFiles('bin/install.sh','bin/environment*.yml' ) }}
         fail-on-cache-miss: true
 
     - name: Test with pytest
@@ -136,7 +136,7 @@ jobs:
         cache-name: cache-conda-environment
       with:
         path: ./conda
-        key: ${{ matrix.os }}-conda-${{ hashFiles('bin/install.sh','environment*.yml' ) }}
+        key: ${{ matrix.os }}-conda-${{ hashFiles('bin/install.sh','bin/environment*.yml' ) }}
         fail-on-cache-miss: true
 
     - name: Restore example data
@@ -166,6 +166,12 @@ jobs:
         else
           test -f data/example/outputs_${{ matrix.pipeline }}/shear_xi_plus.png
         fi
+
+    - name: Dry run DP1
+      run: |
+        source ./conda/bin/activate
+        ceci --dry-run examples/dp1/pipeline-edfs.yml
+
 
     - name: Show logs
       if: always()

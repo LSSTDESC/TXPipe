@@ -1,5 +1,4 @@
 import numpy as np
-from parallel_statistics import ParallelMeanVariance, ParallelMean
 from .mpi_utils import in_place_reduce
 
 
@@ -171,6 +170,7 @@ class MetacalCalculator(CalibrationCalculator):
         delta_gamma: float
             The difference in applied g between 1p and 1m metacal variants
         """
+        from parallel_statistics import ParallelMean
         self.selector = selector
         self.count = 0
         self.sum_weights    = 0
@@ -356,6 +356,7 @@ class MetaDetectCalculator(CalibrationCalculator):
         delta_gamma: float
             The difference in applied g between 1p and 1m metacal variants
         """
+        from parallel_statistics import ParallelMean
         self.selector = selector
         self.delta_gamma = delta_gamma
         self.mean_e = ParallelMean(size=10)
@@ -482,6 +483,7 @@ class LensfitCalculator(CalibrationCalculator):
         selector: function
             Function that selects objects
         """
+        from parallel_statistics import ParallelMean
         self.selector = selector
         # Create a set of calculators that will calculate (in parallel)
         # the three quantities we need to compute the overall calibration
@@ -640,6 +642,7 @@ class HSCCalculator(CalibrationCalculator):
         selector: function
             Function that selects objects
         """
+        from parallel_statistics import ParallelMean
         self.selector = selector
         # Create a set of calculators that will calculate (in parallel)
         # the three quantities we need to compute the overall calibration
@@ -859,6 +862,7 @@ class MeanShearInBins:
         shear_catalog_type="metacal",
         psf_unit_conv= False
     ):
+        from parallel_statistics import ParallelMeanVariance, ParallelMean
         self.x_name = x_name
         self.limits = limits
         self.delta_gamma = delta_gamma

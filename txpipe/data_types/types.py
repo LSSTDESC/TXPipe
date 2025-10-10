@@ -254,6 +254,19 @@ class MapsFile(HDFFile):
         mask = self.read_map("mask")
         mask[mask <= thresh] = 0
         return mask
+    
+    def read_healsparse(self, map_name, return_all=True):
+        import healpy
+        import healsparse as hsp
+        import numpy as np
+        group = self.file[f"maps/{map_name}"]
+        nside = group.attrs["nside"]
+        m = hsp.HealSparseMap.make_empty(32, nside, dtype=type(group["value"][0]), sentinel=healpy.UNSEEN)
+        m.update_values_pix(group["pixel"][:], group["value"][:])
+        if return_all:
+            return m, nside
+        else:
+            return m
 
     def write_map(self, map_name, pixel, value, metadata):
         """
@@ -517,7 +530,11 @@ class QPBaseFile(HDFFile):
         import tables_io
         if self._metadata is not None:
             return self._metadata
-        meta = tables_io.io.readHdf5GroupToDict(self.file["meta"])
+        try:
+            read = tables_io.io.readHdf5GroupToDict
+        except AttributeError:
+            read = tables_io.hdf5.read_HDF5_group_to_dict
+        meta = read(self.file["meta"])
         self._metadata = meta
         return meta
 
@@ -572,7 +589,10 @@ class QPNOfZFile(QPBaseFile):
             return self._ensemble
 
         # Build ensemble, following approach in qp factory code
-        read = tables_io.io.readHdf5GroupToDict
+        try:
+            read = tables_io.io.readHdf5GroupToDict
+        except AttributeError:
+            read = tables_io.hdf5.read_HDF5_group_to_dict
         tables = dict([(key, read(val)) for key, val in self.file["qp"].items()])
 
         self._ensemble = qp.from_tables(tables)
@@ -632,13 +652,20 @@ class QPMultiFile(HDFFile):
         import tables_io
         if self.mode != "r":
             raise ValueError("Can only read from file opened in read mode")
-        return tables_io.io.readHdf5GroupToDict(self.file[f"qps/{name}/meta"])
+        try:
+            read = tables_io.io.readHdf5GroupToDict
+        except AttributeError:
+            read = tables_io.hdf5.read_HDF5_group_to_dict
+        return read(self.file[f"qps/{name}/meta"])
 
     def read_ensemble(self, name):
         import qp
         import tables_io
         g = self.file[f"qps/{name}"]
-        read = tables_io.io.readHdf5GroupToDict
+        try:
+            read = tables_io.io.readHdf5GroupToDict
+        except AttributeError:
+            read = tables_io.hdf5.read_HDF5_group_to_dict
         tables = dict([(key, read(val)) for key, val in g.items()])
         return qp.from_tables(tables)
 

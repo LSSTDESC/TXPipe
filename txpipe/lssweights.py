@@ -117,7 +117,14 @@ class TXLSSWeights(TXMapCorrelations):
         returns a healsparse object degraded to nside
         """
         import healsparse
-        import healpy
+        import os
+
+        #if this is a symlink, use the real path to access the file
+        if os.path.islink(map_path):
+            real_map_path = os.path.realpath(map_path)
+            print(f'{map_path} is a link, we will use the real path {real_map_path}')
+        else:
+            real_map_path = map_path
 
         # Convert to correct res healpix map
         m = healsparse.HealSparseMap.read(map_path)
@@ -400,6 +407,7 @@ class TXLSSWeights(TXMapCorrelations):
         tomo_output = self.open_output("lens_tomography_catalog", parallel=True)
         with self.open_input("lens_tomography_catalog_unweighted") as tomo_input:
             tomo_output.copy(tomo_input["tomography"], "tomography")
+            tomo_output.copy(tomo_input["counts"], "counts")
 
         lens_weight = tomo_output["tomography/lens_weight"][:]
         for ibin in range(self.Ntomo):
@@ -551,10 +559,10 @@ class TXLSSWeightsLinBinned(TXLSSWeights):
         """
         import numpy as np
 
-        vpix = sys_maps[0].valid_pixels
         means = []
         stds = []
         for sys_map in sys_maps:
+            vpix = sys_map.valid_pixels
             sys_vals = sys_map[vpix]
             mean = np.mean(sys_vals)
             std = np.std(sys_vals)
@@ -732,9 +740,9 @@ class TXLSSWeightsLinBinned(TXLSSWeights):
         )
         C_l = cosmo.angular_cl(gal_tracer, gal_tracer, theory_ell)
         wtheta = cosmo.correlation(
-            theory_ell,
-            C_l,
-            theta / 60.0,
+            ell=theory_ell,
+            C_ell=C_l,
+            theta=theta / 60.0,
             type="NN",
         )
         wtheta_interp = interp1d(theta, wtheta)
@@ -831,10 +839,15 @@ class TXLSSWeightsLinBinned(TXLSSWeights):
 
         f_lens = self.open_input("lens_photoz_stack")
 
-        name = f"lens_{tomobin}"
-        z = f_lens["n_of_z/lens/z"][:]
-        Nz = f_lens[f"n_of_z/lens/bin_{tomobin}"][:]
-
+        if "n_of_z" in f_lens.keys():  
+            name = f"lens_{tomobin}"
+            z = f_lens["n_of_z/lens/z"][:]
+            Nz = f_lens[f"n_of_z/lens/bin_{tomobin}"][:]
+        else: #assume this is a qp file
+            zedges = f_lens['qp/meta/bins'][:][0]
+            z = (zedges[:-1]+zedges[1:])/2.
+            Nz = f_lens['qp/data/pdfs'][tomobin,:]
+            
         return z, Nz
 
     def select_maps(self, density_correlation):

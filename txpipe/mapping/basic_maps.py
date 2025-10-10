@@ -1,5 +1,4 @@
 from ..utils import import_dask
-from parallel_statistics import ParallelSum
 
 import numpy as np
 
