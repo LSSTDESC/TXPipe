@@ -33,7 +33,7 @@ URL="https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge
 
 # Download and run the conda installer Miniforge conda installer
 echo "Downloading conda installer from $URL"
-wget -O Mambaforge3.sh $URL
+curl -L -o Mambaforge3.sh $URL
 chmod +x Mambaforge3.sh
 ./Mambaforge3.sh -b -p ./conda
 source ./conda/bin/activate

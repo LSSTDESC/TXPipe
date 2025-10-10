@@ -164,7 +164,7 @@ class TXGammaTFieldCenters(TXTwoPoint):
         # check if we are using the old format exposures file
         # or the new one
         with self.open_input("exposures", wrapper=False) as f:
-            if "ratel" in f["exposures"].keys():
+            if "visits" in f.keys():
                 # This is the new format
                 ext = "visits"
                 ra_col = "ra"

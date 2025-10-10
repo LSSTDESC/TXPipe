@@ -1,24 +1,6 @@
-# This uses the Jinja2 template system, which was
-# recently added into ceci. It allows us to use the
-# same pipeline file for the three DP1 wide-field cosmology fields
-# (EDFS, ECDFS, LGLF)
-
-# To run this pipeline:
-# ceci -t field=ecdfs examples/dp1/pipeline.yml
-# where "ecdfs" can also be one of the other fields (lower case)
-
-# See the ceci docs here for more info:
-# https://ceci.readthedocs.io/en/latest/config.html#templates
-
-
-
-# This adds a suffix to input
-# and output paths if the "field" template parameter is used.
-{% if field == "" %}
-  {% set suffix = "" %}
-{% else %}
-  {% set suffix = "_" ~ field %}
-{% endif %}
+# This version of this file is specialized to the EDFS field.
+# The more general pipeline.yml requires a newer ceci version and
+# a template parameter to be set.
 
 # Stages to run
 stages:
@@ -77,6 +59,8 @@ stages:
         nz_plot: nz_lens
 
 
+
+
   # Mapping
   - name: TXSourceMaps
   - name: TXLensMaps
@@ -107,7 +91,7 @@ stages:
 
 
 # Where to put outputs
-output_dir: data/dp1/outputs{{ suffix }}
+output_dir: data/dp1/outputs_edfs
 
 # How to run the pipeline: mini, parsl, or cwl
 launcher:
@@ -139,16 +123,16 @@ config: examples/dp1/config.yml
 inputs:
     # See README for paths to download these files
     spectroscopic_catalog: data/dp1/inputs/dp1_matched_v4_train.hdf5
-    shear_catalog: data/dp1/inputs/shear_catalog{{ suffix }}.hdf5
-    photometry_catalog: data/dp1/inputs/photometry_catalog{{ suffix }}.hdf5
-    exposures: data/dp1/inputs/exposures{{ suffix }}.hdf5
+    shear_catalog: data/dp1/inputs/shear_catalog_edfs.hdf5
+    photometry_catalog: data/dp1/inputs/photometry_catalog_edfs.hdf5
     fiducial_cosmology: data/fiducial_cosmology.yml
+    exposures: data/dp1/inputs/exposures_edfs.hdf5
     none: none
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted
 resume: true
 # where to put output logs for individual stages
-log_dir: data/dp1/logs{{suffix}}
+log_dir: data/dp1/logs_edfs
 # where to put an overall parsl pipeline log
-pipeline_log: data/dp1/log{{ suffix }}.txt
+pipeline_log: data/dp1/log_edfs.txt
