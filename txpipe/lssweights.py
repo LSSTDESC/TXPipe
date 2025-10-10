@@ -1357,6 +1357,18 @@ class TXLSSWeightsUnit(TXLSSWeights):
     name = "TXLSSWeightsUnit"
     parallel = False
 
+    inputs = [
+        ("binned_lens_catalog_unweighted", TomographyCatalog),  # this file is used by the stage to compute weights
+        ("lens_tomography_catalog_unweighted", TomographyCatalog),  # this file is copied at the end and a weighted version is made (for stages that use this instead of the binned catalogs)
+        ("mask", MapsFile),
+    ]
+
+    outputs = [
+        ("lss_weight_maps", MapsFile),  # the systematic weight maps to be applied to the lens galaxies
+        ("binned_lens_catalog", HDFFile),  # the lens catalog with weights added
+        ("lens_tomography_catalog", HDFFile),  # the tomography file with weights added
+    ]
+
     config_options = {
         "nside_coverage": 32,
     }
