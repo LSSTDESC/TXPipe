@@ -1392,6 +1392,12 @@ class TXLSSWeightsUnit(TXLSSWeights):
         For unit weights we dont need 1d density trends
         """
         return None
+    
+    def load_density_corr(self, ibin):
+        """
+        For unit weights we dont need 1d density trends
+        """
+        return None
 
     def summarize(
         self, output_dir, density_correlation, weighted_density_correlation, fit_output
