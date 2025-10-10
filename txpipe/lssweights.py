@@ -1364,6 +1364,7 @@ class TXLSSWeightsUnit(TXLSSWeights):
     ]
 
     outputs = [
+        ("lss_weight_summary", FileCollection),  # output files and summary statistics will go here
         ("lss_weight_maps", MapsFile),  # the systematic weight maps to be applied to the lens galaxies
         ("binned_lens_catalog", HDFFile),  # the lens catalog with weights added
         ("lens_tomography_catalog", HDFFile),  # the tomography file with weights added
