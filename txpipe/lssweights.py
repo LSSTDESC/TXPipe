@@ -877,6 +877,7 @@ class TXLSSWeights(TXLSSDensityBase):
         with self.open_input("binned_lens_catalog_unweighted") as binned_input:
             binned_output.copy(binned_input["lens"], "lens")
 
+        # Plot a histogram of the weights
         fig, axs = plt.subplots(
             1, self.Ntomo, figsize=(3 * self.Ntomo, 3), squeeze=False
         )
@@ -893,8 +894,7 @@ class TXLSSWeights(TXLSSDensityBase):
 
             subgroup["weight"][:] *= obj_weight
 
-            # also plot a histogram of the weights
-            axs[0][ibin].hist(obj_weight, bins=100)
+            axs[0][ibin].hist(obj_weight[obj_weight!=0], bins=100)
             axs[0][ibin].set_xlabel("weight")
             axs[0][ibin].set_yticks([])
             axs[0][ibin].set_title(f"lens {ibin}")
