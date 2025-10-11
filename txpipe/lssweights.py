@@ -1025,15 +1025,6 @@ class TXLSSWeightsLinBinned(TXLSSWeights):
     parallel = False
 
     config_options = {
-        #"supreme_path_root": "",
-        #"nbin": 20,
-        #"outlier_fraction": 0.05,
-        #"nside_coverage": 32,
-        #"fill_missing_pix": False, 
-        #"equal_area_bins": True,  # if you are using binned 1d correlations, should the bins have equal area (set False for equal spacing)
-        #"simple_cov": False,  # if True will use a diagonal shot noise only covariance for the 1d relations
-        #"diag_blocks_only": True,  # If True, will compute only the diagonal blocks of the 1D covariance matrix (no correlation between SP maps)
-        #"b0": [1.0],
         **TXLSSWeights.config_options, 
         "pvalue_threshold": 0.05,  # max p-value for maps to be included in the corrected (a very simple form of regularization)
     }
@@ -1369,6 +1360,7 @@ class TXLSSWeightsUnit(TXLSSWeights):
 
     outputs = [
         ("lss_weight_summary", FileCollection),  # output files and summary statistics will go here
+        ("weighted_density_correlation", HDFFile),
         ("lss_weight_maps", MapsFile),  # the systematic weight maps to be applied to the lens galaxies
         ("binned_lens_catalog", HDFFile),  # the lens catalog with weights added
         ("lens_tomography_catalog", HDFFile),  # the tomography file with weights added
