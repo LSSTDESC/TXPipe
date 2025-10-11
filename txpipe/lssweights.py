@@ -401,6 +401,9 @@ class TXLSSDensityNull(TXLSSDensityBase):
         # output directory for the plots and summary stats
         output_dir = self.open_output("lss_density_plots", wrapper=True)
 
+        # open outdir density correlation file
+        dens_output = self.open_output("unweighted_density_correlation", wrapper=False)
+
         # load the SP maps, apply the mask, normalize the maps (as needed by the method)
         self.sys_maps, self.sys_names, self.sys_meta = self.prepare_sys_maps()
 
@@ -416,8 +419,9 @@ class TXLSSDensityNull(TXLSSDensityBase):
 
             # make summary stats and plots
             self.summarize_density(
-                output_dir, density_corrs
+                output_dir, dens_output, density_corrs
             )
+        dens_output.close()
 
     def calc_null(self, density_correlation):
         """
@@ -427,7 +431,7 @@ class TXLSSDensityNull(TXLSSDensityBase):
         null_model = np.ones(len(density_correlation.ndens))
         density_correlation.add_model(null_model, "null")
 
-    def summarize_density(self, output_dir, density_correlation):
+    def summarize_density(self, output_dir, dens_output, density_correlation):
         """
         make 1d density plots and other summary statistics and save them
 
@@ -443,9 +447,7 @@ class TXLSSDensityNull(TXLSSDensityBase):
         ibin = density_correlation.tomobin
 
         # save the 1D density trends
-        dens_output = self.open_output("unweighted_density_correlation", wrapper=False)
         density_correlation.save_to_group(dens_output) #tomo bin label is taken from density_correlation
-        dens_output.close()
 
         # plot 1d density trends
         for imap in np.unique(density_correlation.map_index):
@@ -807,6 +809,9 @@ class TXLSSWeights(TXLSSDensityBase):
         # output directory for the plots and summary stats
         output_dir = self.open_output("lss_weight_summary", wrapper=True)
 
+        #open density corr file
+        dens_output = self.open_output("weighted_density_correlation", wrapper=False)
+
         # load the SP maps, apply the mask, normalize the maps (as needed by the method)
         self.sys_maps, self.sys_names, self.sys_meta = self.prepare_sys_maps()
 
@@ -830,8 +835,9 @@ class TXLSSWeights(TXLSSDensityBase):
 
             # make summary stats and plots
             self.summarize_weights(
-                output_dir, density_corrs, weighted_density_corrs, fit_output
+                output_dir, dens_output, density_corrs, weighted_density_corrs, fit_output
             )
+        dens_output.close()
 
         # save object weights and weight maps
         self.save_weights(output_dir, mean_density_map_list)
@@ -923,7 +929,7 @@ class TXLSSWeights(TXLSSDensityBase):
         binned_output.close()
 
     def summarize_weights(
-        self, output_dir, density_correlation, weighted_density_correlation, fit_output
+        self, output_dir, dens_output, density_correlation, weighted_density_correlation, fit_output
     ):
         """
         make 1d density plots and other summary statistics and save them
@@ -960,9 +966,7 @@ class TXLSSWeights(TXLSSDensityBase):
             )
 
         # save the weighted 1D density trends
-        dens_output = self.open_output("weighted_density_correlation", wrapper=False)
         weighted_density_correlation.save_to_group(dens_output) #tomo bin label is taken from density_correlation
-        dens_output.close()
 
         # save map names, coefficients and chi2 from the fit into an hdf5 file
         fit_summary_file_name = output_dir.path_for_file(f"fit_summary_lens{ibin}.hdf5")
