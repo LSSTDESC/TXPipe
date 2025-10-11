@@ -18,7 +18,7 @@ TXLSSDensityNull:
     diag_blocks_only: True  # If True and simple_cov=False, will compute only diagonal blocks of covariance
     b0: [1.4, 1.6, 1.6, 1.93, 1.98]
 
-TXLSSweightsLinPix:
+TXLSSWeightsLinPix:
     supreme_path_root: /global/cfs/cdirs/lsst/groups/WL/users/jelvinpo/txpipe-weights/des-y1/spmaps/
     outlier_fraction: 0.01  # Will remove this fraction of the maps is most extreme regions when computing 1d trends
     nbin: 10                # number of bins per SP map to compute 1d trends
