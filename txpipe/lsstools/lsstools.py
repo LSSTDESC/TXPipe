@@ -428,7 +428,8 @@ class DensityCorrelation:
         all values -> group attributes
         dicts -> make a subgroup then loop over the entries
         """
-        import json
+        if key == "sp_pixel_twopoint":
+            return #dont save the treecorr correlations of the pixels
         if isinstance(val, np.ndarray):
             group.create_dataset(key, data=val)
         elif isinstance(val, (int, float, str, bool, np.generic)):
@@ -438,7 +439,7 @@ class DensityCorrelation:
             for k, v in val.items():
                 self._save_item(subgrp, str(k), v)
         else:
-            raise RuntimeError('I dont know how to save {key}={val}')
+            raise RuntimeError(f'I dont know how to save {key}={val} to {group}')
 
     @classmethod
     def load_from_group(cls, group):
