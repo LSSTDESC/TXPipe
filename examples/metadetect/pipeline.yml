@@ -119,7 +119,7 @@ stages:
   - name: TXTwoPointFourier      # Compute power spectra C_ell
   - name: HOSFSB
     # Disabled since not yet synchronised with new Treecorr MPI
-    - name: TXTwoPointSCIA   # Self-calibration intrinsic alignments of galaxies
+  - name: TXTwoPointSCIA   # Self-calibration intrinsic alignments of galaxies
 
     # Disabling these as they takes too long for a quick test.
     # The latter two need NaMaster
