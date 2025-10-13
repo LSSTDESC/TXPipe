@@ -101,7 +101,7 @@ class TXShearCalibration(PipelineStage):
         if cat_type!='hsc':
             output_cols = ["ra", "dec", "weight", "g1", "g2"] + extra_cols + mag_cols_out
         else:
-            output_cols = ["ra", "dec", "weight", "g1", "g2","c1","c2"] + extra_cols
+            output_cols = ["ra", "dec", "weight", "g1", "g2", "c1", "c2"] + extra_cols + mag_cols_out
 
         if Dcoords:
             output_cols.append("r")

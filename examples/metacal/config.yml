@@ -297,6 +297,7 @@ TXShearCalibration:
     3Dcoords: True
     redshift_shearcatalog: True
     redshift_name: 'redshift_true'
+    shear_prefix: mcal_
 
 TXTwoPointSCIA:
     do_pos_pos: False
