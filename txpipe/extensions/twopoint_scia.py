@@ -661,6 +661,10 @@ class TXTwoPointSelfCalibrationIA(TXTwoPoint):
                 weight = d.object.weight
                 xi_x = d.object.xi_im
                 covX = d.object.estimate_cov("shot")
+                # TreeCorr v5 returns the diagonal of the covariance matrix
+                # instead of a full but diagal (so almost all zero) format.
+                if treecorr.__version_info__[0] >= 5:
+                    covX = np.diag(covX)
                 covs.append(covX)
                 err = np.sqrt(np.diag(covX))
                 n = len(xi_x)
@@ -679,6 +683,8 @@ class TXTwoPointSelfCalibrationIA(TXTwoPoint):
                 weight = d.object.weight
                 xi_x = d.object.xi_im
                 covX = d.object.estimate_cov("shot")
+                if treecorr.__version_info__[0] >= 5:
+                    covX = np.diag(covX)
                 covs.append(covX)
                 err = np.sqrt(np.diag(covX))
                 n = len(xi_x)
