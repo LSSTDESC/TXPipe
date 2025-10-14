@@ -126,6 +126,8 @@ class TXTwoPointFourierCMBLensingCrossDensity(PipelineStage):
         # so there are no auto-spectra and the covariance is just between
         # different density bins and the cmb, so there are always nlens rows
         # and columns in the blocked covariance matrix.
+        # We assemble the lower triangle here and then fill in the upper triangle
+        # by symmetry afterwards.
         for i in range(nlens):
             cov_blocks_i = []
             field1 = kappa_field
@@ -227,17 +229,12 @@ class TXTwoPointFourierCMBLensingCrossDensity(PipelineStage):
         # Compute all pseudo-Cls.
         # See the note here:
         # https://namaster.readthedocs.io/en/latest/api/pymaster.covariance.html#pymaster.covariance.gaussian_covariance
-        cls = np.array(
-            [
-                [
-                    nmt.compute_coupled_cell(fields[i], fields[j]) / np.mean(masks[i] * masks[j])
-                    for i in range(4)
-                ]
-                for j in range(4)
-            ]
-        )
-        cw = nmt.NmtCovarianceWorkspace()
-        cw.compute_coupling_coefficients(*fields)
+        cls02 = nmt.compute_coupled_cell(fields[0], fields[2]) / np.mean(masks[0] * masks[2])
+        cls03 = nmt.compute_coupled_cell(fields[0], fields[3]) / np.mean(masks[0] * masks[3])
+        cls12 = nmt.compute_coupled_cell(fields[1], fields[2]) / np.mean(masks[1] * masks[2])
+        cls13 = nmt.compute_coupled_cell(fields[1], fields[3]) / np.mean(masks[1] * masks[3])
+
+        cw = nmt.NmtCovarianceWorkspace.from_fields(fields[0], fields[1], fields[2], fields[3])
         spin0 = 0
         cv = nmt.gaussian_covariance(
             cw,
@@ -245,10 +242,10 @@ class TXTwoPointFourierCMBLensingCrossDensity(PipelineStage):
             spin0,
             spin0,
             spin0,
-            cls[0, 2],
-            cls[0, 3],
-            cls[1, 2],
-            cls[1, 3],
+            cls02,
+            cls03,
+            cls12,
+            cls13,
             workspace12,
             wb=workspace32,
         )
@@ -295,8 +292,7 @@ class TXTwoPointFourierCMBLensingCrossDensity(PipelineStage):
 
         # Decouple the power spectrum to turn it into an estimate of the true power spectrum
         # These are all cross-correlations, so there is no noise bias
-        workspace = nmt.NmtWorkspace()
-        workspace.compute_coupling_matrix(field1, field2, ell_bins)
+        workspace = nmt.NmtWorkspace.from_fields(field1, field2, ell_bins)
         c_ell = workspace.decouple_cell(pcl)[0]
         windows = workspace.get_bandpower_windows()
         return c_ell, workspace, windows.squeeze()
