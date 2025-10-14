@@ -5,6 +5,7 @@ Omega_k: 0.000000e+00
 k_sign: 0
 w0: -1.000000e+00
 wa: 0.000000e+00
+H0: 7.100000e+01
 h: 7.100000e-01
 Neff: 3.046000e+00
 N_nu_mass: 0
@@ -23,6 +24,8 @@ mu_0: 0.000000e+00
 sigma_0: 0.000000e+00
 sigma8: 8.000000e-01
 Omega_l: 7.351283e-01
+z_star: nan
+has_mgrowth: 0
 nz_mgrowth: 0
 c1_mg: 1.0
 c2_mg: 1.0
