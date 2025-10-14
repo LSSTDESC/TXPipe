@@ -4,15 +4,14 @@ from ...data_types import MapsFile, QPNOfZFile
 
 
 class TXIngestPlanckLensingMaps(PipelineStage):
-    """Ingest Planck NPIPE CMB lensing maps.
+    """Ingest Planck CMB lensing maps.
 
-    This stage reads in the Planck PR4 CMB lensing maps, and mask, and
+    This stage reads in Planck CMB lensing maps, and mask, and
     noise spectrum.
 
-    Input files:
+    Input file examples:
     - data/planck/PR4_klm_dat_p.fits: The Planck PR4 CMB lensing alms.
     - data/planck/mask.fits.gz: The Planck PR4 CMB lensing mask.
-    - data/planck/PR4_klm_dat_p_noise.fits: The Planck PR4 CMB lensing noise spectrum.
     """
 
     name = "TXIngestPlanckLensingMaps"
@@ -23,7 +22,6 @@ class TXIngestPlanckLensingMaps(PipelineStage):
     config_options = {
         "alm_file": str,
         "mask_file": str,
-        "noise_file": str,
         "nside": 512,
     }
 
@@ -35,7 +33,6 @@ class TXIngestPlanckLensingMaps(PipelineStage):
         kappa_val = kappa_map[kappa_pix]
         mask_val = mask[kappa_pix]
 
-        noise_ell, noise_spectrum = self.ingest_noise_spectrum()
         metadata = {
             "pixelization": "healpix",
             "nside": self.config["nside"],
@@ -46,10 +43,6 @@ class TXIngestPlanckLensingMaps(PipelineStage):
             f.write_map("kappa_cmb", kappa_pix, kappa_val, metadata)
             f.write_map("kappa_mask", kappa_pix, mask_val, metadata)
 
-            # add a separate section for the noise
-            g = f.file.create_group("noise_spectrum")
-            g.create_dataset("noise_n_ell", data=noise_ell)
-            g.create_dataset("noise_spectrum", data=noise_spectrum)
 
     def ingest_kappa(self):
         import healpy as hp
@@ -102,15 +95,6 @@ class TXIngestPlanckLensingMaps(PipelineStage):
         # Downgrade to desired nside and return
         mask = hp.ud_grade(mask, nside_out=nside)
         return mask
-
-    def ingest_noise_spectrum(self):
-        # Read in the noise spectrum from a text file.
-        # We don't currently use this for anything but it will presumably
-        # be useful at some point.
-        noise_file = self.config["noise_file"]
-        noise_spectrum = np.loadtxt(noise_file)
-        ell = np.arange(len(noise_spectrum))
-        return ell, noise_spectrum
 
 
 class TXIngestQuaia(PipelineStage):
