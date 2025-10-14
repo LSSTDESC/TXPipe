@@ -100,7 +100,7 @@ def choose_ell_bins(**config):
                 np.geomspace(ell_min, ell_max, n_ell).astype(int)
             )
 
-        ell_bins = NmtBin.from_edges(ell_edges[:-1], ell_edges[-1])
+        ell_bins = NmtBin.from_edges(ell_edges[:-1], ell_edges[1:])
 
     elif "bandpower_width" in config:
         bandpower_width = config["bandpower_width"]
