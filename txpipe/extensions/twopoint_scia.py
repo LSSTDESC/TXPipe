@@ -80,7 +80,7 @@ class TXTwoPointSelfCalibrationIA(TXTwoPoint):
         "chunk_row": 100_000,
         "share_patch_files": False,
         "metric": "Rperp",
-        "3Dcoords": True,
+        "add_fiducial_distance": True,
         "gaussian_sims_factor": [1.],
         "use_subsampled_randoms": True,
     }
@@ -745,7 +745,6 @@ class TXTwoPointSourcePixels(TXTwoPointSelfCalibrationIA):
         "auto_only": False,
         "gaussian_sims_factor": [1.], 
         "use_subsampled_randoms":False, #not used for pixel estimator,
-        "use_sources_only": False,
     }
 
     def select_calculations(self, source_list, lens_list):
@@ -927,7 +926,7 @@ class TXTwoPointSCIAArc(TXTwoPointSelfCalibrationIA):
         "share_patch_files": False,
         "metric": "Arc",
         "sep_units": "arcmin",
-        "3Dcoords": True,
+        "add_fiducial_distance": True,
         "gaussian_sims_factor": [1.],
         "use_subsampled_randoms": True,
         "use_redshift": False

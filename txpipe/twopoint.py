@@ -29,11 +29,6 @@ POS_POS = 2
 POS_EXT = 3
 SHEAR_EXT = 4
 
-#Selfcalibration of IA correlations
-SHEAR_SOURCE = 5
-SHEAR_SOURCE_SEL = 6
-SOURCE_SOURCE = 7
-
 class TXTwoPoint(PipelineStage):
     """
     Make 2pt measurements using TreeCorr
@@ -84,9 +79,6 @@ class TXTwoPoint(PipelineStage):
         "metric": "Euclidean",
         "gaussian_sims_factor": [1.], 
         "use_subsampled_randoms": True, #use subsampled randoms file for RR
-        "use_sources_only": False,
-        "do_source_source": False,
-        "do_shear_source": False,
     }
 
     def run(self):
@@ -169,24 +161,6 @@ class TXTwoPoint(PipelineStage):
                     for j in range(i + 1):
                         if j in lens_list:
                             calcs.append((i, j, k))
-
-        if self.config["do_source_source"]:
-            k=SOURCE_SOURCE
-            if self.config["auto_only"]:
-                for i in source_list:
-                    calcs.append((i,i,k))
-            else:
-                for i in source_list:
-                    for j in range(i+1):
-                        if j in source_list:
-                            calcs.append((i,j,k))
-        
-        if self.config["do_shear_source"]:
-            k = SHEAR_SOURCE
-            for i in source_list:
-                for j in range(i+1):
-                    if j in source_list:
-                        calcs.append((i,j,k))
 
         if self.rank == 0:
             print(f"Running {len(calcs)} calculations: {calcs}")
@@ -535,12 +509,6 @@ class TXTwoPoint(PipelineStage):
         elif k == POS_POS:
             xx = self.calculate_pos_pos(i, j)
             xtype = sacc.standard_types.galaxy_density_xi
-        elif k == SOURCE_SOURCE:
-            xx = self.calculate_pos_pos(i,j)
-            xtype = sacc.standard_types.galaxy_density_xi
-        elif k == SHEAR_SOURCE:
-            xx = self.calculate_shear_pos(i,j)
-            xtype = sacc.standard_types.galaxy_shearDensity_xi_t
         else:
             raise ValueError(f"Unknown correlation function {k}")
 
@@ -1031,60 +999,35 @@ class TXTwoPointPixel(TXTwoPoint):
         "use_randoms": True,
         "auto_only": False,
         "gaussian_sims_factor": [1.], 
-        "use_subsampled_randoms":False, #not used for pixel estimator,
-        "use_sources_only": False,
+        "use_subsampled_randoms":False, #not used for pixel estimator
     }
     
 
     def get_density_map(self, i):
         import treecorr
         
-        if self.config["use_sources_only"]:
-            with self.open_input("source_maps", wrapper=True) as f:
-                info = f.read_map_info(f"count_{i}")
-                map_d, pix, nside = f.read_healpix(f"count_{i}", return_all=True)
-                map_g1, pix_g1, nside  = f.read_healpix(f"g1_{i}", return_all=True)
-                map_g2, pix_g2, nside = f.read_healpix(f"g2_{i}", return_all=True)
-                print(f"Loaded {i} source maps")
+        with self.open_input("density_maps", wrapper=True) as f:
+            info = f.read_map_info(f"delta_{i}")
+            map_d, pix, nside = f.read_healpix(f"delta_{i}", return_all=True)
+            print(f"Loaded {i} overdensity maps")
 
-                mask_unseen = (map_g1[pix_g1]>-1e30)*(map_g2[pix_g2]>-1e30)
-
-
-        else:
-            with self.open_input("density_maps", wrapper=True) as f:
-                info = f.read_map_info(f"delta_{i}")
-                map_d, pix, nside = f.read_healpix(f"delta_{i}", return_all=True)
-                print(f"Loaded {i} overdensity maps")
-
-            # Read the mask to get fracdet weights
+        # Read the mask to get fracdet weights
         with self.open_input("mask", wrapper=True) as f:
             mask = f.read_map("mask")
 
         scheme = choose_pixelization(**info) 
         ra_pix, dec_pix = scheme.pix2ang(pix)
 
-        if self.config["use_sources_only"]:
-            cat = treecorr.Catalog(
-                ra=ra_pix[mask_unseen],
-                dec=dec_pix[mask_unseen],
-                w=mask[pix][mask_unseen],
-                k=map_d[pix][mask_unseen],
-                ra_units="degree",
-                dec_units="degree",
-                patch_centers=self.get_input("patch_centers"),
-            )
-        else:
-            # Load and calibrate the appropriate bin data
-            cat = treecorr.Catalog(
-                ra=ra_pix,
-                dec=dec_pix,
-                w=mask[pix], #weight pixels by their fracdet
-                k=map_d[pix],
-                ra_units="degree",
-                dec_units="degree",
-                patch_centers=self.get_input("patch_centers"),
-            )
-
+        # Load and calibrate the appropriate bin data
+        cat = treecorr.Catalog(
+            ra=ra_pix,
+            dec=dec_pix,
+            w=mask[pix], #weight pixels by their fracdet
+            k=map_d[pix],
+            ra_units="degree",
+            dec_units="degree",
+            patch_centers=self.get_input("patch_centers"),
+        )
         return cat
 
 

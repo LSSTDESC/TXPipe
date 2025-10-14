@@ -34,8 +34,8 @@ class TXShearCalibration(PipelineStage):
         "use_true_shear": False,
         "chunk_rows": 100_000,
         "subtract_mean_shear": True,
-        'redshift_shearcatalog': False,
-        '3Dcoords': False,
+        'copy_redshift': False,
+        "add_fiducial_distance": False,
         'redshift_name': 'redshift_true',
         "extra_cols": [""],
         "shear_catalog_type": '',
@@ -49,8 +49,8 @@ class TXShearCalibration(PipelineStage):
         use_true = self.config["use_true_shear"]
         extra_cols = [c for c in self.config["extra_cols"] if c]
         subtract_mean_shear = self.config["subtract_mean_shear"]
-        Dcoords = self.config['3Dcoords']
-        redshift_shearcatalog = self.config["redshift_shearcatalog"]
+        add_fiducial_distance = self.config['add_fiducial_distance']
+        copy_redshift = self.config["copy_redshift"]
         z_name = self.config['redshift_name']
 
         shear_prefix = self.config["shear_prefix"]
@@ -91,11 +91,11 @@ class TXShearCalibration(PipelineStage):
                 cat_cols = cat_cols + extra_cols + mag_cols_in
 
             renames.update(zip(mag_cols_in, mag_cols_out))
-            if Dcoords:
-                if redshift_shearcatalog:
+            if add_fiducial_distance:
+                if copy_redshift:
                     cat_cols += [z_name]
                 else:
-                    raise ValueError(f"To use 3Dcoords the shear catalog needs a redshift")
+                    raise ValueError(f"To add fiducial distances the shear catalog needs a redshift")
 
         
         if cat_type!='hsc':
@@ -103,10 +103,10 @@ class TXShearCalibration(PipelineStage):
         else:
             output_cols = ["ra", "dec", "weight", "g1", "g2", "c1", "c2"] + extra_cols + mag_cols_out
 
-        if Dcoords:
+        if add_fiducial_distance:
             output_cols.append("r")
             output_cols.append("z")
-            print("Using 3D coords, hopefully a mean readshift is defined")
+            print("Adding fiducial distances; hopefully a mean redshift is defined")
 
         # We parallelize by bin.  This isn't ideal but we don't know the number
         # of objects in each bin per chunk, so we can't parallelize in full.  This
@@ -144,7 +144,7 @@ class TXShearCalibration(PipelineStage):
 
             # Rename mcal_g1 -> g1 etc
             self.rename_metacal(data)
-            if Dcoords:
+            if add_fiducial_distance:
                 self.redshift_to_comoving(data, z_name)
 
             #  Now output the calibrated bin data for this processor
@@ -183,7 +183,7 @@ class TXShearCalibration(PipelineStage):
         output_file.close()
 
     def setup_output(self, extra_cols):
-        Dcoords = self.config['3Dcoords']
+        add_fiducial_distance = self.config['add_fiducial_distance']
         # count the expected number of objects per bin from the tomo data
         with self.open_input("shear_tomography_catalog") as f:
             counts = f["counts/counts"][:]
@@ -194,10 +194,10 @@ class TXShearCalibration(PipelineStage):
         f = self.open_output("binned_shear_catalog", parallel=True)
 
         #  we only retain these columns
-        if Dcoords: 
-            cols = ["ra", "dec", "r", "z", "weight", "g1", "g2"] + extra_cols
-        else:
-            cols = ["ra", "dec", "weight", "g1", "g2"] + extra_cols
+        cols = ["ra", "dec", "weight", "g1", "g2"] + extra_cols
+        if add_fiducial_distance: 
+            cols.extend(["r", "z"])
+            
 
         # structure is /shear/bin_1, /shear/bin_2, etc
         g = f.create_group("shear")
