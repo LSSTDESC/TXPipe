@@ -40,8 +40,8 @@ class TXCosmoDC2Mock(PipelineStage):
         "extra_cols": StageParameter(str, "", msg="Extra columns to include (space-separated)."),
         "max_npix": StageParameter(int, 99999999999999, msg="Maximum number of pixels."),
         "unit_response": StageParameter(bool, False, msg="Whether to use unit response in simulation."),
-        "cat_size": StageParameter(int, 0, msg="Catalog size (0 for all)."),
-        "flip_g2": StageParameter(bool, True, msg="Whether to flip g2 sign to match conventions."),
+        "cat_size": StageParameter(int, 0, msg="Pre-computed catalog size, if known."),
+        "flip_g2": StageParameter(bool, True, msg="Whether to flip g2 sign to match conventions. TreeCorr and NaMaster use flip_g2=True"),
         "apply_mag_cut": StageParameter(bool, False, msg="Apply magnitude cut for descqa comparison."),
         "Mag_r_limit": StageParameter(float, -19, msg="Magnitude r limit for object selection."),
         "metadetect": StageParameter(bool, True, msg="Whether to make a metadetect-style catalog (True) or metacal (False)."),
@@ -1229,7 +1229,7 @@ class TXSimpleMock(PipelineStage):
     inputs = [("mock_shear_catalog", TextFile)]
     outputs = [("shear_catalog", ShearCatalog)]
     config_options = {
-        "mock_size_snr": StageParameter(bool, False, msg="Whether to mock size S/N for simulation."),
+
     }
     def run(self):
         from astropy.table import Table
