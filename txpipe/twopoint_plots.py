@@ -1,8 +1,8 @@
-
 from .base_stage import PipelineStage
 from .data_types import SACCFile, PNGFile
 import numpy as np
 import os
+from ceci.config import StageParameter
 
 
 class TXTwoPointPlots(PipelineStage):
@@ -26,8 +26,8 @@ class TXTwoPointPlots(PipelineStage):
     ]
 
     config_options = {
-        "wspace": 0.05,
-        "hspace": 0.05,
+        "wspace": StageParameter(float, 0.05, msg="Width space between subplots."),
+        "hspace": StageParameter(float, 0.05, msg="Height space between subplots."),
     }
 
     def run(self):
@@ -139,8 +139,8 @@ class TXTwoPointPlotsFourier(PipelineStage):
     ]
 
     config_options = {
-        "wspace": 0.05,
-        "hspace": 0.05,
+        "wspace": StageParameter(float, 0.05, msg="Width space between subplots."),
+        "hspace": StageParameter(float, 0.05, msg="Height space between subplots."),
     }
 
     def read_nbin(self, s):
@@ -260,8 +260,8 @@ class TXTwoPointPlotsTheory( TXTwoPointPlots ):
     ]
 
     config_options = {
-        "wspace": 0.05,
-        "hspace": 0.05,
+        "wspace": StageParameter(float, 0.05, msg="Width space between subplots."),
+        "hspace": StageParameter(float, 0.05, msg="Height space between subplots."),
     }
 
     def run(self):

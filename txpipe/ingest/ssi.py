@@ -10,6 +10,7 @@ from ..utils import (
 from .base import TXIngestCatalogBase, TXIngestCatalogFits
 import numpy as np
 import warnings
+from ceci.config import StageParameter
 
 # translate between GCR and TXpipe column names
 column_names = {
@@ -36,11 +37,11 @@ class TXIngestSSIGCR(TXIngestCatalogBase):
     ]
 
     config_options = {
-        "injection_catalog_name": "",  # Catalog of objects manually injected
-        "ssi_photometry_catalog_name": "",  # Catalog of objects from real data with no injections
-        "ssi_uninjected_photometry_catalog_name": "",  # Catalog of objects from real data with no injections
-        "GCRcatalog_path": "",
-        "flux_name": "gaap3p0Flux",
+        "injection_catalog_name": StageParameter(str, "", msg="Catalog of objects manually injected."),
+        "ssi_photometry_catalog_name": StageParameter(str, "", msg="Catalog of objects from real data with no injections."),
+        "ssi_uninjected_photometry_catalog_name": StageParameter(str, "", msg="Catalog of objects from real data with no injections."),
+        "GCRcatalog_path": StageParameter(str, "", msg="Path to GCRCatalogs for SSI runs."),
+        "flux_name": StageParameter(str, "gaap3p0Flux", msg="Flux column name to use."),
     }
 
     def run(self):
@@ -143,9 +144,9 @@ class TXMatchSSI(PipelineStage):
     ]
 
     config_options = {
-        "chunk_rows": 100000,
-        "match_radius": 0.5,  # in arcseconds
-        "magnification": 0,  # magnification label
+        "chunk_rows": StageParameter(int, 100000, msg="Number of rows to process in each chunk."),
+        "match_radius": StageParameter(float, 0.5, msg="Matching radius in arcseconds."),
+        "magnification": StageParameter(int, 0, msg="Magnification label."),
     }
 
     def run(self):

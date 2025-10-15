@@ -1,6 +1,7 @@
 from .base_stage import PipelineStage
 from .data_types import HDFFile
 import numpy as np
+from ceci.config import StageParameter
 
 
 class TXExposureInfo(PipelineStage):
@@ -17,9 +18,9 @@ class TXExposureInfo(PipelineStage):
         ("exposures", HDFFile),
     ]
     config_options = {
-        "dc2_name": "1.2p",
-        "opsim_db": "/global/projecta/projectdirs/lsst/groups/SSim/DC2/minion_1016_desc_dithered_v4.db",
-        "propId": 54,
+        "dc2_name": StageParameter(str, "1.2p", msg="Name of the DC2 run to use."),
+        "opsim_db": StageParameter(str, "/global/projecta/projectdirs/lsst/groups/SSim/DC2/minion_1016_desc_dithered_v4.db", msg="Path to the opsim database file."),
+        "propId": StageParameter(int, 54, msg="Proposal ID to filter visits."),
     }
 
     def run(self):

@@ -5,6 +5,7 @@ import warnings
 import os
 import pickle
 import sys
+from ceci.config import StageParameter
 
 # require TJPCov to be in PYTHONPATH
 d2r = np.pi / 180
@@ -34,10 +35,10 @@ class TXFourierNamasterCovariance(PipelineStage):
     ]
 
     config_options = {
-        "pickled_wigner_transform": "",
-        "use_true_shear": False,
-        "scratch_dir": "temp",
-        "nside": 1024,
+        "pickled_wigner_transform": StageParameter(str, "", msg="Path to pickled Wigner transform file."),
+        "use_true_shear": StageParameter(bool, False, msg="Whether to use true shear values."),
+        "scratch_dir": StageParameter(str, "temp", msg="Directory for temporary files."),
+        "nside": StageParameter(int, 1024, msg="HEALPix nside parameter."),
     }
 
     def run(self):
@@ -1031,10 +1032,10 @@ class TXRealNamasterCovariance(TXFourierNamasterCovariance):
     ]
 
     config_options = {
-        "pickled_wigner_transform": "",
-        "use_true_shear": False,
-        "galaxy_bias": [0.0],
-        "scratch_dir": "temp",
+        "pickled_wigner_transform": StageParameter(str, "", msg="Path to pickled Wigner transform file."),
+        "use_true_shear": StageParameter(bool, False, msg="Whether to use true shear values."),
+        "galaxy_bias": StageParameter(list, [0.0], msg="Galaxy bias values."),
+        "scratch_dir": StageParameter(str, "temp", msg="Directory for temporary files."),
     }
 
     def run(self):

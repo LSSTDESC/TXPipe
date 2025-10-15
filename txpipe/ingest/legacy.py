@@ -1,5 +1,6 @@
 from ..data_types import HDFFile, MapsFile, FitsFile
 from .base import TXIngestCatalogH5, TXIngestMapsHsp, TXIngestCatalogFits
+from ceci.config import StageParameter
 
 class TXIngestDESY3Gold(TXIngestCatalogH5):
     """
@@ -16,8 +17,8 @@ class TXIngestDESY3Gold(TXIngestCatalogH5):
     ]
 
     config_options = {
-        "input_group_name" : "catalog/gold", 
-        "chunk_rows": 100_000,
+        "input_group_name": StageParameter(str, "catalog/gold", msg="Input group name in the HDF5 file."),
+        "chunk_rows": StageParameter(int, 100_000, msg="Number of rows to process in each chunk."),
     }
 
     def run(self):
@@ -78,9 +79,9 @@ class TXIngestDESY3Footprint(TXIngestMapsHsp):
 
     config_options = {
         **TXIngestMapsHsp.config_options,
-        "input_filepaths" : [""],
-        "input_labels" : [""],
-        "chunk_rows": 100_000,
+        "input_filepaths": StageParameter(list, [""], msg="List of input file paths."),
+        "input_labels": StageParameter(list, [""], msg="List of input labels."),
+        "chunk_rows": StageParameter(int, 100_000, msg="Number of rows to process in each chunk."),
     }
 
     def run(self):
@@ -111,7 +112,7 @@ class TXIngestDESY3SpeczCat(TXIngestCatalogFits):
     ]
 
     config_options = {
-        "chunk_rows": 100_000,
+        "chunk_rows": StageParameter(int, 100_000, msg="Number of rows to process in each chunk."),
     }
 
     def run(self):

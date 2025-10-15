@@ -10,6 +10,7 @@ from .data_types import (
 )
 from .utils import choose_pixelization, Splitter
 import numpy as np
+from ceci.config import StageParameter
 
 class TXRandomCat(PipelineStage):
     """
@@ -31,13 +32,12 @@ class TXRandomCat(PipelineStage):
         ("binned_random_catalog_sub", RandomsCatalog),
     ]
     config_options = {
-        "density": 100.0,  # number per square arcmin at median depth depth.  Not sure if this is right.
-        "Mstar": 23.0,  # Schecther distribution Mstar parameter
-        "alpha": -1.25,  # Schecther distribution alpha parameter
-        "chunk_rows": 100_000,
-        "method":"quadrilateral", #method should be "quadrilateral" or "spherical_projection"
-        "sample_rate": 0.5,  # fraction of random catalog to be retained in the sub-sampled catalog
-                             # This should be larger than ~1.11*sqrt(Ndata/Nrandom) to maintain the same shot noise precision 
+        "density": StageParameter(float, 100.0, msg="Number per square arcmin at median depth."),
+        "Mstar": StageParameter(float, 23.0, msg="Schechter distribution Mstar parameter."),
+        "alpha": StageParameter(float, -1.25, msg="Schechter distribution alpha parameter."),
+        "chunk_rows": StageParameter(int, 100_000, msg="Number of rows to process in each chunk."),
+        "method": StageParameter(str, "quadrilateral", msg="Method for random generation: 'quadrilateral' or 'spherical_projection'."),
+        "sample_rate": StageParameter(float, 0.5, msg="Fraction of random catalog to be retained in the sub-sampled catalog."),
     }
 
     def run(self):
@@ -387,8 +387,8 @@ class TXSubsampleRandoms(PipelineStage):
         ("binned_random_catalog_sub", RandomsCatalog),
     ]
     config_options = {
-        "chunk_rows": 100_000,
-        "sample_rate": 0.5,  # fraction of random catalog that should be retained in the subsampled catalog
+        "chunk_rows": StageParameter(int, 100_000, msg="Number of rows to process in each chunk."),
+        "sample_rate": StageParameter(float, 0.5, msg="Fraction of random catalog that should be retained in the subsampled catalog."),
     }
 
     def run(self):

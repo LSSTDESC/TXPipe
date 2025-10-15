@@ -12,6 +12,7 @@ from .data_types import (
 import numpy as np
 from .twopoint import TXTwoPoint, SHEAR_SHEAR, SHEAR_POS, POS_POS
 from .utils import DynamicSplitter
+from ceci.config import StageParameter
 
 
 class TXStarCatalogSplitter(PipelineStage):
@@ -31,8 +32,8 @@ class TXStarCatalogSplitter(PipelineStage):
     ]
 
     config_options = {
-        "chunk_rows": 100_000,
-        "initial_size": 100_000,
+        "chunk_rows": StageParameter(int, 100_000, msg="Number of rows to process in each chunk."),
+        "initial_size": StageParameter(int, 100_000, msg="Initial size for star catalog bins."),
     }
 
     def run(self):
@@ -103,26 +104,26 @@ class TXGammaTFieldCenters(TXTwoPoint):
     ]
     # Add values to the config file that are not previously defined
     config_options = {
-        "calcs": [0, 1, 2],
-        "min_sep": 2.5,
-        "max_sep": 250,
-        "nbins": 20,
-        "bin_slop": 0.1,
-        "sep_units": "arcmin",
-        "flip_g1": False,
-        "flip_g2": True,
-        "verbose": 1,
-        "reduce_randoms_size": 1.0,
-        "var_method": "shot",
-        "npatch": 5,
-        "use_true_shear": False,
-        "subtract_mean_shear": False,
-        "use_randoms": True,
-        "patch_dir": "./cache/patches",
-        "low_mem": False,
-        "chunk_rows": 100_000,
-        "share_patch_files": False,
-        "use_subsampled_randoms": False,
+        "calcs": StageParameter(list, [0, 1, 2], msg="Which calculations to perform: 0=shear-shear, 1=shear-position, 2=position-position"),
+        "min_sep": StageParameter(float, 2.5, msg="Minimum separation for correlation measurements."),
+        "max_sep": StageParameter(float, 250, msg="Maximum separation for correlation measurements."),
+        "nbins": StageParameter(int, 20, msg="Number of separation bins."),
+        "bin_slop": StageParameter(float, 0.1, msg="Tolerance for bin sloppiness in TreeCorr."),
+        "sep_units": StageParameter(str, "arcmin", msg="Units for separation (arcmin, degrees, etc.)."),
+        "flip_g1": StageParameter(bool, False, msg="Whether to flip the sign of g1."),
+        "flip_g2": StageParameter(bool, True, msg="Whether to flip the sign of g2."),
+        "verbose": StageParameter(int, 1, msg="Verbosity level for TreeCorr output."),
+        "reduce_randoms_size": StageParameter(float, 1.0, msg="Factor to reduce the size of random catalogs."),
+        "var_method": StageParameter(str, "shot", msg="Method for computing variance (shot, jackknife, etc.)."),
+        "npatch": StageParameter(int, 5, msg="Number of patches for null tests."),
+        "use_true_shear": StageParameter(bool, False, msg="Whether to use true shear values."),
+        "subtract_mean_shear": StageParameter(bool, False, msg="Whether to subtract mean shear."),
+        "use_randoms": StageParameter(bool, True, msg="Whether to use random catalogs."),
+        "patch_dir": StageParameter(str, "./cache/patches", msg="Directory for storing patch files."),
+        "low_mem": StageParameter(bool, False, msg="Whether to use low memory mode."),
+        "chunk_rows": StageParameter(int, 100_000, msg="Number of rows to process in each chunk."),
+        "share_patch_files": StageParameter(bool, False, msg="Whether to share patch files across processes."),
+        "use_subsampled_randoms": StageParameter(bool, False, msg="Use subsampled randoms file for RR calculation."),
     }
 
     def run(self):
@@ -300,26 +301,26 @@ class TXGammaTStars(TXTwoPoint):
     ]
     # Add values to the config file that are not previously defined
     config_options = {
-        "calcs": [0, 1, 2],
-        "min_sep": 2.5,
-        "max_sep": 100,
-        "nbins": 20,
-        "bin_slop": 1,
-        "sep_units": "arcmin",
-        "flip_g1": False,
-        "flip_g2": True,
-        "verbose": 1,
-        "reduce_randoms_size": 1.0,
-        "var_method": "shot",
-        "npatch": 5,
-        "use_true_shear": False,
-        "subtract_mean_shear": False,
-        "use_randoms": True,
-        "patch_dir": "./cache/patches",
-        "low_mem": False,
-        "chunk_rows": 100_000,
-        "share_patch_files": False,
-        "use_subsampled_randoms": False,
+        "calcs": StageParameter(list, [0, 1, 2], msg="Which calculations to perform: 0=shear-shear, 1=shear-position, 2=position-position"),
+        "min_sep": StageParameter(float, 2.5, msg="Minimum separation for correlation measurements."),
+        "max_sep": StageParameter(float, 100, msg="Maximum separation for correlation measurements."),
+        "nbins": StageParameter(int, 20, msg="Number of separation bins."),
+        "bin_slop": StageParameter(float, 1, msg="Tolerance for bin sloppiness in TreeCorr."),
+        "sep_units": StageParameter(str, "arcmin", msg="Units for separation (arcmin, degrees, etc.)."),
+        "flip_g1": StageParameter(bool, False, msg="Whether to flip the sign of g1."),
+        "flip_g2": StageParameter(bool, True, msg="Whether to flip the sign of g2."),
+        "verbose": StageParameter(int, 1, msg="Verbosity level for TreeCorr output."),
+        "reduce_randoms_size": StageParameter(float, 1.0, msg="Factor to reduce the size of random catalogs."),
+        "var_method": StageParameter(str, "shot", msg="Method for computing variance (shot, jackknife, etc.)."),
+        "npatch": StageParameter(int, 5, msg="Number of patches for null tests."),
+        "use_true_shear": StageParameter(bool, False, msg="Whether to use true shear values."),
+        "subtract_mean_shear": StageParameter(bool, False, msg="Whether to subtract mean shear."),
+        "use_randoms": StageParameter(bool, True, msg="Whether to use random catalogs."),
+        "patch_dir": StageParameter(str, "./cache/patches", msg="Directory for storing patch files."),
+        "low_mem": StageParameter(bool, False, msg="Whether to use low memory mode."),
+        "chunk_rows": StageParameter(int, 100_000, msg="Number of rows to process in each chunk."),
+        "share_patch_files": StageParameter(bool, False, msg="Whether to share patch files across processes."),
+        "use_subsampled_randoms": StageParameter(bool, False, msg="Use subsampled randoms file for RR calculation."),
     }
 
     def run(self):
@@ -487,26 +488,26 @@ class TXGammaTRandoms(TXTwoPoint):
     ]
     # Add values to the config file that are not previously defined
     config_options = {
-        "calcs": [0, 1, 2],
-        "min_sep": 2.5,
-        "max_sep": 100,
-        "nbins": 20,
-        "bin_slop": 1,
-        "sep_units": "arcmin",
-        "flip_g1": False,
-        "flip_g2": True,
-        "verbose": 1,
-        "reduce_randoms_size": 1.0,
-        "var_method": "shot",
-        "npatch": 5,
-        "use_true_shear": False,
-        "subtract_mean_shear": False,
-        "use_randoms": False,
-        "patch_dir": "./cache/patches",
-        "low_mem": False,
-        "chunk_rows": 100_000,
-        "share_patch_files": False,
-        "use_subsampled_randoms": False,
+        "calcs": StageParameter(list, [0, 1, 2], msg="Which calculations to perform: 0=shear-shear, 1=shear-position, 2=position-position"),
+        "min_sep": StageParameter(float, 2.5, msg="Minimum separation for correlation measurements."),
+        "max_sep": StageParameter(float, 100, msg="Maximum separation for correlation measurements."),
+        "nbins": StageParameter(int, 20, msg="Number of separation bins."),
+        "bin_slop": StageParameter(float, 1, msg="Tolerance for bin sloppiness in TreeCorr."),
+        "sep_units": StageParameter(str, "arcmin", msg="Units for separation (arcmin, degrees, etc.)."),
+        "flip_g1": StageParameter(bool, False, msg="Whether to flip the sign of g1."),
+        "flip_g2": StageParameter(bool, True, msg="Whether to flip the sign of g2."),
+        "verbose": StageParameter(int, 1, msg="Verbosity level for TreeCorr output."),
+        "reduce_randoms_size": StageParameter(float, 1.0, msg="Factor to reduce the size of random catalogs."),
+        "var_method": StageParameter(str, "shot", msg="Method for computing variance (shot, jackknife, etc.)."),
+        "npatch": StageParameter(int, 5, msg="Number of patches for null tests."),
+        "use_true_shear": StageParameter(bool, False, msg="Whether to use true shear values."),
+        "subtract_mean_shear": StageParameter(bool, False, msg="Whether to subtract mean shear."),
+        "use_randoms": StageParameter(bool, False, msg="Whether to use random catalogs."),
+        "patch_dir": StageParameter(str, "./cache/patches", msg="Directory for storing patch files."),
+        "low_mem": StageParameter(bool, False, msg="Whether to use low memory mode."),
+        "chunk_rows": StageParameter(int, 100_000, msg="Number of rows to process in each chunk."),
+        "share_patch_files": StageParameter(bool, False, msg="Whether to share patch files across processes."),
+        "use_subsampled_randoms": StageParameter(bool, False, msg="Use subsampled randoms file for RR calculation."),
     }
 
     def run(self):
@@ -662,27 +663,26 @@ class TXApertureMass(TXTwoPoint):
     ]
     # Add values to the config file that are not previously defined
     config_options = {
-        "calcs": [0, 1, 2],
-        "min_sep": 0.5,
-        "max_sep": 300.0,
-        "nbins": 15,
-        "bin_slop": 0.02,
-        "sep_units": "arcmin",
-        "flip_g1": False,
-        "flip_g2": True,
-        "verbose": 1,
-        "source_bins": [-1],
-        "lens_bins": [-1],
-        "reduce_randoms_size": 1.0,
-        "var_method": "jackknife",
-        "use_true_shear": False,
-        "subtract_mean_shear": False,
-        "use_randoms": False,
-        "low_mem": False,
-        "patch_dir": "./cache/patches",
-        "low_mem": False,
-        "chunk_rows": 100_000,
-        "share_patch_files": False,
+        "calcs": StageParameter(list, [0, 1, 2], msg="Which calculations to perform: 0=shear-shear, 1=shear-position, 2=position-position"),
+        "min_sep": StageParameter(float, 0.5, msg="Minimum separation for correlation measurements."),
+        "max_sep": StageParameter(float, 300.0, msg="Maximum separation for correlation measurements."),
+        "nbins": StageParameter(int, 15, msg="Number of separation bins."),
+        "bin_slop": StageParameter(float, 0.02, msg="Tolerance for bin sloppiness in TreeCorr."),
+        "sep_units": StageParameter(str, "arcmin", msg="Units for separation (arcmin, degrees, etc.)."),
+        "flip_g1": StageParameter(bool, False, msg="Whether to flip the sign of g1."),
+        "flip_g2": StageParameter(bool, True, msg="Whether to flip the sign of g2."),
+        "verbose": StageParameter(int, 1, msg="Verbosity level for TreeCorr output."),
+        "source_bins": StageParameter(list, [-1], msg="List of source bins to use (-1 means all)."),
+        "lens_bins": StageParameter(list, [-1], msg="List of lens bins to use (-1 means all)."),
+        "reduce_randoms_size": StageParameter(float, 1.0, msg="Factor to reduce the size of random catalogs."),
+        "var_method": StageParameter(str, "jackknife", msg="Method for computing variance (jackknife, sample, etc.)."),
+        "use_true_shear": StageParameter(bool, False, msg="Whether to use true shear values."),
+        "subtract_mean_shear": StageParameter(bool, False, msg="Whether to subtract mean shear."),
+        "use_randoms": StageParameter(bool, False, msg="Whether to use random catalogs."),
+        "low_mem": StageParameter(bool, False, msg="Whether to use low memory mode."),
+        "patch_dir": StageParameter(str, "./cache/patches", msg="Directory for storing patch files."),
+        "chunk_rows": StageParameter(int, 100_000, msg="Number of rows to process in each chunk."),
+        "share_patch_files": StageParameter(bool, False, msg="Whether to share patch files across processes."),
     }
 
     # These two functions can be combined into a single one.

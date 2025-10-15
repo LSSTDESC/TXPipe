@@ -10,6 +10,7 @@ from .data_types import (
     TomographyCatalog,
     QPNOfZFile,
 )
+from ceci.config import StageParameter
 import glob
 import time
 import numpy as np
@@ -47,21 +48,21 @@ class TXLogNormalGlass(PipelineStage):
     ]
 
     config_options = {
-        "num_dens": None,
-        "zmin": 0.0,
-        "zmax": 2.0,
-        "dx": 100,
-        "bias0": 2.0, #linear bias at zpivot
-        "alpha_bz":0.0, #controls redshift evolution of bias
-        "zpivot": 0.6, 
-        "shift": 1.0, #lognormal shift
-        "contaminate": False,
-        "random_seed": 0,
-        "cl_optional_file": "none",
-        "ell_binned_min": 0.1,
-        "ell_binned_max": 5.0e5,
-        "ell_binned_nbins": 100,
-        "output_density_shell_maps":False,
+        "num_dens": StageParameter(float, required=True, msg="Number density of galaxies per square arcmin"),
+        "zmin": StageParameter(float, 0.0, msg="Minimum redshift for the simulation"),
+        "zmax": StageParameter(float, 2.0, msg="Maximum redshift for the simulation"),
+        "dx": StageParameter(int, 100, msg="Comoving distance spacing for redshift shells in Mpc"),
+        "bias0": StageParameter(float, 2.0, msg="Linear bias at zpivot"),
+        "alpha_bz": StageParameter(float, 0.0, msg="Controls redshift evolution of bias"),
+        "zpivot": StageParameter(float, 0.6, msg="Pivot redshift for bias evolution"),
+        "shift": StageParameter(float, 1.0, msg="Lognormal shift parameter"),
+        "contaminate": StageParameter(bool, False, msg="Whether to apply contamination to the density field"),
+        "random_seed": StageParameter(int, 0, msg="Random seed for reproducibility"),
+        "cl_optional_file": StageParameter(str, "none", msg="Optional file for input C(l) values"),
+        "ell_binned_min": StageParameter(float, 0.1, msg="Minimum ell for binned C(l) output"),
+        "ell_binned_max": StageParameter(float, 5.0e5, msg="Maximum ell for binned C(l) output"),
+        "ell_binned_nbins": StageParameter(int, 100, msg="Number of ell bins for binned C(l) output"),
+        "output_density_shell_maps": StageParameter(bool, False, msg="Whether to output density maps for each shell"),
     }
 
     def run(self):

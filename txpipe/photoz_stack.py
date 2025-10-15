@@ -4,6 +4,7 @@ from .utils.mpi_utils import in_place_reduce
 from .utils import rename_iterated
 import numpy as np
 import warnings
+from ceci.config import StageParameter
 
 
 class TXPhotozStack(PipelineStage):
@@ -23,11 +24,11 @@ class TXPhotozStack(PipelineStage):
         ("photoz_stack", QPNOfZFile),
     ]
     config_options = {
-        "chunk_rows": 5000,
-        "tomo_name": "source",
-        "weight_col": "shear/00/weight",
-        "zmax": 0.0, # zmax and nz to use if these are not specified in the PDFs input file
-        "nz": 0,
+        "chunk_rows": StageParameter(int, 5000, msg="Number of rows to process in each chunk."),
+        "tomo_name": StageParameter(str, "source", msg="Name of the tomographic binning."),
+        "weight_col": StageParameter(str, "shear/00/weight", msg="Column name for weights in the input catalog."),
+        "zmax": StageParameter(float, 0.0, msg="Maximum redshift to use if not specified in input PDFs."),
+        "nz": StageParameter(int, 0, msg="Number of redshift bins to use if not specified in input PDFs."),
     }
 
     def run(self):
@@ -139,12 +140,12 @@ class TXTruePhotozStack(PipelineStage):
         ("photoz_stack", QPNOfZFile),
     ]
     config_options = {
-        "chunk_rows": 5000,  # number of rows to read at once
-        "zmax": float,
-        "nz": int,
-        "weight_col": "weight",
-        "redshift_group": str,
-        "redshift_col": "redshift_true",
+        "chunk_rows": StageParameter(int, 5000, msg="Number of rows to read at once."),
+        "zmax": StageParameter(float, 0.0, msg="Maximum redshift for stacking."),
+        "nz": StageParameter(int, 0, msg="Number of redshift bins for stacking."),
+        "weight_col": StageParameter(str, "weight", msg="Column name for weights in the input catalog."),
+        "redshift_group": StageParameter(str, '', msg="Group name for redshift column in input file."),
+        "redshift_col": StageParameter(str, "redshift_true", msg="Column name for true redshift in input file."),
     }
 
     def run(self):
@@ -250,8 +251,8 @@ class TXPhotozPlot(PipelineStage):
     ]
 
     config_options = {
-        "label": "",
-        "zmax": 3.0,
+        "label": StageParameter(str, "", msg="Label for the n(z) plot."),
+        "zmax": StageParameter(float, 3.0, msg="Maximum redshift for plotting."),
     }
 
     def run(self):

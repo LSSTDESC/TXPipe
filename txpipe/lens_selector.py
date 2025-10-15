@@ -13,6 +13,7 @@ from .utils import LensNumberDensityStats, Splitter, rename_iterated
 from .binning import build_tomographic_classifier, apply_classifier, read_training_data
 import numpy as np
 import warnings
+from ceci.config import StageParameter
 
 
 class TXBaseLensSelector(PipelineStage):
@@ -33,25 +34,25 @@ class TXBaseLensSelector(PipelineStage):
     ]
 
     config_options = {
-        "verbose": False,
-        "chunk_rows": 10000,
-        "lens_zbin_edges": [float],
+        "verbose": StageParameter(bool, False, msg="Enable verbose output for lens selection."),
+        "chunk_rows": StageParameter(int, 10000, msg="Number of rows to process in each chunk."),
+        "lens_zbin_edges": StageParameter(list, [float], msg="Edges of lens redshift bins."),
         # Mag cuts
         # Default photometry cuts based on the BOSS Galaxy Target Selection:
         # http://www.sdss3.org/dr9/algorithms/boss_galaxy_ts.php
-        "cperp_cut": 0.2,
-        "r_cpar_cut": 13.5,
-        "r_lo_cut": 16.0,
-        "r_hi_cut": 19.6,
-        "i_lo_cut": 17.5,
-        "i_hi_cut": 19.9,
-        "r_i_cut": 2.0,
-        "random_seed": 42,
-        "selection_type": "boss",
-        "maglim_band": "i",
-        "maglim_limit": 24.1,
-        "extra_cols": [""],
-        "apply_mask":False,
+        "cperp_cut": StageParameter(float, 0.2, msg="cperp cut for BOSS selection."),
+        "r_cpar_cut": StageParameter(float, 13.5, msg="r_cpar cut for BOSS selection."),
+        "r_lo_cut": StageParameter(float, 16.0, msg="Lower r-band magnitude cut."),
+        "r_hi_cut": StageParameter(float, 19.6, msg="Upper r-band magnitude cut."),
+        "i_lo_cut": StageParameter(float, 17.5, msg="Lower i-band magnitude cut."),
+        "i_hi_cut": StageParameter(float, 19.9, msg="Upper i-band magnitude cut."),
+        "r_i_cut": StageParameter(float, 2.0, msg="r-i color cut."),
+        "random_seed": StageParameter(int, 42, msg="Random seed for reproducibility."),
+        "selection_type": StageParameter(str, "boss", msg="Type of lens selection (e.g., boss)."),
+        "maglim_band": StageParameter(str, "i", msg="Band for magnitude limit."),
+        "maglim_limit": StageParameter(float, 24.1, msg="Magnitude limit value."),
+        "extra_cols": StageParameter(list, [""], msg="Extra columns to include in output."),
+        "apply_mask": StageParameter(bool, False, msg="Whether to apply a mask to the selection."),
     }
 
     def run(self):
@@ -567,10 +568,10 @@ class TXLensCatalogSplitter(PipelineStage):
     ]
 
     config_options = {
-        "initial_size": 100_000,
-        "chunk_rows": 100_000,
-        "extra_cols": [""],
-        "redshift_column": "zmean",
+        "initial_size": StageParameter(int, 100_000, msg="Initial size of the output catalog."),
+        "chunk_rows": StageParameter(int, 100_000, msg="Number of rows to process in each chunk."),
+        "extra_cols": StageParameter(list, [""], msg="Extra columns to include in output."),
+        "redshift_column": StageParameter(str, "zmean", msg="Name of the redshift column to use."),
     }
 
     def get_lens_tomo_name(self): #can overwrite this in a weighted subclass

@@ -14,6 +14,7 @@ import glob
 import time
 from .utils.theory import theory_3x2pt
 from .utils.fitting import calc_chi2
+from ceci.config import StageParameter
 
 
 class TXLSSWeights(TXMapCorrelations):
@@ -46,11 +47,11 @@ class TXLSSWeights(TXMapCorrelations):
     ]
 
     config_options = {
-        "supreme_path_root": "",
-        "nbin": 20,
-        "outlier_fraction": 0.01,
-        "allow_weighted_input": False,
-        "nside_coverage": 32,
+        "supreme_path_root": StageParameter(str, "", msg="Root path for supreme files."),
+        "nbin": StageParameter(int, 20, msg="Number of tomographic bins."),
+        "outlier_fraction": StageParameter(float, 0.01, msg="Fraction of outliers to exclude."),
+        "allow_weighted_input": StageParameter(bool, False, msg="Allow weighted input catalogs."),
+        "nside_coverage": StageParameter(int, 32, msg="HEALPix nside for coverage maps."),
     }
 
     def run(self):
@@ -528,16 +529,16 @@ class TXLSSWeightsLinBinned(TXLSSWeights):
     ]
 
     config_options = {
-        "supreme_path_root": "",
-        "nbin": 20,
-        "outlier_fraction": 0.05,
-        "pvalue_threshold": 0.05,  # max p-value for maps to be included in the corrected (a very simple form of regularization)
-        "equal_area_bins": True,  # if you are using binned 1d correlations, should the bins have equal area (set False for equal spacing)
-        "simple_cov": False,  # if True will use a diagonal shot noise only covariance for the 1d relations
-        "diag_blocks_only": True,  # If True, will compute only the diagonal blocks of the 1D covariance matrix (no correlation between SP maps)
-        "b0": [1.0],
-        "allow_weighted_input": False,
-        "nside_coverage": 32,
+        "supreme_path_root": StageParameter(str, "", msg="Root path for supreme files."),
+        "nbin": StageParameter(int, 20, msg="Number of tomographic bins."),
+        "outlier_fraction": StageParameter(float, 0.05, msg="Fraction of outliers to exclude."),
+        "pvalue_threshold": StageParameter(float, 0.05, msg="Max p-value for maps to be included in the correction."),
+        "equal_area_bins": StageParameter(bool, True, msg="Use equal area bins for 1D correlations."),
+        "simple_cov": StageParameter(bool, False, msg="Use diagonal shot noise only covariance for 1D relations."),
+        "diag_blocks_only": StageParameter(bool, True, msg="Compute only diagonal blocks of 1D covariance matrix."),
+        "b0": StageParameter(list, [1.0], msg="Initial galaxy bias values."),
+        "allow_weighted_input": StageParameter(bool, False, msg="Allow weighted input catalogs."),
+        "nside_coverage": StageParameter(int, 32, msg="HEALPix nside for coverage maps."),
     }
 
     def prepare_sys_maps(self):
@@ -1014,17 +1015,17 @@ class TXLSSWeightsLinPix(TXLSSWeightsLinBinned):
     parallel = False
 
     config_options = {
-        "supreme_path_root": "",
-        "nbin": 20,
-        "outlier_fraction": 0.05,
-        "pvalue_threshold": 0.05,  # max p-value for maps to be corrected
-        "equal_area_bins": True,  # if you are using binned 1d correlations shoudl the bins have equal area (or equal spacing)
-        "simple_cov": False,  # if True will use a diagonal shot noise only covariance for the 1d relations
-        "diag_blocks_only": True,  # if True, will compute only the diagonal blocks of the 1D covariance matrix (no correlation between SP maps)
-        "b0": [1.0],
-        "regression_class": "LinearRegression",  # sklearn.linear_model class to use in regression
-        "allow_weighted_input": False,
-        "nside_coverage": 32,
+        "supreme_path_root": StageParameter(str, "", msg="Root path for supreme files."),
+        "nbin": StageParameter(int, 20, msg="Number of tomographic bins."),
+        "outlier_fraction": StageParameter(float, 0.05, msg="Fraction of outliers to exclude."),
+        "pvalue_threshold": StageParameter(float, 0.05, msg="Max p-value for maps to be corrected."),
+        "equal_area_bins": StageParameter(bool, True, msg="Use equal area bins for 1D correlations."),
+        "simple_cov": StageParameter(bool, False, msg="Use diagonal shot noise only covariance for 1D relations."),
+        "diag_blocks_only": StageParameter(bool, True, msg="Compute only diagonal blocks of 1D covariance matrix."),
+        "b0": StageParameter(list, [1.0], msg="Initial galaxy bias values."),
+        "regression_class": StageParameter(str, "LinearRegression", msg="Regression class to use in sklearn."),
+        "allow_weighted_input": StageParameter(bool, False, msg="Allow weighted input catalogs."),
+        "nside_coverage": StageParameter(int, 32, msg="HEALPix nside for coverage maps."),
     }
 
     def compute_weights(self, density_correlation):
@@ -1182,7 +1183,7 @@ class TXLSSWeightsUnit(TXLSSWeights):
     parallel = False
 
     config_options = {
-        "nside_coverage": 32,
+        "nside_coverage": StageParameter(int, 32, msg="HEALPix nside for coverage maps."),
     }
 
     def prepare_sys_maps(self):

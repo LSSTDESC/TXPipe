@@ -1,6 +1,7 @@
 from .base_stage import PipelineStage
 from .data_types import FiducialCosmology, SACCFile
 from .utils.theory import theory_3x2pt
+from ceci.config import StageParameter
 import numpy as np
 
 class TXTwoPointTheoryReal(PipelineStage):
@@ -20,9 +21,9 @@ class TXTwoPointTheoryReal(PipelineStage):
     ]
 
     config_options = {
-        "galaxy_bias": [0.0],
-        "smooth": False,
-        }
+        "galaxy_bias": StageParameter(list, [0.0], msg="Galaxy bias values per bin, [0.0] for unit bias, or single negative value for global bias parameter"),
+        "smooth": StageParameter(bool, False, msg="Whether to smooth the theory predictions"),
+    }
 
     def run(self):
         import sacc
@@ -79,9 +80,9 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
     ]
 
     config_options = {
-        "galaxy_bias": [0.0],
-        "smooth": False,
-        }
+        "galaxy_bias": StageParameter(list, [0.0], msg="Galaxy bias values per bin, [0.0] for unit bias, or single negative value for global bias parameter"),
+        "smooth": StageParameter(bool, False, msg="Whether to smooth the theory predictions"),
+    }
     
     def run(self):
         import sacc

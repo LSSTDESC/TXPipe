@@ -1,6 +1,7 @@
 from ..base_stage import PipelineStage
 from ..data_types import HDFFile, FitsFile, QPNOfZFile
 import numpy as np
+from ceci.config import StageParameter
 
 
 class TXIngestRedmagic(PipelineStage):
@@ -22,12 +23,12 @@ class TXIngestRedmagic(PipelineStage):
     ]
 
     config_options = {
-        "lens_zbin_edges": [float],
-        "chunk_rows": 100_000,
-        "zmin": 0.0,
-        "zmax": 3.0,
-        "dz": 0.01,
-        "bands": "grizy",
+        "lens_zbin_edges": StageParameter(list, [float], msg="Edges of lens redshift bins."),
+        "chunk_rows": StageParameter(int, 100_000, msg="Number of rows to process in each chunk."),
+        "zmin": StageParameter(float, 0.0, msg="Minimum redshift for binning."),
+        "zmax": StageParameter(float, 3.0, msg="Maximum redshift for binning."),
+        "dz": StageParameter(float, 0.01, msg="Redshift bin width."),
+        "bands": StageParameter(str, "grizy", msg="Bands to use for redmagic selection."),
     }
 
     def run(self):

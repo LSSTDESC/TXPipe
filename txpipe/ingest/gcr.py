@@ -1,6 +1,7 @@
 from ..base_stage import PipelineStage
 from ..data_types import ShearCatalog, HDFFile
 from ..utils import band_variants, metacal_variants, moments_to_shear
+from ceci.config import StageParameter
 import numpy as np
 import glob
 import re
@@ -24,11 +25,11 @@ class TXMetacalGCRInput(PipelineStage):
     ]
 
     config_options = {
-        "cat_name": str,
-        "single_tract": "",
-        "length": 0,
-        "table_dir": "",
-        "data_release": "",
+        "cat_name": StageParameter(str, "", msg="Name of the GCR catalog to load."),
+        "single_tract": StageParameter(str, "", msg="Single tract to use (optional)."),
+        "length": StageParameter(int, 0, msg="Number of rows to use (0 for all)."),
+        "table_dir": StageParameter(str, "", msg="Directory for table files (optional)."),
+        "data_release": StageParameter(str, "", msg="Data release identifier (optional)."),
     }
 
     def run(self):
@@ -201,9 +202,9 @@ class TXIngestStars(PipelineStage):
         ("star_catalog", HDFFile),
     ]
     config_options = {
-        "single_tract": "",
-        "cat_name": str,
-        "length": 0,
+        "single_tract": StageParameter(str, "", msg="Single tract to use (optional)."),
+        "cat_name": StageParameter(str, "", msg="Name of the GCR catalog to load."),
+        "length": StageParameter(int, 0, msg="Number of rows to use (0 for all)."),
     }
 
     def run(self):
