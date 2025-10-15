@@ -39,8 +39,8 @@ These stages make plots out TXPipe output data
         .. raw:: html
 
             <UL>
-            <LI><strong>label</strong>: (str) Default=. </LI>
-            <LI><strong>zmax</strong>: (float) Default=3.0. </LI>
+            <LI><strong>label</strong>: (str) Default=. Label for the n(z) plot.</LI>
+            <LI><strong>zmax</strong>: (float) Default=3.0. Maximum redshift for plotting.</LI>
             </UL>
 
 
@@ -76,9 +76,9 @@ These stages make plots out TXPipe output data
         .. raw:: html
 
             <UL>
-            <LI><strong>projection</strong>: (str) Default=cart. </LI>
-            <LI><strong>rot180</strong>: (bool) Default=False. </LI>
-            <LI><strong>debug</strong>: (bool) Default=False. </LI>
+            <LI><strong>projection</strong>: (str) Default=cart. Projection type for map plots (e.g., cart, moll)</LI>
+            <LI><strong>rot180</strong>: (bool) Default=False. Whether to rotate the map by 180 degrees</LI>
+            <LI><strong>debug</strong>: (bool) Default=False. Enable debug mode for plotting</LI>
             </UL>
 
 
@@ -103,7 +103,7 @@ These stages make plots out TXPipe output data
         .. raw:: html
 
             <UL>
-            <LI><strong>projection</strong>: (str) Default=cart. </LI>
+            <LI><strong>projection</strong>: (str) Default=cart. Projection type for convergence map plots (e.g., cart, moll, orth).</LI>
             </UL>
 
 
@@ -128,8 +128,8 @@ These stages make plots out TXPipe output data
         .. raw:: html
 
             <UL>
-            <LI><strong>zmax</strong>: (float) Default=3.0. </LI>
-            <LI><strong>nz</strong>: (int) Default=301. </LI>
+            <LI><strong>zmax</strong>: (float) Default=3.0. Maximum redshift for plotting.</LI>
+            <LI><strong>nz</strong>: (int) Default=301. Number of redshift bins for plotting.</LI>
             </UL>
 
 
@@ -159,8 +159,8 @@ These stages make plots out TXPipe output data
         .. raw:: html
 
             <UL>
-            <LI><strong>wspace</strong>: (float) Default=0.05. </LI>
-            <LI><strong>hspace</strong>: (float) Default=0.05. </LI>
+            <LI><strong>wspace</strong>: (float) Default=0.05. Width space between subplots.</LI>
+            <LI><strong>hspace</strong>: (float) Default=0.05. Height space between subplots.</LI>
             </UL>
 
 
@@ -189,8 +189,8 @@ These stages make plots out TXPipe output data
         .. raw:: html
 
             <UL>
-            <LI><strong>wspace</strong>: (float) Default=0.05. </LI>
-            <LI><strong>hspace</strong>: (float) Default=0.05. </LI>
+            <LI><strong>wspace</strong>: (float) Default=0.05. Width space between subplots.</LI>
+            <LI><strong>hspace</strong>: (float) Default=0.05. Height space between subplots.</LI>
             </UL>
 
 
@@ -225,8 +225,8 @@ These stages make plots out TXPipe output data
         .. raw:: html
 
             <UL>
-            <LI><strong>wspace</strong>: (float) Default=0.05. </LI>
-            <LI><strong>hspace</strong>: (float) Default=0.05. </LI>
+            <LI><strong>wspace</strong>: (float) Default=0.05. Width space between subplots.</LI>
+            <LI><strong>hspace</strong>: (float) Default=0.05. Height space between subplots.</LI>
             </UL>
 
 

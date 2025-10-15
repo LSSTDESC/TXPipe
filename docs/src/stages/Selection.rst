@@ -24,6 +24,8 @@ bins.
 
 * :py:class:`~txpipe.lens_selector.TXModeLensSelector` - Select lens objects based on best-fit redshifts and BOSS criteria
 
+* :py:class:`~txpipe.lens_selector.TXCustomLensSelector` - Select lens objects based on best-fit redshifts and BOSS criteria
+
 * :py:class:`~txpipe.lens_selector.TXRandomForestLensSelector` - Stage TXRandomForestLensSelector
 
 
@@ -35,7 +37,7 @@ bins.
     Inputs: 
 
     - shear_catalog: ShearCatalog
-    - calibration_table: TextFile
+    - spectroscopic_catalog: HDFFile
 
     Outputs: 
 
@@ -49,15 +51,17 @@ bins.
         .. raw:: html
 
             <UL>
-            <LI><strong>input_pz</strong>: (bool) Default=False. </LI>
-            <LI><strong>true_z</strong>: (bool) Default=False. </LI>
-            <LI><strong>bands</strong>: (str) Default=riz. </LI>
-            <LI><strong>verbose</strong>: (bool) Default=False. </LI>
-            <LI><strong>T_cut</strong>: (float) Required. </LI>
-            <LI><strong>s2n_cut</strong>: (float) Required. </LI>
-            <LI><strong>chunk_rows</strong>: (int) Default=10000. </LI>
-            <LI><strong>source_zbin_edges</strong>: (list) Default=[<class 'float'>]. </LI>
-            <LI><strong>random_seed</strong>: (int) Default=42. </LI>
+            <LI><strong>input_pz</strong>: (bool) Default=False. Whether to use input photo-z posteriors</LI>
+            <LI><strong>true_z</strong>: (bool) Default=False. Whether to use true redshifts instead of photo-z</LI>
+            <LI><strong>bands</strong>: (str) Default=riz. Bands from the catalog to use for selection</LI>
+            <LI><strong>verbose</strong>: (bool) Default=False. Whether to print verbose output</LI>
+            <LI><strong>T_cut</strong>: (float) Required. Size cut threshold for object selection</LI>
+            <LI><strong>s2n_cut</strong>: (float) Required. Signal-to-noise cut threshold for object selection</LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=10000. Number of rows to process in each chunk</LI>
+            <LI><strong>source_zbin_edges</strong>: (list) Required. Redshift bin edges for source tomography</LI>
+            <LI><strong>random_seed</strong>: (int) Default=42. Random seed for reproducibility</LI>
+            <LI><strong>spec_mag_column_format</strong>: (str) Default=photometry/{band}. Format string for spectroscopic magnitude columns</LI>
+            <LI><strong>spec_redshift_column</strong>: (str) Default=photometry/redshift. Column name for spectroscopic redshifts</LI>
             </UL>
 
 
@@ -69,7 +73,7 @@ bins.
     Inputs: 
 
     - shear_catalog: ShearCatalog
-    - calibration_table: TextFile
+    - spectroscopic_catalog: HDFFile
 
     Outputs: 
 
@@ -83,17 +87,19 @@ bins.
         .. raw:: html
 
             <UL>
-            <LI><strong>input_pz</strong>: (bool) Default=False. </LI>
-            <LI><strong>true_z</strong>: (bool) Default=False. </LI>
-            <LI><strong>bands</strong>: (str) Default=riz. </LI>
-            <LI><strong>verbose</strong>: (bool) Default=False. </LI>
-            <LI><strong>T_cut</strong>: (float) Required. </LI>
-            <LI><strong>s2n_cut</strong>: (float) Required. </LI>
-            <LI><strong>chunk_rows</strong>: (int) Default=10000. </LI>
-            <LI><strong>source_zbin_edges</strong>: (list) Default=[<class 'float'>]. </LI>
-            <LI><strong>random_seed</strong>: (int) Default=42. </LI>
-            <LI><strong>delta_gamma</strong>: (float) Required. </LI>
-            <LI><strong>use_diagonal_response</strong>: (bool) Default=False. </LI>
+            <LI><strong>input_pz</strong>: (bool) Default=False. Whether to use input photo-z posteriors</LI>
+            <LI><strong>true_z</strong>: (bool) Default=False. Whether to use true redshifts instead of photo-z</LI>
+            <LI><strong>bands</strong>: (str) Default=riz. Bands from the catalog to use for selection</LI>
+            <LI><strong>verbose</strong>: (bool) Default=False. Whether to print verbose output</LI>
+            <LI><strong>T_cut</strong>: (float) Required. Size cut threshold for object selection</LI>
+            <LI><strong>s2n_cut</strong>: (float) Required. Signal-to-noise cut threshold for object selection</LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=10000. Number of rows to process in each chunk</LI>
+            <LI><strong>source_zbin_edges</strong>: (list) Required. Redshift bin edges for source tomography</LI>
+            <LI><strong>random_seed</strong>: (int) Default=42. Random seed for reproducibility</LI>
+            <LI><strong>spec_mag_column_format</strong>: (str) Default=photometry/{band}. Format string for spectroscopic magnitude columns</LI>
+            <LI><strong>spec_redshift_column</strong>: (str) Default=photometry/redshift. Column name for spectroscopic redshifts</LI>
+            <LI><strong>delta_gamma</strong>: (float) Required. Delta gamma value for metacal response calculation</LI>
+            <LI><strong>use_diagonal_response</strong>: (bool) Default=False. Whether to use only diagonal elements of the response matrix</LI>
             </UL>
 
 
@@ -105,7 +111,7 @@ bins.
     Inputs: 
 
     - shear_catalog: ShearCatalog
-    - calibration_table: TextFile
+    - spectroscopic_catalog: HDFFile
 
     Outputs: 
 
@@ -119,16 +125,18 @@ bins.
         .. raw:: html
 
             <UL>
-            <LI><strong>input_pz</strong>: (bool) Default=False. </LI>
-            <LI><strong>true_z</strong>: (bool) Default=False. </LI>
-            <LI><strong>bands</strong>: (str) Default=riz. </LI>
-            <LI><strong>verbose</strong>: (bool) Default=False. </LI>
-            <LI><strong>T_cut</strong>: (float) Required. </LI>
-            <LI><strong>s2n_cut</strong>: (float) Required. </LI>
-            <LI><strong>chunk_rows</strong>: (int) Default=10000. </LI>
-            <LI><strong>source_zbin_edges</strong>: (list) Default=[<class 'float'>]. </LI>
-            <LI><strong>random_seed</strong>: (int) Default=42. </LI>
-            <LI><strong>delta_gamma</strong>: (float) Required. </LI>
+            <LI><strong>input_pz</strong>: (bool) Default=False. Whether to use input photo-z posteriors</LI>
+            <LI><strong>true_z</strong>: (bool) Default=False. Whether to use true redshifts instead of photo-z</LI>
+            <LI><strong>bands</strong>: (str) Default=riz. Bands from the catalog to use for selection</LI>
+            <LI><strong>verbose</strong>: (bool) Default=False. Whether to print verbose output</LI>
+            <LI><strong>T_cut</strong>: (float) Required. Size cut threshold for object selection</LI>
+            <LI><strong>s2n_cut</strong>: (float) Required. Signal-to-noise cut threshold for object selection</LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=10000. Number of rows to process in each chunk</LI>
+            <LI><strong>source_zbin_edges</strong>: (list) Required. Redshift bin edges for source tomography</LI>
+            <LI><strong>random_seed</strong>: (int) Default=42. Random seed for reproducibility</LI>
+            <LI><strong>spec_mag_column_format</strong>: (str) Default=photometry/{band}. Format string for spectroscopic magnitude columns</LI>
+            <LI><strong>spec_redshift_column</strong>: (str) Default=photometry/redshift. Column name for spectroscopic redshifts</LI>
+            <LI><strong>delta_gamma</strong>: (float) Required. Delta gamma value for metadetect response calculation</LI>
             </UL>
 
 
@@ -140,7 +148,7 @@ bins.
     Inputs: 
 
     - shear_catalog: ShearCatalog
-    - calibration_table: TextFile
+    - spectroscopic_catalog: HDFFile
 
     Outputs: 
 
@@ -154,17 +162,19 @@ bins.
         .. raw:: html
 
             <UL>
-            <LI><strong>input_pz</strong>: (bool) Default=False. </LI>
-            <LI><strong>true_z</strong>: (bool) Default=False. </LI>
-            <LI><strong>bands</strong>: (str) Default=riz. </LI>
-            <LI><strong>verbose</strong>: (bool) Default=False. </LI>
-            <LI><strong>T_cut</strong>: (float) Required. </LI>
-            <LI><strong>s2n_cut</strong>: (float) Required. </LI>
-            <LI><strong>chunk_rows</strong>: (int) Default=10000. </LI>
-            <LI><strong>source_zbin_edges</strong>: (list) Default=[<class 'float'>]. </LI>
-            <LI><strong>random_seed</strong>: (int) Default=42. </LI>
-            <LI><strong>input_m_is_weighted</strong>: (bool) Required. </LI>
-            <LI><strong>dec_cut</strong>: (bool) Default=True. </LI>
+            <LI><strong>input_pz</strong>: (bool) Default=False. Whether to use input photo-z posteriors</LI>
+            <LI><strong>true_z</strong>: (bool) Default=False. Whether to use true redshifts instead of photo-z</LI>
+            <LI><strong>bands</strong>: (str) Default=riz. Bands from the catalog to use for selection</LI>
+            <LI><strong>verbose</strong>: (bool) Default=False. Whether to print verbose output</LI>
+            <LI><strong>T_cut</strong>: (float) Required. Size cut threshold for object selection</LI>
+            <LI><strong>s2n_cut</strong>: (float) Required. Signal-to-noise cut threshold for object selection</LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=10000. Number of rows to process in each chunk</LI>
+            <LI><strong>source_zbin_edges</strong>: (list) Required. Redshift bin edges for source tomography</LI>
+            <LI><strong>random_seed</strong>: (int) Default=42. Random seed for reproducibility</LI>
+            <LI><strong>spec_mag_column_format</strong>: (str) Default=photometry/{band}. Format string for spectroscopic magnitude columns</LI>
+            <LI><strong>spec_redshift_column</strong>: (str) Default=photometry/redshift. Column name for spectroscopic redshifts</LI>
+            <LI><strong>input_m_is_weighted</strong>: (bool) Required. Whether the input m values are already weighted</LI>
+            <LI><strong>dec_cut</strong>: (bool) Default=True. Whether to apply a declination cut</LI>
             </UL>
 
 
@@ -176,7 +186,7 @@ bins.
     Inputs: 
 
     - shear_catalog: ShearCatalog
-    - calibration_table: TextFile
+    - spectroscopic_catalog: HDFFile
 
     Outputs: 
 
@@ -190,15 +200,17 @@ bins.
         .. raw:: html
 
             <UL>
-            <LI><strong>input_pz</strong>: (bool) Default=False. </LI>
-            <LI><strong>true_z</strong>: (bool) Default=False. </LI>
-            <LI><strong>bands</strong>: (str) Default=riz. </LI>
-            <LI><strong>verbose</strong>: (bool) Default=False. </LI>
-            <LI><strong>T_cut</strong>: (float) Required. </LI>
-            <LI><strong>s2n_cut</strong>: (float) Required. </LI>
-            <LI><strong>chunk_rows</strong>: (int) Default=10000. </LI>
-            <LI><strong>source_zbin_edges</strong>: (list) Default=[<class 'float'>]. </LI>
-            <LI><strong>random_seed</strong>: (int) Default=42. </LI>
+            <LI><strong>input_pz</strong>: (bool) Default=False. Whether to use input photo-z posteriors</LI>
+            <LI><strong>true_z</strong>: (bool) Default=False. Whether to use true redshifts instead of photo-z</LI>
+            <LI><strong>bands</strong>: (str) Default=riz. Bands from the catalog to use for selection</LI>
+            <LI><strong>verbose</strong>: (bool) Default=False. Whether to print verbose output</LI>
+            <LI><strong>T_cut</strong>: (float) Required. Size cut threshold for object selection</LI>
+            <LI><strong>s2n_cut</strong>: (float) Required. Signal-to-noise cut threshold for object selection</LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=10000. Number of rows to process in each chunk</LI>
+            <LI><strong>source_zbin_edges</strong>: (list) Required. Redshift bin edges for source tomography</LI>
+            <LI><strong>random_seed</strong>: (int) Default=42. Random seed for reproducibility</LI>
+            <LI><strong>spec_mag_column_format</strong>: (str) Default=photometry/{band}. Format string for spectroscopic magnitude columns</LI>
+            <LI><strong>spec_redshift_column</strong>: (str) Default=photometry/redshift. Column name for spectroscopic redshifts</LI>
             </UL>
 
 
@@ -210,7 +222,7 @@ bins.
     Inputs: 
 
     - shear_catalog: ShearCatalog
-    - calibration_table: TextFile
+    - spectroscopic_catalog: HDFFile
 
     Outputs: 
 
@@ -224,16 +236,18 @@ bins.
         .. raw:: html
 
             <UL>
-            <LI><strong>input_pz</strong>: (bool) Default=False. </LI>
-            <LI><strong>true_z</strong>: (bool) Default=False. </LI>
-            <LI><strong>bands</strong>: (str) Default=riz. </LI>
-            <LI><strong>verbose</strong>: (bool) Default=False. </LI>
-            <LI><strong>T_cut</strong>: (float) Required. </LI>
-            <LI><strong>s2n_cut</strong>: (float) Required. </LI>
-            <LI><strong>chunk_rows</strong>: (int) Default=10000. </LI>
-            <LI><strong>source_zbin_edges</strong>: (list) Default=[<class 'float'>]. </LI>
-            <LI><strong>random_seed</strong>: (int) Default=42. </LI>
-            <LI><strong>max_shear_cut</strong>: (float) Default=0.0. </LI>
+            <LI><strong>input_pz</strong>: (bool) Default=False. Whether to use input photo-z posteriors</LI>
+            <LI><strong>true_z</strong>: (bool) Default=False. Whether to use true redshifts instead of photo-z</LI>
+            <LI><strong>bands</strong>: (str) Default=riz. Bands from the catalog to use for selection</LI>
+            <LI><strong>verbose</strong>: (bool) Default=False. Whether to print verbose output</LI>
+            <LI><strong>T_cut</strong>: (float) Required. Size cut threshold for object selection</LI>
+            <LI><strong>s2n_cut</strong>: (float) Required. Signal-to-noise cut threshold for object selection</LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=10000. Number of rows to process in each chunk</LI>
+            <LI><strong>source_zbin_edges</strong>: (list) Required. Redshift bin edges for source tomography</LI>
+            <LI><strong>random_seed</strong>: (int) Default=42. Random seed for reproducibility</LI>
+            <LI><strong>spec_mag_column_format</strong>: (str) Default=photometry/{band}. Format string for spectroscopic magnitude columns</LI>
+            <LI><strong>spec_redshift_column</strong>: (str) Default=photometry/redshift. Column name for spectroscopic redshifts</LI>
+            <LI><strong>max_shear_cut</strong>: (float) Default=0.0. Maximum shear value for object selection</LI>
             </UL>
 
 
@@ -256,21 +270,22 @@ bins.
         .. raw:: html
 
             <UL>
-            <LI><strong>verbose</strong>: (bool) Default=False. </LI>
-            <LI><strong>chunk_rows</strong>: (int) Default=10000. </LI>
-            <LI><strong>lens_zbin_edges</strong>: (list) Default=[<class 'float'>]. </LI>
-            <LI><strong>cperp_cut</strong>: (float) Default=0.2. </LI>
-            <LI><strong>r_cpar_cut</strong>: (float) Default=13.5. </LI>
-            <LI><strong>r_lo_cut</strong>: (float) Default=16.0. </LI>
-            <LI><strong>r_hi_cut</strong>: (float) Default=19.6. </LI>
-            <LI><strong>i_lo_cut</strong>: (float) Default=17.5. </LI>
-            <LI><strong>i_hi_cut</strong>: (float) Default=19.9. </LI>
-            <LI><strong>r_i_cut</strong>: (float) Default=2.0. </LI>
-            <LI><strong>random_seed</strong>: (int) Default=42. </LI>
-            <LI><strong>selection_type</strong>: (str) Default=boss. </LI>
-            <LI><strong>maglim_band</strong>: (str) Default=i. </LI>
-            <LI><strong>maglim_limit</strong>: (float) Default=24.1. </LI>
-            <LI><strong>extra_cols</strong>: (list) Default=['']. </LI>
+            <LI><strong>verbose</strong>: (bool) Default=False. Enable verbose output for lens selection.</LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=10000. Number of rows to process in each chunk.</LI>
+            <LI><strong>lens_zbin_edges</strong>: (list) Default=[<class 'float'>]. Edges of lens redshift bins.</LI>
+            <LI><strong>cperp_cut</strong>: (float) Default=0.2. cperp cut for BOSS selection.</LI>
+            <LI><strong>r_cpar_cut</strong>: (float) Default=13.5. r_cpar cut for BOSS selection.</LI>
+            <LI><strong>r_lo_cut</strong>: (float) Default=16.0. Lower r-band magnitude cut.</LI>
+            <LI><strong>r_hi_cut</strong>: (float) Default=19.6. Upper r-band magnitude cut.</LI>
+            <LI><strong>i_lo_cut</strong>: (float) Default=17.5. Lower i-band magnitude cut.</LI>
+            <LI><strong>i_hi_cut</strong>: (float) Default=19.9. Upper i-band magnitude cut.</LI>
+            <LI><strong>r_i_cut</strong>: (float) Default=2.0. r-i color cut.</LI>
+            <LI><strong>random_seed</strong>: (int) Default=42. Random seed for reproducibility.</LI>
+            <LI><strong>selection_type</strong>: (str) Default=boss. Type of lens selection (e.g., boss).</LI>
+            <LI><strong>maglim_band</strong>: (str) Default=i. Band for magnitude limit.</LI>
+            <LI><strong>maglim_limit</strong>: (float) Default=24.1. Magnitude limit value.</LI>
+            <LI><strong>extra_cols</strong>: (list) Default=['']. Extra columns to include in output.</LI>
+            <LI><strong>apply_mask</strong>: (bool) Default=False. Whether to apply a mask to the selection.</LI>
             </UL>
 
 
@@ -295,21 +310,22 @@ bins.
         .. raw:: html
 
             <UL>
-            <LI><strong>verbose</strong>: (bool) Default=False. </LI>
-            <LI><strong>chunk_rows</strong>: (int) Default=10000. </LI>
-            <LI><strong>lens_zbin_edges</strong>: (list) Default=[<class 'float'>]. </LI>
-            <LI><strong>cperp_cut</strong>: (float) Default=0.2. </LI>
-            <LI><strong>r_cpar_cut</strong>: (float) Default=13.5. </LI>
-            <LI><strong>r_lo_cut</strong>: (float) Default=16.0. </LI>
-            <LI><strong>r_hi_cut</strong>: (float) Default=19.6. </LI>
-            <LI><strong>i_lo_cut</strong>: (float) Default=17.5. </LI>
-            <LI><strong>i_hi_cut</strong>: (float) Default=19.9. </LI>
-            <LI><strong>r_i_cut</strong>: (float) Default=2.0. </LI>
-            <LI><strong>random_seed</strong>: (int) Default=42. </LI>
-            <LI><strong>selection_type</strong>: (str) Default=boss. </LI>
-            <LI><strong>maglim_band</strong>: (str) Default=i. </LI>
-            <LI><strong>maglim_limit</strong>: (float) Default=24.1. </LI>
-            <LI><strong>extra_cols</strong>: (list) Default=['']. </LI>
+            <LI><strong>verbose</strong>: (bool) Default=False. Enable verbose output for lens selection.</LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=10000. Number of rows to process in each chunk.</LI>
+            <LI><strong>lens_zbin_edges</strong>: (list) Default=[<class 'float'>]. Edges of lens redshift bins.</LI>
+            <LI><strong>cperp_cut</strong>: (float) Default=0.2. cperp cut for BOSS selection.</LI>
+            <LI><strong>r_cpar_cut</strong>: (float) Default=13.5. r_cpar cut for BOSS selection.</LI>
+            <LI><strong>r_lo_cut</strong>: (float) Default=16.0. Lower r-band magnitude cut.</LI>
+            <LI><strong>r_hi_cut</strong>: (float) Default=19.6. Upper r-band magnitude cut.</LI>
+            <LI><strong>i_lo_cut</strong>: (float) Default=17.5. Lower i-band magnitude cut.</LI>
+            <LI><strong>i_hi_cut</strong>: (float) Default=19.9. Upper i-band magnitude cut.</LI>
+            <LI><strong>r_i_cut</strong>: (float) Default=2.0. r-i color cut.</LI>
+            <LI><strong>random_seed</strong>: (int) Default=42. Random seed for reproducibility.</LI>
+            <LI><strong>selection_type</strong>: (str) Default=boss. Type of lens selection (e.g., boss).</LI>
+            <LI><strong>maglim_band</strong>: (str) Default=i. Band for magnitude limit.</LI>
+            <LI><strong>maglim_limit</strong>: (float) Default=24.1. Magnitude limit value.</LI>
+            <LI><strong>extra_cols</strong>: (list) Default=['']. Extra columns to include in output.</LI>
+            <LI><strong>apply_mask</strong>: (bool) Default=False. Whether to apply a mask to the selection.</LI>
             </UL>
 
 
@@ -335,21 +351,22 @@ bins.
         .. raw:: html
 
             <UL>
-            <LI><strong>verbose</strong>: (bool) Default=False. </LI>
-            <LI><strong>chunk_rows</strong>: (int) Default=10000. </LI>
-            <LI><strong>lens_zbin_edges</strong>: (list) Default=[<class 'float'>]. </LI>
-            <LI><strong>cperp_cut</strong>: (float) Default=0.2. </LI>
-            <LI><strong>r_cpar_cut</strong>: (float) Default=13.5. </LI>
-            <LI><strong>r_lo_cut</strong>: (float) Default=16.0. </LI>
-            <LI><strong>r_hi_cut</strong>: (float) Default=19.6. </LI>
-            <LI><strong>i_lo_cut</strong>: (float) Default=17.5. </LI>
-            <LI><strong>i_hi_cut</strong>: (float) Default=19.9. </LI>
-            <LI><strong>r_i_cut</strong>: (float) Default=2.0. </LI>
-            <LI><strong>random_seed</strong>: (int) Default=42. </LI>
-            <LI><strong>selection_type</strong>: (str) Default=boss. </LI>
-            <LI><strong>maglim_band</strong>: (str) Default=i. </LI>
-            <LI><strong>maglim_limit</strong>: (float) Default=24.1. </LI>
-            <LI><strong>extra_cols</strong>: (list) Default=['']. </LI>
+            <LI><strong>verbose</strong>: (bool) Default=False. Enable verbose output for lens selection.</LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=10000. Number of rows to process in each chunk.</LI>
+            <LI><strong>lens_zbin_edges</strong>: (list) Default=[<class 'float'>]. Edges of lens redshift bins.</LI>
+            <LI><strong>cperp_cut</strong>: (float) Default=0.2. cperp cut for BOSS selection.</LI>
+            <LI><strong>r_cpar_cut</strong>: (float) Default=13.5. r_cpar cut for BOSS selection.</LI>
+            <LI><strong>r_lo_cut</strong>: (float) Default=16.0. Lower r-band magnitude cut.</LI>
+            <LI><strong>r_hi_cut</strong>: (float) Default=19.6. Upper r-band magnitude cut.</LI>
+            <LI><strong>i_lo_cut</strong>: (float) Default=17.5. Lower i-band magnitude cut.</LI>
+            <LI><strong>i_hi_cut</strong>: (float) Default=19.9. Upper i-band magnitude cut.</LI>
+            <LI><strong>r_i_cut</strong>: (float) Default=2.0. r-i color cut.</LI>
+            <LI><strong>random_seed</strong>: (int) Default=42. Random seed for reproducibility.</LI>
+            <LI><strong>selection_type</strong>: (str) Default=boss. Type of lens selection (e.g., boss).</LI>
+            <LI><strong>maglim_band</strong>: (str) Default=i. Band for magnitude limit.</LI>
+            <LI><strong>maglim_limit</strong>: (float) Default=24.1. Magnitude limit value.</LI>
+            <LI><strong>extra_cols</strong>: (list) Default=['']. Extra columns to include in output.</LI>
+            <LI><strong>apply_mask</strong>: (bool) Default=False. Whether to apply a mask to the selection.</LI>
             </UL>
 
 
@@ -375,21 +392,64 @@ bins.
         .. raw:: html
 
             <UL>
-            <LI><strong>verbose</strong>: (bool) Default=False. </LI>
-            <LI><strong>chunk_rows</strong>: (int) Default=10000. </LI>
-            <LI><strong>lens_zbin_edges</strong>: (list) Default=[<class 'float'>]. </LI>
-            <LI><strong>cperp_cut</strong>: (float) Default=0.2. </LI>
-            <LI><strong>r_cpar_cut</strong>: (float) Default=13.5. </LI>
-            <LI><strong>r_lo_cut</strong>: (float) Default=16.0. </LI>
-            <LI><strong>r_hi_cut</strong>: (float) Default=19.6. </LI>
-            <LI><strong>i_lo_cut</strong>: (float) Default=17.5. </LI>
-            <LI><strong>i_hi_cut</strong>: (float) Default=19.9. </LI>
-            <LI><strong>r_i_cut</strong>: (float) Default=2.0. </LI>
-            <LI><strong>random_seed</strong>: (int) Default=42. </LI>
-            <LI><strong>selection_type</strong>: (str) Default=boss. </LI>
-            <LI><strong>maglim_band</strong>: (str) Default=i. </LI>
-            <LI><strong>maglim_limit</strong>: (float) Default=24.1. </LI>
-            <LI><strong>extra_cols</strong>: (list) Default=['']. </LI>
+            <LI><strong>verbose</strong>: (bool) Default=False. Enable verbose output for lens selection.</LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=10000. Number of rows to process in each chunk.</LI>
+            <LI><strong>lens_zbin_edges</strong>: (list) Default=[<class 'float'>]. Edges of lens redshift bins.</LI>
+            <LI><strong>cperp_cut</strong>: (float) Default=0.2. cperp cut for BOSS selection.</LI>
+            <LI><strong>r_cpar_cut</strong>: (float) Default=13.5. r_cpar cut for BOSS selection.</LI>
+            <LI><strong>r_lo_cut</strong>: (float) Default=16.0. Lower r-band magnitude cut.</LI>
+            <LI><strong>r_hi_cut</strong>: (float) Default=19.6. Upper r-band magnitude cut.</LI>
+            <LI><strong>i_lo_cut</strong>: (float) Default=17.5. Lower i-band magnitude cut.</LI>
+            <LI><strong>i_hi_cut</strong>: (float) Default=19.9. Upper i-band magnitude cut.</LI>
+            <LI><strong>r_i_cut</strong>: (float) Default=2.0. r-i color cut.</LI>
+            <LI><strong>random_seed</strong>: (int) Default=42. Random seed for reproducibility.</LI>
+            <LI><strong>selection_type</strong>: (str) Default=boss. Type of lens selection (e.g., boss).</LI>
+            <LI><strong>maglim_band</strong>: (str) Default=i. Band for magnitude limit.</LI>
+            <LI><strong>maglim_limit</strong>: (float) Default=24.1. Magnitude limit value.</LI>
+            <LI><strong>extra_cols</strong>: (list) Default=['']. Extra columns to include in output.</LI>
+            <LI><strong>apply_mask</strong>: (bool) Default=False. Whether to apply a mask to the selection.</LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.lens_selector.TXCustomLensSelector
+    :members:
+    :exclude-members: run
+
+    Inputs: 
+
+    - photometry_catalog: PhotometryCatalog
+    - lens_photoz_pdfs: HDFFile
+    - mask: MapsFile
+
+    Outputs: 
+
+    - lens_tomography_catalog_unweighted: TomographyCatalog
+    
+    Parallel: Yes - MPI
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>verbose</strong>: (bool) Default=False. Enable verbose output for lens selection.</LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=10000. Number of rows to process in each chunk.</LI>
+            <LI><strong>lens_zbin_edges</strong>: (list) Default=[<class 'float'>]. Edges of lens redshift bins.</LI>
+            <LI><strong>cperp_cut</strong>: (float) Default=0.2. cperp cut for BOSS selection.</LI>
+            <LI><strong>r_cpar_cut</strong>: (float) Default=13.5. r_cpar cut for BOSS selection.</LI>
+            <LI><strong>r_lo_cut</strong>: (float) Default=16.0. Lower r-band magnitude cut.</LI>
+            <LI><strong>r_hi_cut</strong>: (float) Default=19.6. Upper r-band magnitude cut.</LI>
+            <LI><strong>i_lo_cut</strong>: (float) Default=17.5. Lower i-band magnitude cut.</LI>
+            <LI><strong>i_hi_cut</strong>: (float) Default=19.9. Upper i-band magnitude cut.</LI>
+            <LI><strong>r_i_cut</strong>: (float) Default=2.0. r-i color cut.</LI>
+            <LI><strong>random_seed</strong>: (int) Default=42. Random seed for reproducibility.</LI>
+            <LI><strong>selection_type</strong>: (str) Default=boss. Type of lens selection (e.g., boss).</LI>
+            <LI><strong>maglim_band</strong>: (str) Default=i. Band for magnitude limit.</LI>
+            <LI><strong>maglim_limit</strong>: (float) Default=24.1. Magnitude limit value.</LI>
+            <LI><strong>extra_cols</strong>: (list) Default=['']. Extra columns to include in output.</LI>
+            <LI><strong>apply_mask</strong>: (bool) Default=False. Whether to apply a mask to the selection.</LI>
             </UL>
 
 
@@ -401,7 +461,7 @@ bins.
     Inputs: 
 
     - photometry_catalog: PhotometryCatalog
-    - calibration_table: TextFile
+    - spectroscopic_catalog: HDFFile
 
     Outputs: 
 
@@ -418,19 +478,22 @@ bins.
             <LI><strong>verbose</strong>: (bool) Default=False. </LI>
             <LI><strong>chunk_rows</strong>: (int) Default=10000. </LI>
             <LI><strong>lens_zbin_edges</strong>: (list) Default=[<class 'float'>]. </LI>
-            <LI><strong>cperp_cut</strong>: (float) Default=0.2. </LI>
-            <LI><strong>r_cpar_cut</strong>: (float) Default=13.5. </LI>
-            <LI><strong>r_lo_cut</strong>: (float) Default=16.0. </LI>
-            <LI><strong>r_hi_cut</strong>: (float) Default=19.6. </LI>
-            <LI><strong>i_lo_cut</strong>: (float) Default=17.5. </LI>
-            <LI><strong>i_hi_cut</strong>: (float) Default=19.9. </LI>
-            <LI><strong>r_i_cut</strong>: (float) Default=2.0. </LI>
+            <LI><strong>cperp_cut</strong>: (float) Default=0.2. cperp cut for BOSS selection.</LI>
+            <LI><strong>r_cpar_cut</strong>: (float) Default=13.5. r_cpar cut for BOSS selection.</LI>
+            <LI><strong>r_lo_cut</strong>: (float) Default=16.0. Lower r-band magnitude cut.</LI>
+            <LI><strong>r_hi_cut</strong>: (float) Default=19.6. Upper r-band magnitude cut.</LI>
+            <LI><strong>i_lo_cut</strong>: (float) Default=17.5. Lower i-band magnitude cut.</LI>
+            <LI><strong>i_hi_cut</strong>: (float) Default=19.9. Upper i-band magnitude cut.</LI>
+            <LI><strong>r_i_cut</strong>: (float) Default=2.0. r-i color cut.</LI>
             <LI><strong>random_seed</strong>: (int) Default=42. </LI>
-            <LI><strong>selection_type</strong>: (str) Default=boss. </LI>
-            <LI><strong>maglim_band</strong>: (str) Default=i. </LI>
-            <LI><strong>maglim_limit</strong>: (float) Default=24.1. </LI>
-            <LI><strong>extra_cols</strong>: (list) Default=['']. </LI>
+            <LI><strong>selection_type</strong>: (str) Default=boss. Type of lens selection (e.g., boss).</LI>
+            <LI><strong>maglim_band</strong>: (str) Default=i. Band for magnitude limit.</LI>
+            <LI><strong>maglim_limit</strong>: (float) Default=24.1. Magnitude limit value.</LI>
+            <LI><strong>extra_cols</strong>: (list) Default=['']. Extra columns to include in output.</LI>
+            <LI><strong>apply_mask</strong>: (bool) Default=False. Whether to apply a mask to the selection.</LI>
             <LI><strong>bands</strong>: (str) Default=ugrizy. </LI>
+            <LI><strong>spec_mag_column_format</strong>: (str) Default=photometry/{band}. </LI>
+            <LI><strong>spec_redshift_column</strong>: (str) Default=photometry/redshift. </LI>
             </UL>
 
 

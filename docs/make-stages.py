@@ -1,6 +1,7 @@
 import sys
 sys.path.append('..')
 import txpipe
+import txpipe.extensions
 import yaml
 import collections
 import ceci
@@ -22,6 +23,15 @@ Ingestion:
         - TXSimpleMock
         - TXMockTruthPZ
         - TXLogNormalGlass
+        - TXIngestCatalogBase
+        - TXIngestCatalogFits
+        - TXIngestCatalogH5
+        - TXIngestMapsBase
+        - TXIngestMapsHsp
+        - TXIngestDataPreview1
+        - TXIngestDESY3Gold
+        - TXIngestDESY3Footprint
+        - TXIngestDESY3SpeczCat
 
 Photo-z:
     blurb: |
@@ -37,6 +47,9 @@ Photo-z:
         - PZRailEstimateLens
         - PZRailEstimateSourceFromLens
         - PZRailEstimateLensFromSource
+        - PZRailSummarizeBase
+        - PZRailSummarize
+        
 
 
 Selection:
@@ -55,6 +68,7 @@ Selection:
         - TXMeanLensSelector
         - TXModeLensSelector
         - TXRandomForestLensSelector
+        - TXCustomLensSelector
 
 
 Calibration and Splitting:
@@ -101,6 +115,9 @@ Maps:
         - TXAuxiliarySourceMaps
         - TXAuxiliaryLensMaps
         - TXUniformDepthMap
+        - TXCustomMask
+        - TXBaseMask
+        
 
 Ensemble Photo-z:
     blurb: |
@@ -110,7 +127,7 @@ Ensemble Photo-z:
         - TXPhotozLensStack
         - TXSourceTrueNumberDensity
         - TXLensTrueNumberDensity
-        - PZRailSummarize
+        - PZRailPZSummarize
         
 
 
@@ -199,14 +216,33 @@ Source Injection:
         - TXIngestSSIDetectionDESBalrog
 
 
-Extensions:
+Clusters Extensions:
     blurb: |
-        These stages are written for TXPipe extension projects.
+        These stages are written for TXPipe extension projects by the clusters working group.
     stages:
-        - TXSelfCalibrationIA
         - CLClusterBinningRedshiftRichness
         - CLClusterShearCatalogs
         - CLClusterEnsembleProfiles
+        - CLClusterSACC
+        - TXTwoPointCluster
+
+Higher Order Statistic Extensions:
+    blurb: |
+        These stages are written for TXPipe extension projects on higher order or alternative statistics.
+    stages:
+        - HOSStage
+        - HOSFSB
+        - TXSelfCalibrationIA
+
+CMB Lensing Extensions:
+    blurb: |
+        These stages are written for TXPipe extension projects cross-correlating with CMB lensing.
+    stages:
+        - TXIngestPlanckLensingMaps
+        - TXIngestQuaia
+        - TXCMBLensingCrossMonteCarloCorrection
+        - TXTwoPointFourierCMBLensingCrossDensity
+          
 
 New and Miscellaneous:
     blurb: |
@@ -250,8 +286,7 @@ def describe_config(cls):
     lines = ["            <UL>"]
     for name, val in cls.config_options.items():
         if isinstance(val, ceci.config.StageParameter):
-            if val.required:
-                req = True
+            req = val.required
             if val.dtype is None:
                 dt = "any"
             else:

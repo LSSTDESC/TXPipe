@@ -41,10 +41,10 @@ sub-catalogs.
         .. raw:: html
 
             <UL>
-            <LI><strong>initial_size</strong>: (int) Default=100000. </LI>
-            <LI><strong>chunk_rows</strong>: (int) Default=100000. </LI>
-            <LI><strong>extra_cols</strong>: (list) Default=['']. </LI>
-            <LI><strong>redshift_column</strong>: (str) Default=zmean. </LI>
+            <LI><strong>initial_size</strong>: (int) Default=100000. Initial size of the output catalog.</LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=100000. Number of rows to process in each chunk.</LI>
+            <LI><strong>extra_cols</strong>: (list) Default=['']. Extra columns to include in output.</LI>
+            <LI><strong>redshift_column</strong>: (str) Default=zmean. Name of the redshift column to use.</LI>
             </UL>
 
 
@@ -71,9 +71,9 @@ sub-catalogs.
         .. raw:: html
 
             <UL>
-            <LI><strong>initial_size</strong>: (int) Default=100000. </LI>
-            <LI><strong>chunk_rows</strong>: (int) Default=100000. </LI>
-            <LI><strong>extra_cols</strong>: (list) Default=['']. </LI>
+            <LI><strong>initial_size</strong>: (int) Default=100000. Initial size of the output catalog.</LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=100000. Number of rows to process in each chunk.</LI>
+            <LI><strong>extra_cols</strong>: (list) Default=['']. Extra columns to include in output.</LI>
             <LI><strong>redshift_column</strong>: (str) Default=redshift_true. </LI>
             </UL>
 
@@ -101,9 +101,9 @@ sub-catalogs.
         .. raw:: html
 
             <UL>
-            <LI><strong>initial_size</strong>: (int) Default=100000. </LI>
-            <LI><strong>chunk_rows</strong>: (int) Default=100000. </LI>
-            <LI><strong>extra_cols</strong>: (list) Default=['']. </LI>
+            <LI><strong>initial_size</strong>: (int) Default=100000. Initial size of the output catalog.</LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=100000. Number of rows to process in each chunk.</LI>
+            <LI><strong>extra_cols</strong>: (list) Default=['']. Extra columns to include in output.</LI>
             <LI><strong>redshift_column</strong>: (str) Default=redshift. </LI>
             </UL>
 
@@ -131,9 +131,9 @@ sub-catalogs.
         .. raw:: html
 
             <UL>
-            <LI><strong>initial_size</strong>: (int) Default=100000. </LI>
-            <LI><strong>chunk_rows</strong>: (int) Default=100000. </LI>
-            <LI><strong>extra_cols</strong>: (list) Default=['']. </LI>
+            <LI><strong>initial_size</strong>: (int) Default=100000. Initial size of the output catalog.</LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=100000. Number of rows to process in each chunk.</LI>
+            <LI><strong>extra_cols</strong>: (list) Default=['']. Extra columns to include in output.</LI>
             <LI><strong>redshift_column</strong>: (str) Default=redshift_true. </LI>
             </UL>
 
@@ -159,8 +159,8 @@ sub-catalogs.
         .. raw:: html
 
             <UL>
-            <LI><strong>chunk_rows</strong>: (int) Default=100000. </LI>
-            <LI><strong>initial_size</strong>: (int) Default=100000. </LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=100000. Number of rows to process in each chunk.</LI>
+            <LI><strong>initial_size</strong>: (int) Default=100000. Initial size for star catalog bins.</LI>
             </UL>
 
 
@@ -186,12 +186,12 @@ sub-catalogs.
         .. raw:: html
 
             <UL>
-            <LI><strong>use_true_shear</strong>: (bool) Default=False. </LI>
-            <LI><strong>chunk_rows</strong>: (int) Default=100000. </LI>
-            <LI><strong>subtract_mean_shear</strong>: (bool) Default=True. </LI>
-            <LI><strong>extra_cols</strong>: (list) Default=['']. </LI>
-            <LI><strong>shear_catalog_type</strong>: (str) Default=. </LI>
-            <LI><strong>shear_prefix</strong>: (str) Default=. </LI>
+            <LI><strong>use_true_shear</strong>: (bool) Default=False. Use true shear values instead of observed shear</LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=100000. Number of rows to process in each chunk</LI>
+            <LI><strong>subtract_mean_shear</strong>: (bool) Default=True. Whether to subtract the mean shear from the calibrated shear</LI>
+            <LI><strong>extra_cols</strong>: (list) Default=['']. Additional columns to copy from the input catalog</LI>
+            <LI><strong>shear_catalog_type</strong>: (str) Default=. Type of shear catalog (e.g., metadetect, metacal, lensfit, hsc)</LI>
+            <LI><strong>shear_prefix</strong>: (str) Default=. Prefix for shear-related columns in the input catalog</LI>
             </UL>
 
 

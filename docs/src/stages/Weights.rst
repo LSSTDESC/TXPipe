@@ -38,11 +38,11 @@ These stages deal with weighting the lens sample
         .. raw:: html
 
             <UL>
-            <LI><strong>supreme_path_root</strong>: (str) Default=. </LI>
-            <LI><strong>nbin</strong>: (int) Default=20. </LI>
-            <LI><strong>outlier_fraction</strong>: (float) Default=0.01. </LI>
-            <LI><strong>allow_weighted_input</strong>: (bool) Default=False. </LI>
-            <LI><strong>nside_coverage</strong>: (int) Default=32. </LI>
+            <LI><strong>supreme_path_root</strong>: (str) Default=. Root path for supreme files.</LI>
+            <LI><strong>nbin</strong>: (int) Default=20. Number of tomographic bins.</LI>
+            <LI><strong>outlier_fraction</strong>: (float) Default=0.01. Fraction of outliers to exclude.</LI>
+            <LI><strong>allow_weighted_input</strong>: (bool) Default=False. Allow weighted input catalogs.</LI>
+            <LI><strong>nside_coverage</strong>: (int) Default=32. HEALPix nside for coverage maps.</LI>
             </UL>
 
 
@@ -74,16 +74,16 @@ These stages deal with weighting the lens sample
         .. raw:: html
 
             <UL>
-            <LI><strong>supreme_path_root</strong>: (str) Default=. </LI>
-            <LI><strong>nbin</strong>: (int) Default=20. </LI>
-            <LI><strong>outlier_fraction</strong>: (float) Default=0.05. </LI>
-            <LI><strong>pvalue_threshold</strong>: (float) Default=0.05. </LI>
-            <LI><strong>equal_area_bins</strong>: (bool) Default=True. </LI>
-            <LI><strong>simple_cov</strong>: (bool) Default=False. </LI>
-            <LI><strong>diag_blocks_only</strong>: (bool) Default=True. </LI>
-            <LI><strong>b0</strong>: (list) Default=[1.0]. </LI>
-            <LI><strong>allow_weighted_input</strong>: (bool) Default=False. </LI>
-            <LI><strong>nside_coverage</strong>: (int) Default=32. </LI>
+            <LI><strong>supreme_path_root</strong>: (str) Default=. Root path for supreme files.</LI>
+            <LI><strong>nbin</strong>: (int) Default=20. Number of tomographic bins.</LI>
+            <LI><strong>outlier_fraction</strong>: (float) Default=0.05. Fraction of outliers to exclude.</LI>
+            <LI><strong>pvalue_threshold</strong>: (float) Default=0.05. Max p-value for maps to be included in the correction.</LI>
+            <LI><strong>equal_area_bins</strong>: (bool) Default=True. Use equal area bins for 1D correlations.</LI>
+            <LI><strong>simple_cov</strong>: (bool) Default=False. Use diagonal shot noise only covariance for 1D relations.</LI>
+            <LI><strong>diag_blocks_only</strong>: (bool) Default=True. Compute only diagonal blocks of 1D covariance matrix.</LI>
+            <LI><strong>b0</strong>: (list) Default=[1.0]. Initial galaxy bias values.</LI>
+            <LI><strong>allow_weighted_input</strong>: (bool) Default=False. Allow weighted input catalogs.</LI>
+            <LI><strong>nside_coverage</strong>: (int) Default=32. HEALPix nside for coverage maps.</LI>
             </UL>
 
 
@@ -115,17 +115,17 @@ These stages deal with weighting the lens sample
         .. raw:: html
 
             <UL>
-            <LI><strong>supreme_path_root</strong>: (str) Default=. </LI>
-            <LI><strong>nbin</strong>: (int) Default=20. </LI>
-            <LI><strong>outlier_fraction</strong>: (float) Default=0.05. </LI>
-            <LI><strong>pvalue_threshold</strong>: (float) Default=0.05. </LI>
-            <LI><strong>equal_area_bins</strong>: (bool) Default=True. </LI>
-            <LI><strong>simple_cov</strong>: (bool) Default=False. </LI>
-            <LI><strong>diag_blocks_only</strong>: (bool) Default=True. </LI>
-            <LI><strong>b0</strong>: (list) Default=[1.0]. </LI>
-            <LI><strong>regression_class</strong>: (str) Default=LinearRegression. </LI>
-            <LI><strong>allow_weighted_input</strong>: (bool) Default=False. </LI>
-            <LI><strong>nside_coverage</strong>: (int) Default=32. </LI>
+            <LI><strong>supreme_path_root</strong>: (str) Default=. Root path for supreme files.</LI>
+            <LI><strong>nbin</strong>: (int) Default=20. Number of tomographic bins.</LI>
+            <LI><strong>outlier_fraction</strong>: (float) Default=0.05. Fraction of outliers to exclude.</LI>
+            <LI><strong>pvalue_threshold</strong>: (float) Default=0.05. Max p-value for maps to be corrected.</LI>
+            <LI><strong>equal_area_bins</strong>: (bool) Default=True. Use equal area bins for 1D correlations.</LI>
+            <LI><strong>simple_cov</strong>: (bool) Default=False. Use diagonal shot noise only covariance for 1D relations.</LI>
+            <LI><strong>diag_blocks_only</strong>: (bool) Default=True. Compute only diagonal blocks of 1D covariance matrix.</LI>
+            <LI><strong>b0</strong>: (list) Default=[1.0]. Initial galaxy bias values.</LI>
+            <LI><strong>regression_class</strong>: (str) Default=LinearRegression. Regression class to use in sklearn.</LI>
+            <LI><strong>allow_weighted_input</strong>: (bool) Default=False. Allow weighted input catalogs.</LI>
+            <LI><strong>nside_coverage</strong>: (int) Default=32. HEALPix nside for coverage maps.</LI>
             </UL>
 
 
@@ -155,7 +155,7 @@ These stages deal with weighting the lens sample
         .. raw:: html
 
             <UL>
-            <LI><strong>nside_coverage</strong>: (int) Default=32. </LI>
+            <LI><strong>nside_coverage</strong>: (int) Default=32. HEALPix nside for coverage maps.</LI>
             </UL>
 
 

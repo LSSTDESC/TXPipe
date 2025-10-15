@@ -1,7 +1,7 @@
-Extensions
-==========
+Clusters Extensions
+===================
 
-These stages are written for TXPipe extension projects.
+These stages are written for TXPipe extension projects by the clusters working group.
 
 * :py:class:`~txpipe.extensions.cluster_counts.bin_cluster.CLClusterBinningRedshiftRichness` - Stage CLClusterBinningRedshiftRichness
 
@@ -9,7 +9,9 @@ These stages are written for TXPipe extension projects.
 
 * :py:class:`~txpipe.extensions.cluster_counts.make_ensemble_profile.CLClusterEnsembleProfiles` - Stage CLClusterEnsembleProfiles
 
-* :py:class:`~txpipe.extensions.twopoint_scia.TXSelfCalibrationIA` - This is the subclass of the Twopoint class that will handle calculating the
+* :py:class:`~txpipe.extensions.cluster_counts.convert_to_sacc.CLClusterSACC` - Stage CLClusterSACC
+
+* :py:class:`~txpipe.extensions.twopoint_cluster.TXTwoPointCluster` - TXPipe task for measuring two-point correlation functions
 
 
 
@@ -110,26 +112,17 @@ These stages are written for TXPipe extension projects.
 
 
 
-.. autotxclass:: txpipe.extensions.twopoint_scia.TXSelfCalibrationIA
+.. autotxclass:: txpipe.extensions.cluster_counts.convert_to_sacc.CLClusterSACC
     :members:
     :exclude-members: run
 
     Inputs: 
 
-    - shear_catalog: ShearCatalog
-    - shear_tomography_catalog: TomographyCatalog
-    - shear_photoz_stack: QPNOfZFile
-    - random_cats_source: RandomsCatalog
-    - lens_tomography_catalog: TomographyCatalog
-    - patch_centers: TextFile
-    - photoz_pdfs: PhotozPDFFile
-    - fiducial_cosmology: FiducialCosmology
-    - tracer_metadata: HDFFile
+    - cluster_profiles: PickleFile
 
     Outputs: 
 
-    - twopoint_data_SCIA: SACCFile
-    - gammaX_scia: SACCFile
+    - cluster_sacc_catalog: SACCFile
     
     Parallel: Yes - MPI
 
@@ -139,28 +132,40 @@ These stages are written for TXPipe extension projects.
         .. raw:: html
 
             <UL>
-            <LI><strong>calcs</strong>: (list) Default=[0, 1, 2]. </LI>
-            <LI><strong>min_sep</strong>: (float) Default=2.5. </LI>
-            <LI><strong>max_sep</strong>: (float) Default=250.0. </LI>
+            <LI><strong>r_min</strong>: (float) Default=0.2. </LI>
+            <LI><strong>r_max</strong>: (float) Default=5.0. </LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.extensions.twopoint_cluster.TXTwoPointCluster
+    :members:
+    :exclude-members: run
+
+    Inputs: 
+
+    - cluster_data_catalog: HDFFile
+    - cluster_random_catalog: HDFFile
+
+    Outputs: 
+
+    - cluster_twopoint_real: SACCFile
+    
+    Parallel: Yes - MPI
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>redshift_bin_edges</strong>: (list) Default=[0.4, 0.8, 1.2]. </LI>
+            <LI><strong>richness_bin_edges</strong>: (list) Default=[20, 30, 200]. </LI>
             <LI><strong>nbins</strong>: (int) Default=20. </LI>
-            <LI><strong>bin_slop</strong>: (float) Default=0.1. </LI>
-            <LI><strong>flip_g2</strong>: (bool) Default=True. </LI>
-            <LI><strong>cores_per_task</strong>: (int) Default=20. </LI>
-            <LI><strong>verbose</strong>: (int) Default=1. </LI>
-            <LI><strong>source_bins</strong>: (list) Default=[-1]. </LI>
-            <LI><strong>lens_bins</strong>: (list) Default=[-1]. </LI>
-            <LI><strong>reduce_randoms_size</strong>: (float) Default=1.0. </LI>
-            <LI><strong>do_shear_pos</strong>: (bool) Default=True. </LI>
-            <LI><strong>do_pos_pos</strong>: (bool) Default=False. </LI>
-            <LI><strong>do_shear_shear</strong>: (bool) Default=False. </LI>
-            <LI><strong>var_method</strong>: (str) Default=jackknife. </LI>
-            <LI><strong>3Dcoords</strong>: (bool) Default=True. </LI>
-            <LI><strong>metric</strong>: (str) Default=Rperp. </LI>
-            <LI><strong>use_true_shear</strong>: (bool) Default=False. </LI>
-            <LI><strong>subtract_mean_shear</strong>: (bool) Default=False. </LI>
-            <LI><strong>redshift_shearcatalog</strong>: (bool) Default=False. </LI>
-            <LI><strong>chunk_rows</strong>: (int) Default=100000. </LI>
-            <LI><strong>use_subsampled_randoms</strong>: (bool) Default=False. </LI>
+            <LI><strong>min_sep</strong>: (float) Default=0.1. </LI>
+            <LI><strong>max_sep</strong>: (float) Default=250.0. </LI>
+            <LI><strong>units</strong>: (str) Default=arcmin. </LI>
+            <LI><strong>binning_scale</strong>: (str) Default=Log. </LI>
             </UL>
 
 

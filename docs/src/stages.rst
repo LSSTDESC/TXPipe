@@ -21,6 +21,8 @@ TXPipe Stage Listing
    stages/Plots
    stages/Diagnostics
    stages/Source Injection
-   stages/Extensions
+   stages/Clusters Extensions
+   stages/Higher Order Statistic Extensions
+   stages/CMB Lensing Extensions
    stages/New and Miscellaneous
 
