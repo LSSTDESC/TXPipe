@@ -20,7 +20,7 @@ class TXExposureInfo(PipelineStage):
     config_options = {
         "dc2_name": StageParameter(str, "1.2p", msg="Name of the DC2 run to use."),
         "opsim_db": StageParameter(str, "/global/projecta/projectdirs/lsst/groups/SSim/DC2/minion_1016_desc_dithered_v4.db", msg="Path to the opsim database file."),
-        "propId": StageParameter(int, 54, msg="Proposal ID to filter visits."),
+        "propId": StageParameter(int, 54, msg="ID to filter visits."),
     }
 
     def run(self):

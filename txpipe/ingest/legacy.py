@@ -80,7 +80,7 @@ class TXIngestDESY3Footprint(TXIngestMapsHsp):
     config_options = {
         **TXIngestMapsHsp.config_options,
         "input_filepaths": StageParameter(list, [""], msg="List of input file paths."),
-        "input_labels": StageParameter(list, [""], msg="List of input labels."),
+        "input_labels": StageParameter(list, [""], msg="Labels to give the input maps."),
         "chunk_rows": StageParameter(int, 100_000, msg="Number of rows to process in each chunk."),
     }
 

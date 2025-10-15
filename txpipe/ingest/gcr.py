@@ -27,7 +27,7 @@ class TXMetacalGCRInput(PipelineStage):
     config_options = {
         "cat_name": StageParameter(str, "", msg="Name of the GCR catalog to load."),
         "single_tract": StageParameter(str, "", msg="Single tract to use (optional)."),
-        "length": StageParameter(int, 0, msg="Number of rows to use (0 for all)."),
+        "length": StageParameter(int, 0, msg="Pre-known length, if the catalog has been checked at previously."),
         "table_dir": StageParameter(str, "", msg="Directory for table files (optional)."),
         "data_release": StageParameter(str, "", msg="Data release identifier (optional)."),
     }
@@ -204,7 +204,7 @@ class TXIngestStars(PipelineStage):
     config_options = {
         "single_tract": StageParameter(str, "", msg="Single tract to use (optional)."),
         "cat_name": StageParameter(str, "", msg="Name of the GCR catalog to load."),
-        "length": StageParameter(int, 0, msg="Number of rows to use (0 for all)."),
+        "length": StageParameter(int, 0, msg="Pre-known length, if the catalog has been checked at previously."),
     }
 
     def run(self):
