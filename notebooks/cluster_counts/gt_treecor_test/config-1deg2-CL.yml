@@ -71,6 +71,9 @@ CLClusterShearCatalogs:
     subtract_mean_shear: false
     coordinate_system: celestial #euclidean or celestial, when using shear_true we shoudl use celestial
     use_true_shear: false
+TXShearCalibration: 
+    use_true_shear: true
+    subtract_mean_shear: false
 
 CLClusterEnsembleProfiles:
     #radial bin definition
