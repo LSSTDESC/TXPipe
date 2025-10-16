@@ -14,8 +14,8 @@ BPZliteInformer:
     zmin: 0.0
     zmax: 3.0
     nzbins: 301
-    columns_file: ./data/bpz_riz.columns
-    data_path: ./data/example/rail-bpz-inputs
+    columns_file: /sps/lsst/groups/clusters/cl_pipeline_project/TXPipe_data/bpz_riz.columns
+    data_path: /sps/lsst/groups/clusters/cl_pipeline_project/TXPipe_data/example/rail-bpz-inputs
     spectra_file: CWWSB4.list
     prior_band: i
     ref_band: i
@@ -37,12 +37,12 @@ BPZliteEstimator:
     zmax: 3.0
     dz: 0.01
     nzbins: 301
-    data_path: ./data/example/rail-bpz-inputs
+    data_path: /sps/lsst/groups/clusters/cl_pipeline_project/TXPipe_data/example/rail-bpz-inputs
     bands: [mag_r, mag_i, mag_z]
     err_bands: [mag_err_r, mag_err_i, mag_err_z]
     hdf5_groupname: shear/00
     nondetect_val: .inf
-    columns_file: ./data/bpz_riz.columns
+    columns_file: /sps/lsst/groups/clusters/cl_pipeline_project/TXPipe_data/bpz_riz.columns
     spectra_file: CWWSB4.list
     ref_band: mag_i
     prior_file: hdfn_gen
@@ -66,28 +66,27 @@ CLClusterShearCatalogs:
     chunk_rows: 100_000  # rows to read at once from source cat
     max_radius: 10.  # Mpc
     delta_z: 0.2   # redshift buffer
-    redshift_cut_criterion: ztrue
-    redshift_weight_criterion: ztrue
+    redshift_cut_criterion: zmode
+    redshift_weight_criterion: zmode
     redshift_cut_criterion_pdf_fraction: 0.9
     subtract_mean_shear: false
     coordinate_system: celestial #euclidean or celestial
     use_true_shear: false
-
+    delta_sigma: false
 
 CLClusterEnsembleProfiles:
     #radial bin definition
     r_min: 0.5  #in Mpc
     r_max: 10.  #in Mpc
-    nbins: 10  # number of bins
+    nbins: 3  # number of bins
     #type of profile
     delta_sigma_profile: true
     shear_profile: false
     magnification_profile: false
     coordinate_system: celestial #euclidean or celestial
-
+    units: 'arcmin'
+    angle_arcmin_min: 5
+    angle_arcmin_max: 30
 CLClusterSACC:
     survey_name: 'cosmodc2-20deg2-CL'
-    area: 440.0
-
-
-
+    area: 20.0
