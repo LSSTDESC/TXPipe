@@ -98,6 +98,7 @@ class TXTwoPointFourier(PipelineStage):
         import healpy
         import sacc
         import pyccl
+        from .utils.nmt_utils import choose_ell_bins
 
         config = self.config
         if self.comm:
@@ -140,8 +141,7 @@ class TXTwoPointFourier(PipelineStage):
         calcs = self.select_calculations(nbin_source, nbin_lens)
 
         # Binning scheme, currently chosen from the geometry.
-        # TODO: set ell binning from config
-        ell_bins = self.choose_ell_bins(pixel_scheme, f_sky)
+        ell_bins = choose_ell_bins(**config)
 
         self.hash_metadata = None  # Filled in make_workspaces
         workspace_cache = self.make_workspaces(maps, calcs, ell_bins)
@@ -465,33 +465,6 @@ class TXTwoPointFourier(PipelineStage):
     def setup_results(self):
         self.results = []
 
-    def choose_ell_bins(self, pixel_scheme, f_sky):
-        from .utils.nmt_utils import MyNmtBin
-
-        # commented code below is not needed anymore
-        """
-        # This is just approximate.  It will be very wrong
-        # in cases with non-square patches.
-        area = f_sky * 4 * np.pi
-        width = np.sqrt(area) #radians
-        nlb = self.config['bandwidth']
-
-        # user can specify the bandwidth, or we can just use
-        # the maximum sensible value of Delta ell.
-        nlb = nlb if nlb>0 else max(1,int(2 * np.pi / width))
-        """
-
-        # The subclass of NmtBin that we use here just adds some
-        # helper methods compared to the default NaMaster one.
-        # Can feed these back upstream if useful.
-
-        # Creating the ell binning from the edges using this Namaster constructor.
-        ell_min = self.config["ell_min"]
-        ell_max = self.config["ell_max"]
-        n_ell = self.config["n_ell"]
-        ell_spacing = self.config["ell_spacing"]
-        ell_bins = MyNmtBin.from_binning_info(ell_min, ell_max, n_ell, ell_spacing)
-        return ell_bins
 
     def select_calculations(self, nbins_source, nbins_lens):
         # Build up a big list of all the calculations we want to

@@ -62,6 +62,7 @@ class TXTwoPointFourierCMBLensingCrossDensity(PipelineStage):
     config_options = {
         "mask_threshold": 0.0,
         "bandpower_width": 30,
+        "nside": 512,
     }
 
     def run(self):
@@ -70,15 +71,14 @@ class TXTwoPointFourierCMBLensingCrossDensity(PipelineStage):
         import scipy.interpolate
         import matplotlib.pyplot as plt
         import sacc
+        from ...utils.nmt_utils import choose_ell_bins
 
         # make the field object for the CMB kappa map
         kappa_cmb, kappa_cmb_mask = self.load_kappa_maps()
         kappa_field = nmt.NmtField(kappa_cmb_mask, [kappa_cmb], n_iter=0)
 
         # Choose ell binning
-        npix = len(kappa_cmb_mask)
-        nside = hp.npix2nside(npix)
-        ell_bins = self.choose_ell_bins(nside)
+        ell_bins = choose_ell_bins(**self.config)
         ell_eff = ell_bins.get_effective_ells()
 
         # make the field objects for the density maps
@@ -116,7 +116,7 @@ class TXTwoPointFourierCMBLensingCrossDensity(PipelineStage):
 
         # use the workspace to compute the covariance
         # write to SACC file
-        self.save_spectra(spectra, ell_eff, covmat, windows, nside)
+        self.save_spectra(spectra, ell_eff, covmat, windows)
 
     def compute_covariance(self, d_fields, kappa_field, workspaces):
         nlens = len(d_fields)
@@ -151,7 +151,7 @@ class TXTwoPointFourierCMBLensingCrossDensity(PipelineStage):
 
         return covmat
 
-    def save_spectra(self, spectra, ell_eff, covmat, windows, nside):
+    def save_spectra(self, spectra, ell_eff, covmat, windows):
         """
         Save the computed spectra to a SACC file.
         """
@@ -177,7 +177,7 @@ class TXTwoPointFourierCMBLensingCrossDensity(PipelineStage):
         # the example Quaia notebook.
         with self.open_input("cmb_lensing_beam") as f:
             ell_beam, beam = np.loadtxt(f, unpack=True)
-        ellmax = 3 * nside - 1
+        ellmax = 3 * self.config["nside"] - 1
         lim = ell_beam <= ellmax
         ell_beam = ell_beam[lim]
         beam = beam[lim]
@@ -274,14 +274,6 @@ class TXTwoPointFourierCMBLensingCrossDensity(PipelineStage):
                 ax.set_ylabel(r"$C_\ell$")
                 if i == 0:
                     ax.legend()
-
-    def choose_ell_bins(self, nside):
-        """Choose the ell bins for the power spectrum computation."""
-        import pymaster as nmt
-
-        bandpower_width = self.config["bandpower_width"]
-        ell_bins = nmt.NmtBin.from_nside_linear(nside, nlb=bandpower_width)
-        return ell_bins
 
     def compute_spectrum(self, field1, field2, ell_bins):
         """Compute the cross-spectrum between two fields."""

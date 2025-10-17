@@ -394,16 +394,8 @@ class TXFourierGaussianCovariance(PipelineStage):
         return cov
 
     def get_angular_bins(self, cl_sacc):
-        # This function replicates `choose_ell_bins` in twopoint_fourier.py
-        # TODO: Move this to txpipe/utils/nmt_utils.py
-        from .utils.nmt_utils import MyNmtBin
-
-        ell_min = cl_sacc.metadata["binning/ell_min"]
-        ell_max = cl_sacc.metadata["binning/ell_max"]
-        ell_spacing = cl_sacc.metadata["binning/ell_spacing"]
-        n_ell = cl_sacc.metadata["binning/n_ell"]
-        edges = np.unique(np.geomspace(ell_min, ell_max, n_ell).astype(int))
-        return edges
+        from .utils.nmt_utils import choose_ell_bins
+        return choose_ell_bins(**cl_sacc.metadata)
 
     def make_wigner_transform(self, meta):
         import threadpoolctl
@@ -846,14 +838,10 @@ class TXFourierTJPCovariance(PipelineStage):
     def recover_NmtBin(self, cl_sacc):
         # This function replicates `choose_ell_bins` in twopoint_fourier.py
         # TODO: Move this to txpipe/utils/nmt_utils.py
-        from .utils.nmt_utils import MyNmtBin
+        from .utils.nmt_utils import choose_ell_bins
 
-        ell_min = cl_sacc.metadata["binning/ell_min"]
-        ell_max = cl_sacc.metadata["binning/ell_max"]
-        ell_spacing = cl_sacc.metadata["binning/ell_spacing"]
-        n_ell = cl_sacc.metadata["binning/n_ell"]
 
-        ell_bins = MyNmtBin.from_binning_info(ell_min, ell_max, n_ell, ell_spacing)
+        ell_bins = choose_ell_bins(**cl_sacc.metadata)
 
         # Check that the binning is compatible with the one in the file
         dtype = cl_sacc.get_data_types()[0]
