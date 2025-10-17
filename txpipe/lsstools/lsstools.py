@@ -385,9 +385,18 @@ class DensityCorrelation:
         edges[-1] = smax[-1]
         return edges
 
+    def add_null_model(self):
+        """
+        Add a null contamination model (i.e. flat line at 1.0)
+        n_dens/<n_dens> = 1
+        and compute its chi2
+        """
+        null_model = np.ones(len(self.ndens))
+        self.add_model(null_model, "null")
+
     def add_model(self, model, model_name):
         """
-        Adds a model and computes chi2 with teh data for each Survey Property map
+        Adds a model and computes chi2 with the data for each Survey Property map
 
         Params
         ------
@@ -446,7 +455,6 @@ class DensityCorrelation:
         """
         Load a DensityCorrelation object from an existing HDF5 group.
         """
-        import json
         self = cls(group.attrs["tomobin"])
 
         for key, item in group.items():
@@ -468,22 +476,19 @@ class DensityCorrelation:
             dicts -> make a subgroup then loop over the entries
         """
         import h5py
-        import json
 
         if isinstance(item, h5py.Dataset):
             return np.array(item)
         elif isinstance(item, h5py.Group):
             out = {}
             for k, v in item.items():
-                try:
-                    out[int(k)] = cls._load_item(v) #if the key can be interpreted as an int, do it
-                except ValueError:
-                    out[k] = cls._load_item(v)
+                # if the key can be interpreted as an int, do it
+                k = try_int(k)
+                out[k] = cls._load_item(v)
             for k, v in item.attrs.items():
-                try:
-                    out[int(k)] = v #if the key can be interpreted as an int, do it
-                except ValueError:
-                    out[k] = v
+                # ditto
+                k = try_int(k)
+                out[k] = v
             return out
         else:
             raise TypeError(f"Cannot load unknown item type: {type(item)}")
@@ -565,3 +570,10 @@ def linear_model(
         )
 
     return F, F_density_corrs
+
+
+def try_int(k):
+    try:
+        return int(k)
+    except ValueError:
+        return k

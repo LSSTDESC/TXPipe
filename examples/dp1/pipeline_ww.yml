@@ -40,7 +40,7 @@ stages:
     nprocess: 1
     threads_per_process: 1
   - name: TXShearCalibration
-  - name: TXLSSDensityNull
+  - name: TXLSSDensityNullTests
   #- name: TXLSSWeightsUnit
   - name: TXLSSWeightsLinPix
   - name: TXRandomForestLensSelector

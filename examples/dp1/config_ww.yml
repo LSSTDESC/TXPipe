@@ -137,7 +137,7 @@ TXTwoPointFourier:
     do_pos_pos: true
     compute_theory: false
 
-TXLSSDensityNull:
+TXLSSDensityNullTests:
     supreme_path_root: data/dp1/inputs/survey_property_maps/
     nbin: 10
     outlier_fraction: 0.05
@@ -150,7 +150,7 @@ TXLSSDensityNull:
 TXLSSWeightsLinPix:
     pvalue_threshold: 0.05  # max p-value for maps to be corrected
     regression_class: "LinearRegression"
-    #the config options below must match TXLSSDensityNull (TODO: automate this)
+    #the config options below must match TXLSSDensityNullTests (TODO: automate this)
     supreme_path_root: data/dp1/inputs/survey_property_maps/
     nbin: 10
     outlier_fraction: 0.05

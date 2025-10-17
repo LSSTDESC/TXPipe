@@ -8,6 +8,7 @@ from .data_types import (
     FiducialCosmology,
     TomographyCatalog,
 )
+import numpy as np
 import glob
 import time
 from .utils.theory import theory_3x2pt
@@ -56,7 +57,6 @@ class TXLSSDensityBase(TXMapCorrelations):
         """
         For this method we need sys maps to be normalized to mean 0
         """
-        import numpy as np
         sys_maps, sys_names = self.load_and_mask_sysmaps()
 
         # normalize sysmaps (and keep track of the normalization factors)
@@ -73,7 +73,6 @@ class TXLSSDensityBase(TXMapCorrelations):
         """
         Normalize a list of healsparse maps to mean=0, std=1
         """
-        import numpy as np
 
         means = []
         stds = []
@@ -95,7 +94,6 @@ class TXLSSDensityBase(TXMapCorrelations):
         convert the ra, dec of the lens sample to pixel number counts
         """
         import healpy as hp
-        import numpy as np
         import healsparse as hsp
 
         with self.open_input("mask", wrapper=True) as map_file:
@@ -146,7 +144,6 @@ class TXLSSDensityBase(TXMapCorrelations):
         """
         load the SP maps and mask them
         """
-        import numpy as np
         import healpy as hp
         import healsparse as hsp
 
@@ -203,7 +200,7 @@ class TXLSSDensityBase(TXMapCorrelations):
 
         return np.array(sys_maps), np.array(sys_names)
 
-    def calc_1d_density(self, tomobin, mean_density_map=None):
+    def calculate_1d_density_correlations(self, tomobin, mean_density_map=None):
         """
         compute the binned 1d density correlations for a single tomographic lens bin
 
@@ -222,7 +219,6 @@ class TXLSSDensityBase(TXMapCorrelations):
             counts/density vs sysmap for all sysmaps
         """
         import healpy as hp
-        import numpy as np
         from . import lsstools
 
         s = time.time()
@@ -290,13 +286,12 @@ class TXLSSDensityBase(TXMapCorrelations):
         density_corrs.sys_meta.update(self.sys_meta)
 
         f = time.time()
-        print("calc_1d_density took {0}s".format(f - s))
+        print("calculate_1d_density_correlations took {0}s".format(f - s))
 
         return density_corrs
 
     def compute_bin_edges(self, sys_map):
         import scipy.stats
-        import numpy as np
 
         nsysbins = self.config["nbin"] # nominal number of SP bins (this can change if too many pixels have the same value)
         f = 0.5 * self.config["outlier_fraction"]
@@ -333,7 +328,6 @@ class TXLSSDensityBase(TXMapCorrelations):
         Simple replacement for np.unique that allows for a small tolerance
         Useful when SP map values differ only by machine precision
         """
-        import numpy as np
         out = []
         idx = []
         for i, x in enumerate(arr):
@@ -347,13 +341,13 @@ class TXLSSDensityBase(TXMapCorrelations):
             return out, idx
         return out   
 
-class TXLSSDensityNull(TXLSSDensityBase):
+class TXLSSDensityNullTests(TXLSSDensityBase):
     """
     Compute density correlations between lens sample density and survey property maps
-    and it's covariance
+    and its covariance
     """
 
-    name = "TXLSSDensityNull"
+    name = "TXLSSDensityNullTests"
     parallel = False
     inputs = [
         ("binned_lens_catalog_unweighted", TomographyCatalog),  # this file is used by the stage to compute density correlations
@@ -386,10 +380,12 @@ class TXLSSDensityNull(TXLSSDensityBase):
 
         Each step can be overwritten in sub-classes
         """
+        import sacc
+        import healsparse
         pixel_scheme = choose_pixelization(**self.config)
         self.pixel_metadata = pixel_scheme.metadata
 
-        # check the metadata nside matches the mask (might not be true of you use an external mask)
+        # check the metadata nside matches the mask (might not be true if you use an external mask)
         with self.open_input("mask", wrapper=True) as map_file:
             mask_nside = map_file.read_map_info("mask")["nside"]
         assert self.pixel_metadata["nside"] == mask_nside
@@ -407,29 +403,22 @@ class TXLSSDensityNull(TXLSSDensityBase):
         # load the SP maps, apply the mask, normalize the maps (as needed by the method)
         self.sys_maps, self.sys_names, self.sys_meta = self.prepare_sys_maps()
 
-        mean_density_map_list = []
         for ibin in range(self.Ntomo):
             # compute density vs SP map data vector
-            density_corrs = self.calc_1d_density(ibin)
+            density_corrs = self.calculate_1d_density_correlations(ibin)
 
-            # compute covariance of data vector
-            self.calc_covariance(density_corrs)  # matrix added to density_corrs
+            # compute covariance of data vector and add to DensityCorrelation object
+            self.calc_covariance(density_corrs)
 
-            self.calc_null(density_corrs)
+            # Add the null model n_dens/<n_dens> = 1 to the 
+            # DensityCorrelation object and compute its chi2
+            density_corrs.add_null_model()
 
             # make summary stats and plots
             self.summarize_density(
                 output_dir, dens_output, density_corrs
             )
         dens_output.close()
-
-    def calc_null(self, density_correlation):
-        """
-        Add the null model n_dens/<n_dens> = 1 to the DensityCorrelation object and compute it's chi2
-        """
-        import numpy as np
-        null_model = np.ones(len(density_correlation.ndens))
-        density_correlation.add_model(null_model, "null")
 
     def summarize_density(self, output_dir, dens_output, density_correlation):
         """
@@ -441,13 +430,13 @@ class TXLSSDensityNull(TXLSSDensityBase):
 
         density_correlation: lsstools.DensityCorrelation
         """
-        import numpy as np
         import scipy.stats
 
         ibin = density_correlation.tomobin
 
         # save the 1D density trends
-        density_correlation.save_to_group(dens_output) #tomo bin label is taken from density_correlation
+        # tomo bin label is taken from density_correlation
+        density_correlation.save_to_group(dens_output) 
 
         # plot 1d density trends
         for imap in np.unique(density_correlation.map_index):
@@ -519,7 +508,6 @@ class TXLSSDensityNull(TXLSSDensityBase):
 
         """
         import healpy as hp
-        import numpy as np
 
         # get nside from the mask
         with self.open_input("mask", wrapper=True) as map_file:
@@ -571,6 +559,7 @@ class TXLSSDensityNull(TXLSSDensityBase):
 
         # convert N (number count) covariance into n (normalized number density) covariance
         # cov(n1,n2) = cov(N1,N2)*norm**2/(Npix1*Npix2)
+        # TODO: replace np.matrix with @ operator
         npix1npix2 = np.matrix(density_correlation.npix).T * np.matrix(
             density_correlation.npix
         )
@@ -597,7 +586,6 @@ class TXLSSDensityNull(TXLSSDensityBase):
         sys_maps: array of healsparse maps
 
         """
-        import numpy as np
         import treecorr
         import healpy as hp
         import pyccl
@@ -640,7 +628,7 @@ class TXLSSDensityNull(TXLSSDensityBase):
         map_list = np.unique(density_correlation.map_index).astype("int")
 
         # make a dict of treecorr Catalog objects
-        # TO DO: test how the memory use scales with NSIDE
+        # TODO: test how the memory use scales with NSIDE
         cats = {}
         for imap in map_list:
             ra_i, dec_i = sys_maps[imap].valid_pixels_pos(lonlat=True)
@@ -725,25 +713,9 @@ class TXLSSDensityNull(TXLSSDensityBase):
         We need this to compute the theory guess
         for the SV term
         """
-        import sacc
-
-        f_lens = self.open_input("lens_photoz_stack")
-
-        if "n_of_z" in f_lens.keys():  
-            name = f"lens_{tomobin}"
-            z = f_lens["n_of_z/lens/z"][:]
-            Nz = f_lens[f"n_of_z/lens/bin_{tomobin}"][:]
-        else: #assume this is a qp file
-            #TODO: I should actually use qp to load these
-            try:
-                zedges = f_lens['qp/meta/bins'][:][0]
-                z = (zedges[:-1]+zedges[1:])/2.
-                Nz = f_lens['qp/data/pdfs'][tomobin,:]
-            except KeyError:
-                z = f_lens['qp/meta/xvals'][:][0]
-                Nz = f_lens['qp/data/yvals'][tomobin,:]
-            
-        return z, Nz
+        with self.open_input("lens_photoz_stack") as f_lens:
+            z, nz = f_lens.get_bin_n_of_z(tomobin)
+        return z, nz
 
 
 class TXLSSWeights(TXLSSDensityBase):
@@ -794,6 +766,9 @@ class TXLSSWeights(TXLSSDensityBase):
 
         Each step can be overwritten in sub-classes
         """
+        import sacc
+        import healsparse
+
         pixel_scheme = choose_pixelization(**self.config)
         self.pixel_metadata = pixel_scheme.metadata
 
@@ -824,14 +799,13 @@ class TXLSSWeights(TXLSSDensityBase):
             mean_density_map, fit_output = self.compute_weights(density_corrs)
             mean_density_map_list.append(mean_density_map)
 
-            weighted_density_corrs = self.calc_1d_density(
+            # Calculate the weighted version of the same thing.
+            weighted_density_corrs = self.calculate_1d_density_correlations(
                 ibin, mean_density_map=mean_density_map
             )
+            # add info from unweighted density_corrs to weighted
             if weighted_density_corrs is not None:
-                weighted_density_corrs.postprocess(
-                    density_corrs
-                )  # adds needed info from unweighted density_corrs to weighted
-            
+                weighted_density_corrs.postprocess(density_corrs)
 
             # make summary stats and plots
             self.summarize_weights(
@@ -892,18 +866,27 @@ class TXLSSWeights(TXLSSDensityBase):
             subgroup = binned_output[f"lens/bin_{ibin}/"]
             ra = subgroup["ra"][:]
             dec = subgroup["dec"][:]
+
+            # Get the pixel index for each galaxy in our density map.
+            # could switch to using txpipe tools for this?
             pix = hp.ang2pix(
                 self.pixel_metadata["nside"], ra, dec, lonlat=True, nest=True
-            )  # can switch to using txpipe tools for this?
-            obj_weight = 1.0 / mean_density_map_list[ibin][pix]
-            obj_weight[obj_weight == 1.0 / hp.UNSEEN] = 0.0
+            )
+
+            # Compute the weight corresponding to each object
+            w =  mean_density_map_list[ibin][pix]
+            obj_weight = 1.0 / w
+            obj_weight[w == hp.UNSEEN] = 0.0
 
             subgroup["weight"][:] *= obj_weight
 
+            # Draw the histogram for this tomographic bin in the correct
+            # panel of the figure
             axs[0][ibin].hist(obj_weight[obj_weight!=0], bins=100)
             axs[0][ibin].set_xlabel("weight")
             axs[0][ibin].set_yticks([])
             axs[0][ibin].set_title(f"lens {ibin}")
+
         filepath = output_dir.path_for_file(f"weights_hist.png")
         fig.tight_layout()
         fig.savefig(filepath)
@@ -944,7 +927,6 @@ class TXLSSWeights(TXLSSDensityBase):
 
         fit_output: dict
         """
-        import numpy as np
         import h5py
         import scipy.stats
 
@@ -956,6 +938,7 @@ class TXLSSWeights(TXLSSDensityBase):
                 splabel = density_correlation.mapnames[imap]
             except KeyError:
                 splabel = imap
+
             filepath = output_dir.path_for_file(f"sys1D_lens{ibin}_SP{splabel}.png")
             density_correlation.plot1d_singlemap(
                 filepath,
@@ -1040,7 +1023,6 @@ class TXLSSWeightsLinBinned(TXLSSWeights):
 
         """
         import scipy.stats
-        import numpy as np
 
         chi2_null = density_correlation.chi2["null"]
         nbins_per_map = self.config["nbin"]
@@ -1080,7 +1062,6 @@ class TXLSSWeightsLinBinned(TXLSSWeights):
 
         """
         import scipy.optimize
-        import numpy as np
         import healsparse as hsp
         import healpy as hp
         from . import lsstools
@@ -1224,7 +1205,6 @@ class TXLSSWeightsLinPix(TXLSSWeightsLinBinned):
 
         """
         import scipy.optimize
-        import numpy as np
         import healpy as hp
         import healsparse as hsp
         from . import lsstools
@@ -1334,7 +1314,6 @@ def hsplist2array(hsp_list):
     Convert a list of healsparse maps to a 2d array of the valid pixels
     Assume all maps have the same mask
     """
-    import numpy as np
 
     validpixels = hsp_list[0].valid_pixels
     out_array = []
@@ -1377,7 +1356,7 @@ class TXLSSWeightsUnit(TXLSSWeights):
         sys_maps = sys_names = sys_meta = None
         return sys_maps, sys_names, sys_meta
 
-    def calc_1d_density(self, tomobin, mean_density_map=None):
+    def calculate_1d_density_correlations(self, tomobin, mean_density_map=None):
         """
         For unit weights we dont need 1d density trends
         """
@@ -1408,7 +1387,6 @@ class TXLSSWeightsUnit(TXLSSWeights):
         Creates a healsparse map of unit weights
         Uses the mask directly
         """
-        import numpy as np
         import healpy as hp
         import healsparse as hsp
 
