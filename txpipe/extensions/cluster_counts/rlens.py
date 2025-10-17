@@ -7,9 +7,6 @@ from ...data_types import (
 )
 import numpy as np
 
-SHEAR_SHEAR = 0
-SHEAR_POS = 1
-POS_POS = 2
 
 class TXTwoPointRLens(TXTwoPoint):
     """
@@ -34,11 +31,9 @@ class TXTwoPointRLens(TXTwoPoint):
         ("binned_shear_catalog", HDFFile),
         ("binned_random_catalog", HDFFile),
         ("patch_centers", TextFile),
+        ("tracer_metadata", HDFFile),
     ]
-    outputs = [
-        ("rlens_measurement", TextFile),
-        ("cluster_shear_catalogs", HDFFile),           
-    ]
+    outputs = [("rlens_measurement", TextFile)]
 
     config_options = {
         # TODO: Allow more fine-grained selection of 2pt subsets to compute
@@ -67,30 +62,21 @@ class TXTwoPointRLens(TXTwoPoint):
         "use_subsampled_randoms": False,
     }
 
-    def read_metadata(self):
-        return {}
-
-
     def get_lens_catalog(self, i):
         # Override the lens catalog generation.
         # This is like the parent version except we also add the r_col keyword
         import treecorr
-        bin_name = None
-        with self.open_input("binned_lens_catalog") as f:
-            for j, zbin_richbin in enumerate(f['cluster_bin'].keys()):
-                if j == i:
-                    bin_name = zbin_richbin
 
         cat = treecorr.Catalog(
             self.get_input("binned_lens_catalog"),
-            ext=f"/cluster_bin/{bin_name}",
+            ext=f"/lens/bin_{i}",
             ra_col="ra",
             dec_col="dec",
-            #r_col="comoving_distance",
-            #w_col="weight",
+            r_col="comoving_distance",
+            w_col="weight",
             ra_units="degree",
             dec_units="degree",
-            patch_centers=None,#self.get_input("patch_centers"),
+            patch_centers=self.get_input("patch_centers"),
             save_patch_dir=self.get_patch_dir("binned_lens_catalog", i),
         )
         return cat
@@ -108,36 +94,14 @@ class TXTwoPointRLens(TXTwoPoint):
             ext=f"/randoms/bin_{i}",
             ra_col="ra",
             dec_col="dec",
-            #r_col="comoving_distance",
+            r_col="comoving_distance",
             ra_units="degree",
             dec_units="degree",
-            patch_centers=None,#self.get_input("patch_centers"),
+            patch_centers=self.get_input("patch_centers"),
             save_patch_dir=self.get_patch_dir("binned_random_catalog", i),
         )
         return rancat
 
-    def get_shear_catalog(self, i):
-        import treecorr
-
-        # Load and calibrate the appropriate bin data
-        cat = treecorr.Catalog(
-            self.get_input("binned_shear_catalog"),
-            ext=f"/shear/bin_{i}",
-            g1_col="g1",
-            g2_col="g2",
-            ra_col="ra",
-            dec_col="dec",
-            w_col="weight",
-            ra_units="degree",
-            dec_units="degree",
-            patch_centers=None,#self.get_input("patch_centers"),
-            save_patch_dir=self.get_patch_dir("binned_shear_catalog", i),
-            flip_g1=self.config["flip_g1"],
-            flip_g2=self.config["flip_g2"],
-        )
-        
-        return cat
-    
     def call_treecorr(self, i, j, k):
         # The parent class uses the label for gamma_t measurements
         # here, so we overwrite it.
@@ -153,22 +117,3 @@ class TXTwoPointRLens(TXTwoPoint):
                 for logr, xi in zip(result.object.meanlogr, result.object.xi):
                     print(result.i, result.j, np.exp(logr), xi)
                     print(result.i, result.j, np.exp(logr), xi, file=f)
-
-    def _read_nbin_from_tomography(self):
-        if self.get_input("binned_shear_catalog") == "none":
-            nbin_source = 0
-        else:
-            with self.open_input("binned_shear_catalog") as f:
-                nbin_source = f["shear"].attrs["nbin_source"]
-
-        if self.get_input("binned_lens_catalog") == "none":
-            nbin_lens = 0
-        else:
-            with self.open_input("binned_lens_catalog") as f:
-                nbin_lens = len(f["cluster_bin"])
-
-        source_list = list(range(nbin_source))
-        lens_list = list(range(nbin_lens))
-
-        return source_list, lens_list
-
