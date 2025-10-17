@@ -86,7 +86,7 @@ class TXTwoPointFourier(PipelineStage):
         "ell_spacing": StageParameter(str, "log", msg="Spacing of ell bins (log or linear)"),
         "true_shear": StageParameter(bool, False, msg="Whether to use true shear values"),
         "analytic_noise": StageParameter(bool, False, msg="Whether to use analytic noise estimates"),
-        "gaussian_sims_factor": StageParameter(list, [1.], msg="Factor for Gaussian simulations"),
+        "gaussian_sims_factor": StageParameter(list, default=[1.], msg="Factor by which to decrease lens density to account for increased density contrast."),
         "b0": StageParameter(float, 1.0, msg="Galaxy bias parameter"),
         "do_shear_shear": StageParameter(bool, True, msg="Whether to compute shear-shear power spectra"),
         "do_shear_pos": StageParameter(bool, True, msg="Whether to compute shear-position power spectra"),

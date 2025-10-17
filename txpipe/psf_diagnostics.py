@@ -357,7 +357,7 @@ class TXTauStatistics(PipelineStage):
                        "nbins"         : StageParameter(int, default=20, msg="Number of bins."),
                        "bin_slop"      : StageParameter(float, default=0.01, msg="Bin slop for treecorr."),
                        "sep_units"     : StageParameter(str, default="arcmin", msg="Separation units."),
-                       "npatch"        : StageParameter(int, default=150, msg="Number of patches for bootstrap."),
+                       "npatch"        : StageParameter(int, default=150, msg="Number of patches for variance calculation and processing."),
                        "psf_size_units": StageParameter(str, default="sigma", msg="Units for PSF size."),
                        "subtract_mean" : StageParameter(bool, default=False, msg="Subtract mean from data."),
                        "dec_cut"       : StageParameter(bool, default=True, msg="Affects KiDS-1000 only."),
@@ -392,8 +392,8 @@ class TXTauStatistics(PipelineStage):
             # set ranges for mcmc 
             ranges = {}
             ranges['alpha'] = [-1000.00, 1000.00]
-            ranges['beta'  ] = [-1000.00, 1000.00]
-            ranges['eta'   ] = [-1000.00, 1000.00]
+            ranges['beta'] = [-1000.00, 1000.00]
+            ranges['eta'] = [-1000.00, 1000.00]
             
             tau_stats[s]  = {}
             p_bestfits[s] = {}

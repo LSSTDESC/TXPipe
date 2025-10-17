@@ -32,7 +32,7 @@ class TXMapCorrelations(PipelineStage):
 
     config_options = {
         "supreme_path_root": StageParameter(str, "/global/cscratch1/sd/erykoff/dc2_dr6/supreme/supreme_dc2_dr6d_v2", msg="Root path for supreme files."),
-        "nbin": StageParameter(int, 20, msg="Number of tomographic bins."),
+        "nbin": StageParameter(int, 20, msg="Number of percentile bins to use in the map property."),
         "outlier_fraction": StageParameter(float, 0.05, msg="Fraction of outliers to exclude."),
     }
 

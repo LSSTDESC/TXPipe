@@ -22,7 +22,7 @@ class TXTwoPointTheoryReal(PipelineStage):
 
     config_options = {
         "galaxy_bias": StageParameter(list, [0.0], msg="Galaxy bias values per bin, [0.0] for unit bias, or single negative value for global bias parameter"),
-        "smooth": StageParameter(bool, False, msg="Whether to smooth the theory predictions"),
+        "smooth": StageParameter(bool, False, msg="Whether to smooth the n(z) for theory predictions"),
     }
 
     def run(self):
@@ -81,7 +81,7 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
 
     config_options = {
         "galaxy_bias": StageParameter(list, [0.0], msg="Galaxy bias values per bin, [0.0] for unit bias, or single negative value for global bias parameter"),
-        "smooth": StageParameter(bool, False, msg="Whether to smooth the theory predictions"),
+        "smooth": StageParameter(bool, False, msg="Whether to smooth the n(z) for theory predictions"),
     }
     
     def run(self):

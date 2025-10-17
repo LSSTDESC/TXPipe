@@ -30,6 +30,18 @@ POS_POS = 2
 POS_EXT = 3
 SHEAR_EXT = 4
 
+TREECORR_CONFIG = {
+    "min_sep": StageParameter(float, 0.5, msg="Minimum separation for correlation measurements"),
+    "max_sep": StageParameter(float, 300.0, msg="Maximum separation for correlation measurements"),
+    "nbins": StageParameter(int, 9, msg="Number of separation bins"),
+    "bin_slop": StageParameter(float, 0.0, msg="Tolerance for bin sloppiness in TreeCorr"),
+    "sep_units": StageParameter(str, "arcmin", msg="Units for separation (arcmin, degrees, etc.)"),
+    "flip_g1": StageParameter(bool, False, msg="Whether to flip the sign of g1"),
+    "flip_g2": StageParameter(bool, True, msg="Whether to flip the sign of g2"),
+    "cores_per_task": StageParameter(int, 20, msg="Number of CPU cores to use per task"),
+    "verbose": StageParameter(int, 1, msg="Verbosity level for TreeCorr output"),
+}
+
 class TXTwoPoint(PipelineStage):
     """
     Make 2pt measurements using TreeCorr
@@ -52,17 +64,8 @@ class TXTwoPoint(PipelineStage):
     ]
     outputs = [("twopoint_data_real_raw", SACCFile), ("twopoint_gamma_x", SACCFile)]
     # Add values to the config file that are not previously defined
-    config_options = {
+    config_options = TREECORR_CONFIG | {
         "calcs": StageParameter(list, [0, 1, 2], msg="Which calculations to perform: 0=shear-shear, 1=shear-position, 2=position-position"),
-        "min_sep": StageParameter(float, 0.5, msg="Minimum separation for correlation measurements"),
-        "max_sep": StageParameter(float, 300.0, msg="Maximum separation for correlation measurements"),
-        "nbins": StageParameter(int, 9, msg="Number of separation bins"),
-        "bin_slop": StageParameter(float, 0.0, msg="Tolerance for bin sloppiness in TreeCorr"),
-        "sep_units": StageParameter(str, "arcmin", msg="Units for separation (arcmin, degrees, etc.)"),
-        "flip_g1": StageParameter(bool, False, msg="Whether to flip the sign of g1"),
-        "flip_g2": StageParameter(bool, True, msg="Whether to flip the sign of g2"),
-        "cores_per_task": StageParameter(int, 20, msg="Number of CPU cores to use per task"),
-        "verbose": StageParameter(int, 1, msg="Verbosity level for TreeCorr output"),
         "source_bins": StageParameter(list, [-1], msg="List of source bins to use (-1 means all)"),
         "lens_bins": StageParameter(list, [-1], msg="List of lens bins to use (-1 means all)"),
         "reduce_randoms_size": StageParameter(float, 1.0, msg="Factor to reduce the size of random catalogs"),
@@ -77,7 +80,7 @@ class TXTwoPoint(PipelineStage):
         "chunk_rows": StageParameter(int, 100_000, msg="Number of rows to process in each chunk"),
         "share_patch_files": StageParameter(bool, False, msg="Whether to share patch files across processes"),
         "metric": StageParameter(str, "Euclidean", msg="Distance metric to use (Euclidean, Arc, etc.)"),
-        "gaussian_sims_factor": StageParameter(list, [1.], msg="Factor for Gaussian simulations"),
+        "gaussian_sims_factor": StageParameter(list, default=[1.], msg="Factor by which to decrease lens density to account for increased density contrast."),
         "use_subsampled_randoms": StageParameter(bool, True, msg="Use subsampled randoms file for RR calculation"),
     }
 
@@ -973,17 +976,9 @@ class TXTwoPointPixel(TXTwoPoint):
     ]
     outputs = [("twopoint_data_real_raw", SACCFile), ("twopoint_gamma_x", SACCFile)]
     # Add values to the config file that are not previously defined
-    config_options = {
+    config_options = TREECORR_CONFIG | {
         # TODO: Allow more fine-grained selection of 2pt subsets to compute
         "calcs": StageParameter(list, [0, 1, 2], msg="Which calculations to perform: 0=shear-shear, 1=shear-position, 2=position-position"),
-        "min_sep": StageParameter(float, 0.5, msg="Minimum separation for correlation measurements"),
-        "max_sep": StageParameter(float, 300.0, msg="Maximum separation for correlation measurements"),
-        "nbins": StageParameter(int, 9, msg="Number of separation bins"),
-        "bin_slop": StageParameter(float, 0.0, msg="Tolerance for bin sloppiness in TreeCorr"),
-        "sep_units": StageParameter(str, "arcmin", msg="Units for separation (arcmin, degrees, etc.)"),
-        "flip_g1": StageParameter(bool, False, msg="Whether to flip the sign of g1"),
-        "flip_g2": StageParameter(bool, True, msg="Whether to flip the sign of g2"),
-        "verbose": StageParameter(int, 1, msg="Verbosity level for TreeCorr output"),
         "source_bins": StageParameter(list, [-1], msg="List of source bins to use (-1 means all)"),
         "lens_bins": StageParameter(list, [-1], msg="List of lens bins to use (-1 means all)"),
         "reduce_randoms_size": StageParameter(float, 1.0, msg="Factor to reduce the size of random catalogs"),
@@ -998,7 +993,7 @@ class TXTwoPointPixel(TXTwoPoint):
         "metric": StageParameter(str, "Euclidean", msg="Distance metric to use (Euclidean, Arc, etc.)"),
         "use_randoms": StageParameter(bool, True, msg="Whether to use random catalogs"),
         "auto_only": StageParameter(bool, False, msg="Whether to compute only auto-correlations"),
-        "gaussian_sims_factor": StageParameter(list, [1.], msg="Factor for Gaussian simulations"),
+        "gaussian_sims_factor": StageParameter(list, default=[1.], msg="Factor by which to decrease lens density to account for increased density contrast."),
         "use_subsampled_randoms": StageParameter(bool, False, msg="Use subsampled randoms file for RR calculation (not used for pixel estimator)"),
     }
     
@@ -1131,20 +1126,12 @@ class TXTwoPointPixelExtCross(TXTwoPointPixel):
     ]
     outputs = [("twopoint_data_ext_cross_raw", SACCFile)]
     # Add values to the config file that are not previously defined
-    config_options = {
+    config_options = TREECORR_CONFIG | {
         "supreme_path_root": StageParameter(str, "", msg="Root path for supreme files"),
-        "do_pos_ext": StageParameter(bool, True, msg="Whether to compute position-ext correlations"),
-        "do_shear_ext": StageParameter(bool, True, msg="Whether to compute shear-ext correlations"),
+        "do_pos_ext": StageParameter(bool, True, msg="Whether to compute position-external correlations"),
+        "do_shear_ext": StageParameter(bool, True, msg="Whether to compute shear-external correlations"),
         # TODO: Remove any unnesesary config options here
         "calcs": StageParameter(list, [0, 1, 2], msg="Which calculations to perform: 0=shear-shear, 1=shear-position, 2=position-position"),
-        "min_sep": StageParameter(float, 0.5, msg="Minimum separation for correlation measurements"),
-        "max_sep": StageParameter(float, 300.0, msg="Maximum separation for correlation measurements"),
-        "nbins": StageParameter(int, 9, msg="Number of separation bins"),
-        "bin_slop": StageParameter(float, 0.0, msg="Tolerance for bin sloppiness in TreeCorr"),
-        "sep_units": StageParameter(str, "arcmin", msg="Units for separation (arcmin, degrees, etc.)"),
-        "flip_g1": StageParameter(bool, False, msg="Whether to flip the sign of g1"),
-        "flip_g2": StageParameter(bool, True, msg="Whether to flip the sign of g2"),
-        "verbose": StageParameter(int, 1, msg="Verbosity level for TreeCorr output"),
         "source_bins": StageParameter(list, [-1], msg="List of source bins to use (-1 means all)"),
         "lens_bins": StageParameter(list, [-1], msg="List of lens bins to use (-1 means all)"),
         "reduce_randoms_size": StageParameter(float, 1.0, msg="Factor to reduce the size of random catalogs"),
@@ -1159,7 +1146,7 @@ class TXTwoPointPixelExtCross(TXTwoPointPixel):
         "metric": StageParameter(str, "Euclidean", msg="Distance metric to use (Euclidean, Arc, etc.)"),
         "use_randoms": StageParameter(bool, True, msg="Whether to use random catalogs"),
         "auto_only": StageParameter(bool, False, msg="Whether to compute only auto-correlations"),
-        "gaussian_sims_factor": StageParameter(list, [1.], msg="Factor for Gaussian simulations"),
+        "gaussian_sims_factor": StageParameter(list, default=[1.], msg="Factor by which to decrease lens density to account for increased density contrast."),
         "use_subsampled_randoms": StageParameter(bool, False, msg="Use subsampled randoms file for RR calculation (not used for pixel estimator)"),
     }
 

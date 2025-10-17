@@ -10,7 +10,7 @@ from .data_types import (
     QPNOfZFile,
 )
 import numpy as np
-from .twopoint import TXTwoPoint, SHEAR_SHEAR, SHEAR_POS, POS_POS
+from .twopoint import TXTwoPoint, SHEAR_SHEAR, SHEAR_POS, POS_POS, TREECORR_CONFIG
 from .utils import DynamicSplitter
 from ceci.config import StageParameter
 
@@ -103,16 +103,8 @@ class TXGammaTFieldCenters(TXTwoPoint):
         ("gammat_field_center_plot", PNGFile),
     ]
     # Add values to the config file that are not previously defined
-    config_options = {
+    config_options = TREECORR_CONFIG | {
         "calcs": StageParameter(list, [0, 1, 2], msg="Which calculations to perform: 0=shear-shear, 1=shear-position, 2=position-position"),
-        "min_sep": StageParameter(float, 2.5, msg="Minimum separation for correlation measurements."),
-        "max_sep": StageParameter(float, 250, msg="Maximum separation for correlation measurements."),
-        "nbins": StageParameter(int, 20, msg="Number of separation bins."),
-        "bin_slop": StageParameter(float, 0.1, msg="Tolerance for bin sloppiness in TreeCorr."),
-        "sep_units": StageParameter(str, "arcmin", msg="Units for separation (arcmin, degrees, etc.)."),
-        "flip_g1": StageParameter(bool, False, msg="Whether to flip the sign of g1."),
-        "flip_g2": StageParameter(bool, True, msg="Whether to flip the sign of g2."),
-        "verbose": StageParameter(int, 1, msg="Verbosity level for TreeCorr output."),
         "reduce_randoms_size": StageParameter(float, 1.0, msg="Factor to reduce the size of random catalogs."),
         "var_method": StageParameter(str, "shot", msg="Method for computing variance (shot, jackknife, etc.)."),
         "npatch": StageParameter(int, 5, msg="Number of patches for null tests."),
@@ -300,16 +292,8 @@ class TXGammaTStars(TXTwoPoint):
         ("gammat_dim_stars_plot", PNGFile),
     ]
     # Add values to the config file that are not previously defined
-    config_options = {
+    config_options = TREECORR_CONFIG | {
         "calcs": StageParameter(list, [0, 1, 2], msg="Which calculations to perform: 0=shear-shear, 1=shear-position, 2=position-position"),
-        "min_sep": StageParameter(float, 2.5, msg="Minimum separation for correlation measurements."),
-        "max_sep": StageParameter(float, 100, msg="Maximum separation for correlation measurements."),
-        "nbins": StageParameter(int, 20, msg="Number of separation bins."),
-        "bin_slop": StageParameter(float, 1, msg="Tolerance for bin sloppiness in TreeCorr."),
-        "sep_units": StageParameter(str, "arcmin", msg="Units for separation (arcmin, degrees, etc.)."),
-        "flip_g1": StageParameter(bool, False, msg="Whether to flip the sign of g1."),
-        "flip_g2": StageParameter(bool, True, msg="Whether to flip the sign of g2."),
-        "verbose": StageParameter(int, 1, msg="Verbosity level for TreeCorr output."),
         "reduce_randoms_size": StageParameter(float, 1.0, msg="Factor to reduce the size of random catalogs."),
         "var_method": StageParameter(str, "shot", msg="Method for computing variance (shot, jackknife, etc.)."),
         "npatch": StageParameter(int, 5, msg="Number of patches for null tests."),
@@ -487,16 +471,8 @@ class TXGammaTRandoms(TXTwoPoint):
         ("gammat_randoms_plot", PNGFile),
     ]
     # Add values to the config file that are not previously defined
-    config_options = {
+    config_options = TREECORR_CONFIG | {
         "calcs": StageParameter(list, [0, 1, 2], msg="Which calculations to perform: 0=shear-shear, 1=shear-position, 2=position-position"),
-        "min_sep": StageParameter(float, 2.5, msg="Minimum separation for correlation measurements."),
-        "max_sep": StageParameter(float, 100, msg="Maximum separation for correlation measurements."),
-        "nbins": StageParameter(int, 20, msg="Number of separation bins."),
-        "bin_slop": StageParameter(float, 1, msg="Tolerance for bin sloppiness in TreeCorr."),
-        "sep_units": StageParameter(str, "arcmin", msg="Units for separation (arcmin, degrees, etc.)."),
-        "flip_g1": StageParameter(bool, False, msg="Whether to flip the sign of g1."),
-        "flip_g2": StageParameter(bool, True, msg="Whether to flip the sign of g2."),
-        "verbose": StageParameter(int, 1, msg="Verbosity level for TreeCorr output."),
         "reduce_randoms_size": StageParameter(float, 1.0, msg="Factor to reduce the size of random catalogs."),
         "var_method": StageParameter(str, "shot", msg="Method for computing variance (shot, jackknife, etc.)."),
         "npatch": StageParameter(int, 5, msg="Number of patches for null tests."),
@@ -662,16 +638,8 @@ class TXApertureMass(TXTwoPoint):
         ("aperture_mass_data", SACCFile),
     ]
     # Add values to the config file that are not previously defined
-    config_options = {
+    config_options = TREECORR_CONFIG | {
         "calcs": StageParameter(list, [0, 1, 2], msg="Which calculations to perform: 0=shear-shear, 1=shear-position, 2=position-position"),
-        "min_sep": StageParameter(float, 0.5, msg="Minimum separation for correlation measurements."),
-        "max_sep": StageParameter(float, 300.0, msg="Maximum separation for correlation measurements."),
-        "nbins": StageParameter(int, 15, msg="Number of separation bins."),
-        "bin_slop": StageParameter(float, 0.02, msg="Tolerance for bin sloppiness in TreeCorr."),
-        "sep_units": StageParameter(str, "arcmin", msg="Units for separation (arcmin, degrees, etc.)."),
-        "flip_g1": StageParameter(bool, False, msg="Whether to flip the sign of g1."),
-        "flip_g2": StageParameter(bool, True, msg="Whether to flip the sign of g2."),
-        "verbose": StageParameter(int, 1, msg="Verbosity level for TreeCorr output."),
         "source_bins": StageParameter(list, [-1], msg="List of source bins to use (-1 means all)."),
         "lens_bins": StageParameter(list, [-1], msg="List of lens bins to use (-1 means all)."),
         "reduce_randoms_size": StageParameter(float, 1.0, msg="Factor to reduce the size of random catalogs."),

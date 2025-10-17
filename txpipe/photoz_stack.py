@@ -28,7 +28,7 @@ class TXPhotozStack(PipelineStage):
         "tomo_name": StageParameter(str, "source", msg="Name of the tomographic binning."),
         "weight_col": StageParameter(str, "shear/00/weight", msg="Column name for weights in the input catalog."),
         "zmax": StageParameter(float, 0.0, msg="Maximum redshift to use if not specified in input PDFs."),
-        "nz": StageParameter(int, 0, msg="Number of redshift bins to use if not specified in input PDFs."),
+        "nz": StageParameter(int, 0, msg="Number of redshift histogram bins."),
     }
 
     def run(self):
@@ -142,7 +142,7 @@ class TXTruePhotozStack(PipelineStage):
     config_options = {
         "chunk_rows": StageParameter(int, 5000, msg="Number of rows to read at once."),
         "zmax": StageParameter(float, 0.0, msg="Maximum redshift for stacking."),
-        "nz": StageParameter(int, 0, msg="Number of redshift bins for stacking."),
+        "nz": StageParameter(int, 0, msg="Number of redshift histogram bins."),
         "weight_col": StageParameter(str, "weight", msg="Column name for weights in the input catalog."),
         "redshift_group": StageParameter(str, '', msg="Group name for redshift column in input file."),
         "redshift_col": StageParameter(str, "redshift_true", msg="Column name for true redshift in input file."),

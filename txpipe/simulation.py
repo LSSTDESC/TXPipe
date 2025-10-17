@@ -58,7 +58,7 @@ class TXLogNormalGlass(PipelineStage):
         "shift": StageParameter(float, 1.0, msg="Lognormal shift parameter"),
         "contaminate": StageParameter(bool, False, msg="Whether to apply contamination to the density field"),
         "random_seed": StageParameter(int, 0, msg="Random seed for reproducibility"),
-        "cl_optional_file": StageParameter(str, "none", msg="Optional file for input C(l) values"),
+        "cl_optional_file": StageParameter(str, "none", msg="Optional file for input C(l) values. Otherwise they are computed (slow)"),
         "ell_binned_min": StageParameter(float, 0.1, msg="Minimum ell for binned C(l) output"),
         "ell_binned_max": StageParameter(float, 5.0e5, msg="Maximum ell for binned C(l) output"),
         "ell_binned_nbins": StageParameter(int, 100, msg="Number of ell bins for binned C(l) output"),

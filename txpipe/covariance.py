@@ -48,8 +48,8 @@ class TXFourierGaussianCovariance(PipelineStage):
     config_options = {
         "pickled_wigner_transform": StageParameter(str, default="", msg="Path to pickled Wigner transform."),
         "use_true_shear": StageParameter(bool, default=False, msg="Use true shear values."),
-        "galaxy_bias": StageParameter(list, default=[0.0], msg="Galaxy bias values."),
-        "gaussian_sims_factor": StageParameter(list, default=[1.], msg="Gaussian simulation factor."),
+        "galaxy_bias": StageParameter(list, default=[0.0], msg="Galaxy bias values, or one zero for unit bias."),
+        "gaussian_sims_factor": StageParameter(list, default=[1.], msg="Factor by which to decrease lens density to account for increased density contrast."),
     }
 
     def run(self):
@@ -661,7 +661,7 @@ class TXFourierTJPCovariance(PipelineStage):
         ("summary_statistics_fourier", SACCFile),
     ]
 
-    config_options = {"galaxy_bias": StageParameter(list, default=[0.0], msg="Galaxy bias values."),
+    config_options = {"galaxy_bias": StageParameter(list, default=[0.0], msg="Galaxy bias values, or one zero for unit bias."),
                       "IA": StageParameter(float, default=0.5, msg="Intrinsic alignment parameter."),
                       "cache_dir": StageParameter(str, default="", msg="Cache directory."),
                       "cov_type": StageParameter(list, default=["FourierGaussianNmt", "FourierSSCHaloModel"], msg="Covariance types to use."),
