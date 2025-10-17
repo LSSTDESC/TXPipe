@@ -1,5 +1,6 @@
 from .base_stage import PipelineStage
 from .data_types import TomographyCatalog, MapsFile, HDFFile
+from ceci.config import StageParameter
 import numpy as np
 from .utils import unique_list, choose_pixelization, import_dask
 from .mapping import  make_dask_shear_maps, make_dask_lens_maps
@@ -16,15 +17,15 @@ NON_TOMO_BIN = 999999
 # TODO: consider dropping support for gnomonic maps.
 # Also consider adding support for pixell
 map_config_options = {
-    "chunk_rows": 100000,  # The number of rows to read in each chunk of data at a time
-    "pixelization": "healpix",  # The pixelization scheme to use, currently just healpix
-    "nside": 0,  # The Healpix resolution parameter for the generated maps. Only req'd if using healpix
-    "sparse": True,  # Whether to generate sparse maps - faster and less memory for small sky areas,
-    "ra_cent": np.nan,  # These parameters are only required if pixelization==tan
-    "dec_cent": np.nan,
-    "npix_x": -1,
-    "npix_y": -1,
-    "pixel_size": np.nan,  # Pixel size of pixelization scheme
+    "chunk_rows": StageParameter(int, 100000, msg="The number of rows to read in each chunk of data at a time"),
+    "pixelization": StageParameter(str, "healpix", msg="The pixelization scheme to use, currently just healpix"),
+    "nside": StageParameter(int, 0, msg="The Healpix resolution parameter for the generated maps. Only required if using healpix"),
+    "sparse": StageParameter(bool, True, msg="Whether to generate sparse maps - faster and less memory for small sky areas"),
+    "ra_cent": StageParameter(float, np.nan, msg="Central RA for gnomonic projection (only required if pixelization==tan)"),
+    "dec_cent": StageParameter(float, np.nan, msg="Central Dec for gnomonic projection (only required if pixelization==tan)"),
+    "npix_x": StageParameter(int, -1, msg="Number of pixels in x direction for gnomonic projection"),
+    "npix_y": StageParameter(int, -1, msg="Number of pixels in y direction for gnomonic projection"),
+    "pixel_size": StageParameter(float, np.nan, msg="Pixel size of pixelization scheme"),
 }
 
 
@@ -160,7 +161,7 @@ class TXSourceMaps(PipelineStage):
     ]
 
     config_options = {
-        "block_size": 0,
+        "block_size": StageParameter(int, 0, msg="Block size for dask processing (0 means auto)"),
         **map_config_options
     }
 
@@ -273,7 +274,7 @@ class TXLensMaps(PipelineStage):
     ]
 
     config_options = {
-        "block_size": 0,
+        "block_size": StageParameter(int, 0, msg="Block size for dask processing (0 means auto)"),
         **map_config_options
     }
 
@@ -386,7 +387,7 @@ class TXDensityMaps(PipelineStage):
         ("density_maps", MapsFile),
     ]
     config_options = {
-        "mask_threshold": 0.0
+        "mask_threshold": StageParameter(float, 0.0, msg="Threshold for masking pixels")
     }
 
     def run(self):

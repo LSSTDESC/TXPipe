@@ -6,6 +6,7 @@ from ..utils import (
     metadetect_variants,
     Timer
 )
+from ceci.config import StageParameter
 import numpy as np
 
 
@@ -32,20 +33,20 @@ class TXCosmoDC2Mock(PipelineStage):
     ]
 
     config_options = {
-        "cat_name": "cosmoDC2",
-        "visits_per_band": 165,  # used in the noise simulation
-        "snr_limit": 4.0,  # used to decide what objects to cut out
-        "max_size": 99999999999999,  # for testing on smaller catalogs
-        "extra_cols": "",  # string-separated list of columns to include
-        "max_npix": 99999999999999,
-        "unit_response": False,
-        "cat_size": 0,
-        "flip_g2": True,  # this matches the metacal definition, and the treecorr/namaster one
-        "apply_mag_cut": False,  # used when comparing to descqa measurements
-        "Mag_r_limit": -19,  # used to decide what objects to cut out
-        "metadetect": True,  # Alternatively we will mock a  metacal catalog
-        "add_shape_noise": True,
-        "healpixels": [-1],
+        "cat_name": StageParameter(str, "cosmoDC2", msg="Name of the mock catalog to use."),
+        "visits_per_band": StageParameter(int, 165, msg="Number of visits per band for noise simulation."),
+        "snr_limit": StageParameter(float, 4.0, msg="S/N limit for object selection."),
+        "max_size": StageParameter(int, 99999999999999, msg="Maximum catalog size for testing."),
+        "extra_cols": StageParameter(str, "", msg="Extra columns to include (space-separated)."),
+        "max_npix": StageParameter(int, 99999999999999, msg="Maximum number of pixels."),
+        "unit_response": StageParameter(bool, False, msg="Whether to use unit response in simulation."),
+        "cat_size": StageParameter(int, 0, msg="Pre-computed catalog size, if known."),
+        "flip_g2": StageParameter(bool, True, msg="Whether to flip g2 sign to match conventions. TreeCorr and NaMaster use flip_g2=True"),
+        "apply_mag_cut": StageParameter(bool, False, msg="Apply magnitude cut for descqa comparison."),
+        "Mag_r_limit": StageParameter(float, -19, msg="Magnitude r limit for object selection."),
+        "metadetect": StageParameter(bool, True, msg="Whether to make a metadetect-style catalog (True) or metacal (False)."),
+        "add_shape_noise": StageParameter(bool, True, msg="Whether to add shape noise to simulation."),
+        "healpixels": StageParameter(list, [-1], msg="List of HEALPix pixels to use."),
     }
 
     def data_iterator(self, gc):
@@ -980,14 +981,14 @@ class TXBuzzardMock(TXCosmoDC2Mock):
     ]
 
     config_options = {
-        "cat_name": "buzzard",
-        "visits_per_band": 165,  # used in the noise simulation
-        "snr_limit": 4.0,  # used to decide what objects to cut out
-        "max_size": 99999999999999,  # for testing on smaller catalogs
-        "extra_cols": "",  # string-separated list of columns to include
-        "max_npix": 99999999999999,
-        "unit_response": False,
-        "flip_g2": True,  # this matches the metacal definition, and the treecorr/namaster one
+        "cat_name": StageParameter(str, "buzzard", msg="Name of the mock catalog to use."),
+        "visits_per_band": StageParameter(int, 165, msg="Number of visits per band for noise simulation."),
+        "snr_limit": StageParameter(float, 4.0, msg="S/N limit for object selection."),
+        "max_size": StageParameter(int, 99999999999999, msg="Maximum catalog size for testing."),
+        "extra_cols": StageParameter(str, "", msg="Extra columns to include (space-separated)."),
+        "max_npix": StageParameter(int, 99999999999999, msg="Maximum number of pixels."),
+        "unit_response": StageParameter(bool, False, msg="Whether to use unit response in simulation."),
+        "flip_g2": StageParameter(bool, True, msg="Whether to flip g2 sign to match conventions."),
     }
 
 
@@ -1014,18 +1015,18 @@ class TXGaussianSimsMock(TXCosmoDC2Mock):
     ]
 
     config_options = {
-        "cat_name": "GaussianSims",
-        "visits_per_band": 165,  # used in the noise simulation
-        "snr_limit": 0.0,  # we want to keep all input objects here
-        "max_size": 99999999999999,  # for testing on smaller catalogs
-        "extra_cols": "",  # string-separated list of columns to include
-        "max_npix": 99999999999999,
-        "unit_response": True,
-        "cat_size": 0,
-        "flip_g2": False,  # this matches the metacal definition, and the treecorr/namaster one
-        "apply_mag_cut": False,  # used when comparing to descqa measurements
-        "metadetect": True,  # Alternatively we will mock a  metacal catalog
-        "add_shape_noise": False, # the input cats already have shape noise included
+        "cat_name": StageParameter(str, "GaussianSims", msg="Name of the Gaussian simulation catalog."),
+        "visits_per_band": StageParameter(int, 165, msg="Number of visits per band for noise simulation."),
+        "snr_limit": StageParameter(float, 0.0, msg="S/N limit for object selection (0 for all)."),
+        "max_size": StageParameter(int, 99999999999999, msg="Maximum catalog size for testing."),
+        "extra_cols": StageParameter(str, "", msg="Extra columns to include (space-separated)."),
+        "max_npix": StageParameter(int, 99999999999999, msg="Maximum number of pixels."),
+        "unit_response": StageParameter(bool, True, msg="Whether to use unit response in simulation."),
+        "cat_size": StageParameter(int, 0, msg="Catalog size (0 for all)."),
+        "flip_g2": StageParameter(bool, False, msg="Whether to flip g2 sign to match conventions."),
+        "apply_mag_cut": StageParameter(bool, False, msg="Apply magnitude cut for descqa comparison."),
+        "metadetect": StageParameter(bool, True, msg="Whether to make a metadetect-style catalog (True) or metacal (False)."),
+        "add_shape_noise": StageParameter(bool, False, msg="Whether to add shape noise to simulation."),
     }
 
     def data_iterator(self, cat):
@@ -1228,7 +1229,7 @@ class TXSimpleMock(PipelineStage):
     inputs = [("mock_shear_catalog", TextFile)]
     outputs = [("shear_catalog", ShearCatalog)]
     config_options = {
-        "mock_size_snr": False,
+
     }
     def run(self):
         from astropy.table import Table
@@ -1290,7 +1291,7 @@ class TXMockTruthPZ(PipelineStage):
     inputs = [("shear_catalog", ShearCatalog)]
     outputs = [("photoz_pdfs", QPPDFFile)]
     config_options = {
-        "mock_sigma_z": 0.001,
+        "mock_sigma_z": StageParameter(float, 0.001, msg="Sigma_z for mock photo-z PDF generation."),
     }
     def run(self):
         import qp

@@ -9,6 +9,7 @@ from .utils import LensNumberDensityStats, Splitter, rename_iterated
 from .binning import build_tomographic_classifier, apply_classifier
 import numpy as np
 import warnings
+from ceci.config import StageParameter
 
 
 class TXSSIMagnification(PipelineStage):
@@ -33,11 +34,11 @@ class TXSSIMagnification(PipelineStage):
     ]
 
     config_options = {
-        "chunk_rows": 10000,
-        "applied_magnification": 1.02, #magnification applied to the "magnified" SSI catalog
-        #TO DO: add a way for "applied_magnification" to be determined from the SSI inputs directly
-        "n_patches":20,
-        "bootstrap_error":True,
+        "chunk_rows": StageParameter(int, 10000, msg="Number of rows to process in each chunk."),
+        # TODO: add a way for "applied_magnification" to be determined from the SSI inputs directly
+        "applied_magnification": StageParameter(float, 1.02, msg="Magnification applied to the 'magnified' SSI catalog."),
+        "n_patches": StageParameter(int, 20, msg="Number of patches for bootstrap error estimation."),
+        "bootstrap_error": StageParameter(bool, True, msg="Whether to compute bootstrap errors."),
     }
 
     def run(self):

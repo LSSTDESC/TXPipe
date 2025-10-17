@@ -1,5 +1,6 @@
 from .data_types import MapsFile, PNGFile
 from .base_stage import PipelineStage
+from ceci.config import StageParameter
 import sys
 
 
@@ -40,10 +41,9 @@ class TXMapPlots(PipelineStage):
         ("bright_object_map", PNGFile),
     ]
     config_options = {
-        # can also set moll
-        "projection": "cart",
-        "rot180": False, 
-        "debug": False,
+        "projection": StageParameter(str, "cart", msg="Projection type for map plots (e.g., cart, moll)"),
+        "rot180": StageParameter(bool, False, msg="Whether to rotate the map by 180 degrees"),
+        "debug": StageParameter(bool, False, msg="Enable debug mode for plotting"),
     }
 
     def run(self):

@@ -1,6 +1,7 @@
 import numpy as np
 from .base_stage import PipelineStage
 from .data_types import MapsFile, PNGFile
+from ceci.config import StageParameter
 
 
 class TXConvergenceMaps(PipelineStage):
@@ -20,8 +21,8 @@ class TXConvergenceMaps(PipelineStage):
     ]
 
     config_options = {
-        "lmax": 0,
-        "smoothing_sigma": 10.0,  # smoothing scale in arcmin
+        "lmax": StageParameter(int, 0, msg="Maximum multipole for convergence map (0 means 2*nside)."),
+        "smoothing_sigma": StageParameter(float, 10.0, msg="Smoothing scale in arcmin."),
     }
 
     def run(self):
@@ -101,10 +102,7 @@ class TXConvergenceMapPlots(PipelineStage):
     ]
 
     config_options = {
-        # can also set this parameter as:
-        # "moll" for Mollweide
-        # "orth" for Orthogonal
-        "projection": "cart",
+        "projection": StageParameter(str, "cart", msg="Projection type for convergence map plots (e.g., cart, moll, orth)."),
     }
 
     def run(self):

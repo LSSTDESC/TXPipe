@@ -1,6 +1,7 @@
 from ..base_stage import PipelineStage
 from ..data_types import ShearCatalog, PhotometryCatalog, HDFFile, FileCollection
 from .lsst import process_photometry_data, process_shear_data
+from ceci.config import StageParameter
 import numpy as np
 
 
@@ -91,10 +92,10 @@ class TXIngestDataPreview1(PipelineStage):
         ("survey_property_maps", FileCollection),
     ]
     config_options = {
-        "butler_config_file": "/global/cfs/cdirs/lsst/production/gen3/rubin/DP1/repo/butler.yaml",
-        "cosmology_tracts_only": True,
-        "select_field": "",  # If set, only select objects in this field. Overrides cosmology_tracts_only.
-        "collections": "LSSTComCam/DP1",
+        "butler_config_file": StageParameter(str, "/global/cfs/cdirs/lsst/production/gen3/rubin/DP1/repo/butler.yaml", msg="Path to the LSST butler config file."),
+        "cosmology_tracts_only": StageParameter(bool, True, msg="Use only cosmology tracts."),
+        "select_field": StageParameter(str, "", msg="Field to select (overrides cosmology_tracts_only)."),
+        "collections": StageParameter(str, "LSSTComCam/DP1", msg="Butler collections to use."),
     }
 
     def run(self):

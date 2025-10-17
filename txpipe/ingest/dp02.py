@@ -4,6 +4,7 @@ from .lsst import process_photometry_data, process_shear_data
 import numpy as np
 import glob
 import math
+from ceci.config import StageParameter
 
 
 class TXIngestDataPreview02(PipelineStage):
@@ -22,8 +23,8 @@ class TXIngestDataPreview02(PipelineStage):
         ("shear_catalog", ShearCatalog),
     ]
     config_options = {
-        "pq_path": "/global/cfs/cdirs/lsst/shared/rubin/DP0.2/objectTable/",
-        "tracts": "",
+        "pq_path": StageParameter(str, "/global/cfs/cdirs/lsst/shared/rubin/DP0.2/objectTable/", msg="Path to Parquet objectTable files."),
+        "tracts": StageParameter(str, "", msg="Comma-separated list of tracts to use (empty for all)."),
     }
 
     def run(self):

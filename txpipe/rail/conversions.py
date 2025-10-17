@@ -1,5 +1,6 @@
 from ..base_stage import PipelineStage
 from ..data_types import ParquetFile, HDFFile, FitsFile
+from ceci.config import StageParameter
 
 class TXParqetToHDF(PipelineStage):
     """Generic stage to convert a Parquet File to HDF
@@ -15,7 +16,7 @@ class TXParqetToHDF(PipelineStage):
         ("output", HDFFile),
     ]
     config_options = {
-        "hdf_group": "/"
+        "hdf_group": StageParameter(str, "/", msg="HDF group path to write data to."),
     }
 
     def run(self):

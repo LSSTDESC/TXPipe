@@ -5,6 +5,7 @@ from .mapping import make_dask_shear_maps, make_dask_flag_maps, make_dask_bright
 from .data_types import MapsFile, HDFFile, ShearCatalog
 from .utils import choose_pixelization, import_dask
 from .maps import map_config_options
+from ceci.config import StageParameter
 
 
 
@@ -23,9 +24,9 @@ class TXAuxiliarySourceMaps(PipelineStage):
         ("aux_source_maps", MapsFile),
     ]
     config_options = {
-        "block_size": 0,
-        "flag_exponent_max": 8,  # flag bits go up to 2**8 by default
-        "psf_prefix": "psf_",  # prefix name for columns
+        "block_size": StageParameter(int, 0, msg="Block size for dask processing (0 means auto)."),
+        "flag_exponent_max": StageParameter(int, 8, msg="Maximum exponent for flag bits (default 8)."),
+        "psf_prefix": StageParameter(str, "psf_", msg="Prefix for PSF column names."),
         **map_config_options
     }
 
@@ -145,11 +146,11 @@ class TXAuxiliaryLensMaps(TXBaseMaps):
     ]
 
     config_options = {
-        "block_size": 0,
-        "bright_obj_threshold": 22.0,  # The magnitude threshold for a object to be counted as bright
-        "depth_band": "i",  # Make depth maps for this band
-        "snr_threshold": 10.0,  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)
-        "snr_delta": 1.0,  # The range threshold +/- delta is used for finding objects at the boundary
+        "block_size": StageParameter(int, 0, msg="Block size for dask processing (0 means auto)."),
+        "bright_obj_threshold": StageParameter(float, 22.0, msg="Magnitude threshold for bright objects."),
+        "depth_band": StageParameter(str, "i", msg="Band for depth maps."),
+        "snr_threshold": StageParameter(float, 10.0, msg="S/N value for depth maps."),
+        "snr_delta": StageParameter(float, 1.0, msg="Delta for S/N thresholding."),
     }
 
     def run(self):
@@ -235,7 +236,7 @@ class TXUniformDepthMap(PipelineStage):
     inputs = [("mask", MapsFile)]
     outputs = [("aux_lens_maps", MapsFile)]
     config_options = {
-        "depth": 25.0,
+        "depth": StageParameter(float, 25.0, msg="Uniform depth value to assign everywhere."),
     }
 
     def run(self):
@@ -279,16 +280,16 @@ class TXAuxiliarySSIMaps(TXBaseMaps):
         ##################
 
     config_options = {
-        "block_size": 0,
-        "depth_band": "i",  # Make depth maps for this band
-        "snr_threshold": 10.0,  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)
-        "snr_delta": 1.0,  # The range threshold +/- delta is used for finding objects at the boundary
-        "det_prob_threshold": 0.8, #detection probability threshold for SSI depth (i.e. 0.9 for magnitude at which 90% of brighter objects are detected)
-        "mag_delta": 0.01,  # Size of the magnitude bins used to determine detection probability depth
-        "min_depth": 18, # Min magnitude used in detection probability depth
-        "max_depth": 26, # Max magnitude used in detection probability depth
-        "smooth_det_frac": True, # Apply savgol filtering to frac det vs magnitude for each pixel
-        "smooth_window":0.5 # Size of smoothing window in magnitudes
+        "block_size": StageParameter(int, 0, msg="Block size for dask processing (0 means auto)."),
+        "depth_band": StageParameter(str, "i", msg="Band for depth maps."),
+        "snr_threshold": StageParameter(float, 10.0, msg="S/N value for depth maps."),
+        "snr_delta": StageParameter(float, 1.0, msg="Delta for S/N thresholding."),
+        "det_prob_threshold": StageParameter(float, 0.8, msg="Detection probability threshold for SSI depth."),
+        "mag_delta": StageParameter(float, 0.01, msg="Magnitude bin size for detection probability depth."),
+        "min_depth": StageParameter(float, 18, msg="Minimum magnitude for detection probability depth."),
+        "max_depth": StageParameter(float, 26, msg="Maximum magnitude for detection probability depth."),
+        "smooth_det_frac": StageParameter(bool, True, msg="Apply smoothing to detection fraction vs magnitude."),
+        "smooth_window": StageParameter(float, 0.5, msg="Smoothing window size in magnitudes."),
     }
 
     def run(self):

@@ -2,6 +2,7 @@ from ..base_stage import PipelineStage
 from ..data_types import HDFFile, PickleFile, PNGFile, QPMultiFile, QPNOfZFile, BinnedCatalog, TomographyCatalog
 import numpy as np
 import os
+from ceci.config import StageParameter
 
 class PZRailSummarizeBase(PipelineStage):
     """
@@ -140,12 +141,12 @@ class PZRailSummarize(PZRailSummarizeBase):
 
     # pull these out automatically
     config_options = {
-        "catalog_group": str,
-        "mag_prefix": "photometry/mag_",
-        "tomography_name": str,
-        "bands": "ugrizy",
-        "summarizer": "NZDirSummarizer",
-        "module": "rail.estimation.algos.nz_dir",
+        "catalog_group": StageParameter(str, '', msg="Group name in the catalog file for tomographic bins."),
+        "mag_prefix": StageParameter(str, "photometry/mag_", msg="Prefix for magnitude columns in the catalog."),
+        "tomography_name": StageParameter(str, '', msg="Name of the tomography scheme."),
+        "bands": StageParameter(str, "ugrizy", msg="Bands to use for summarization."),
+        "summarizer": StageParameter(str, "NZDirSummarizer", msg="Name of the RAIL summarizer class to use."),
+        "module": StageParameter(str, "rail.estimation.algos.nz_dir", msg="Python module path for the summarizer class."),
     }
 
     def get_bin_list(self):
@@ -180,12 +181,12 @@ class PZRailPZSummarize(PZRailSummarizeBase):
 
     # pull these out automatically
     config_options = {
-        "catalog_group": str,
-        "mag_prefix": "photometry/mag_",
-        "tomography_name": str,
-        "bands": "ugrizy",
-        "summarizer": "PointEstHistMaskedSummarizer",
-        "module": "rail.estimation.algos.point_est_hist",
+        "catalog_group": StageParameter(str, '', msg="Group name in the catalog file for tomographic bins."),
+        "mag_prefix": StageParameter(str, "photometry/mag_", msg="Prefix for magnitude columns in the catalog."),
+        "tomography_name": StageParameter(str, '', msg="Name of the tomography scheme."),
+        "bands": StageParameter(str, "ugrizy", msg="Bands to use for summarization."),
+        "summarizer": StageParameter(str, "PointEstHistMaskedSummarizer", msg="Name of the RAIL summarizer class to use."),
+        "module": StageParameter(str, "rail.estimation.algos.point_est_hist", msg="Python module path for the summarizer class."),
     }
 
     def get_bin_list(self):
@@ -229,8 +230,8 @@ class PZRealizationsPlot(PipelineStage):
     ]
 
     config_options = {
-        "zmax": 3.0,
-        "nz": 301,
+        "zmax": StageParameter(float, 3.0, msg="Maximum redshift for plotting."),
+        "nz": StageParameter(int, 301, msg="Number of redshift bins for plotting."),
     }
 
     def run(self):

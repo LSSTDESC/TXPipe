@@ -1,5 +1,6 @@
 from ..base_stage import PipelineStage
 import numpy as np
+from ceci.config import StageParameter
 
 class TXIngestCatalogBase(PipelineStage):
     """
@@ -217,8 +218,8 @@ class TXIngestMapsBase(PipelineStage):
     name = "TXIngestMapsBase"
 
     config_options = {
-        "input_nside": int,
-        "input_nest": True,
+        "input_nside": StageParameter(int, 0, msg="Input HEALPix nside value."),
+        "input_nest": StageParameter(bool, True, msg="Whether input maps use NESTED ordering."),
     }
 
     def setup_output(self, output_name, groups):

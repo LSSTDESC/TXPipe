@@ -1,3 +1,4 @@
+from ceci.config import StageParameter
 from .base_stage import PipelineStage
 from .data_types import (
     Directory,
@@ -189,12 +190,12 @@ class TXPSFMomentCorr(PipelineStage):
                ]
 
     config_options = {
-                      "min_sep"  : 0.5,
-                      "max_sep"  : 250.0,
-                      "nbins"    : 20,
-                      "bin_slop" : 0.01,
-                      "sep_units": "arcmin",
-                      "subtract_mean" : False
+                      "min_sep"  : StageParameter(float, default=0.5, msg="Minimum separation in arcmin."),
+                      "max_sep"  : StageParameter(float, default=250.0, msg="Maximum separation in arcmin."),
+                      "nbins"    : StageParameter(int, default=20, msg="Number of bins."),
+                      "bin_slop" : StageParameter(float, default=0.01, msg="Bin slop for treecorr."),
+                      "sep_units": StageParameter(str, default="arcmin", msg="Separation units."),
+                      "subtract_mean" : StageParameter(bool, default=False, msg="Subtract mean from data."),
                      }
 
     def run(self):
@@ -351,19 +352,19 @@ class TXTauStatistics(PipelineStage):
 
 
     config_options = {
-                       "min_sep"       : 0.5,
-                       "max_sep"       : 250.0,
-                       "nbins"         : 20,
-                       "bin_slop"      : 0.01,
-                       "sep_units"     : "arcmin",
-                       "npatch"        : 150,
-                       "psf_size_units": "sigma",
-                       "subtract_mean" : False,
-                       "dec_cut"       : True,           # affects KiDS-1000 only
-                       "star_type"     : 'PSF-reserved',
-                       "cov_method"    : 'bootstrap',
-                       "flip_g2"       : False,
-                       "tomographic"   : True,
+                       "min_sep"       : StageParameter(float, default=0.5, msg="Minimum separation in arcmin."),
+                       "max_sep"       : StageParameter(float, default=250.0, msg="Maximum separation in arcmin."),
+                       "nbins"         : StageParameter(int, default=20, msg="Number of bins."),
+                       "bin_slop"      : StageParameter(float, default=0.01, msg="Bin slop for treecorr."),
+                       "sep_units"     : StageParameter(str, default="arcmin", msg="Separation units."),
+                       "npatch"        : StageParameter(int, default=150, msg="Number of patches for variance calculation and processing."),
+                       "psf_size_units": StageParameter(str, default="sigma", msg="Units for PSF size."),
+                       "subtract_mean" : StageParameter(bool, default=False, msg="Subtract mean from data."),
+                       "dec_cut"       : StageParameter(bool, default=True, msg="Affects KiDS-1000 only."),
+                       "star_type"     : StageParameter(str, default='PSF-reserved', msg="Star type to use."),
+                       "cov_method"    : StageParameter(str, default='bootstrap', msg="Covariance method."),
+                       "flip_g2"       : StageParameter(bool, default=False, msg="Flip g2 sign."),
+                       "tomographic"   : StageParameter(bool, default=True, msg="Use tomographic bins."),
                      }
 
     def run(self):
@@ -391,8 +392,8 @@ class TXTauStatistics(PipelineStage):
             # set ranges for mcmc 
             ranges = {}
             ranges['alpha'] = [-1000.00, 1000.00]
-            ranges['beta']  = [-1000.00, 1000.00]
-            ranges['eta']   = [-1000.00, 1000.00]
+            ranges['beta'] = [-1000.00, 1000.00]
+            ranges['eta'] = [-1000.00, 1000.00]
             
             tau_stats[s]  = {}
             p_bestfits[s] = {}
@@ -770,17 +771,17 @@ class TXRoweStatistics(PipelineStage):
     ]
 
     config_options = {
-        "min_sep": 0.5,
-        "max_sep": 250.0,
-        "nbins": 20,
-        "bin_slop": 0.01,
-        "sep_units": "arcmin",
-        "psf_size_units": "sigma",
-        "definition"    : 'des-y1',
-        "subtract_mean" : False,
-        "star_type": 'PSF-reserved',
-        "var_method": 'bootstrap',
-        "flip_g2"   : False
+        "min_sep": StageParameter(float, default=0.5, msg="Minimum separation in arcmin."),
+        "max_sep": StageParameter(float, default=250.0, msg="Maximum separation in arcmin."),
+        "nbins": StageParameter(int, default=20, msg="Number of bins."),
+        "bin_slop": StageParameter(float, default=0.01, msg="Bin slop for treecorr."),
+        "sep_units": StageParameter(str, default="arcmin", msg="Separation units."),
+        "psf_size_units": StageParameter(str, default="sigma", msg="Units for PSF size."),
+        "definition"    : StageParameter(str, default='des-y1', msg="Definition for Rowe statistics."),
+        "subtract_mean" : StageParameter(bool, default=False, msg="Subtract mean from data."),
+        "star_type": StageParameter(str, default='PSF-reserved', msg="Star type to use."),
+        "var_method": StageParameter(str, default='bootstrap', msg="Variance method."),
+        "flip_g2": StageParameter(bool, default=False, msg="Flip g2 sign."),
     }
 
     def run(self):
@@ -1044,15 +1045,15 @@ class TXGalaxyStarShear(PipelineStage):
     ]
 
     config_options = {
-        "min_sep": 0.5,
-        "max_sep": 250.0,
-        "nbins": 20,
-        "bin_slop": 0.1,
-        "sep_units": "arcmin",
-        "psf_size_units": "sigma",
-        "shear_catalog_type": "metacal",
-        "star_type": 'PSF-reserved',
-        "flip_g2": False,
+        "min_sep": StageParameter(float, default=0.5, msg="Minimum separation in arcmin."),
+        "max_sep": StageParameter(float, default=250.0, msg="Maximum separation in arcmin."),
+        "nbins": StageParameter(int, default=20, msg="Number of bins."),
+        "bin_slop": StageParameter(float, default=0.1, msg="Bin slop for treecorr."),
+        "sep_units": StageParameter(str, default="arcmin", msg="Separation units."),
+        "psf_size_units": StageParameter(str, default="sigma", msg="Units for PSF size."),
+        "shear_catalog_type": StageParameter(str, default="metacal", msg="Shear catalog type."),
+        "star_type": StageParameter(str, default='PSF-reserved', msg="Star type to use."),
+        "flip_g2": StageParameter(bool, default=False, msg="Flip g2 sign."),
     }
 
     def run(self):
@@ -1325,14 +1326,14 @@ class TXGalaxyStarDensity(PipelineStage):
     ]
 
     config_options = {
-        "min_sep": 0.5,
-        "max_sep": 250.0,
-        "nbins": 20,
-        "bin_slop": 0.1,
-        "sep_units": "arcmin",
-        "psf_size_units": "sigma",
-        "star_type": 'PSF-reserved',
-        "flip_g2": False,
+        "min_sep": StageParameter(float, default=0.5, msg="Minimum separation in arcmin."),
+        "max_sep": StageParameter(float, default=250.0, msg="Maximum separation in arcmin."),
+        "nbins": StageParameter(int, default=20, msg="Number of bins."),
+        "bin_slop": StageParameter(float, default=0.1, msg="Bin slop for treecorr."),
+        "sep_units": StageParameter(str, default="arcmin", msg="Separation units."),
+        "psf_size_units": StageParameter(str, default="sigma", msg="Units for PSF size."),
+        "star_type": StageParameter(str, default='PSF-reserved', msg="Star type to use."),
+        "flip_g2": StageParameter(bool, default=False, msg="Flip g2 sign."),
     }
 
     def run(self):
@@ -1529,10 +1530,10 @@ class TXBrighterFatterPlot(PipelineStage):
     ]
 
     config_options = {
-        "band": "r",
-        "nbin": 20,
-        "mmin": 18.5,
-        "mmax": 23.5,
+        "band": StageParameter(str, default="r", msg="Band to use for magnitude."),
+        "nbin": StageParameter(int, default=20, msg="Number of magnitude bins."),
+        "mmin": StageParameter(float, default=18.5, msg="Minimum magnitude."),
+        "mmax": StageParameter(float, default=23.5, msg="Maximum magnitude."),
     }
 
     def run(self):
