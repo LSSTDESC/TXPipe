@@ -93,7 +93,38 @@ class TXBaseMask(PipelineStage):
 
         #load healsparse map
         supreme_map_file = self.config["supreme_map_file"]
+        print(f'Generating fracdet map from {supreme_map_file}')
         spmap = healsparse.HealSparseMap.read(supreme_map_file)
+
+        #fracdet it
+        nside = metadata["nside"]
+        fracdet = spmap.fracdet_map(nside)
+
+        return fracdet
+    
+    def compute_fracdet_from_hsp_list(self, metadata):
+        """
+        Computes detection fraction from a list of input healsparse map (higher resolution, binary)
+
+        Returns a map of the fractional of valid pixels that are present in *all* the input maps
+        
+        Parameters
+        ----------
+        metadata : dict
+            Metadata with target resolution (e.g. 'nside').
+
+        Returns
+        -------
+        fracdet : np.ndarray
+            Fractional detection array at the config nside.
+        """
+        import healsparse 
+
+        #load healsparse map
+        supreme_map_file_list = self.config["supreme_map_files"]
+        print(f'Generating fracdet map from {supreme_map_file_list}')
+        spmap_list = [healsparse.HealSparseMap.read(supreme_map_file) for supreme_map_file in supreme_map_file_list ]
+        spmap = healsparse.operations.max_intersection(spmap_list)
 
         #fracdet it
         nside = metadata["nside"]
@@ -201,7 +232,9 @@ class TXSimpleMaskFrac(TXSimpleMask):
     config_options = {
         "depth_cut": StageParameter(float, 23.5, msg="Depth cut for mask creation."),
         "bright_object_max": StageParameter(float, 10.0, msg="Maximum allowed bright object count."),
-        "supreme_map_file": StageParameter(str, '', msg="Path to supreme map file for fracdet computation."),
+        "supreme_map_file": StageParameter(str, 'none', msg="Path to supreme map file for fracdet computation."),
+        "supreme_map_files": StageParameter(list, [], msg="List of supreme map files for fracdet computation."),
+        "frac_cut": StageParameter(float, 0.0, msg="Minimum fractional coverage to keep pixel in mask."),
     }
 
     def run(self):
@@ -212,7 +245,12 @@ class TXSimpleMaskFrac(TXSimpleMask):
         mask, pixel_scheme, metadata = self.make_binary_mask()
         pix, mask, metadata = self.finalize_mask(mask, pixel_scheme, metadata)
 
-        fracdet = self.compute_fracdet_from_hsp(metadata)
+        assert self.config["supreme_map_file"] == "none" or self.config["supreme_map_files"] == [], "You have specified both map_file and map_files, pick one"
+
+        if self.config["supreme_map_file"] is not "none":
+            fracdet = self.compute_fracdet_from_hsp(metadata)
+        else:
+            fracdet = self.compute_fracdet_from_hsp_list(metadata)
 
         #assign fracdec for all selected pixels
         assert (mask==1.).all()
@@ -221,6 +259,11 @@ class TXSimpleMaskFrac(TXSimpleMask):
         else:
             import healpy as hp 
             mask = fracdet[hp.ring2nest(metadata['nside'], pix)]
+
+        #cut pixels with low fracdet
+        select_frac_cut = mask>self.config["frac_cut"]
+        pix  = pix[select_frac_cut]
+        mask = mask[select_frac_cut]
 
         with self.open_output("mask", wrapper=True) as f:
             f.file.create_group("maps")
