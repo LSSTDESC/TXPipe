@@ -1,0 +1,52 @@
+# The data to run this pipeline can be downloaded from
+# https://portal.nersc.gov/cfs/lsst/txpipe/data/example-cmb-lensing.tar.gz
+# and extracted into the txpipe/examples/cmb directory with
+# tar -zxvf example-cmb-lensing.tar.gz
+
+stages:
+  - name: TXIngestQuaia
+  - name: TXIngestPlanckLensingMaps
+    threads_per_process: 4
+  - name: TXTwoPointFourierCMBLensingCrossDensity
+    threads_per_process: 4
+
+
+# modules and packages to import that have pipeline
+# stages defined in them
+modules: >
+    txpipe
+    txpipe.extensions
+
+# where to find any modules that are not in this repo,
+# and any other code we need.
+python_paths: []
+
+# Where to put outputs
+output_dir: data/cmb/outputs_quaia
+
+# How to run the pipeline: mini, parsl, or cwl
+launcher:
+    name: mini
+    interval: 1.0
+
+# Where to run the pipeline: cori-interactive, cori-batch, or local
+site:
+    name: local
+    max_threads: 4
+
+# configuration settings
+config: examples/cmb/quaia-config.yml
+
+
+inputs:
+    # dummy beam and transfer function for testing
+    cmb_cross_montecarlo_correction: data/cmb/unit_transfer_function.txt
+    cmb_lensing_beam: data/cmb/unit_transfer_function.txt 
+
+# if supported by the launcher, restart the pipeline where it left off
+# if interrupted
+resume: true
+# where to put output logs for individual stages
+log_dir: data/cmb/logs_quaia
+# where to put an overall parsl pipeline log
+pipeline_log: data/cmb/log_quaia.txt

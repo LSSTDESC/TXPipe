@@ -26,7 +26,7 @@ from .utils.calibrators import (
     HSCCalibrator,
     NullCalibrator,
 )
-from .binning import build_tomographic_classifier, apply_classifier
+from .binning import build_tomographic_classifier, apply_classifier, read_training_data
 import numpy as np
 import warnings
 
@@ -68,7 +68,7 @@ class BinStats:
         i: int or str
             The index for this tomographic bin, or "2d"
         """
-        group = outfile["tomography"]
+        group = outfile["counts"]
         if i == "2d":
             group["counts_2d"][:] = self.source_count
             group["N_eff_2d"][:] = self.N_eff
@@ -105,7 +105,7 @@ class TXSourceSelectorBase(PipelineStage):
 
     It also splits those objects into tomographic
     bins using either a random forest algorithm, with
-    the training data in calibration_table, or according to
+    the training data in a spectroscopic_catalog, or according to
     the true shear (if present), according to the choice the
     user makes in the configuration.
 
@@ -118,7 +118,7 @@ class TXSourceSelectorBase(PipelineStage):
 
     inputs = [
         ("shear_catalog", ShearCatalog),
-        ("calibration_table", TextFile),
+        ("spectroscopic_catalog", HDFFile),
     ]
 
     outputs = [("shear_tomography_catalog", TomographyCatalog)]
@@ -132,7 +132,9 @@ class TXSourceSelectorBase(PipelineStage):
         "s2n_cut": float,
         "chunk_rows": 10000,
         "source_zbin_edges": [float],
-        "random_seed": 42
+        "random_seed": 42,
+        "spec_mag_column_format": "photometry/{band}",
+        "spec_redshift_column": "photometry/redshift",
     }
 
     def run(self):
@@ -166,9 +168,19 @@ class TXSourceSelectorBase(PipelineStage):
 
         # Build a classifier used to put objects into tomographic bins
         if not (self.config["input_pz"] or self.config["true_z"]):
+
+            with self.open_input("spectroscopic_catalog") as spec_file:
+                training_data = read_training_data(
+                    spec_file,
+                    bands,
+                    self.config["spec_mag_column_format"],
+                    self.config["spec_redshift_column"],
+                )
+
+
             classifier, features = build_tomographic_classifier(
                 bands,
-                self.get_input("calibration_table"),
+                training_data,
                 self.config["source_zbin_edges"],
                 self.config["random_seed"],
                 self.comm,
@@ -309,16 +321,18 @@ class TXSourceSelectorBase(PipelineStage):
         group.attrs['catalog_type'] = cat_type
         output.write_zbins(zbins)
         group.create_dataset("bin", (n,), dtype="i")
-        group.create_dataset("counts", (nbin_source,), dtype="i")
-        group.create_dataset("counts_2d", (1,), dtype="i")
-        group.create_dataset("sigma_e", (nbin_source,), dtype="f")
-        group.create_dataset("sigma_e_2d", (1,), dtype="f")
-        group.create_dataset("mean_e1", (nbin_source,), dtype="f")
-        group.create_dataset("mean_e2", (nbin_source,), dtype="f")
-        group.create_dataset("mean_e1_2d", (1,), dtype="f")
-        group.create_dataset("mean_e2_2d", (1,), dtype="f")
-        group.create_dataset("N_eff", (nbin_source,), dtype="f")
-        group.create_dataset("N_eff_2d", (1,), dtype="f")
+
+        group_count = outfile.create_group("counts")
+        group_count.create_dataset("counts", (nbin_source,), dtype="i")
+        group_count.create_dataset("counts_2d", (1,), dtype="i")
+        group_count.create_dataset("sigma_e", (nbin_source,), dtype="f")
+        group_count.create_dataset("sigma_e_2d", (1,), dtype="f")
+        group_count.create_dataset("mean_e1", (nbin_source,), dtype="f")
+        group_count.create_dataset("mean_e2", (nbin_source,), dtype="f")
+        group_count.create_dataset("mean_e1_2d", (1,), dtype="f")
+        group_count.create_dataset("mean_e2_2d", (1,), dtype="f")
+        group_count.create_dataset("N_eff", (nbin_source,), dtype="f")
+        group_count.create_dataset("N_eff_2d", (1,), dtype="f")
 
         group.attrs["nbin"] = nbin_source
 
@@ -513,7 +527,7 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
         # calibration scheme
         outfile = super().setup_output()
         n = outfile["tomography/bin"].size
-        nbin_source = outfile["tomography/counts"].size
+        nbin_source = outfile["counts/counts"].size
         group = outfile.create_group("response")
         group.create_dataset("R_gamma", (n, 2, 2), dtype="f")
         group.create_dataset("R_S", (nbin_source, 2, 2), dtype="f")
@@ -694,7 +708,7 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         # calibration scheme
         outfile = super().setup_output()
         n = outfile["tomography/bin"].size
-        nbin_source = outfile["tomography/counts"].size
+        nbin_source = outfile["counts/counts"].size
         group = outfile.create_group("response")
 
         # Per-bin 2x2 calibration matrix
@@ -776,7 +790,7 @@ class TXSourceSelectorLensfit(TXSourceSelectorBase):
         # calibration scheme
         outfile = super().setup_output()
         n = outfile["tomography/bin"].size
-        nbin_source = outfile["tomography/counts"].size
+        nbin_source = outfile["counts/counts"].size
         group = outfile.create_group("response")
         group.create_dataset("K", (nbin_source,), dtype="f")
         group.create_dataset("C_N", (nbin_source, 2), dtype="f")
@@ -894,7 +908,7 @@ class TXSourceSelectorHSC(TXSourceSelectorBase):
         # calibration scheme
         outfile = super().setup_output()
         n = outfile["tomography/bin"].size
-        nbin_source = outfile["tomography/counts"].size
+        nbin_source = outfile["counts/counts"].size
         group = outfile.create_group("response")
 
         # There is a single scalar per-object value for this scheme

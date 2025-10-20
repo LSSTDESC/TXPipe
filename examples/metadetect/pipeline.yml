@@ -117,6 +117,7 @@ stages:
   - name: TXApertureMass          # Compute aperture-mass statistics
     threads_per_process: 2
   - name: TXTwoPointFourier      # Compute power spectra C_ell
+  - name: HOSFSB
     # Disabled since not yet synchronised with new Treecorr MPI
     # - name: TXSelfCalibrationIA   # Self-calibration intrinsic alignments of galaxies
 
@@ -132,6 +133,8 @@ stages:
 # stages defined in them
 modules: >
     txpipe
+    txpipe.extensions
+    txpipe.extensions.hos.fsb
     rail.creation.degraders.grid_selection
     rail.creation.engines.flowEngine
     rail.estimation.algos.nz_dir
@@ -141,6 +144,7 @@ modules: >
 # and any other code we need.
 python_paths:
   - submodules/WLMassMap/python/desc/
+  - submodules/pyfsb
 
 # Where to put outputs
 output_dir: data/example/outputs_metadetect
@@ -165,7 +169,6 @@ inputs:
     # See README for paths to download these files
     shear_catalog: data/example/inputs/metadetect_shear_catalog.hdf5
     photometry_catalog: data/example/inputs/photometry_catalog.hdf5
-    calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
     exposures: data/example/inputs/exposures.hdf5
     star_catalog: data/example/inputs/star_catalog.hdf5
     # This file comes with the code

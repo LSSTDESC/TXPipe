@@ -7,9 +7,10 @@ from .data_types import (
     FiducialCosmology,
     PhotometryCatalog,
     FitsFile,
+    MapsFile,
 )
 from .utils import LensNumberDensityStats, Splitter, rename_iterated
-from .binning import build_tomographic_classifier, apply_classifier
+from .binning import build_tomographic_classifier, apply_classifier, read_training_data
 import numpy as np
 import warnings
 
@@ -50,7 +51,7 @@ class TXBaseLensSelector(PipelineStage):
         "maglim_band": "i",
         "maglim_limit": 24.1,
         "extra_cols": [""],
-
+        "apply_mask":False,
     }
 
     def run(self):
@@ -82,6 +83,11 @@ class TXBaseLensSelector(PipelineStage):
         iterator = self.data_iterator()
 
         selector = self.prepare_selector()
+
+        # If we are going to remove lens galaxies that sit outside the mask, load the mask
+        if self.config["apply_mask"]:
+            with self.open_input('mask', wrapper=True) as f:
+                    self.mask, self.mask_nside= f.read_healsparse('mask', return_all=True)
 
         # We will collect the selection biases for each bin
         # as a matrix.  We will collect together the different
@@ -162,8 +168,11 @@ class TXBaseLensSelector(PipelineStage):
         output.write_zbins(self.config["lens_zbin_edges"])
         group.create_dataset("bin", (n,), dtype="i")
         group.create_dataset("lens_weight", (n,), dtype="f")
-        group.create_dataset("counts", (nbin_lens,), dtype="i")
-        group.create_dataset("counts_2d", (1,), dtype="i")
+        group["class_id"] = group["bin"] #hard link to bin column. needed for RAIL masked summarizer stages
+        
+        group_counts = outfile.create_group("counts")
+        group_counts.create_dataset("counts", (nbin_lens,), dtype="i")
+        group_counts.create_dataset("counts_2d", (1,), dtype="i")
 
         group.attrs["nbin"] = nbin_lens
         group.attrs[f"zbin_edges"] = self.config["lens_zbin_edges"]
@@ -206,7 +215,7 @@ class TXBaseLensSelector(PipelineStage):
         lens_counts, lens_counts_2d = number_density_stats.collect()
 
         if self.rank == 0:
-            group = outfile["tomography"]
+            group = outfile["counts"]
             group["counts"][:] = lens_counts
             group["counts_2d"][:] = lens_counts_2d
             print("Final bin counts:")
@@ -224,6 +233,10 @@ class TXBaseLensSelector(PipelineStage):
             s= self.select_lens_DESmaglim(phot_data)
         else:
             raise ValueError(f"Unknown lens selection type {t} - expected boss or maglim")
+        
+        #select only galaxies that are in the footprint
+        s *= self.select_in_footprint(phot_data)
+
         ntot = s.size
         nsel = s.sum()
         print(f"Rank {self.rank} selected {nsel} objects out of {ntot} as potential lenses with method {t}")
@@ -307,6 +320,24 @@ class TXBaseLensSelector(PipelineStage):
 
         s = (cut1 & cut2 & cut3 & cut4).astype(np.int8)
         return s
+
+    def select_in_footprint(self, phot_data):
+        """
+        Remove objects that fall outside of the mask
+        """
+        import healpy as hp
+        if self.config['apply_mask']:
+            assert ('mask' in self.input_tags()), "If apply_mask if True you must use a sub-class that uses 'mask' as an input"
+            
+            #with self.open_input('mask', wrapper=True) as f:
+                #mask, nside= f.read_healsparse('mask', return_all=True)
+
+            pix = hp.ang2pix(self.mask_nside, phot_data['ra'], phot_data['dec'], lonlat=True)
+            s = np.where( self.mask[pix]==hp.UNSEEN,0,1 )
+            print(f'{len(s)-np.sum(s)}/{len(s)} objects removed because they are outside the mask')
+            return s
+        else:
+            return 1
 
     def calculate_tomography(self, pz_data, phot_data, lens_gals):
 
@@ -424,12 +455,45 @@ class TXModeLensSelector(TXBaseLensSelector):
 
         return rename_iterated(it, rename)
 
+class TXCustomLensSelector(TXBaseLensSelector):
+    """
+    Select lens objects based on best-fit redshifts and BOSS criteria
+
+    This requires PDFs to have been estimated earlier.
+    """
+
+    name = "TXCustomLensSelector"
+    inputs = [
+        ("photometry_catalog", PhotometryCatalog),
+        ("lens_photoz_pdfs", HDFFile),
+        ("mask", MapsFile),
+    ]
+
+    def data_iterator(self):
+        chunk_rows = self.config["chunk_rows"]
+        phot_cols = ["mag_i", "mag_r", "mag_g", "ra", "dec"]
+        z_cols = [self.config['zcol']]
+        rename = {self.config['zcol']: "z"}
+        extra_cols = [c for c in self.config["extra_cols"] if c]
+        phot_cols += extra_cols
+
+        it = self.combined_iterators(
+            chunk_rows,
+            "photometry_catalog",
+            "photometry",
+            phot_cols,
+            "lens_photoz_pdfs",
+            "ancil",
+            z_cols,
+        )
+
+        return rename_iterated(it, rename)
 
 class TXRandomForestLensSelector(TXBaseLensSelector):
     name = "TXRandomForestLensSelector"
     inputs = [
         ("photometry_catalog", PhotometryCatalog),
-        ("calibration_table", TextFile),
+        ("spectroscopic_catalog", HDFFile),
     ]
     config_options = TXBaseLensSelector.config_options.copy()
     config_options.update({
@@ -438,6 +502,8 @@ class TXRandomForestLensSelector(TXBaseLensSelector):
         "chunk_rows": 10000,
         "lens_zbin_edges": [float],
         "random_seed": 42,
+        "spec_mag_column_format": "photometry/{band}",
+        "spec_redshift_column": "photometry/redshift",
     })
 
     def data_iterator(self):
@@ -452,9 +518,18 @@ class TXRandomForestLensSelector(TXBaseLensSelector):
             yield s, e, data
 
     def prepare_selector(self):
+        with self.open_input("spectroscopic_catalog") as spec_file:
+            training_data = read_training_data(
+                spec_file,
+                self.config["bands"],
+                self.config["spec_mag_column_format"],
+                self.config["spec_redshift_column"],
+            )
+
+
         return build_tomographic_classifier(
             self.config["bands"],
-            self.get_input("calibration_table"),
+            training_data,
             self.config["lens_zbin_edges"],
             self.config["random_seed"],
             self.comm,
@@ -512,8 +587,8 @@ class TXLensCatalogSplitter(PipelineStage):
 
         with self.open_input(self.get_lens_tomo_name()) as f:
             nbin = f["tomography"].attrs["nbin"]
-            counts = f["tomography/counts"][:]
-            count2d = f["tomography/counts_2d"][:]
+            counts = f["counts/counts"][:]
+            count2d = f["counts/counts_2d"][:]
 
         # We also copy over the magnitudes and their errors to tbe new
         # per-bin catalogs. This makes it easier to run photo-z with RAIL
@@ -601,7 +676,9 @@ class TXLensCatalogSplitter(PipelineStage):
         for s, e, data in iterator:
             z = data[z_col]
             a = 1.0 / (1 + z)
-            d = pyccl.comoving_radial_distance(cosmo, a)
+            #if redshift estimate is negative set radial distance to 0
+            d = np.zeros(len(a))
+            d[z>0] = pyccl.comoving_radial_distance(cosmo, a[z>0]) 
             data["comoving_distance"] = d
             yield s, e, data
 

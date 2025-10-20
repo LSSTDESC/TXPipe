@@ -25,8 +25,6 @@ stages:
   - name: TXJackknifeCenters
   - name: TXTwoPoint
     threads_per_process: 2
-  - name: TXTwoPointRLens
-    threads_per_process: 2
   - name: TXBlinding             # Blind the data following Muir et al
     threads_per_process: 2
   - name: TXTwoPointTheoryReal   # compute theory using CCL to save in sacc file and plot later
@@ -94,12 +92,12 @@ inputs:
     shear_catalog: data/example/inputs/shear_catalog.hdf5
     photometry_catalog: data/example/inputs/photometry_catalog.hdf5
     photoz_trained_model: data/example/inputs/cosmoDC2_trees_i25.3.npy
-    calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
     exposures: data/example/inputs/exposures.hdf5
     star_catalog: data/example/inputs/star_catalog.hdf5
     redmagic_catalog: data/example/inputs/cosmoDC2_v1.1.4_run_redmagic_highdens.fit
     # This file comes with the code
     fiducial_cosmology: data/fiducial_cosmology.yml
+    spectroscopic_catalog: data/example/inputs/mock_spectroscopic_catalog.hdf5
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted

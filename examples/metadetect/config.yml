@@ -358,3 +358,12 @@ TXPhotozPlotSource:
     name: TXPhotozPlotSource
 TXPhotozPlotLens:
     name: TXPhotozPlotLens
+
+TXTauStatistics:
+    npatch: 150
+    cov_method: shot
+
+HOSFSB:
+    ells_per_bin: 10
+    nfilters: 5
+    include_n32: false

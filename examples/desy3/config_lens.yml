@@ -1,0 +1,125 @@
+# Values in this section are accessible to all the different stages.
+# They can be overridden by individual stages though.
+global:
+    # This is read by many stages that read complete
+    # catalog data, and tells them how many rows to read
+    # at once
+    chunk_rows: 1_000_000 #default for TXPipe stages (can be overwritten in individual stages)
+    chunk_size: 100_000 #default for RAIL stages (can be overwritten in individual stages)
+    # These mapping options are also read by a range of stages
+    pixelization: healpix
+    nside: 4096
+    sparse: true  # Generate sparse maps - faster if using small areas
+
+
+TXIngestDESY3Gold:
+    name: TXIngestDESY3Gold
+    input_group_name: catalog/gold/
+    chunk_rows: 10_000_000
+
+TXIngestDESY3Footprint:
+    name: TXIngestDESY3Footprint
+    input_nside: 4096
+    input_filepaths: [  /global/cfs/cdirs/lsst/groups/WL/users/jelvinpo/data/desy3/footprint_maps/y3a2_footprint_griz_1exp_v2.0_healsparse.hs,
+                        /global/cfs/cdirs/lsst/groups/WL/users/jelvinpo/data/desy3/footprint_maps/y3a2_griz_o.4096_t.32768_coverfoot_EQU_healsparse.hs,
+                        /global/cfs/cdirs/lsst/groups/WL/users/jelvinpo/data/desy3/footprint_maps/y3a2_foreground_mask_v2.1_healsparse.hs,
+                        /global/cfs/cdirs/lsst/groups/WL/users/jelvinpo/data/desy3/footprint_maps/y3a2_badregions_mask_v2.1_healsparse.hs,
+                        /global/cfs/cdirs/lsst/groups/WL/users/jelvinpo/data/desy3/footprint_maps/y3_gold_2.2.1_wide_sofcol_run_redmapper_v0.5.1_redmagic_highdens_vl05_vlim_zmask_ZMAX.hs,
+                        /global/cfs/cdirs/lsst/groups/WL/users/jelvinpo/data/desy3/footprint_maps/y3_gold_2.2.1_wide_sofcol_run_redmapper_v0.5.1_redmagic_highlum_vl10_vlim_zmask_ZMAX.hs,
+                        /global/cfs/cdirs/lsst/groups/WL/users/jelvinpo/data/desy3/survey_properties/sof_depth/y3a2_gold_2_2_1_sof_nside4096_nest_i_depth.hs,
+                    ]
+    input_labels: [ footprint/footprint,
+                    footprint/fracdet_griz,
+                    foreground/foreground,
+                    foreground/badregions,
+                    zmax/highdens,
+                    zmax/highlum,
+                    depth/depth_i,
+                ]
+
+TXIngestDESY3SpeczCat:
+    name: TXIngestDESY3SpeczCat
+
+TXCustomMask: 
+    name: TXCustomMask
+    fracdet_name: footprint/fracdet_griz
+    #cuts from Rodriguez-Monroy et al https://arxiv.org/abs/2105.13540 
+    cuts: [ footprint/footprint == 1,
+            footprint/fracdet_griz > 0.8,
+            foreground/foreground == 0,
+            foreground/badregions <= 1, 
+            zmax/highdens >= 0.65,
+            zmax/highlum >= 0.95,
+            depth/depth_i > 22.2, 
+        ]
+    degrade: True
+
+PZPrepareEstimatorLens:
+    name: PZPrepareEstimatorLens
+    classname: DNFInformer 
+    hdf5_groupname: photometry
+    redshift_col: redshift
+    bands: ['mag_g', 'mag_r', 'mag_i', 'mag_z']
+    err_bands: ['mag_err_g', 'mag_err_r', 'mag_err_i', 'mag_err_z' ] 
+    mag_limits: {'mag_g': 24.3, 'mag_r': 24.0, 'mag_i': 23.3, 'mag_z': 22.6}
+
+PZEstimatorLens:
+    name: PZEstimatorLens 
+    classname: DNFEstimator
+    hdf5_groupname: photometry
+    redshift_col: redshift
+    bands: ['mag_g', 'mag_r', 'mag_i', 'mag_z']
+    err_bands: ['mag_err_g', 'mag_err_r', 'mag_err_i', 'mag_err_z' ] 
+    mag_limits: {'mag_g': 24.3, 'mag_r': 24.0, 'mag_i': 23.3, 'mag_z': 22.6}
+    selection_mode: 2    #0: ENF, 1: ANF, 2: DNF see https://github.com/LSSTDESC/rail_dnf
+
+PZRailSummarizeLens:
+    name: PZRailSummarizeLens
+    classname: PZRailPZSummarize
+    catalog_group: lens
+    tomography_name: lens
+    nsamples: 0
+    zmin: 0.0
+    zmax: 2.0
+    nzbins: 150
+    point_estimate: DNF_ZN
+    hdf5_groupname: tomography
+    summarizer: PointEstHistMaskedSummarizer
+    module: "rail.estimation.algos.point_est_hist"
+    chunk_size: 100_000
+
+TXCustomLensSelector:
+    name: TXCustomLensSelector
+    lens_zbin_edges: [0.20, 0.40, 0.55, 0.70, 0.85, 0.95, 1.05]
+    zcol: DNF_Z
+    selection_type: DESmaglim
+    maglim_band: i
+    bright_limit: 17.5
+    a: 4
+    b: 18
+    extra_cols: [EXTENDED_CLASS_SOF, FLAGS_GOLD] #extra columns that are used in the sample selection #TO DO: make this automatic
+    apply_mask: True
+
+TXLensCatalogSplitter:
+    name: TXLensCatalogSplitter
+    redshift_column: DNF_Z
+
+TXLSSWeightsLinBinned:
+    name: TXLSSWeightsLinBinned
+    supreme_path_root: /global/cfs/cdirs/lsst/groups/WL/users/jelvinpo/data/desy3/survey_properties/y3_subset/
+    nbin: 10 
+    outlier_fraction: 0.05
+    pvalue_threshold: 0.05  # max p-value for maps to be included in the corrected (a very simple form of regularization)
+    equal_area_bins: True  # if you are using binned 1d correlations, should the bins have equal area (set False for equal spacing)
+    simple_cov: True  # if True will use a diagonal shot noise only covariance for the 1d relations
+    diag_blocks_only: True  # If True, will compute only the diagonal blocks of the 1D covariance matrix (no correlation between SP maps)
+    b0: [1.5, 1.8, 1.8, 1.9, 2.3, 2.3]
+    allow_weighted_input: False
+    nside_coverage: 32
+
+TXMapPlots:
+    name: TXMapPlots
+    rot180: True
+
+TXPhotozPlotLens:
+    name: TXPhotozPlotLens
