@@ -1,0 +1,54 @@
+# Stages to run
+stages:
+  - name: TXSimpleMock             # Convert a text file mock catalog to HDF5
+  - name: TXSourceSelectorSimple   # select and split objects into source bins
+  - name: TXShearCalibration       # Calibrate and split the source sample tomographically
+  - name: TXMockTruthPZ            # Generate PDFs as narrow gaussian centered on the true redshifts
+    aliases:
+        photoz_pdfs: source_photoz_pdfs
+  - name: CLClusterShearCatalogs   # Extract and weight the shear catalog around every cluster
+
+
+
+# modules and packages to import that have pipeline
+# stages defined in them
+modules: >
+    txpipe
+    txpipe.extensions
+
+# where to find any modules that are not in this repo,
+# and any other code we need.
+python_paths:
+  - submodules/WLMassMap/python/desc/
+
+# Where to put outputs
+output_dir: data/example/outputs_mock_shear
+
+# How to run the pipeline: mini, parsl, or cwl
+launcher:
+    name: mini
+    interval: 1.0
+
+# Where to run the pipeline: cori-interactive, cori-batch, or local
+site:
+    name: local
+    max_threads: 2
+
+# configuration settings
+config: examples/mock_shear/config.yml
+
+# These are overall inputs to the whole pipeline, not generated within it
+inputs:
+    mock_shear_catalog: data/example/inputs/mock_nfw_shear_catalog.txt
+    cluster_catalog: data/example/inputs/mock_single_cluster_catalog.hdf5
+    fiducial_cosmology: data/fiducial_cosmology.yml
+    spectroscopic_catalog: data/example/inputs/mock_spectroscopic_catalog.hdf5
+
+
+# if supported by the launcher, restart the pipeline where it left off
+# if interrupted
+resume: true
+# where to put output logs for individual stages
+log_dir: data/example/logs_mock_shear
+# where to put an overall parsl pipeline log
+pipeline_log: data/example/mock_shear_log.txt

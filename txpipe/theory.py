@@ -21,6 +21,7 @@ class TXTwoPointTheoryReal(PipelineStage):
 
     config_options = {
         "galaxy_bias": [0.0],
+        "smooth": False,
         }
 
     def run(self):
@@ -51,7 +52,7 @@ class TXTwoPointTheoryReal(PipelineStage):
             bias = None
         elif len(bias) == 1 and bias[0] < 0:
             bias = -bias[0]
-        s_theory = theory_3x2pt(cosmo, s, bias=bias)
+        s_theory = theory_3x2pt(cosmo, s, bias=bias, smooth=self.config["smooth"])
 
         # Remove covariance
         s_theory.covariance = None
@@ -79,6 +80,7 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
 
     config_options = {
         "galaxy_bias": [0.0],
+        "smooth": False,
         }
     
     def run(self):
@@ -95,7 +97,7 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
         )
         print(cosmo)
 
-        s_theory = theory_3x2pt(cosmo, s)
+        s_theory = theory_3x2pt(cosmo, s, smooth=self.config["smooth"])
 
         # Remove covariance
         s_theory.covariance = None

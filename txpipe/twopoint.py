@@ -91,6 +91,7 @@ class TXTwoPoint(PipelineStage):
 
         # Binning information
         source_list, lens_list = self.read_nbin()
+        self.config["num_threads"] = int(os.environ.get("OMP_NUM_THREADS", 1))
 
         if self.rank == 0:
             # This is a workaround for the fact the the ceci config stuff doesn't
@@ -367,6 +368,10 @@ class TXTwoPoint(PipelineStage):
                 weight = d.object.weight
                 xi_x = d.object.xi_im
                 covX = d.object.estimate_cov("shot")
+                # TreeCorr v5 returns the diagonal of the covariance matrix
+                # instead of a full but diagal (so almost all zero) format.
+                if treecorr.__version_info__[0] >= 5:
+                    covX = np.diag(covX)
                 covs.append(covX)
                 err = np.sqrt(np.diag(covX))
                 n = len(xi_x)
@@ -379,7 +384,6 @@ class TXTwoPoint(PipelineStage):
                         error=err[i],
                         weight=weight[i],
                     )
-
         S.add_covariance(covs)
 
 
@@ -916,7 +920,7 @@ class TXTwoPoint(PipelineStage):
             rn.process(rancat_i, cat_j, comm=self.comm, low_mem=self.config["low_mem"])
 
         t2 = perf_counter()
-        nn.calculateXi(rr, dr=nr, rd=rn)
+        nn.calculateXi(rr=rr, dr=nr, rd=rn)
         if self.rank == 0:
             print(f"Processing took {t2 - t1:.1f} seconds")
 
@@ -979,7 +983,6 @@ class TXTwoPointPixel(TXTwoPoint):
         "sep_units": "arcmin",
         "flip_g1": False,
         "flip_g2": True,
-        "cores_per_task": 20,
         "verbose": 1,
         "source_bins": [-1],
         "lens_bins": [-1],
@@ -1142,7 +1145,6 @@ class TXTwoPointPixelExtCross(TXTwoPointPixel):
         "sep_units": "arcmin",
         "flip_g1": False,
         "flip_g2": True,
-        "cores_per_task": 20,
         "verbose": 1,
         "source_bins": [-1],
         "lens_bins": [-1],

@@ -46,7 +46,7 @@ def build_likelihood(build_parameters):
             bias_systematic = nc.LinearBiasSystematic(sacc_tracer=tracer_name)
             tr = nc.NumberCounts(sacc_tracer=tracer_name, systematics=[bias_systematic])
         else:
-            raise ValueError(f"Unknown tracer in sacc file, non-3x2pt: {tracer}")
+            raise ValueError(f"Unknown tracer in sacc file, non-3x2pt: {tracer_name}")
         sources[tracer_name] = tr
 
     # Now that we have all sources we can instantiate all the two-point

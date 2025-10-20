@@ -9,78 +9,93 @@ site:
 modules: txpipe
 
 python_paths:
-    - submodules/WLMassMap/python/desc/
-    - submodules/FlexZPipe
+  - submodules/WLMassMap/python/desc/
 
 stages:
-    - name: TXRandomCat
-    - name: TXSourceSelectorMetacal
-      nodes: 8
-      nprocess: 256
-    - name: TXTruthLensSelector
-      nodes: 8
-      nprocess: 256
-    - name: TXShearCalibration
-      nodes: 1
-      nprocess: 8
-    - name: TXTruthLensCatalogSplitter
-      nodes: 1
-      nprocess: 8
-    - name: TXSourceTrueNumberDensity
-      classname: TXTruePhotozStack
-      nodes: 8
-      nprocess: 64
-    - name: TXLensTrueNumberDensity
-      classname: TXTruePhotozStack
-      nodes: 8
-      nprocess: 64
-    - name: TXPhotozPlotSource
-      classname: TXPhotozPlot
-    - name: TXPhotozPlotLens
-      classname: TXPhotozPlot
-    - name: TXJackknifeCenters
-    - name: TXDensityMaps
-    - name: TXSourceMaps
-      nodes: 8
-      nprocess: 64
-    - name: TXLensMaps
-      nodes: 8
-      nprocess: 64
-    - name: TXAuxiliarySourceMaps
-      nodes: 2
-      nprocess: 16
-    - name: TXAuxiliaryLensMaps
-      nodes: 2
-      nprocess: 16
-    - name: TXTwoPointTheoryReal # compute theory using CCL to save in sacc file and plot later
-    - name: TXTwoPointTheoryFourier
-    - name: TXSimpleMask
-    - name: TXLSSWeightsUnit
-    - name: TXMapPlots
-    - name: TXTracerMetadata
-    - name: TXNullBlinding
-    - name: TXTwoPoint
-      threads_per_process: 32
-      nprocess: 8
-      nodes: 8
-    - name: TXTwoPointPlots
-    - name: TXRealGaussianCovariance
-      threads_per_process: 32
-    - name: TXTwoPointFourier
-      nprocess: 8
-      nodes: 8
-      threads_per_process: 32
-    - name: TXSourceNoiseMaps
-      nprocess: 32
-      nodes: 8
-      threads_per_process: 1
-    - name: TXLensNoiseMaps
-      nprocess: 32
-      nodes: 8
-      threads_per_process: 1
-    - name: TXFourierGaussianCovariance
-      threads_per_process: 32
-    - name: TXTwoPointPlotsFourier
+  - name: TXRandomCat
+  - name: TXSourceSelectorMetacal
+    nodes: 8
+    nprocess: 256
+  - name: TXTruthLensSelector
+    nodes: 8
+    nprocess: 256
+  - name: TXShearCalibration
+    nodes: 1
+    nprocess: 8
+  - name: TXTruthLensCatalogSplitter
+    nodes: 1
+    nprocess: 8
+  - name: TXSourceTrueNumberDensity
+    classname: TXTruePhotozStack
+    nodes: 8
+    nprocess: 64
+    aliases:
+        tomography_catalog: shear_tomography_catalog
+        catalog: shear_catalog
+        weights_catalog: shear_catalog
+        photoz_stack: shear_photoz_stack
+  - name: TXLensTrueNumberDensity
+    classname: TXTruePhotozStack
+    nodes: 8
+    nprocess: 64
+    aliases:
+        tomography_catalog: lens_tomography_catalog
+        catalog: photometry_catalog
+        weights_catalog: none
+        photoz_stack: lens_photoz_stack
+  - name: TXPhotozPlotSource
+    classname: TXPhotozPlot
+    aliases:
+        photoz_stack: shear_photoz_stack
+        nz_plot: source_nz
+  - name: TXPhotozPlotLens
+    classname: TXPhotozPlot
+    aliases:
+        photoz_stack: lens_photoz_stack
+        nz_plot: lens_nz
+  - name: TXJackknifeCenters
+  - name: TXDensityMaps
+  - name: TXSourceMaps
+    nodes: 8
+    nprocess: 64
+  - name: TXLensMaps
+    nodes: 8
+    nprocess: 64
+  - name: TXAuxiliarySourceMaps
+    nodes: 2
+    nprocess: 16
+  - name: TXAuxiliaryLensMaps
+    nodes: 2
+    nprocess: 16
+  - name: TXTwoPointTheoryReal   # compute theory using CCL to save in sacc file and plot later
+  - name: TXTwoPointTheoryFourier
+  - name: TXSimpleMask
+  - name: TXLSSWeightsUnit
+  - name: TXMapPlots
+  - name: TXTracerMetadata
+  - name: TXNullBlinding
+  - name: TXTwoPoint
+    threads_per_process: 32
+    nprocess: 8
+    nodes: 8
+  - name: TXTwoPointPlots
+  - name: TXRealGaussianCovariance
+    threads_per_process: 32
+  - name: TXTwoPointFourier
+    nprocess: 8
+    nodes: 8
+    threads_per_process: 32
+  - name: TXSourceNoiseMaps
+    nprocess: 32
+    nodes: 8
+    threads_per_process: 1
+  - name: TXLensNoiseMaps
+    nprocess: 32
+    nodes: 8
+    threads_per_process: 1
+  - name: TXFourierGaussianCovariance
+    threads_per_process: 32
+  - name: TXTwoPointPlotsFourier
 
 output_dir: data/skysim5000_v1.1.1/outputs
 config: examples/skysim/config.yml
@@ -90,13 +105,13 @@ config: examples/skysim/config.yml
 
 inputs:
     # See README for paths to download these files
-    shear_catalog:  data/skysim5000_v1.1.1/inputs/shear_catalog.hdf5
+    shear_catalog: data/skysim5000_v1.1.1/inputs/shear_catalog.hdf5
     photometry_catalog: data/skysim5000_v1.1.1/inputs/photometry_catalog.hdf5
     fiducial_cosmology: data/fiducial_cosmology.yml
     calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
     none: none
 
-resume: True
+resume: true
 log_dir: data/skysim5000_v1.1.1/logs
 pipeline_log: data/skysim5000_v1.1.1/log.txt
 

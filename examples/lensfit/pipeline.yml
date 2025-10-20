@@ -1,57 +1,89 @@
-
 # Stages to run
 stages:
-    - name: FlowCreator             # Simulate a spectroscopic population
-    - name: GridSelection          # Simulate a spectroscopic sample
-    - name: TXParqetToHDF          # Convert the spec sample format
-    - name: TXSourceSelectorLensfit
-    - name: TXShearCalibration
-    - name: TXLensCatalogSplitter
-    - name: TXStarCatalogSplitter
-    - name: TXTruthLensSelector
-    - name: PZPrepareEstimatorLens
-      classname: Inform_BPZ_lite   
-    - name: PZEstimatorLens
-      classname: BPZ_lite
-    - name: TXPhotozSourceStack
-      classname: TXPhotozStack
-    - name: TXPhotozLensStack
-      classname: TXPhotozStack
-    - name: TXSourceMaps
-    - name: TXLensMaps
-    - name: TXAuxiliarySourceMaps
-    - name: TXAuxiliaryLensMaps
-    - name: TXSimpleMask
-    - name: TXLSSWeightsUnit
-    - name: TXDensityMaps
-    - name: TXMapPlots
-    - name: TXTracerMetadata
-    - name: TXRandomCat
-    - name: TXJackknifeCenters
-    - name: TXTwoPoint
-      threads_per_process: 2
-    - name: TXBlinding
-      threads_per_process: 2
-    - name: TXTwoPointTheoryReal # compute theory using CCL to save in sacc file and plot later
-    - name: TXTwoPointPlots
-    - name: TXSourceDiagnosticPlots
-    - name: TXLensDiagnosticPlots
-    - name: TXGammaTStars
-      threads_per_process: 2
-    - name: TXGammaTRandoms
-      threads_per_process: 2
-    - name: TXRoweStatistics
-      threads_per_process: 2
-    - name: TXGalaxyStarDensity
-    - name: TXGalaxyStarShear
-    - name: TXPSFDiagnostics
-    - name: TXBrighterFatterPlot
-    - name: TXPhotozPlotLens
-      classname: TXPhotozPlot
-    - name: TXPhotozPlotSource
-      classname: TXPhotozPlot
-    - name: TXConvergenceMaps    # Make convergence kappa maps from g1, g2 maps
-    - name: TXConvergenceMapPlots # Plot the convergence map
+  - name: FlowCreator               # Simulate a spectroscopic population
+    aliases:
+        output: ideal_specz_catalog
+        model: flow
+  - name: GridSelection            # Simulate a spectroscopic sample
+    aliases:
+        input: ideal_specz_catalog
+        output: specz_catalog_pq
+  - name: TXParqetToHDF            # Convert the spec sample format
+    aliases:
+        input: specz_catalog_pq
+        output: spectroscopic_catalog
+  - name: TXSourceSelectorLensfit
+  - name: TXShearCalibration
+  - name: TXLensCatalogSplitter
+  - name: TXStarCatalogSplitter
+  - name: TXTruthLensSelector
+  - name: PZPrepareEstimatorLens
+    classname: BPZliteInformer
+    aliases:
+        input: spectroscopic_catalog
+        model: lens_photoz_model
+  - name: PZEstimatorLens
+    classname: BPZliteEstimator
+    aliases:
+        model: lens_photoz_model
+        input: photometry_catalog
+        output: lens_photoz_pdfs
+  - name: TXPhotozSourceStack
+    classname: TXPhotozStack
+    aliases:
+        photoz_pdfs: lens_photoz_pdfs
+        tomography_catalog: shear_tomography_catalog
+        weights_catalog: shear_catalog
+        photoz_stack: shear_photoz_stack
+  - name: TXPhotozLensStack
+    classname: TXPhotozStack
+    aliases:
+        photoz_pdfs: lens_photoz_pdfs
+        tomography_catalog: lens_tomography_catalog
+        weights_catalog: none
+        photoz_stack: lens_photoz_stack
+  - name: TXSourceMaps
+  - name: TXLensMaps
+  - name: TXAuxiliarySourceMaps
+  - name: TXAuxiliaryLensMaps
+  - name: TXSimpleMask
+  - name: TXLSSWeightsUnit
+  - name: TXDensityMaps
+  - name: TXMapPlots
+  - name: TXTracerMetadata
+  - name: TXRandomCat
+  - name: TXJackknifeCenters
+  - name: TXTwoPoint
+    threads_per_process: 2
+  - name: TXBlinding
+    threads_per_process: 2
+  - name: TXTwoPointTheoryReal   # compute theory using CCL to save in sacc file and plot later
+  - name: TXTwoPointPlots
+  - name: TXDiagnosticQuantiles
+  - name: TXSourceDiagnosticPlots
+  - name: TXLensDiagnosticPlots
+  - name: TXGammaTStars
+    threads_per_process: 2
+  - name: TXGammaTRandoms
+    threads_per_process: 2
+  - name: TXRoweStatistics
+    threads_per_process: 2
+  - name: TXGalaxyStarDensity
+  - name: TXGalaxyStarShear
+  - name: TXPSFDiagnostics
+  - name: TXBrighterFatterPlot
+  - name: TXPhotozPlotLens
+    classname: TXPhotozPlot
+    aliases:
+        photoz_stack: lens_photoz_stack
+        nz_plot: nz_lens
+  - name: TXPhotozPlotSource
+    classname: TXPhotozPlot
+    aliases:
+        photoz_stack: shear_photoz_stack
+        nz_plot: nz_source
+  - name: TXConvergenceMaps      # Make convergence kappa maps from g1, g2 maps
+  - name: TXConvergenceMapPlots   # Plot the convergence map
     # disabling these as they takes too long for a quick test
 #    - name: TXRealGaussianCovariance
 #    - name: TXTwoPointFourier
@@ -75,15 +107,15 @@ site:
 # stages defined in them
 modules: >
     txpipe
-    rail.creation.degradation.grid_selection
+    rail.creation.degraders.grid_selection
     rail.creation.engines.flowEngine
-    rail.estimation.algos.NZDir
+    rail.estimation.algos.nz_dir
     rail.estimation.algos.bpz_lite
 
 # where to find any modules that are not in this repo,
 # and any other code we need.
 python_paths:
-    - submodules/WLMassMap/python/desc/
+  - submodules/WLMassMap/python/desc/
 
 # configuration settings
 config: examples/lensfit/config.yml
@@ -95,7 +127,6 @@ inputs:
     # See README for paths to download these files
     shear_catalog: data/example/inputs/lensfit_shear_catalog.hdf5
     photometry_catalog: data/example/inputs/lensfit_photometry_catalog.hdf5
-    calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
     star_catalog: data/example/inputs/lensfit_star_catalog.hdf5
     # This file comes with the code
     fiducial_cosmology: data/fiducial_cosmology.yml
@@ -107,7 +138,7 @@ inputs:
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted
-resume: True
+resume: true
 # where to put output logs for individual stages
 log_dir: data/example/logs_lensfit
 # where to put an overall parsl pipeline log

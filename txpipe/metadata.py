@@ -77,25 +77,25 @@ class TXTracerMetadata(PipelineStage):
                 copy(shear_tomo_file, "response", "tracers", "R_mean_2d", meta_file, metadata)
                 copy(shear_tomo_file, "response", "tracers", "K_2d", meta_file, metadata)
 
-            copy(shear_tomo_file, "tomography", "tracers", "N_eff", meta_file, metadata)
-            copy(shear_tomo_file, "tomography", "tracers", "sigma_e", meta_file, metadata)
-            copy(shear_tomo_file, "tomography", "tracers", "mean_e1", meta_file, metadata)
-            copy(shear_tomo_file, "tomography", "tracers", "mean_e2", meta_file, metadata)
-            copy(shear_tomo_file, "tomography", "tracers", "counts", meta_file, metadata, "source_counts")
+            copy(shear_tomo_file, "counts", "tracers", "N_eff", meta_file, metadata)
+            copy(shear_tomo_file, "counts", "tracers", "sigma_e", meta_file, metadata)
+            copy(shear_tomo_file, "counts", "tracers", "mean_e1", meta_file, metadata)
+            copy(shear_tomo_file, "counts", "tracers", "mean_e2", meta_file, metadata)
+            copy(shear_tomo_file, "counts", "tracers", "counts", meta_file, metadata, "source_counts")
 
-            copy(shear_tomo_file, "tomography", "tracers", "N_eff_2d", meta_file, metadata)
-            copy(shear_tomo_file, "tomography", "tracers", "sigma_e_2d", meta_file, metadata)
-            copy(shear_tomo_file, "tomography", "tracers", "mean_e1_2d", meta_file, metadata)
-            copy(shear_tomo_file, "tomography", "tracers", "mean_e2_2d", meta_file, metadata)
-            copy(shear_tomo_file, "tomography", "tracers", "counts_2d", meta_file, metadata, "source_counts_2d")
+            copy(shear_tomo_file, "counts", "tracers", "N_eff_2d", meta_file, metadata)
+            copy(shear_tomo_file, "counts", "tracers", "sigma_e_2d", meta_file, metadata)
+            copy(shear_tomo_file, "counts", "tracers", "mean_e1_2d", meta_file, metadata)
+            copy(shear_tomo_file, "counts", "tracers", "mean_e2_2d", meta_file, metadata)
+            copy(shear_tomo_file, "counts", "tracers", "counts_2d", meta_file, metadata, "source_counts_2d")
 
-            N_eff = shear_tomo_file["tomography/N_eff"][:]
-            N_eff_2d = shear_tomo_file["tomography/N_eff_2d"][:]
+            N_eff = shear_tomo_file["counts/N_eff"][:]
+            N_eff_2d = shear_tomo_file["counts/N_eff_2d"][:]
             n_eff = N_eff / area_sq_arcmin
             n_eff_2d = N_eff_2d / area_sq_arcmin
 
-            source_counts = shear_tomo_file["tomography/counts"][:]
-            source_counts_2d = shear_tomo_file["tomography/counts_2d"][:]
+            source_counts = shear_tomo_file["counts/counts"][:]
+            source_counts_2d = shear_tomo_file["counts/counts_2d"][:]
 
             source_density = source_counts / area_sq_arcmin
             source_density_2d = source_counts_2d / area_sq_arcmin
@@ -122,11 +122,11 @@ class TXTracerMetadata(PipelineStage):
 
         with self.open_input("lens_tomography_catalog") as lens_tomo_file:
 
-            copy(lens_tomo_file, "tomography", "tracers", "counts", meta_file, metadata, "lens_counts")
-            copy(lens_tomo_file, "tomography", "tracers", "counts_2d", meta_file, metadata, "lens_counts_2d")
+            copy(lens_tomo_file, "counts", "tracers", "counts", meta_file, metadata, "lens_counts")
+            copy(lens_tomo_file, "counts", "tracers", "counts_2d", meta_file, metadata, "lens_counts_2d")
 
-            lens_counts = lens_tomo_file["tomography/counts"][:]
-            lens_counts_2d = lens_tomo_file["tomography/counts_2d"][:]
+            lens_counts = lens_tomo_file["counts/counts"][:]
+            lens_counts_2d = lens_tomo_file["counts/counts_2d"][:]
 
             lens_density = lens_counts / area_sq_arcmin
             lens_density_2d = lens_counts_2d / area_sq_arcmin

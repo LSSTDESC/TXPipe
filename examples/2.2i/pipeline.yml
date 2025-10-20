@@ -17,87 +17,103 @@ modules: txpipe
 # where to find any modules that are not in this repo,
 # and any other code we need.
 python_paths:
-    - submodules/WLMassMap/python/desc/
-    - submodules/FlexZPipe
+  - submodules/WLMassMap/python/desc/
 
 stages:
-    - name: TXJackknifeCenters
-    - name: TXSourceNoiseMaps
-      nprocess: 32
-    - name: TXLensNoiseMaps
-      nprocess: 32
-    - name: TXSourceSelector
-      nprocess: 32
-    - name: TXShearCalibration
-      nodes: 1
-      nprocess: 8
-    - name: TXTruthLensCatalogSplitter
-      nodes: 1
-      nprocess: 8
-    - name: TXTruthLensSelector
-      nprocess: 32
-    - name: TXTruePhotozStackSource
-      classname: TXTruePhotozStack
-      nprocess: 32
-      nodes: 2
-    - name: TXTruePhotozStackLens
-      classname: TXTruePhotozStack
-      nprocess: 32
-      nodes: 2
-    - name: TXTwoPointTheoryReal
-      nprocess: 1
-      threads_per_process: 8
-    - name: TXPhotozPlotSource
-      classname: TXPhotozPlot
-      nprocess: 8
-    - name: TXPhotozPlotLens
-      classname: TXPhotozPlot
-      nprocess: 8
-    - name: TXSourceMaps
-      nprocess: 16
-      nodes: 2
-    - name: TXLensMaps
-      nprocess: 16
-      nodes: 2
-    - name: TXAuxiliarySourceMaps
-      nprocess: 16
-      nodes: 2
-    - name: TXAuxiliaryLensMaps
-      nprocess: 16
-      nodes: 2
-    - name: TXSimpleMask
-    - name: TXLSSWeightsUnit
-    - name: TXDensityMaps
-    - name: TXMapPlots
-    - name: TXTracerMetadata
-    - name: TXRandomCat
-      nprocess: 32
-      nodes: 2
-    - name: TXTwoPoint
-      nprocess: 2
-      nodes: 2
-      threads_per_process: 32
-    - name: TXNullBlinding
-      threads_per_process: 32
+  - name: TXJackknifeCenters
+  - name: TXSourceNoiseMaps
+    nprocess: 32
+  - name: TXLensNoiseMaps
+    nprocess: 32
+  - name: TXSourceSelector
+    nprocess: 32
+  - name: TXShearCalibration
+    nodes: 1
+    nprocess: 8
+  - name: TXTruthLensCatalogSplitter
+    nodes: 1
+    nprocess: 8
+  - name: TXTruthLensSelector
+    nprocess: 32
+  - name: TXTruePhotozStackSource
+    classname: TXTruePhotozStack
+    nprocess: 32
+    nodes: 2
+    aliases:
+        tomography_catalog: shear_tomography_catalog
+        catalog: shear_catalog
+        weights_catalog: shear_catalog
+        photoz_stack: shear_photoz_stack
+  - name: TXTruePhotozStackLens
+    classname: TXTruePhotozStack
+    nprocess: 32
+    nodes: 2
+    aliases:
+        tomography_catalog: lens_tomography_catalog
+        catalog: photometry_catalog
+        weights_catalog: dummy
+        photoz_stack: lens_photoz_stack
+  - name: TXTwoPointTheoryReal
+    nprocess: 1
+    threads_per_process: 8
+  - name: TXPhotozPlotSource
+    classname: TXPhotozPlot
+    nprocess: 8
+    aliases:
+        photoz_stack: shear_photoz_stack
+        nz_plot: lens_nz
+  - name: TXPhotozPlotLens
+    classname: TXPhotozPlot
+    nprocess: 8
+    aliases:
+        photoz_stack: lens_photoz_stack
+        nz_plot: source_nz
+  - name: TXSourceMaps
+    nprocess: 16
+    nodes: 2
+  - name: TXLensMaps
+    nprocess: 16
+    nodes: 2
+  - name: TXAuxiliarySourceMaps
+    nprocess: 16
+    nodes: 2
+  - name: TXAuxiliaryLensMaps
+    nprocess: 16
+    nodes: 2
+  - name: TXSimpleMask
+  - name: TXLSSWeightsUnit
+  - name: TXDensityMaps
+  - name: TXMapPlots
+  - name: TXTracerMetadata
+  - name: TXRandomCat
+    nprocess: 32
+    nodes: 2
+  - name: TXTwoPoint
+    nprocess: 2
+    nodes: 2
+    threads_per_process: 32
+  - name: TXNullBlinding
+    threads_per_process: 32
 #    - name: TXTwoPointFourier
 #      nprocess: 2
 #      nodes: 2
 #      threads_per_process: 32
-    - name: TXTwoPointPlots
-    - name: TXSourceDiagnosticPlots
-      nprocess: 16
-    - name: TXLensDiagnosticPlots
-      nprocess: 16
-    - name:  TXStarCatalogSplitter
-      nprocess: 1
+  - name: TXTwoPointPlots
+  - name: TXDiagnosticQuantiles
+  - name: TXSourceDiagnosticPlots
+    nprocess: 16
+  - name: TXLensDiagnosticPlots
+    nprocess: 16
+  - name: TXStarCatalogSplitter
+    nprocess: 1
 #    - name: TXGammaTStars
 #      threads_per_process: 32
-    - name: TXBrighterFatterPlot
-    - name: TXRoweStatistics
-    - name: TXPSFDiagnostics
-    - name: TXConvergenceMaps
-      threads_per_process: 32
-    - name: TXConvergenceMapPlots
+  - name: TXBrighterFatterPlot
+  - name: TXRoweStatistics
+  - name: TXPSFDiagnostics
+  - name: TXConvergenceMaps
+    threads_per_process: 32
+  - name: TXConvergenceMapPlots
 #    - name: TXMapCorrelations
 
 output_dir: data/2.2i_dr6/outputs
@@ -119,7 +135,7 @@ inputs:
     exposures: /global/projecta/projectdirs/lsst/groups/WL/users/zuntz/data/2.2i-inputs/exposures.hdf5
     dummy: none
 
-resume: True
+resume: true
 log_dir: data/2.2i_dr6/logs
 pipeline_log: data/2.2i_dr6/log.txt
 

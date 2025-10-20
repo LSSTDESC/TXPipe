@@ -48,7 +48,7 @@ class Calibrator:
             cat_type = f["tomography"].attrs["catalog_type"]
 
         # choose a subclass based on this
-        if null:
+        if null or cat_type == "simple":
             subcls = NullCalibrator
         elif cat_type == "metacal":
             subcls = MetaCalibrator
@@ -132,10 +132,10 @@ class NullCalibrator:
             nbin = f["tomography"].attrs["nbin"]
 
             # Load the mean shear values
-            mu1 = f["tomography/mean_e1"][:]
-            mu2 = f["tomography/mean_e2"][:]
-            mu1_2d = f["tomography/mean_e1_2d"][0]
-            mu2_2d = f["tomography/mean_e2_2d"][0]
+            mu1 = f["counts/mean_e1"][:]
+            mu2 = f["counts/mean_e2"][:]
+            mu1_2d = f["counts/mean_e1_2d"][0]
+            mu2_2d = f["counts/mean_e2_2d"][0]
 
         return [NullCalibrator([mu1[i], mu2[i]]) for i in range(nbin)], NullCalibrator(
             [mu1_2d, mu2_2d]
@@ -211,10 +211,10 @@ class MetaCalibrator(Calibrator):
             S_2d = f["response/R_S_2d"][:]
 
             # Load the mean shear values
-            mu1 = f["tomography/mean_e1"][:]
-            mu2 = f["tomography/mean_e2"][:]
-            mu1_2d = f["tomography/mean_e1_2d"][0]
-            mu2_2d = f["tomography/mean_e2_2d"][0]
+            mu1 = f["counts/mean_e1"][:]
+            mu2 = f["counts/mean_e2"][:]
+            mu1_2d = f["counts/mean_e1_2d"][0]
+            mu2_2d = f["counts/mean_e2_2d"][0]
 
         # make the calibrator objects
         n = len(R)
@@ -226,13 +226,13 @@ class MetaCalibrator(Calibrator):
         if i == "2d":
             outfile["response/R_gamma_mean_2d"][:] = self.R_gamma
             outfile["response/R_S_2d"][:] = self.R_sel
-            outfile["tomography/mean_e1_2d"][0] = self.mu[0]
-            outfile["tomography/mean_e2_2d"][0] = self.mu[1]
+            outfile["counts/mean_e1_2d"][0] = self.mu[0]
+            outfile["counts/mean_e2_2d"][0] = self.mu[1]
         else:
             outfile["response/R_gamma_mean"][i] = self.R_gamma
             outfile["response/R_S"][i] = self.R_sel
-            outfile["tomography/mean_e1"][i] = self.mu[0]
-            outfile["tomography/mean_e2"][i] = self.mu[1]
+            outfile["counts/mean_e1"][i] = self.mu[0]
+            outfile["counts/mean_e2"][i] = self.mu[1]
 
 
 class MetaDetectCalibrator(MetaCalibrator):
@@ -271,10 +271,10 @@ class MetaDetectCalibrator(MetaCalibrator):
             n = len(R)
 
             # Load the mean shear values
-            mu1 = f["tomography/mean_e1"][:]
-            mu2 = f["tomography/mean_e2"][:]
-            mu1_2d = f["tomography/mean_e1_2d"][0]
-            mu2_2d = f["tomography/mean_e2_2d"][0]
+            mu1 = f["counts/mean_e1"][:]
+            mu2 = f["counts/mean_e2"][:]
+            mu1_2d = f["counts/mean_e1_2d"][0]
+            mu2_2d = f["counts/mean_e2_2d"][0]
 
         # make the calibrator objects
         calibrators = [cls(R[i], [mu1[i], mu2[i]]) for i in range(n)]
@@ -284,12 +284,12 @@ class MetaDetectCalibrator(MetaCalibrator):
     def save(self, outfile, i):
         if i == "2d":
             outfile["response/R_2d"][:] = self.R
-            outfile["tomography/mean_e1_2d"][0] = self.mu[0]
-            outfile["tomography/mean_e2_2d"][0] = self.mu[1]
+            outfile["counts/mean_e1_2d"][0] = self.mu[0]
+            outfile["counts/mean_e2_2d"][0] = self.mu[1]
         else:
             outfile["response/R"][i] = self.R
-            outfile["tomography/mean_e1"][i] = self.mu[0]
-            outfile["tomography/mean_e2"][i] = self.mu[1]
+            outfile["counts/mean_e1"][i] = self.mu[0]
+            outfile["counts/mean_e2"][i] = self.mu[1]
 
 
 class LensfitCalibrator(Calibrator):
@@ -342,14 +342,14 @@ class LensfitCalibrator(Calibrator):
             outfile["response/K_2d"][:] = self.K
             outfile["response/C_2d_N"][:] = self.c_n
             outfile["response/C_2d_S"][:] = self.c_s
-            outfile["tomography/mean_e1_2d"][0] = -99.0
-            outfile["tomography/mean_e2_2d"][0] = -99.0
+            outfile["counts/mean_e1_2d"][0] = -99.0
+            outfile["counts/mean_e2_2d"][0] = -99.0
         else:
             outfile["response/K"][i] = self.K
             outfile["response/C_N"][i] = self.c_n
             outfile["response/C_S"][i] = self.c_s
-            outfile["tomography/mean_e1"][i] = -99.0
-            outfile["tomography/mean_e2"][i] = -99.0
+            outfile["counts/mean_e1"][i] = -99.0
+            outfile["counts/mean_e2"][i] = -99.0
 
     def apply(self, dec, g1, g2, subtract_mean=True):
         """

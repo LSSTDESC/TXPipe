@@ -111,7 +111,6 @@ class TXGammaTFieldCenters(TXTwoPoint):
         "sep_units": "arcmin",
         "flip_g1": False,
         "flip_g2": True,
-        "cores_per_task": 20,
         "verbose": 1,
         "reduce_randoms_size": 1.0,
         "var_method": "shot",
@@ -162,12 +161,26 @@ class TXGammaTFieldCenters(TXTwoPoint):
     def get_lens_catalog(self, i):
         import treecorr
 
+        # check if we are using the old format exposures file
+        # or the new one
+        with self.open_input("exposures", wrapper=False) as f:
+            if "visits" in f.keys():
+                # This is the new format
+                ext = "visits"
+                ra_col = "ra"
+                dec_col = "dec"
+            else:
+                # This is the old format
+                ext = "exposures"
+                ra_col = "ratel"
+                dec_col = "dectel"
+
         assert i == 0
         cat = treecorr.Catalog(
             self.get_input("exposures"),
-            ext="exposures",
-            ra_col="ratel",
-            dec_col="dectel",
+            ext=ext,
+            ra_col=ra_col,
+            dec_col=dec_col,
             ra_units="degree",
             dec_units="degree",
             patch_centers=self.get_input("patch_centers"),
@@ -295,7 +308,6 @@ class TXGammaTStars(TXTwoPoint):
         "sep_units": "arcmin",
         "flip_g1": False,
         "flip_g2": True,
-        "cores_per_task": 20,
         "verbose": 1,
         "reduce_randoms_size": 1.0,
         "var_method": "shot",
@@ -483,7 +495,6 @@ class TXGammaTRandoms(TXTwoPoint):
         "sep_units": "arcmin",
         "flip_g1": False,
         "flip_g2": True,
-        "cores_per_task": 20,
         "verbose": 1,
         "reduce_randoms_size": 1.0,
         "var_method": "shot",
@@ -659,7 +670,6 @@ class TXApertureMass(TXTwoPoint):
         "sep_units": "arcmin",
         "flip_g1": False,
         "flip_g2": True,
-        "cores_per_task": 20,
         "verbose": 1,
         "source_bins": [-1],
         "lens_bins": [-1],

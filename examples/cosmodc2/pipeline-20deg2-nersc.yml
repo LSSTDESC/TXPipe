@@ -1,0 +1,120 @@
+launcher:
+    name: mini
+    interval: 3.0
+
+site:
+    name: cori-interactive
+
+
+modules: txpipe
+
+python_paths:
+  - submodules/WLMassMap/python/desc/
+
+stages:
+  - name: TXRandomCat
+    nprocess: 32
+  - name: TXSourceSelectorMetadetect
+    nprocess: 32
+  - name: TXLSSWeightsUnit
+  - name: TXRandomForestLensSelector
+    nprocess: 32
+  - name: TXLensTrueNumberDensity
+    classname: TXTruePhotozStack
+    aliases:
+        tomography_catalog: lens_tomography_catalog
+        catalog: photometry_catalog
+        weights_catalog: none
+        photoz_stack: lens_photoz_stack
+  - name: TXSourceTrueNumberDensity
+    classname: TXTruePhotozStack
+    aliases:
+        tomography_catalog: shear_tomography_catalog
+        catalog: shear_catalog
+        weights_catalog: shear_catalog
+        photoz_stack: shear_photoz_stack
+  - name: TXPhotozPlotSource
+    classname: TXPhotozPlot
+    aliases:
+        photoz_stack: shear_photoz_stack
+        nz_plot: source_nz
+  - name: TXPhotozPlotLens
+    classname: TXPhotozPlot
+    aliases:
+        photoz_stack: lens_photoz_stack
+        nz_plot: lens_nz
+  - name: TXShearCalibration
+    nprocess: 32
+  - name: TXTruthLensCatalogSplitter
+    nprocess: 32
+  - name: TXTwoPointFourier
+    nprocess: 2
+    nodes: 1
+    threads_per_process: 64
+  - name: TXTwoPointTheoryFourier
+  - name: TXTwoPointPlotsFourier
+  - name: TXJackknifeCenters
+  - name: TXSourceMaps
+    nprocess: 8
+  - name: TXLensMaps
+    nprocess: 8
+  - name: TXAuxiliarySourceMaps
+    nprocess: 8
+  - name: TXAuxiliaryLensMaps
+    nprocess: 8
+  - name: TXDensityMaps
+  - name: TXSourceNoiseMaps
+    nprocess: 4
+    nodes: 1
+    threads_per_process: 1
+  - name: TXLensNoiseMaps
+    nprocess: 4
+    nodes: 1
+    threads_per_process: 1
+  - name: TXSimpleMask
+  - name: TXMapPlots
+  - name: TXTracerMetadata
+  - name: TXNullBlinding
+  - name: TXTwoPoint
+    threads_per_process: 64
+    nprocess: 1
+    nodes: 1
+  - name: TXTwoPointPlotsTheory
+  - name: TXDiagnosticQuantiles
+    nodes: 1
+    nprocess: 16
+  - name: TXLensDiagnosticPlots
+    nprocess: 16
+    nodes: 1
+  - name: TXSourceDiagnosticPlots
+    nprocess: 16
+    nodes: 1
+  - name: TXFourierGaussianCovariance
+    threads_per_process: 32
+  - name: TXTwoPointTheoryReal
+  - name: TXRealGaussianCovariance
+    threads_per_process: 32
+  - name: TXConvergenceMaps
+    threads_per_process: 32
+  - name: TXConvergenceMapPlots
+
+output_dir: data/cosmodc2/outputs-20deg2
+config: examples/cosmodc2/config-20deg2.yml
+
+inputs:
+    # See README for paths to download these files
+    # On NERSC these first three files are in the data registry
+    shear_catalog:
+        name: txpipe_cosmodc2_20deg2_shear_catalog.hdf5
+    photometry_catalog:
+        name: txpipe_cosmodc2_20deg2_photometry_catalog.hdf5
+    calibration_table:
+        name: txpipe_cosmodc2_20deg2_sample_cosmodc2_w10year_errors.dat
+    fiducial_cosmology: data/fiducial_cosmology.yml
+    none: none
+
+registry: {}
+resume: true
+log_dir: data/cosmodc2/logs
+pipeline_log: data/cosmodc2/log.txt
+

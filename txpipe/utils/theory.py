@@ -73,15 +73,15 @@ def fill_empty_sacc(sacc_data, ell_values=None, theta_values=None):
         t1_is_source = t1.startswith("source")
         t1_is_lens = t1.startswith("lens")
         index1 = t1.split("_")[1]
-        if not (t1_is_source or t2_is_source):
-            print(f"Skipping mock data for tracer {t1}")
-            continue
+        # if not (t1_is_source or t2_is_source):
+        #     print(f"Skipping mock data for tracer {t1}")
+        #     continue
         for t2 in sacc_data.tracers.keys():
             t2_is_source = t2.startswith("source")
             t2_is_lens = t2.startswith("lens")
             index2 = t2.split("_")[1]
-            if not (t1_is_source or t2_is_source):
-                continue
+            # if not (t1_is_source or t2_is_source):
+            #     continue
 
             if t1_is_source and t2_is_source:
                 if is_fourier:
@@ -150,7 +150,7 @@ def theory_3x2pt(
         A copy of the input sacc_data but with values
         replaced with theory predictions.
     """
-    from firecrown.likelihood.likelihood import load_likelihood
+    from firecrown.likelihood.likelihood import load_likelihood_from_script
     from firecrown.parameters import ParamsMap
     import sacc
     import pathlib
@@ -184,14 +184,15 @@ def theory_3x2pt(
     }
 
     # These stages are a copy of what is done inside the FireCrown connectors
-    likelihood, tools = load_likelihood(theory_model, build_parameters)
-    tools.prepare(cosmo)
+    likelihood, tools = load_likelihood_from_script(theory_model, build_parameters)
 
     systematic_params = {
         **make_bias_parameters(bias, sacc_data, cosmo)
     }
     # Apply the systematics parameters
     likelihood.update(ParamsMap(systematic_params))
+    tools.update(ParamsMap(systematic_params))
+    tools.prepare(cosmo)
 
     # Ask the likelihood for a theory vector. We don't want
     # to print the actual likelihood because for many applications
@@ -296,7 +297,7 @@ def make_bias_parameters(bias_option, sacc_data, cosmo):
         bias_dict = {}
         for name in lens_tracers.keys():
             i = int(name.split('_')[1])
-            bias_dict[name + "_bias"] = bias_values[i]
+            bias_dict[name + "_bias"] = bias_option[i]
 
     # Form 5: float
     else:

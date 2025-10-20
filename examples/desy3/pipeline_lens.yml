@@ -1,0 +1,82 @@
+#######
+# run the DES lens sample selection, photo-z and masking using a small subsample of the catalog (for testing)
+#######
+stages:
+  - name: TXIngestDESY3Gold       #Ingest Y3 photometry
+  - name: TXIngestDESY3Footprint  #Ingest Y3 footprint maps (lens aux)
+  - name: TXIngestDESY3SpeczCat   #Ingest the spec-z sample used to train DNF (lens sample photo-z)
+  - name: TXCustomMask            
+  - name: PZPrepareEstimatorLens 
+    classname: DNFInformer 
+    aliases:
+        input: spectroscopic_catalog
+        model: lens_photoz_model
+  - name: PZEstimatorLens 
+    classname: DNFEstimator
+    nprocess: 32
+    threads_per_process: 4
+    aliases:
+        model: lens_photoz_model
+        input: photometry_catalog
+        output: lens_photoz_pdfs
+  - name: TXCustomLensSelector
+  - name: TXLensCatalogSplitter
+  - name: PZRailSummarizeLens     #Run the RAIL PZ summarizer on each tomo bin
+    classname: PZRailPZSummarize
+    nprocess: 32
+    threads_per_process: 4
+    aliases:
+        tomography_catalog: lens_tomography_catalog_unweighted
+        photoz_pdfs: lens_photoz_pdfs
+        model: lens_photoz_model
+        photoz_stack: lens_photoz_stack
+        photoz_realizations: lens_photoz_realizations
+  - name: TXLSSWeightsLinBinned
+
+  #plots
+  - name: TXMapPlots
+  
+modules: >
+    txpipe
+    rail.estimation.algos.dnf
+    rail.estimation.algos.naive_stack
+    rail.estimation.algos.point_est_hist
+    rail.estimation.algos.uniform_binning
+
+# Where to put outputs
+output_dir: data/example/outputs_desy3/
+
+# How to run the pipeline: mini, parsl, or cwl
+launcher:
+    name: mini
+    interval: 1.0
+
+# Where to run the pipeline: cori-interactive, cori-batch, or local
+site:
+    name: local
+    max_threads: 128
+
+# configuration settings
+config: examples/desy3/config_lens.yml
+
+inputs:
+    #NERSC test data
+    des_photometry_catalog: /global/cfs/cdirs/lsst/groups/WL/users/jelvinpo/data/desy3/desdr-server.ncsa.illinois.edu/despublic/y3a2_files/y3kp_cats/DESY3_GOLD_2_2.1.h5
+    des_specz_catalog: /global/cfs/cdirs/lsst/groups/WL/users/jelvinpo/data/desy3/spec/y6gold22_trainnov20_matchedtoy3.fits
+
+    fiducial_cosmology: data/fiducial_cosmology.yml
+
+    #empty inputs
+    source_maps: None
+    lens_maps: None
+    density_maps: None
+    aux_source_maps: None
+    
+    
+# if supported by the launcher, restart the pipeline where it left off
+# if interrupted
+resume: false
+# where to put output logs for individual stages
+log_dir: data/example/outputs_desy3/logs/
+# where to put an overall parsl pipeline log
+pipeline_log: data/example/outputs_desy3/log.txt

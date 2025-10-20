@@ -1,18 +1,10 @@
 Contents
 ========
 
-clmm
+cluster_counts
 ----
 
-These stages are for locating catalogs of background galaxies for mass modelling.  It is designed to make inputs to CLMM.
-
-
-cluster_mag
------------
-
-These stages are for doing tangential shear measurements around clusters directly, not using CLMM.
-
-They are older and may not be useful, so are not imported automatically.
+These stages are for cluster counts and lesing profile measurements.
 
 
 twopoint_scia

@@ -13,15 +13,7 @@ class TXShearCalibration(PipelineStage):
 
     Once that stage has run and computed both the tomographic bin for each sample
     and the calibration factors, this stage takes the full catalog and splits it
-    into one HDF5 group per bin.  This has several advantages:
-    - all the calibration can happen in one place rather than
-      differently in real space and Fourier
-    - we can load just the galaxies we want for a single bin in later TreeCorr
-      stages, rather than loading the full catalog and then splitting and calibrating
-      it.
-    - the low_mem option in TreeCorr can be used because the catalogs are on disc
-      and contiguous.
-    - it opens up other memory saving options planned for TreeCorr.
+    into one HDF5 group per bin.
 
     We are not (yet) saving per-patch catalogs for TreeCorr here. We might want to
     do that later.
@@ -42,7 +34,8 @@ class TXShearCalibration(PipelineStage):
         "chunk_rows": 100_000,
         "subtract_mean_shear": True,
         "extra_cols": [""],
-        "shear_catalog_type": ''
+        "shear_catalog_type": '',
+        "shear_prefix": "",
     }
 
     def run(self):
@@ -53,32 +46,57 @@ class TXShearCalibration(PipelineStage):
         extra_cols = [c for c in self.config["extra_cols"] if c]
         subtract_mean_shear = self.config["subtract_mean_shear"]
 
+        shear_prefix = self.config["shear_prefix"]
+        with self.open_input("shear_catalog", wrapper=True) as f:
+            bands = f.get_bands(shear_prefix)
+
+        # this is the names of the columns in the input catalog
+        mag_cols_out = [f"mag_{b}" for b in bands] + [f"mag_err_{b}" for b in bands]
+        mag_cols_in = [f"{shear_prefix}{c}" for c in mag_cols_out]
+
+        if self.rank == 0:
+            print("Copying extra columns: ", extra_cols)
+            print("Copying magnitude: ", mag_cols_in)
+
         # Prepare the output file, and create a splitter object,
         # whose job is to save the separate bins to separate HDF5
         # extensions depending on the tomographic bin
-        output_file, splitter, nbin = self.setup_output(extra_cols)
+        output_file, splitter, nbin = self.setup_output(extra_cols + mag_cols_out)
 
         #  Load the calibrators.  If using the true shear no calibration
         # is needed
         tomo_file = self.get_input("shear_tomography_catalog")
         cals, cal2d = Calibrator.load(tomo_file, null=use_true)
+        print("Using calibration method:", cal2d.__class__.__name__)
 
         # The catalog columns are named differently in different cases
         #  Get the correct shear catalogs
         with self.open_input("shear_catalog", wrapper=True) as f:
             cat_cols, renames = f.get_primary_catalog_names()
+            g = f.get_primary_catalog_group()
 
-            if cat_type=='metacal' or cat_type=='metadetect':
-                cat_cols += [f"00/{c}" for c in extra_cols]
+            # cat_cols is everything we are reading in
+            if cat_type == "metadetect":
+                cat_cols = cat_cols + [f"00/{c}" for c in extra_cols + mag_cols_in]
+                mag_cols_in = [f"00/{c}" for c in mag_cols_in]
                 renames.update({f"00/{c}":c for c in extra_cols})
             else:
-                cat_cols += [f"{c}" for c in extra_cols]
-                renames.update({f"{c}":c for c in extra_cols})
-        
+                cat_cols = cat_cols + extra_cols + mag_cols_in
+
+            renames.update(zip(mag_cols_in, mag_cols_out))
+
         if cat_type!='hsc':
-            output_cols = ["ra", "dec", "weight", "g1", "g2"] + extra_cols
+            output_cols = ["ra", "dec", "weight", "g1", "g2"] + extra_cols + mag_cols_out
         else:
-            output_cols = ["ra", "dec", "weight", "g1", "g2", "c1", "c2"]  + extra_cols
+            output_cols = ["ra", "dec", "weight", "g1", "g2", "c1", "c2"]  + extra_cols + mag_cols_out
+
+        if self.rank == 0:
+            print("Reading these columns from the 'shear' group:")
+            for c in cat_cols:
+                print(f" - {c}")
+            print("Renaming these columns:")
+            for k, v in renames.items():
+                print(f" - {k} -> {v}")
 
         # We parallelize by bin.  This isn't ideal but we don't know the number
         # of objects in each bin per chunk, so we can't parallelize in full.  This
@@ -155,8 +173,8 @@ class TXShearCalibration(PipelineStage):
     def setup_output(self, extra_cols):
         # count the expected number of objects per bin from the tomo data
         with self.open_input("shear_tomography_catalog") as f:
-            counts = f["tomography/counts"][:]
-            count2d = f["tomography/counts_2d"][0]
+            counts = f["counts/counts"][:]
+            count2d = f["counts/counts_2d"][0]
             nbin = len(counts)
         
         # Prepare the calibrated output catalog

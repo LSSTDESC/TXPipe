@@ -10,6 +10,7 @@ class TXIngestRedmagic(PipelineStage):
     This starts with the FITS file format, but may be outdated.
     """
     name = "TXIngestRedmagic"
+    parallel = False
     inputs = [
         ("redmagic_catalog", FitsFile),
     ]
@@ -54,21 +55,24 @@ class TXIngestRedmagic(PipelineStage):
 
         # Create space in outputs
         g = cat.create_group("lens")
+        g.attrs["bands"] = bands
         g.create_dataset("ra", (n,), dtype=np.float64)
         g.create_dataset("dec", (n,), dtype=np.float64)
         g.create_dataset("chisq", (n,), dtype=np.float64)
         g.create_dataset("redshift", (n,), dtype=np.float64)
-        for b in "grizy":
+        for b in bands:
             g.create_dataset(f"mag_{b}", (n,), dtype=np.float64)
             g.create_dataset(f"mag_err_{b}", (n,), dtype=np.float64)
+        g.attrs["bands"]  = bands
 
         h = tomo.create_group("tomography")
         h.create_dataset("bin", (n,), dtype=np.int32)
         h.create_dataset("lens_weight", (n,), dtype=np.float64)
-        h.create_dataset("counts", (nbin_lens,), dtype="i")
-        h.create_dataset("counts_2d", (1,), dtype="i")
         h.attrs["nbin"] = nbin_lens
         h.attrs[f"zbin_edges"] = zbin_edges
+        h_counts = tomo.create_group("counts")
+        h_counts.create_dataset("counts", (nbin_lens,), dtype="i")
+        h_counts.create_dataset("counts_2d", (1,), dtype="i")
 
         # we keep track of the counts per-bin also
         counts = np.zeros(nbin_lens, dtype=np.int64)
@@ -121,8 +125,8 @@ class TXIngestRedmagic(PipelineStage):
             h["lens_weight"][s:e] = 1.0
 
         # this is an overall count
-        h["counts"][:] = counts
-        h["counts_2d"][:] = counts_2d
+        h_counts["counts"][:] = counts
+        h_counts["counts_2d"][:] = counts_2d
 
         # Generate and save the 2D n(z) histogram also, just
         # by summing up all the individual values.

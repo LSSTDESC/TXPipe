@@ -1,5 +1,5 @@
 from ..base_stage import PipelineStage
-from ..data_types import ShearCatalog, HDFFile
+from ..data_types import ShearCatalog, HDFFile, TextFile, QPPDFFile
 from ..utils import (
     band_variants,
     metacal_variants,
@@ -259,6 +259,7 @@ class TXCosmoDC2Mock(PipelineStage):
 
         # Make group for all the photometry
         group = photo_file.create_group("photometry")
+        group.attrs["bands"] = self.bands
 
         # Extensible columns becase we don't know the size yet.
         # We will cut down the size at the end.
@@ -295,6 +296,7 @@ class TXCosmoDC2Mock(PipelineStage):
 
         # Make group for all the photometry
         group = metacal_file.create_group("shear")
+        group.attrs["bands"] = self.bands
 
         # Extensible columns becase we don't know the size yet.
         # We will cut down the size at the end.
@@ -335,6 +337,7 @@ class TXCosmoDC2Mock(PipelineStage):
 
         # Make group for all the photometry
         group = metacal_file.create_group("shear")
+        group.attrs["bands"] = self.bands
 
         # Extensible columns becase we don't know the size yet.
         # We will cut down the size at the end.
@@ -1216,6 +1219,106 @@ def generate_mock_metacal_mag_responses(bands, nobj):
     return mag_responses
 
 
+class TXSimpleMock(PipelineStage):
+    """
+    Load an ascii astropy table and put it in shear catalog format.
+    """
+    name = "TXSimpleMock"
+    parallel = False
+    inputs = [("mock_shear_catalog", TextFile)]
+    outputs = [("shear_catalog", ShearCatalog)]
+    config_options = {
+        "mock_size_snr": False,
+    }
+    def run(self):
+        from astropy.table import Table
+        import numpy as np
+
+        # Load the data. We are assuming here it is small enough to fit in memory
+        input_filename = self.get_input("mock_shear_catalog")
+        input_data = Table.read(input_filename, format="ascii")
+        n = len(input_data)
+
+        data = {}
+        # required columns
+        for col in ["ra", "dec", "g1", "g2", "s2n", "T"]:
+            data[col] = input_data[col]
+        
+        # It's most likely we will have a redshift column.
+        # Check for both that and "redshift_true"
+        if "redshift" in input_data.colnames:
+            data["redshift_true"] = input_data["redshift"]
+        elif "redshift_true" in input_data.colnames:
+            data["redshift_true"] = input_data["redshift_true"]
+
+        # If there is an ID column then use it, but otherwise just use
+        # sequential IDs
+        if "id" in input_data.colnames:
+            data["galaxy_id"] = input_data["id"]
+        else:
+            data["galaxy_id"] = np.arange(len(input_data))
+
+        # if these catalogs are not present then we fake them.
+        defaults = {
+            "T_err": 0.0,
+            "psf_g1": 0.0,
+            "psf_g2": 0.0,
+            "psf_T_mean": 0.202, # this corresponds to a FWHM of 0.75 arcsec
+            "weight": 1.0,
+            "flags": 0,
+        }
+
+        for key, value in defaults.items():
+            if key in input_data.colnames:
+                data[key] = input_data[key]
+            else:
+                data[key] = np.full(n, value)
+
+        self.save_catalog(data)
+        
+    def save_catalog(self, data):
+        with self.open_output("shear_catalog") as f:
+            g = f.create_group("shear")
+            g.attrs["catalog_type"] = "simple"
+            for key, value in data.items():
+                g.create_dataset(key, data=value)
+
+
+class TXMockTruthPZ(PipelineStage):
+    name = "TXMockTruthPZ"
+    parallel = False
+    inputs = [("shear_catalog", ShearCatalog)]
+    outputs = [("photoz_pdfs", QPPDFFile)]
+    config_options = {
+        "mock_sigma_z": 0.001,
+    }
+    def run(self):
+        import qp
+        import numpy as np
+        sigma_z = self.config["mock_sigma_z"]
+
+
+        # read the input truth redshifts
+        with self.open_input("shear_catalog", wrapper=True) as f:
+            group = f.file[f.get_primary_catalog_group()]
+            n = group["ra"].size
+            redshifts = group["redshift_true"][:]
+
+        zgrid = np.linspace(0, 3, 301)
+        pdfs = np.zeros((n, len(zgrid)))
+
+        spread_z = sigma_z * (1 + redshifts)
+        # make a gaussian PDF for each object
+        delta = zgrid[np.newaxis, :] - redshifts[:, np.newaxis]
+        pdfs = np.exp(-0.5 * (delta / spread_z[:, np.newaxis])**2) / np.sqrt(2 * np.pi) / spread_z[:, np.newaxis]
+        
+        q = qp.Ensemble(qp.interp, data=dict(xvals=zgrid, yvals=pdfs))
+        q.set_ancil(dict(zmode=redshifts, zmean=redshifts, zmedian=redshifts))
+        q.write_to(self.get_output("photoz_pdfs"))
+
+
+
+
 def test():
     import pylab
 
@@ -1232,3 +1335,5 @@ def test():
     results = make_mock_photometry(n_visit, bands, data, True)
     pylab.hist(results["snr_r"], bins=50, histtype="step")
     pylab.savefig("snr_r.png")
+
+

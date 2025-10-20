@@ -24,3 +24,6 @@ example.tar.gz
 docs/build
 cache/
 conda/
+.vscode/
+Mambaforge3.sh
+*.code-workspace

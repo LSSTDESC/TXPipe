@@ -1,0 +1,49 @@
+# Values in this section are accessible to all the different stages.
+# They can be overridden by individual stages though.
+global:
+    # This is read by many stages that read complete
+    # catalog data, and tells them how many rows to read
+    # at once
+    chunk_rows: 10000
+    # These mapping options are also read by a range of stages
+    pixelization: healpix
+    nside: 256
+    sparse: true  # Generate sparse maps - faster if using small areas
+
+
+TXIngestSSIMatchedDESBalrogMag:
+    name: TXIngestSSIMatchedDESBalrogMag
+
+TXMeanLensSelectorSSI:
+    name: TXMeanLensSelectorSSI
+    # Mag cuts
+    lens_zbin_edges: [0.20, 0.40, 0.55, 0.70, 0.85, 0.95, 1.05]
+    selection_type: DESmaglim
+    maglim_band: i
+    bright_limit: 17.5
+    a: 4
+    b: 18
+    extra_cols: [EXTENDED_CLASS_SOF, FLAGS_GOLD]
+
+TXMeanLensSelectorSSIMag:
+    name: TXMeanLensSelectorSSIMag
+    # Mag cuts
+    lens_zbin_edges: [0.20, 0.40, 0.55, 0.70, 0.85, 0.95, 1.05]
+    selection_type: DESmaglim
+    maglim_band: i
+    bright_limit: 17.5
+    a: 4
+    b: 18
+    extra_cols: [EXTENDED_CLASS_SOF, FLAGS_GOLD]
+
+TXLensCatalogSplitterSSI:
+    name: TXLensCatalogSplitterSSI
+
+TXLensCatalogSplitterSSIMag:
+    name: TXLensCatalogSplitterSSIMag
+    
+TXSSIMagnification:
+    name: TXSSIMagnification
+    applied_magnification: 1.02
+    n_patches: 500
+    bootstrap_error: true

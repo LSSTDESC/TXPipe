@@ -1,1 +1,1 @@
-from .random_forest import build_tomographic_classifier, apply_classifier
+from .random_forest import build_tomographic_classifier, apply_classifier, read_training_data

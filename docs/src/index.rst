@@ -6,6 +6,11 @@
 TXPipe documentation
 ====================
 
+
+TXPipe is the catalog-to-statistics pipeline for the LSST Dark Energy Science Collaboration.
+
+It is designed to take catalogs of objects (as produced by the LSST Project), and generate measurements of two-point and other statistics from them, together with all the covariances, binning, and quality control needed to use these statistics in cosmological analyses.
+
 .. toctree::
    :maxdepth: 1
    :caption: Getting started:
@@ -13,12 +18,16 @@ TXPipe documentation
    installation
    example
    structure
+   file_types
+   files
+   shear_calibration
 
 .. toctree::
    :maxdepth: 1
    :caption: Using & Contributing:
 
    running
+   data_sources
    adding
    parallel
    nersc

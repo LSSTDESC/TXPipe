@@ -373,6 +373,9 @@ class Directory(DataFile):
                 raise ValueError(f"Directory input {path} does not exist")
         return p
 
+    def close(self):
+        pass
+
     def write_provenance(self):
         """
         Write provenance information to a new group,
@@ -503,7 +506,7 @@ class PickleFile(DataFile):
 
 
 class ParquetFile(DataFile):
-    suffiz = "pq"
+    suffix = "pq"
 
     def open(self, path, mode):
         import pyarrow.parquet

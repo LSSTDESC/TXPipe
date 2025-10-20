@@ -1,0 +1,10 @@
+#!/usr/bin/bash
+#SBATCH --time=01:00:00
+#SBATCH --partition=hpc
+#SBATCH --ntasks=30
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=128000
+
+source ./conda/bin/activate
+export HDF5_DO_MPI_FILE_SYNC=0
+ceci examples/cosmodc2/Cluster_pipelines/pipeline-20deg2-CL-in2p3.yml
