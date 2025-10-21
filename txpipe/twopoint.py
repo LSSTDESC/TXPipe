@@ -84,11 +84,13 @@ class TXTwoPoint(PipelineStage):
     def validate(self):
         if self.__class__ is not TXTwoPoint:
             return
-        with self.open_input("lens_photoz_stack", wrapper=True) as f:
-            # For both source and lens
-            z, Nz = f.get_bin_n_of_z(0)
-        with self.open_input("shear_photoz_stack", wrapper=True) as g:
-            z, Nz = g.get_bin_n_of_z(0)
+        if self.config["do_pos_pos"] or self.config["do_shear_pos"]:
+            with self.open_input("lens_photoz_stack", wrapper=True) as f:
+                # For both source and lens
+                z, Nz = f.get_bin_n_of_z(0)
+        if self.config["do_shear_shear"] or self.config["do_shear_pos"]:
+            with self.open_input("shear_photoz_stack", wrapper=True) as g:
+                z, Nz = g.get_bin_n_of_z(0)
 
 
     def run(self):
