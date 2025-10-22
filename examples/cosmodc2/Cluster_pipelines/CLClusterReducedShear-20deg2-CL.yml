@@ -3,7 +3,7 @@
 site:
     name: cc-parallel
     mpi_command: mpirun -n
-
+    max_threads: 20
 #for NERSC
 #site:
 #    name: cori-batch
@@ -21,47 +21,45 @@ modules: >
 python_paths: []
 
 stages:
-  - name: TXSourceSelectorMetadetect
-    nprocess: 30
-  - name: BPZliteInformer
-    nprocess: 1
-    aliases:
+    - name: TXSourceSelectorMetadetect
+      nprocess: 20
+    - name: BPZliteInformer
+      nprocess: 1
+      aliases:
         input: spectroscopic_catalog
         model: photoz_model
-  - name: BPZliteEstimator
-    nprocess: 30
-    aliases:
+    - name: BPZliteEstimator
+      nprocess: 20
+      aliases:
         model: photoz_model
         input: shear_catalog
         output: source_photoz_pdfs
-  - name: CLClusterBinningRedshiftRichness
-    nprocess: 1
-  - name: CLClusterShearCatalogs
-    nprocess: 30   #>1 does not work with mpi
-  - name: CLClusterEnsembleProfiles
-    nprocess: 10
-  - name: CLClusterSACC
-    nprocess: 1
-    aliases:
-        cluster_profiles: cluster_profiles
-#    - name: CLClusterDataVector
-#      nprocess: 1
-
-
+    - name: CLClusterBinningRedshiftRichness
+      nprocess: 1
+    - name: CLClusterShearCatalogs
+      nprocess: 1 #>1 does not work with mpi
+    - name: CLClusterEnsembleProfiles
+      nprocess: 10
+    - name: CLClusterSACC
+      nprocess: 1
+      aliases:
+          cluster_profiles: cluster_profiles
 
 output_dir: /sps/lsst/users/ebarroso/TXPipe/data/cosmodc2/outputs-20deg2-CL
 config: /sps/lsst/users/ebarroso/TXPipe/examples/cosmodc2/Cluster_pipelines/config-20deg2-CL.yml
 
 inputs:
+inputs:
     # See README for paths to download these files
     shear_catalog: /sps/lsst/groups/clusters/cl_pipeline_project/TXPipe_data/cosmodc2/20deg2/shear_catalog.hdf5
     #photometry_catalog:  /sps/lsst/users/mricci/TXPipe_data/data_link/cosmodc2/20deg2/photometry_catalog.hdf5
-    fiducial_cosmology: /sps/lsst/users/ebarroso/TXPipe/data/fiducial_cosmology.yml
+    fiducial_cosmology: /sps/lsst/groups/clusters/cl_pipeline_project/TXPipe_data/cosmodc2/fiducial_cosmology.yml
     calibration_table: /sps/lsst/groups/clusters/cl_pipeline_project/TXPipe_data/cosmodc2/20deg2/sample_cosmodc2_w10year_errors.dat
     spectroscopic_catalog: /sps/lsst/groups/clusters/cl_pipeline_project/TXPipe_data/cosmodc2/20deg2/spectroscopic_catalog.hdf5
     cluster_catalog: /sps/lsst/groups/clusters/cl_pipeline_project/TXPipe_data/cosmodc2/20deg2/cluster_catalog.hdf5
     #shear_tomography_catalog: ./data/example/outputs_metadetect/shear_tomography_catalog.hdf5
     #source_photoz_pdfs: ./data/example/inputs/photoz_pdfs.hdf5
+
 resume: true
 log_dir: /sps/lsst/users/ebarroso/TXPipe/data/cosmodc2/logs
 pipeline_log: /sps/lsst/users/ebarroso/TXPipe/data/cosmodc2/log_20deg2.txt
