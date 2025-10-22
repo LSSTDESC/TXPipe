@@ -42,7 +42,10 @@ class TXTwoPointSelfCalibrationIA(TXTwoPoint):
     self calibration of Intrinsic alignment. This is done with TreeCorr.
 
     This stage will make the measurements for galaxy-galaxy lensing in
-    source bins, and the same measurements imposing a selection function
+    source bins, and the same measurements imposing a selection function.
+    It also have the functionality to do the galaxy density calculation
+    in the same bins, however this requires a random catalog which can
+    become very large.
     """
     name = "TXTwoPointSCIA"
     inputs = [
@@ -213,7 +216,7 @@ class TXTwoPointSelfCalibrationIA(TXTwoPoint):
                 self.empty_patch_exists[cat.save_patch_dir] = contains_empty
                 del cat
 
-                ran_cat = self.get_random_catalg(h)
+                ran_cat = self.get_random_catalog(h)
 
                 if ran_cat is None:
                     continue
