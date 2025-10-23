@@ -113,6 +113,7 @@ class TXJackknifeCentersSource(TXJackknifeCenters):
             "dec_units": "degree",
             "every_nth": every_nth,
             "npatch": npatch,
+            "file_type": "HDF5",
         }
 
         # Create the catalog
