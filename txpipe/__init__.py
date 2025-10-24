@@ -10,7 +10,7 @@ from .source_selector import (
     TXSourceSelectorLensfit,
     TXSourceSelectorMetadetect,
 )
-from .lens_selector import TXMeanLensSelector
+from .lens_selector import TXMeanLensSelector, TXTruthLensCatalogSplitterWeighted
 from .photoz_stack import TXPhotozStack, TXPhotozPlot, TXTruePhotozStack
 from .random_cats import TXRandomCat
 from .twopoint_fourier import TXTwoPointFourier
