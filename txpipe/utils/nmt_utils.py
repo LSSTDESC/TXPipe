@@ -88,6 +88,8 @@ def choose_ell_bins(**config):
         ell_bins = NmtBin.from_edges(ell_edges)
 
     elif "ell_min" in config:
+        if not "ell_max" in config or not "n_ell" in config:
+            raise ValueError("When specifying ell_min for ell binning, must also specify ell_max and n_ell")
         ell_min = config["ell_min"]
         ell_max = config["ell_max"]
         n_ell = config["n_ell"]
@@ -103,6 +105,8 @@ def choose_ell_bins(**config):
         ell_bins = NmtBin.from_edges(ell_edges[:-1], ell_edges[1:])
 
     elif "bandpower_width" in config:
+        if not "nside" in config:
+            raise ValueError("When specifying bandpower_width for ell binning, must also specify nside")
         bandpower_width = config["bandpower_width"]
         nside = config["nside"]
         ell_bins = nmt.NmtBin.from_nside_linear(nside, nlb=bandpower_width)
