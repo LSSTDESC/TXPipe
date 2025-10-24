@@ -498,13 +498,13 @@ class TXRandomForestLensSelector(TXBaseLensSelector):
     ]
     config_options = TXBaseLensSelector.config_options.copy()
     config_options.update({
-        "verbose": False,
-        "bands": "ugrizy",
-        "chunk_rows": 10000,
-        "lens_zbin_edges": [float],
-        "random_seed": 42,
-        "spec_mag_column_format": "photometry/{band}",
-        "spec_redshift_column": "photometry/redshift",
+        "verbose": StageParameter(bool, False, msg="Enable verbose output for lens selection."),
+        "bands": StageParameter(str, "ugrizy", msg="Photometric bands to use for classification."),
+        "chunk_rows": StageParameter(int, 10000, msg="Number of rows to process in each chunk."),
+        "lens_zbin_edges": StageParameter(list, required=True, msg="Edges of lens redshift bins."),
+        "random_seed": StageParameter(int, 42, msg="Random seed for reproducibility."),
+        "spec_mag_column_format": StageParameter(str, "photometry/{band}", msg="Format string for spectroscopic magnitude columns."),
+        "spec_redshift_column": StageParameter(str, "photometry/redshift", msg="Column name for spectroscopic redshift."),
     })
 
     def data_iterator(self):
@@ -697,7 +697,7 @@ class TXTruthLensCatalogSplitter(TXLensCatalogSplitter):
             ("fiducial_cosmology", FiducialCosmology),
         ]
     config_options = TXLensCatalogSplitter.config_options.copy()
-    config_options["redshift_column"] = "redshift_true"
+    config_options["redshift_column"] = StageParameter(str, "redshift_true", msg="Column name for true redshift.")
 
 
     def data_iterator(self):
@@ -728,7 +728,7 @@ class TXExternalLensCatalogSplitter(TXLensCatalogSplitter):
     changes only file names.
     """
     config_options = TXLensCatalogSplitter.config_options.copy()
-    config_options["redshift_column"] = "redshift"
+    config_options["redshift_column"] = StageParameter(str, "redshift", msg="Column name for redshift.")
 
     name = "TXExternalLensCatalogSplitter"
     inputs = [

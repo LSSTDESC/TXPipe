@@ -436,10 +436,10 @@ class TXNoiseMapsJax(PipelineStage):
     ]
 
     config_options = {
-        "chunk_rows": 4000000,
-        "lensing_realizations": 30,
-        "clustering_realizations": 1,
-        "seed": 0,
+        "chunk_rows": StageParameter(int, 4000000, msg="Number of rows to process in each chunk."),
+        "lensing_realizations": StageParameter(int, 30, msg="Number of lensing realizations."),
+        "clustering_realizations": StageParameter(int, 1, msg="Number of clustering realizations."),
+        "seed": StageParameter(int, 0, msg="Random seed for reproducibility."),
     }
 
     def run(self):
