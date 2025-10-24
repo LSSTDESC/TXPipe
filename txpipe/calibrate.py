@@ -1,6 +1,7 @@
 from .base_stage import PipelineStage
 from .data_types import ShearCatalog, TomographyCatalog, FiducialCosmology
-from .utils import read_shear_catalog_type, Calibrator, Splitter, rename_iterated, SourceNumberDensityStats
+from .utils import read_shear_catalog_type, Calibrator, Splitter, rename_iterated
+from ceci.config import StageParameter
 import numpy as np
 
 
@@ -31,15 +32,15 @@ class TXShearCalibration(PipelineStage):
     ]
 
     config_options = {
-        "use_true_shear": False,
-        "chunk_rows": 100_000,
-        "subtract_mean_shear": True,
-        'copy_redshift': False,
-        "add_fiducial_distance": False,
-        'redshift_name': 'redshift_true',
-        "extra_cols": [""],
-        "shear_catalog_type": '',
-        "shear_prefix": "",
+        "use_true_shear": StageParameter(bool, False, msg="Use true shear values instead of observed shear"),
+        "chunk_rows": StageParameter(int, 100_000, msg="Number of rows to process in each chunk"),
+        "subtract_mean_shear": StageParameter(bool, True, msg="Whether to subtract the mean shear from the calibrated shear"),
+        'copy_redshift': StageParameter(bool, False, msg="Whether to copy the redshift column from the input catalog"),
+        "add_fiducial_distance": StageParameter(bool, False, msg="Whether to add fiducial comoving distance to the output catalog"),
+        'redshift_name': StageParameter(str, 'redshift_true', msg="Name of the redshift column"),
+        "extra_cols": StageParameter(list, [""], msg="Additional columns to copy from the input catalog"),
+        "shear_catalog_type": StageParameter(str, '', msg="Type of shear catalog (e.g., metadetect, metacal, lensfit, hsc)"),
+        "shear_prefix": StageParameter(str, "", msg="Prefix for shear-related columns in the input catalog"),
     }
 
     def run(self):

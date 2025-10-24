@@ -27,6 +27,7 @@ from .utils.calibrators import (
     NullCalibrator,
 )
 from .binning import build_tomographic_classifier, apply_classifier, read_training_data
+from ceci.config import StageParameter
 import numpy as np
 import warnings
 
@@ -124,17 +125,17 @@ class TXSourceSelectorBase(PipelineStage):
     outputs = [("shear_tomography_catalog", TomographyCatalog)]
 
     config_options = {
-        "input_pz": False,
-        "true_z": False,
-        "bands": "riz",  # bands from metacal to use
-        "verbose": False,
-        "T_cut": float,
-        "s2n_cut": float,
-        "chunk_rows": 10000,
-        "source_zbin_edges": [float],
-        "random_seed": 42,
-        "spec_mag_column_format": "photometry/{band}",
-        "spec_redshift_column": "photometry/redshift",
+        "input_pz": StageParameter(bool, False, msg="Whether to use input photo-z posteriors"),
+        "true_z": StageParameter(bool, False, msg="Whether to use true redshifts instead of photo-z"),
+        "bands": StageParameter(str, "riz", msg="Bands from the catalog to use for selection"),
+        "verbose": StageParameter(bool, False, msg="Whether to print verbose output"),
+        "T_cut": StageParameter(float, required=True, msg="Size cut threshold for object selection"),
+        "s2n_cut": StageParameter(float, required=True, msg="Signal-to-noise cut threshold for object selection"),
+        "chunk_rows": StageParameter(int, 10000, msg="Number of rows to process in each chunk"),
+        "source_zbin_edges": StageParameter(list, required=True, msg="Redshift bin edges for source tomography"),
+        "random_seed": StageParameter(int, 42, msg="Random seed for reproducibility"),
+        "spec_mag_column_format": StageParameter(str, "photometry/{band}", msg="Format string for spectroscopic magnitude columns"),
+        "spec_redshift_column": StageParameter(str, "photometry/redshift", msg="Column name for spectroscopic redshifts"),
     }
 
     def run(self):
@@ -479,8 +480,8 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
     # add one option to the base class configuration
     config_options = {
         **TXSourceSelectorBase.config_options,
-        "delta_gamma": float,
-        "use_diagonal_response": False
+        "delta_gamma": StageParameter(float, required=True, msg="Delta gamma value for metacal response calculation"),
+        "use_diagonal_response": StageParameter(bool, False, msg="Whether to use only diagonal elements of the response matrix")
     }
 
 
@@ -630,7 +631,7 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
     # add one option to the base class configuration
     config_options = {
         **TXSourceSelectorBase.config_options,
-        "delta_gamma": float
+        "delta_gamma": StageParameter(float, required=True, msg="Delta gamma value for metadetect response calculation")
     }
 
 
@@ -745,8 +746,8 @@ class TXSourceSelectorLensfit(TXSourceSelectorBase):
     # add one option to the base class configuration
     config_options = {
         **TXSourceSelectorBase.config_options,
-        "input_m_is_weighted": bool,
-        "dec_cut": True,
+        "input_m_is_weighted": StageParameter(bool, required=True, msg="Whether the input m values are already weighted"),
+        "dec_cut": StageParameter(bool, True, msg="Whether to apply a declination cut"),
     }
 
 
@@ -872,7 +873,7 @@ class TXSourceSelectorHSC(TXSourceSelectorBase):
 
     name = "TXSourceSelectorHSC"
     config_options = TXSourceSelectorBase.config_options.copy()
-    config_options["max_shear_cut"] = 0.0
+    config_options["max_shear_cut"] = StageParameter(float, 0.0, msg="Maximum shear value for object selection")
     
     def data_iterator(self):
         chunk_rows = self.config["chunk_rows"]

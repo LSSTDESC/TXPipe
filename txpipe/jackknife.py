@@ -1,5 +1,6 @@
 from .base_stage import PipelineStage
 from .data_types import RandomsCatalog, ShearCatalog, PNGFile, TextFile
+from ceci.config import StageParameter
 import numpy as np
 
 class TXJackknifeCenters(PipelineStage):
@@ -21,8 +22,8 @@ class TXJackknifeCenters(PipelineStage):
         ("jk", PNGFile),
     ]
     config_options = {
-        "npatch": 10,
-        "every_nth": 100,
+        "npatch": StageParameter(int, 10, msg="Number of jackknife patches to create"),
+        "every_nth": StageParameter(int, 100, msg="Use every nth point from the random catalog to reduce data size"),
     }
 
     def plot(self, ra, dec, patch):

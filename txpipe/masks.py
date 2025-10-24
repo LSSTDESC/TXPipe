@@ -2,6 +2,7 @@ import numpy as np
 from .utils import choose_pixelization
 from .base_stage import PipelineStage
 from .data_types import MapsFile
+from ceci.config import StageParameter
 
 class TXBaseMask(PipelineStage):
     """
@@ -138,8 +139,8 @@ class TXSimpleMask(TXBaseMask):
     name = "TXSimpleMask"
     inputs = [("aux_lens_maps", MapsFile)]
     config_options = {
-        "depth_cut": 23.5,
-        "bright_object_max": 10.0,
+        "depth_cut": StageParameter(float, 23.5, msg="Depth cut for mask creation."),
+        "bright_object_max": StageParameter(float, 10.0, msg="Maximum allowed bright object count."),
     }
     
     def make_binary_mask(self):
@@ -229,11 +230,11 @@ class TXSimpleMaskFrac(TXSimpleMask):
     ]
     outputs = [("mask", MapsFile)]
     config_options = {
-        "depth_cut": 23.5,
-        "bright_object_max": 10.0,
-        "supreme_map_file": "none",
-        "supreme_map_files": [],
-        "frac_cut": 0.0,
+        "depth_cut": StageParameter(float, 23.5, msg="Depth cut for mask creation."),
+        "bright_object_max": StageParameter(float, 10.0, msg="Maximum allowed bright object count."),
+        "supreme_map_file": StageParameter(str, 'none', msg="Path to supreme map file for fracdet computation."),
+        "supreme_map_files": StageParameter(list, [], msg="List of supreme map files for fracdet computation."),
+        "frac_cut": StageParameter(float, 0.0, msg="Minimum fractional coverage to keep pixel in mask."),
     }
 
     def run(self):
@@ -280,11 +281,9 @@ class TXCustomMask(TXSimpleMaskFrac):
     ]
     outputs = [("mask", MapsFile)]
     config_options = {
-        "fracdet_name": "footprint/fracdet_griz",
-        "cuts": [
-            "footprint/fracdet_griz > 0"
-            ], 
-        "degrade": False, #if input map Nside differs from config nside, degrade
+        "fracdet_name": StageParameter(str, "footprint/fracdet_griz", msg="Fracdet map name."),
+        "cuts": StageParameter(list, ["footprint/fracdet_griz > 0"], msg="List of mask cuts to apply."),
+        "degrade": StageParameter(bool, False, msg="Degrade resolution if input map Nside differs from config nside."),
     }
 
     def run(self):
@@ -438,5 +437,5 @@ class TXCustomMask(TXSimpleMaskFrac):
 
 
 
-        
+
 

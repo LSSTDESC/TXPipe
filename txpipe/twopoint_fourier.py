@@ -11,6 +11,7 @@ from .data_types import (
     PNGFile,
     QPNOfZFile
 )
+from ceci.config import StageParameter
 import numpy as np
 import collections
 from .utils import choose_pixelization, array_hash
@@ -72,25 +73,25 @@ class TXTwoPointFourier(PipelineStage):
     outputs = [("twopoint_data_fourier", SACCFile)]
 
     config_options = {
-        "mask_threshold": 0.0,
-        "flip_g1": False,
-        "flip_g2": False,
-        "cache_dir": "./cache/twopoint_fourier",
-        "low_mem": False,
-        "deproject_syst_clustering": False,
-        "systmaps_clustering_dir": "",
-        "ell_min": 100,
-        "ell_max": 1500,
-        "n_ell": 20,
-        "ell_spacing": "log",
-        "true_shear": False,
-        "analytic_noise": False,
-        "gaussian_sims_factor": [1.],
-        "b0": 1.0,
-        "do_shear_shear": True,
-        "do_shear_pos": True,
-        "do_pos_pos": True,
-        "compute_theory": True,
+        "mask_threshold": StageParameter(float, 0.0, msg="Threshold for masking pixels"),
+        "flip_g1": StageParameter(bool, False, msg="Whether to flip the sign of g1"),
+        "flip_g2": StageParameter(bool, False, msg="Whether to flip the sign of g2"),
+        "cache_dir": StageParameter(str, "./cache/twopoint_fourier", msg="Directory for caching intermediate results"),
+        "low_mem": StageParameter(bool, False, msg="Whether to use low memory mode"),
+        "deproject_syst_clustering": StageParameter(bool, False, msg="Whether to deproject systematic modes from clustering"),
+        "systmaps_clustering_dir": StageParameter(str, "", msg="Directory containing systematic maps for clustering"),
+        "ell_min": StageParameter(int, 100, msg="Minimum ell value for power spectra"),
+        "ell_max": StageParameter(int, 1500, msg="Maximum ell value for power spectra"),
+        "n_ell": StageParameter(int, 20, msg="Number of ell bins"),
+        "ell_spacing": StageParameter(str, "log", msg="Spacing of ell bins (log or linear)"),
+        "true_shear": StageParameter(bool, False, msg="Whether to use true shear values"),
+        "analytic_noise": StageParameter(bool, False, msg="Whether to use analytic noise estimates"),
+        "gaussian_sims_factor": StageParameter(list, default=[1.], msg="Factor by which to decrease lens density to account for increased density contrast."),
+        "b0": StageParameter(float, 1.0, msg="Galaxy bias parameter"),
+        "do_shear_shear": StageParameter(bool, True, msg="Whether to compute shear-shear power spectra"),
+        "do_shear_pos": StageParameter(bool, True, msg="Whether to compute shear-position power spectra"),
+        "do_pos_pos": StageParameter(bool, True, msg="Whether to compute position-position power spectra"),
+        "compute_theory": StageParameter(bool, True, msg="Whether to compute theory predictions"),
     }
 
     def run(self):

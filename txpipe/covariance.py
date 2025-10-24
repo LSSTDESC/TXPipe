@@ -1,3 +1,4 @@
+from ceci.config import StageParameter
 from .base_stage import PipelineStage
 from .data_types import (
     ShearCatalog,
@@ -12,6 +13,7 @@ import numpy as np
 import warnings
 import os
 import pickle
+import sys
 
 # require TJPCov to be in PYTHONPATH
 d2r = np.pi / 180
@@ -44,10 +46,10 @@ class TXFourierGaussianCovariance(PipelineStage):
     ]
 
     config_options = {
-        "pickled_wigner_transform": "",
-        "use_true_shear": False,
-        "galaxy_bias": [0.0],
-        "gaussian_sims_factor": [1.],
+        "pickled_wigner_transform": StageParameter(str, default="", msg="Path to pickled Wigner transform."),
+        "use_true_shear": StageParameter(bool, default=False, msg="Use true shear values."),
+        "galaxy_bias": StageParameter(list, default=[0.0], msg="Galaxy bias values, or one zero for unit bias."),
+        "gaussian_sims_factor": StageParameter(list, default=[1.], msg="Factor by which to decrease lens density to account for increased density contrast."),
     }
 
     def run(self):
@@ -580,13 +582,13 @@ class TXRealGaussianCovariance(TXFourierGaussianCovariance):
     ]
 
     config_options = {
-        "min_sep": 2.5,  # arcmin
-        "max_sep": 250,
-        "nbins": 20,
-        "pickled_wigner_transform": "",
-        "use_true_shear": False,
-        "galaxy_bias": [0.0],
-        "gaussian_sims_factor": [1.],
+        "min_sep": StageParameter(float, default=2.5, msg="Minimum separation in arcmin."),
+        "max_sep": StageParameter(float, default=250, msg="Maximum separation in arcmin."),
+        "nbins": StageParameter(int, default=20, msg="Number of bins."),
+        "pickled_wigner_transform": StageParameter(str, default="", msg="Path to pickled Wigner transform."),
+        "use_true_shear": StageParameter(bool, default=False, msg="Use true shear values."),
+        "galaxy_bias": StageParameter(list, default=[0.0], msg="Galaxy bias values."),
+        "gaussian_sims_factor": StageParameter(list, default=[1.], msg="Gaussian simulation factor."),
     }
 
     def run(self):
@@ -651,9 +653,11 @@ class TXFourierTJPCovariance(PipelineStage):
         ("summary_statistics_fourier", SACCFile),
     ]
 
-    config_options = {"galaxy_bias": [0.0], "IA": 0.5, "cache_dir": "",
-                      'cov_type': ["FourierGaussianNmt",
-                                   "FourierSSCHaloModel"]}
+    config_options = {"galaxy_bias": StageParameter(list, default=[0.0], msg="Galaxy bias values, or one zero for unit bias."),
+                      "IA": StageParameter(float, default=0.5, msg="Intrinsic alignment parameter."),
+                      "cache_dir": StageParameter(str, default="", msg="Cache directory."),
+                      "cov_type": StageParameter(list, default=["FourierGaussianNmt", "FourierSSCHaloModel"], msg="Covariance types to use."),
+    }
 
     def run(self):
         from tjpcov.covariance_calculator import CovarianceCalculator

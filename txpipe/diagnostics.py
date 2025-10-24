@@ -13,6 +13,7 @@ from .utils.fitting import fit_straight_line
 from .utils import import_dask
 from .plotting import manual_step_histogram
 import numpy as np
+from ceci.config import StageParameter
 
 class TXDiagnosticQuantiles(PipelineStage):
     """
@@ -39,11 +40,11 @@ class TXDiagnosticQuantiles(PipelineStage):
         ("shear_catalog_quantiles", HDFFile),
     ]
     config_options = {
-        "shear_prefix": "mcal_",
-        "psf_prefix": "mcal_psf_",
-        "nbins": 20,
-        "chunk_rows": 0,
-        "bands": "riz",
+        "shear_prefix": StageParameter(str, "mcal_", msg="Prefix for shear columns in the catalog."),
+        "psf_prefix": StageParameter(str, "mcal_psf_", msg="Prefix for PSF columns in the catalog."),
+        "nbins": StageParameter(int, 20, msg="Number of quantile bins to compute."),
+        "chunk_rows": StageParameter(int, 0, msg="Number of rows to process in each chunk (0 means auto)."),
+        "bands": StageParameter(str, "riz", msg="Bands to use for diagnostics."),
     }
     def run(self):
         _, da = import_dask()
@@ -140,21 +141,21 @@ class TXSourceDiagnosticPlots(PipelineStage):
     ]
 
     config_options = {
-        "chunk_rows": 100000,
-        "delta_gamma": 0.02,
-        "shear_prefix": "mcal_",
-        "psf_prefix": "mcal_psf_",
-        "nbins": 20,
-        "g_min":-0.03,
-        "g_max": 0.05,
-        "psfT_min": 0.04,
-        "psfT_max": 0.36,
-        "T_min": 0.04,
-        "T_max": 4.0,
-        "s2n_min": 10,
-        "s2n_max": 300,
-        "psf_unit_conv": False,
-        "bands": "riz",
+        "chunk_rows": StageParameter(int, 100000, msg="Number of rows to process in each chunk."),
+        "delta_gamma": StageParameter(float, 0.02, msg="Delta gamma value for metacal response calculation."),
+        "shear_prefix": StageParameter(str, "mcal_", msg="Prefix for shear columns in the catalog."),
+        "psf_prefix": StageParameter(str, "mcal_psf_", msg="Prefix for PSF columns in the catalog."),
+        "nbins": StageParameter(int, 20, msg="Number of bins for histograms."),
+        "g_min": StageParameter(float, -0.03, msg="Minimum g value for plots."),
+        "g_max": StageParameter(float, 0.05, msg="Maximum g value for plots."),
+        "psfT_min": StageParameter(float, 0.04, msg="Minimum PSF T value for plots."),
+        "psfT_max": StageParameter(float, 0.36, msg="Maximum PSF T value for plots."),
+        "T_min": StageParameter(float, 0.04, msg="Minimum T value for plots."),
+        "T_max": StageParameter(float, 4.0, msg="Maximum T value for plots."),
+        "s2n_min": StageParameter(float, 10, msg="Minimum S/N value for plots."),
+        "s2n_max": StageParameter(float, 300, msg="Maximum S/N value for plots."),
+        "psf_unit_conv": StageParameter(bool, False, msg="Whether to convert PSF units."),
+        "bands": StageParameter(str, "riz", msg="Bands to use for diagnostics."),
     }
 
     def run(self):
@@ -1023,13 +1024,13 @@ class TXLensDiagnosticPlots(PipelineStage):
     ]
 
     config_options = {
-        "block_size": 0,
-        "delta_gamma": 0.02,
-        "mag_min": 18,
-        "mag_max": 28,
-        "snr_min": 5,
-        "snr_max": 200,
-        "bands": "ugrizy",
+        "block_size": StageParameter(int, 0, msg="Block size for dask processing (0 means auto)."),
+        "delta_gamma": StageParameter(float, 0.02, msg="Delta gamma value for metacal response calculation."),
+        "mag_min": StageParameter(float, 18, msg="Minimum magnitude for plots."),
+        "mag_max": StageParameter(float, 28, msg="Maximum magnitude for plots."),
+        "snr_min": StageParameter(float, 5, msg="Minimum S/N for plots."),
+        "snr_max": StageParameter(float, 200, msg="Maximum S/N for plots."),
+        "bands": StageParameter(str, "ugrizy", msg="Bands to use for diagnostics."),
     }
 
     def run(self):

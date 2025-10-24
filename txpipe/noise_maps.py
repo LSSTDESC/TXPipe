@@ -16,6 +16,7 @@ from .utils import (
     read_shear_catalog_type,
     rename_iterated,
 )
+from ceci.config import StageParameter
 
 
 class TXSourceNoiseMaps(TXBaseMaps):
@@ -39,9 +40,9 @@ class TXSourceNoiseMaps(TXBaseMaps):
     ]
 
     config_options = {
-        "chunk_rows": 100000,
-        "lensing_realizations": 30,
-        "true_shear": False,
+        "chunk_rows": StageParameter(int, 100000, msg="Number of rows to process in each chunk."),
+        "lensing_realizations": StageParameter(int, 30, msg="Number of lensing noise realizations to generate."),
+        "true_shear": StageParameter(bool, False, msg="Whether to use true shear values for noise maps."),
     }
 
     # instead of reading from config we match the basic maps
@@ -211,9 +212,9 @@ class TXLensNoiseMaps(TXBaseMaps):
     ]
 
     config_options = {
-        "chunk_rows": 100000,
-        "clustering_realizations": 1,
-        "mask_in_weights": False,
+        "chunk_rows": StageParameter(int, 100000, msg="Number of rows to process in each chunk."),
+        "clustering_realizations": StageParameter(int, 1, msg="Number of clustering noise realizations to generate."),
+        "mask_in_weights": StageParameter(bool, False, msg="Whether to include mask in weight calculations."),
     }
 
     # instead of reading from config we match the basic maps
@@ -435,10 +436,10 @@ class TXNoiseMapsJax(PipelineStage):
     ]
 
     config_options = {
-        "chunk_rows": 4000000,
-        "lensing_realizations": 30,
-        "clustering_realizations": 1,
-        "seed": 0,
+        "chunk_rows": StageParameter(int, 4000000, msg="Number of rows to process in each chunk."),
+        "lensing_realizations": StageParameter(int, 30, msg="Number of lensing realizations."),
+        "clustering_realizations": StageParameter(int, 1, msg="Number of clustering realizations."),
+        "seed": StageParameter(int, 0, msg="Random seed for reproducibility."),
     }
 
     def run(self):
