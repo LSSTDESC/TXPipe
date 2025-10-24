@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import ShearCatalog, TomographyCatalog
+from .data_types import ShearCatalog, TomographyCatalog, FiducialCosmology
 from .utils import read_shear_catalog_type, Calibrator, Splitter, rename_iterated
 from ceci.config import StageParameter
 import numpy as np
@@ -24,6 +24,7 @@ class TXShearCalibration(PipelineStage):
     inputs = [
         ("shear_catalog", ShearCatalog),
         ("shear_tomography_catalog", TomographyCatalog),
+        ("fiducial_cosmology", FiducialCosmology),
     ]
 
     outputs = [
@@ -34,6 +35,9 @@ class TXShearCalibration(PipelineStage):
         "use_true_shear": StageParameter(bool, False, msg="Use true shear values instead of observed shear"),
         "chunk_rows": StageParameter(int, 100_000, msg="Number of rows to process in each chunk"),
         "subtract_mean_shear": StageParameter(bool, True, msg="Whether to subtract the mean shear from the calibrated shear"),
+        'copy_redshift': StageParameter(bool, False, msg="Whether to copy the redshift column from the input catalog"),
+        "add_fiducial_distance": StageParameter(bool, False, msg="Whether to add fiducial comoving distance to the output catalog"),
+        'redshift_name': StageParameter(str, 'redshift_true', msg="Name of the redshift column"),
         "extra_cols": StageParameter(list, [""], msg="Additional columns to copy from the input catalog"),
         "shear_catalog_type": StageParameter(str, '', msg="Type of shear catalog (e.g., metadetect, metacal, lensfit, hsc)"),
         "shear_prefix": StageParameter(str, "", msg="Prefix for shear-related columns in the input catalog"),
@@ -46,6 +50,9 @@ class TXShearCalibration(PipelineStage):
         use_true = self.config["use_true_shear"]
         extra_cols = [c for c in self.config["extra_cols"] if c]
         subtract_mean_shear = self.config["subtract_mean_shear"]
+        add_fiducial_distance = self.config['add_fiducial_distance']
+        copy_redshift = self.config["copy_redshift"]
+        z_name = self.config['redshift_name']
 
         shear_prefix = self.config["shear_prefix"]
         with self.open_input("shear_catalog", wrapper=True) as f:
@@ -85,19 +92,22 @@ class TXShearCalibration(PipelineStage):
                 cat_cols = cat_cols + extra_cols + mag_cols_in
 
             renames.update(zip(mag_cols_in, mag_cols_out))
+            if add_fiducial_distance:
+                if copy_redshift:
+                    cat_cols += [z_name]
+                else:
+                    raise ValueError(f"To add fiducial distances the shear catalog needs a redshift")
 
+        
         if cat_type!='hsc':
             output_cols = ["ra", "dec", "weight", "g1", "g2"] + extra_cols + mag_cols_out
         else:
-            output_cols = ["ra", "dec", "weight", "g1", "g2", "c1", "c2"]  + extra_cols + mag_cols_out
+            output_cols = ["ra", "dec", "weight", "g1", "g2", "c1", "c2"] + extra_cols + mag_cols_out
 
-        if self.rank == 0:
-            print("Reading these columns from the 'shear' group:")
-            for c in cat_cols:
-                print(f" - {c}")
-            print("Renaming these columns:")
-            for k, v in renames.items():
-                print(f" - {k} -> {v}")
+        if add_fiducial_distance:
+            output_cols.append("r")
+            output_cols.append("z")
+            print("Adding fiducial distances; hopefully a mean redshift is defined")
 
         # We parallelize by bin.  This isn't ideal but we don't know the number
         # of objects in each bin per chunk, so we can't parallelize in full.  This
@@ -135,6 +145,8 @@ class TXShearCalibration(PipelineStage):
 
             # Rename mcal_g1 -> g1 etc
             self.rename_metacal(data)
+            if add_fiducial_distance:
+                self.redshift_to_comoving(data, z_name)
 
             #  Now output the calibrated bin data for this processor
             for b in my_bins:
@@ -172,6 +184,7 @@ class TXShearCalibration(PipelineStage):
         output_file.close()
 
     def setup_output(self, extra_cols):
+        add_fiducial_distance = self.config['add_fiducial_distance']
         # count the expected number of objects per bin from the tomo data
         with self.open_input("shear_tomography_catalog") as f:
             counts = f["counts/counts"][:]
@@ -183,6 +196,9 @@ class TXShearCalibration(PipelineStage):
 
         #  we only retain these columns
         cols = ["ra", "dec", "weight", "g1", "g2"] + extra_cols
+        if add_fiducial_distance: 
+            cols.extend(["r", "z"])
+            
 
         # structure is /shear/bin_1, /shear/bin_2, etc
         g = f.create_group("shear")
@@ -218,3 +234,14 @@ class TXShearCalibration(PipelineStage):
         d["g1"] = d[f"{prefix}_g1"]
         d["g2"] = d[f"{prefix}_g2"]
         del d[f"{prefix}_g1"], d[f"{prefix}_g2"]
+    
+    def redshift_to_comoving(self, d, name):
+        import pyccl as ccl
+        cosmo = self.open_input("fiducial_cosmology", wrapper=True).to_ccl() 
+        #renaming the redshift name
+        d["z"] = d[name]
+        d["r"] = ccl.background.comoving_radial_distance(cosmo, 1/(1+d[name]))
+
+
+
+

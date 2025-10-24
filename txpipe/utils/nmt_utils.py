@@ -4,82 +4,6 @@ import numpy as np
 import healpy
 import pathlib
 
-class MyNmtBinFlat(nmt.NmtBinFlat):
-    def __init__(self, l0, lf):
-        super().__init__(l0, lf)
-        self.ell_min = l0
-        self.ell_max = lf
-
-    def get_window(self, b):
-        ell = np.arange(self.ell_min[b], self.ell_max[b] + 1)
-        w = np.ones_like(ell)
-        return (ell, w)
-
-    def get_ell_min(self, b):
-        return self.ell_min[b]
-
-    def get_ell_max(self, b):
-        return self.ell_max[b]
-
-    def is_flat(self):
-        return True
-
-    def apply_window(self, b, c_ell):
-        b0, b1 = self.get_window(b)
-        return c_ell[b0 : b1 + 1].mean()
-
-
-class MyNmtBin(nmt.NmtBin):
-    def __init__(
-        self,
-        nside=None,
-        bpws=None,
-        ells=None,
-        weights=None,
-        nlb=None,
-        lmax=None,
-        is_Dell=False,
-        f_ell=None,
-    ):
-        super().__init__(
-            bpws=bpws,
-            ells=ells,
-            weights=weights,
-            lmax=lmax,
-            f_ell=None,
-        )
-        self.ell_max = self.lmax
-
-    def get_window(self, b):
-        ls = self.get_ell_list(b)
-        w = self.get_weight_list(b)
-        return (ls, w)
-
-    def get_ell_min(self, b):
-        return self.get_ell_list(b)[0]
-
-    def get_ell_max(self, b):
-        return self.get_ell_list(b)[-1]
-
-    def is_flat(self):
-        return False
-
-    def apply_window(self, b, c_ell):
-        ell, weight = self.get_window(b)
-        return (c_ell[ell] * weight).sum() / weight.sum()
-
-    @classmethod
-    def from_binning_info(cls, ell_min, ell_max, n_ell, ell_spacing):
-        # Creating the ell binning from the edges using this Namaster constructor.
-        if ell_spacing == "log":
-            edges = np.unique(np.geomspace(ell_min, ell_max, n_ell).astype(int))
-        else:
-            edges = np.unique(np.linspace(ell_min, ell_max, n_ell).astype(int))
-
-        ell_bins = cls.from_edges(edges[:-1], edges[1:], is_Dell=False)
-
-        return ell_bins
-
 
 class WorkspaceCache:
     def __init__(self, dirname, low_mem=False):
@@ -134,3 +58,60 @@ class WorkspaceCache:
             os.makedirs(os.path.dirname(str(p)), exist_ok=True)
 
         workspace.write_to(str(p))
+
+def choose_ell_bins(**config):
+    """Create an NmtBin object based on configuration parameters,
+    choosing an ell binning scheme.
+
+    These three methods are attempted, in this order:
+    1. If 'ell_edges' is provided, use those edges directly.
+    2. If 'ell_min', 'ell_max', and 'n_ell' are provided, use those to
+       create evenly spaced bins, in log-space by default, or linear
+       space if 'ell_spacing' is set to 'linear' or 'lin'.
+
+    3. If 'bandpower_width' and 'nside' are provided, use those to
+         create bins of the given width, using nmt.NmtBin.from_nside_linear.
+
+    Parameters
+    ----------
+    config : dict
+        Configuration dictionary containing one of the above sets of parameters.
+
+    Returns
+    -------
+    ell_bins : nmt.NmtBin
+        The resulting NmtBin object.
+    """
+    from pymaster import NmtBin
+    if "ell_edges" in config:
+        ell_edges = config["ell_edges"]
+        ell_bins = NmtBin.from_edges(ell_edges)
+
+    elif "ell_min" in config:
+        if not "ell_max" in config or not "n_ell" in config:
+            raise ValueError("When specifying ell_min for ell binning, must also specify ell_max and n_ell")
+        ell_min = config["ell_min"]
+        ell_max = config["ell_max"]
+        n_ell = config["n_ell"]
+        ell_spacing = config.get("ell_spacing", "log")
+
+        if ell_spacing == "linear" or ell_spacing == "lin":
+            ell_edges = np.unique(np.linspace(ell_min, ell_max, n_ell).astype(int))
+        elif ell_spacing == "log":
+            ell_edges = np.unique(
+                np.geomspace(ell_min, ell_max, n_ell).astype(int)
+            )
+
+        ell_bins = NmtBin.from_edges(ell_edges[:-1], ell_edges[1:])
+
+    elif "bandpower_width" in config:
+        if not "nside" in config:
+            raise ValueError("When specifying bandpower_width for ell binning, must also specify nside")
+        bandpower_width = config["bandpower_width"]
+        nside = config["nside"]
+        ell_bins = nmt.NmtBin.from_nside_linear(nside, nlb=bandpower_width)
+
+    else:
+        raise ValueError("No valid ell binning configuration found. Specify one of ell_edges, ell_min/ell_max/n_ell, or bandpower_width/nside.")
+
+    return ell_bins
