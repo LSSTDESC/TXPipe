@@ -5,12 +5,14 @@ from .data_types import TomographyCatalog, MapsFile, HDFFile, YamlFile, ShearCat
 from .utils.calibration_tools import read_shear_catalog_type
 from .utils import choose_pixelization
 
+
 def copy(tomo, in_section, out_section, name, meta_file, metadata, new_name=None):
     if new_name is None:
         new_name = name
     x = tomo[f"{in_section}/{name}"][:]
     meta_file.create_dataset(f"{out_section}/{new_name}", data=x)
     metadata[new_name] = x.tolist()
+
 
 def copy_attrs(tomo, name, out_name, meta_file, metadata):
     for k, v in tomo[name].attrs.items():
@@ -22,6 +24,7 @@ def copy_attrs(tomo, name, out_name, meta_file, metadata):
         elif isinstance(v, np.int64):
             v = int(v)
         metadata[k] = v
+
 
 class TXTracerMetadata(PipelineStage):
     """
@@ -113,7 +116,6 @@ class TXTracerMetadata(PipelineStage):
             metadata["source_density"] = source_density.tolist()
 
             copy_attrs(shear_tomo_file, "tomography", "tracers", meta_file, metadata)
-            
 
     def copy_lens_metadata(self, meta_file, metadata, area, area_sq_arcmin):
         if self.get_input("lens_tomography_catalog") == "none":
@@ -121,7 +123,6 @@ class TXTracerMetadata(PipelineStage):
             return
 
         with self.open_input("lens_tomography_catalog") as lens_tomo_file:
-
             copy(lens_tomo_file, "counts", "tracers", "counts", meta_file, metadata, "lens_counts")
             copy(lens_tomo_file, "counts", "tracers", "counts_2d", meta_file, metadata, "lens_counts_2d")
 
@@ -158,7 +159,6 @@ class TXTracerMetadata(PipelineStage):
         yaml_out = self.open_output("tracer_metadata_yml", wrapper=True)
         yaml_out.write(metadata)
         yaml_out.close()
-
 
     def read_area(self):
         with self.open_input("mask", wrapper=True) as f:

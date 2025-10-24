@@ -19,7 +19,11 @@ class TXExposureInfo(PipelineStage):
     ]
     config_options = {
         "dc2_name": StageParameter(str, "1.2p", msg="Name of the DC2 run to use."),
-        "opsim_db": StageParameter(str, "/global/projecta/projectdirs/lsst/groups/SSim/DC2/minion_1016_desc_dithered_v4.db", msg="Path to the opsim database file."),
+        "opsim_db": StageParameter(
+            str,
+            "/global/projecta/projectdirs/lsst/groups/SSim/DC2/minion_1016_desc_dithered_v4.db",
+            msg="Path to the opsim database file.",
+        ),
         "propId": StageParameter(int, 54, msg="ID to filter visits."),
     }
 
@@ -95,7 +99,7 @@ class TXExposureInfo(PipelineStage):
         for i, ref in enumerate(refs):
             # Progress update
             if i % 100 == 0:
-                print(f"Reading metadata for exposure {i+1} / {n}")
+                print(f"Reading metadata for exposure {i + 1} / {n}")
 
             # Read the metadata for this exposure reference
             try:
@@ -135,8 +139,6 @@ class TXExposureInfo(PipelineStage):
         propId = self.config["propId"]
         connection = sqlite3.connect(db)
         cursor = connection.cursor()
-        cursor.execute(
-            "select obsHistID from summary where propId=:propId", {"propId": propId}
-        )
+        cursor.execute("select obsHistID from summary where propId=:propId", {"propId": propId})
         obsHistID = {Id[0] for Id in cursor.fetchall()}
         return obsHistID

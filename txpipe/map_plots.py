@@ -74,13 +74,13 @@ class TXMapPlots(PipelineStage):
 
     def aux_source_plots(self):
         import matplotlib.pyplot as plt
-        
+
         if self.get_input("aux_source_maps") == "none":
-            # Make empty plots if no data available, so that the
-            # pipeline thinks it is complete.
-            for map_type in ["flag_map", 'psf_map']:
+            # Make empty plots if no data available, so that the
+            # pipeline thinks it is complete.
+            for map_type in ["flag_map", "psf_map"]:
                 with self.open_output(map_type, wrapper=True) as f:
-                    plt.title(f'No map generated for {map_type}')
+                    plt.title(f"No map generated for {map_type}")
             return
 
         m = self.open_input("aux_source_maps", wrapper=True)
@@ -111,10 +111,11 @@ class TXMapPlots(PipelineStage):
 
     def aux_lens_plots(self):
         import matplotlib.pyplot as plt
+
         if self.get_input("aux_lens_maps") == "none":
             for map_type in ["depth_map", "bright_object_map"]:
                 with self.open_output(map_type, wrapper=True) as f:
-                    plt.title(f'No map generated for {map_type}')
+                    plt.title(f"No map generated for {map_type}")
             return
 
         m = self.open_input("aux_lens_maps", wrapper=True)
@@ -133,7 +134,7 @@ class TXMapPlots(PipelineStage):
         if self.get_input("source_maps") == "none":
             for map_type in ["shear_map"]:
                 with self.open_output(map_type, wrapper=True) as f:
-                    plt.title(f'No map generated for {map_type}')
+                    plt.title(f"No map generated for {map_type}")
             return
 
         m = self.open_input("source_maps", wrapper=True)
@@ -161,7 +162,7 @@ class TXMapPlots(PipelineStage):
         if self.get_input("lens_maps") == "none":
             for map_type in ["lens_map"]:
                 with self.open_output(map_type, wrapper=True) as f:
-                    plt.title(f'No map generated for {map_type}')
+                    plt.title(f"No map generated for {map_type}")
             return
 
         m = self.open_input("lens_maps", wrapper=True)
@@ -185,7 +186,7 @@ class TXMapPlots(PipelineStage):
         if self.get_input("mask") == "none":
             for map_type in ["mask_map"]:
                 with self.open_output(map_type, wrapper=True) as f:
-                    plt.title(f'No map generated for {map_type}')
+                    plt.title(f"No map generated for {map_type}")
             return
 
         m = self.open_input("mask", wrapper=True)
@@ -193,6 +194,7 @@ class TXMapPlots(PipelineStage):
         fig = self.open_output("mask_map", wrapper=True, figsize=(5, 5))
         m.plot("mask", view=self.config["projection"], rot180=self.config["rot180"])
         fig.close()
+
 
 class TXMapPlotsSSI(TXMapPlots):
     """
@@ -203,6 +205,7 @@ class TXMapPlotsSSI(TXMapPlots):
     - depth (using true mag)
     - depth (using detection fraction)
     """
+
     name = "TXMapPlotsSSI"
 
     inputs = [
@@ -237,15 +240,15 @@ class TXMapPlotsSSI(TXMapPlots):
                     raise
                 sys.stderr.write(f"Failed to make maps with method {m.__name__}")
 
-
     def aux_ssi_plots(self):
         import matplotlib.pyplot as plt
+
         if self.get_input("aux_ssi_maps") == "none":
-            # Make empty plots if no data available, so that the
-            # pipeline thinks it is complete.
+            # Make empty plots if no data available, so that the
+            # pipeline thinks it is complete.
             for map_type in ["depth_ssi_meas_map", "depth_ssi_true_map", "depth_det_prob_map"]:
                 with self.open_output(map_type, wrapper=True) as f:
-                    plt.title(f'No map generated for {map_type}')
+                    plt.title(f"No map generated for {map_type}")
             return
 
         m = self.open_input("aux_ssi_maps", wrapper=True)

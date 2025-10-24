@@ -17,6 +17,7 @@ class TXMapCorrelations(PipelineStage):
     we don't know in advance what plots will be generated, so the formal output
     is a directory.
     """
+
     name = "TXMapCorrelations"
     parallel = False
     inputs = [
@@ -31,7 +32,9 @@ class TXMapCorrelations(PipelineStage):
     ]
 
     config_options = {
-        "supreme_path_root": StageParameter(str, "/global/cscratch1/sd/erykoff/dc2_dr6/supreme/supreme_dc2_dr6d_v2", msg="Root path for supreme files."),
+        "supreme_path_root": StageParameter(
+            str, "/global/cscratch1/sd/erykoff/dc2_dr6/supreme/supreme_dc2_dr6d_v2", msg="Root path for supreme files."
+        ),
         "nbin": StageParameter(int, 20, msg="Number of percentile bins to use in the map property."),
         "outlier_fraction": StageParameter(float, 0.05, msg="Fraction of outliers to exclude."),
     }
@@ -92,7 +95,7 @@ class TXMapCorrelations(PipelineStage):
             sys_map = self.read_healsparse(map_path, nside)
 
             # Correlate with g1, g2, ngal, kappa
-            print(f"Correlating systematic {i+1}/{nsys} {sys_name}")
+            print(f"Correlating systematic {i + 1}/{nsys} {sys_name}")
             corr = self.correlate(sys_map, source_g1, mask)
             outfile = self.save(sys_name, "g1", corr, output_dir)
             outputs.append(outfile)

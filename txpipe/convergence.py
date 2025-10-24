@@ -10,6 +10,7 @@ class TXConvergenceMaps(PipelineStage):
 
     This uses the wlmassmap library, which is included as a submodule in TXPipe.
     """
+
     name = "TXConvergenceMaps"
     parallel = False
     inputs = [
@@ -102,7 +103,9 @@ class TXConvergenceMapPlots(PipelineStage):
     ]
 
     config_options = {
-        "projection": StageParameter(str, "cart", msg="Projection type for convergence map plots (e.g., cart, moll, orth)."),
+        "projection": StageParameter(
+            str, "cart", msg="Projection type for convergence map plots (e.g., cart, moll, orth)."
+        ),
     }
 
     def run(self):
@@ -116,9 +119,7 @@ class TXConvergenceMapPlots(PipelineStage):
         nbin_source = m.file["maps"].attrs["nbin_source"]
 
         # Open a PNG output file, specifying output size
-        fig = self.open_output(
-            "convergence_map", wrapper=True, figsize=(5 * nbin_source, 5)
-        )
+        fig = self.open_output("convergence_map", wrapper=True, figsize=(5 * nbin_source, 5))
 
         # 2 x nbin for kappa_E and kappa_B
         _, axes = plt.subplots(2, nbin_source, num=fig.file.number)

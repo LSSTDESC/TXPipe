@@ -170,11 +170,7 @@ class HDFFile(DataFile):
         called 'provenance'
         """
         if self.mode == "r":
-            raise UnsupportedOperation(
-                "Cannot write provenance to an HDF5 "
-                f"file opened in read-only mode "
-                f"({self.mode}"
-            )
+            raise UnsupportedOperation(f"Cannot write provenance to an HDF5 file opened in read-only mode ({self.mode}")
 
         # This method *must* be called by all the processes in a parallel
         # run.
@@ -207,9 +203,7 @@ class HDFFile(DataFile):
         missing = [name for name in self.required_datasets if name not in self.file]
         if missing:
             text = "\n".join(missing)
-            raise FileValidationError(
-                f"These data sets are missing from HDF file {self.path}:\n{text}"
-            )
+            raise FileValidationError(f"These data sets are missing from HDF file {self.path}:\n{text}")
 
     def close(self):
         self.file.close()
@@ -251,10 +245,7 @@ class FitsFile(DataFile):
         """
         # Call the sub-method to do each item
         if self.mode == "r":
-            raise UnsupportedOperation(
-                "Cannot write provenance to a FITS file opened "
-                f"in read-only mode ({self.mode}"
-            )
+            raise UnsupportedOperation(f"Cannot write provenance to a FITS file opened in read-only mode ({self.mode}")
 
         for key, value in self.provenance.items():
             if isinstance(value, str) and "\n" in value:
@@ -282,9 +273,7 @@ class FitsFile(DataFile):
         # If there are any, raise an exception that lists them explicitly
         if missing:
             text = "\n".join(missing)
-            raise FileValidationError(
-                f"These columns are missing from FITS file {self.path}:\n{text}"
-            )
+            raise FileValidationError(f"These columns are missing from FITS file {self.path}:\n{text}")
 
     def close(self):
         self.file.close()
@@ -307,9 +296,7 @@ class YamlFile(DataFile):
 
     suffix = "yml"
 
-    def __init__(
-        self, path, mode, extra_provenance=None, validate=True, load_mode="full"
-    ):
+    def __init__(self, path, mode, extra_provenance=None, validate=True, load_mode="full"):
         self.path = path
         self.mode = mode
         self.file = self.open(path, mode)
@@ -322,10 +309,7 @@ class YamlFile(DataFile):
             elif load_mode == "unsafe":
                 self.content = yaml.unsafe_load(self.file)
             else:
-                raise ValueError(
-                    f"Unknown value {yaml_load} of load_mode. "
-                    "Should be 'safe', 'full', or 'unsafe'"
-                )
+                raise ValueError(f"Unknown value {yaml_load} of load_mode. Should be 'safe', 'full', or 'unsafe'")
             # get provenance
             self.provenance = self.read_provenance()
 
@@ -384,10 +368,7 @@ class Directory(DataFile):
         # This method *must* be called by all the processes in a parallel
         # run.
         if self.mode == "r":
-            raise UnsupportedOperation(
-                "Cannot write provenance to a directory opened "
-                f"in read-only mode ({self.mode})"
-            )
+            raise UnsupportedOperation(f"Cannot write provenance to a directory opened in read-only mode ({self.mode})")
 
         self._provenance_file = open(self.file / "provenance.yml", "w")
 
@@ -492,16 +473,12 @@ class PickleFile(DataFile):
 
     def write(self, obj):
         if self.mode != "w":
-            raise UnsupportedOperation(
-                "Cannot write to pickle file opened in " f"read-only ({self.mode})"
-            )
+            raise UnsupportedOperation(f"Cannot write to pickle file opened in read-only ({self.mode})")
         pickle.dump(obj, self.file)
 
     def read(self):
         if self.mode != "r":
-            raise UnsupportedOperation(
-                "Cannot read from pickle file opened in " f"write-only ({self.mode})"
-            )
+            raise UnsupportedOperation(f"Cannot read from pickle file opened in write-only ({self.mode})")
         return pickle.load(self.file)
 
 
@@ -510,6 +487,7 @@ class ParquetFile(DataFile):
 
     def open(self, path, mode):
         import pyarrow.parquet
+
         if mode != "r":
             raise NotImplementedError("Not implemented writing to Parquet")
         return pyarrow.parquet.ParquetFile(path)

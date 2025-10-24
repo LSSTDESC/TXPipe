@@ -12,6 +12,7 @@ from .utils import choose_pixelization, Splitter
 import numpy as np
 from ceci.config import StageParameter
 
+
 class TXRandomCat(PipelineStage):
     """
     Generate a catalog of randomly positioned points
@@ -19,6 +20,7 @@ class TXRandomCat(PipelineStage):
     This accounts for the depth being different in each pixel, but probably
     does still need updates, and testing.
     """
+
     name = "TXRandomCat"
     inputs = [
         ("aux_lens_maps", MapsFile),
@@ -36,8 +38,12 @@ class TXRandomCat(PipelineStage):
         "Mstar": StageParameter(float, 23.0, msg="Schechter distribution Mstar parameter."),
         "alpha": StageParameter(float, -1.25, msg="Schechter distribution alpha parameter."),
         "chunk_rows": StageParameter(int, 100_000, msg="Number of rows to process in each chunk."),
-        "method": StageParameter(str, "quadrilateral", msg="Method for random generation: 'quadrilateral' or 'spherical_projection'."),
-        "sample_rate": StageParameter(float, 0.5, msg="Fraction of random catalog to be retained in the sub-sampled catalog."),
+        "method": StageParameter(
+            str, "quadrilateral", msg="Method for random generation: 'quadrilateral' or 'spherical_projection'."
+        ),
+        "sample_rate": StageParameter(
+            float, 0.5, msg="Fraction of random catalog to be retained in the sub-sampled catalog."
+        ),
     }
 
     def run(self):
@@ -56,7 +62,7 @@ class TXRandomCat(PipelineStage):
             nside = info["nside"]
             scheme = choose_pixelization(**info)
 
-        # Load the input mask 
+        # Load the input mask
         # TODO: add option to use higher resolution healsparse map to draw randoms from
         with self.open_input("mask", wrapper=True) as maps_file:
             mask = maps_file.read_map("mask")
@@ -64,7 +70,7 @@ class TXRandomCat(PipelineStage):
         with self.open_input("lens_photoz_stack", wrapper=True) as f:
             # This is a QP object
             n_of_z_object = f.read_ensemble()
-            Ntomo = n_of_z_object.npdf - 1 # ensemble includes the non-tomo 2D n(z)
+            Ntomo = n_of_z_object.npdf - 1  # ensemble includes the non-tomo 2D n(z)
 
         # We also generate comoving distances under a fiducial cosmology
         # for each random, for use in Rlens type metrics
@@ -89,7 +95,7 @@ class TXRandomCat(PipelineStage):
         alpha15 = 1.5 + self.config["alpha"]
         density_at_median = self.config["density"]
         method = self.config["method"]
-        allowed_methods = ["quadrilateral","spherical_projection"]
+        allowed_methods = ["quadrilateral", "spherical_projection"]
         assert method in allowed_methods
 
         # Work out the normalization of a Schechter distribution
@@ -105,7 +111,7 @@ class TXRandomCat(PipelineStage):
 
         # Pixel geometry - area of a single pixel in arcmin^2
         full_pix_area = scheme.pixel_area(degrees=True) * 60.0 * 60.0
-        pix_area = frac*full_pix_area
+        pix_area = frac * full_pix_area
 
         if method == "quadrilateral":
             vertices = scheme.vertices(pixel)
@@ -181,7 +187,7 @@ class TXRandomCat(PipelineStage):
             # Generate the random points in each pixel
             ndone = 0
 
-            nvertex = npix #number of verticies is the same as number of pixels
+            nvertex = npix  # number of verticies is the same as number of pixels
             my_nvertex = int(np.ceil(nvertex / self.size))
             start_vertex = self.rank * my_nvertex
             end_vertex = min(start_vertex + my_nvertex, nvertex)
@@ -235,9 +241,7 @@ class TXRandomCat(PipelineStage):
                     # Generate random redshifts in the distribution using QP's tools
                     z_photo_rand = n_of_z_object.rvs(size=N)[j]
 
-                    distance = pyccl.comoving_radial_distance(
-                        cosmo, 1.0 / (1 + z_photo_rand)
-                    )
+                    distance = pyccl.comoving_radial_distance(cosmo, 1.0 / (1 + z_photo_rand))
 
                     # Save output to the generic non-binned output
                     batch1.write(
@@ -253,13 +257,13 @@ class TXRandomCat(PipelineStage):
 
                     ndone += 1
             elif method == "spherical_projection":
-                #use the same batch/chunks as the quadrilateral method
-                #though i dont think it is likely to be neccesary with this method
+                # use the same batch/chunks as the quadrilateral method
+                # though i dont think it is likely to be neccesary with this method
 
-                #pixel id for each random objects in this chunk
-                pix_catalog = np.repeat(pixel[start_vertex:end_vertex], numbers[j,:][start_vertex:end_vertex])
+                # pixel id for each random objects in this chunk
+                pix_catalog = np.repeat(pixel[start_vertex:end_vertex], numbers[j, :][start_vertex:end_vertex])
 
-                #generate a random location within the pixel using healpix
+                # generate a random location within the pixel using healpix
                 ra, dec = healpix.randang(nside, pix_catalog, lonlat=True)
 
                 N = len(pix_catalog)
@@ -268,9 +272,7 @@ class TXRandomCat(PipelineStage):
                 # Generate random redshifts in the distribution using QP's tools
                 z_photo_rand = n_of_z_object.rvs(size=N)[j]
 
-                distance = pyccl.comoving_radial_distance(
-                    cosmo, 1.0 / (1 + z_photo_rand)
-                )
+                distance = pyccl.comoving_radial_distance(cosmo, 1.0 / (1 + z_photo_rand))
 
                 # Save output to the generic non-binned output
                 batch1.write(
@@ -284,13 +286,12 @@ class TXRandomCat(PipelineStage):
                 # Save to the bit that is specific to this bin
                 batch2.write(ra=ra, dec=dec, z=z_photo_rand, comoving_distance=distance)
             else:
-                raise RuntimeError('method must be one of {0}'.format(allowed_methods))
-
+                raise RuntimeError("method must be one of {0}".format(allowed_methods))
 
             batch1.finish()
             batch2.finish()
 
-        print('Sub-sampling randoms at rate {0}'.format(self.config["sample_rate"]))
+        print("Sub-sampling randoms at rate {0}".format(self.config["sample_rate"]))
         self.subsample_randoms(binned_output)
 
         if self.comm is not None:
@@ -298,11 +299,10 @@ class TXRandomCat(PipelineStage):
         output_file.close()
         binned_output.close()
 
-
-    def subsample_randoms(self,binned_output):
+    def subsample_randoms(self, binned_output):
         """Randomly subsample the binned random catalog and saves catalog
 
-        This can be used within the 2-point clustering stage for the RR term, to speed up the 
+        This can be used within the 2-point clustering stage for the RR term, to speed up the
         calculation without losing precision
 
         Currently reloads the binned randoms and saves them
@@ -311,8 +311,8 @@ class TXRandomCat(PipelineStage):
 
         sample_rate = self.config["sample_rate"]
 
-        #get number of tomographic bins in binned random catalog
-        Ntomo = binned_output['randoms'].attrs["nbin"]
+        # get number of tomographic bins in binned random catalog
+        Ntomo = binned_output["randoms"].attrs["nbin"]
 
         # Only save the binned random catalog for this stage
         binned_output_sub = self.open_output("binned_random_catalog_sub", parallel=True)
@@ -321,20 +321,19 @@ class TXRandomCat(PipelineStage):
         binned_group_sub.attrs["nbin"] = Ntomo
 
         for j in range(Ntomo):
-
-            #load the columns from full catalog in this tomo bin
-            #We could add a feature to loop over chunks of data here, if random catalogs ever get really large
+            # load the columns from full catalog in this tomo bin
+            # We could add a feature to loop over chunks of data here, if random catalogs ever get really large
             ra = binned_output[f"randoms/bin_{j}/ra"][:]
             dec = binned_output[f"randoms/bin_{j}/dec"][:]
             z = binned_output[f"randoms/bin_{j}/z"][:]
             comoving_distance = binned_output[f"randoms/bin_{j}/comoving_distance"][:]
 
-            #create subsampling array
+            # create subsampling array
             ntotal = len(ra)
-            nsub = int(sample_rate*ntotal)
-            select_sub = np.random.choice(np.arange(len(ra)),size=nsub,replace=False)
+            nsub = int(sample_rate * ntotal)
+            select_sub = np.random.choice(np.arange(len(ra)), size=nsub, replace=False)
 
-            #create hdf group
+            # create hdf group
             subgroup = binned_group_sub.create_group(f"bin_{j}")
             subgroup.create_dataset("ra", (nsub,))
             subgroup.create_dataset("dec", (nsub,))
@@ -353,15 +352,13 @@ class TXRandomCat(PipelineStage):
                     "z": np.float64,
                     "comoving_distance": np.float64,
                 },
-                offset=0, #check this is right
+                offset=0,  # check this is right
                 max_size=self.config["chunk_rows"],
             )
 
-            batch2.write(   ra=ra[select_sub], 
-                            dec=dec[select_sub], 
-                            z=z[select_sub], 
-                            comoving_distance=comoving_distance[select_sub]
-                            )
+            batch2.write(
+                ra=ra[select_sub], dec=dec[select_sub], z=z[select_sub], comoving_distance=comoving_distance[select_sub]
+            )
 
             batch2.finish()
 
@@ -373,12 +370,13 @@ class TXRandomCat(PipelineStage):
 class TXSubsampleRandoms(PipelineStage):
     """
     Randomly subsample the binned random catalog and save catalog
-    This can be used within the 2-point clustering stage for the RR term, to speed up the 
+    This can be used within the 2-point clustering stage for the RR term, to speed up the
     calculation without losing precision
 
     The subsampling is already run by default in TXRandomCat
     Use this subclass if you are loading your randoms from elsewhere and need to subsample
     """
+
     name = "TXSubsampleRandoms"
     inputs = [
         ("binned_random_catalog", HDFFile),
@@ -388,7 +386,9 @@ class TXSubsampleRandoms(PipelineStage):
     ]
     config_options = {
         "chunk_rows": StageParameter(int, 100_000, msg="Number of rows to process in each chunk."),
-        "sample_rate": StageParameter(float, 0.5, msg="Fraction of random catalog that should be retained in the subsampled catalog."),
+        "sample_rate": StageParameter(
+            float, 0.5, msg="Fraction of random catalog that should be retained in the subsampled catalog."
+        ),
     }
 
     def run(self):
@@ -397,9 +397,9 @@ class TXSubsampleRandoms(PipelineStage):
 
         sample_rate = self.config["sample_rate"]
 
-        #get number of tomographic bins in binned random catalog
+        # get number of tomographic bins in binned random catalog
         with self.open_input("binned_random_catalog") as f:
-            Ntomo = f['randoms'].attrs["nbin"]
+            Ntomo = f["randoms"].attrs["nbin"]
 
         # Only save the binned random catalog for this stage
         binned_output = self.open_output("binned_random_catalog_sub", parallel=True)
@@ -408,20 +408,19 @@ class TXSubsampleRandoms(PipelineStage):
         binned_group.attrs["nbin"] = Ntomo
 
         for j in range(Ntomo):
-
-            #load the columns from full catalog in this tomo bin
+            # load the columns from full catalog in this tomo bin
             with self.open_input("binned_random_catalog") as f:
                 ra = f[f"randoms/bin_{j}/ra"][:]
                 dec = f[f"randoms/bin_{j}/dec"][:]
                 z = f[f"randoms/bin_{j}/z"][:]
                 comoving_distance = f[f"randoms/bin_{j}/comoving_distance"][:]
 
-            #create subsampling array
+            # create subsampling array
             ntotal = len(ra)
-            nsub = int(sample_rate*ntotal)
-            select_sub = np.random.choice(np.arange(len(ra)),size=nsub,replace=False)
+            nsub = int(sample_rate * ntotal)
+            select_sub = np.random.choice(np.arange(len(ra)), size=nsub, replace=False)
 
-            #create hdf group
+            # create hdf group
             subgroup = binned_group.create_group(f"bin_{j}")
             subgroup.create_dataset("ra", (nsub,))
             subgroup.create_dataset("dec", (nsub,))
@@ -440,21 +439,20 @@ class TXSubsampleRandoms(PipelineStage):
                     "z": np.float64,
                     "comoving_distance": np.float64,
                 },
-                offset=0, #check this is right
+                offset=0,  # check this is right
                 max_size=self.config["chunk_rows"],
             )
 
-            batch2.write(   ra=ra[select_sub], 
-                            dec=dec[select_sub], 
-                            z=z[select_sub], 
-                            comoving_distance=comoving_distance[select_sub]
-                            )
+            batch2.write(
+                ra=ra[select_sub], dec=dec[select_sub], z=z[select_sub], comoving_distance=comoving_distance[select_sub]
+            )
 
             batch2.finish()
 
         if self.comm is not None:
             self.comm.Barrier()
         binned_output.close()
+
 
 if __name__ == "__main__":
     PipelineStage.main()
