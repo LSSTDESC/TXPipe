@@ -137,9 +137,7 @@ class NullCalibrator:
             mu1_2d = f["counts/mean_e1_2d"][0]
             mu2_2d = f["counts/mean_e2_2d"][0]
 
-        return [NullCalibrator([mu1[i], mu2[i]]) for i in range(nbin)], NullCalibrator(
-            [mu1_2d, mu2_2d]
-        )
+        return [NullCalibrator([mu1[i], mu2[i]]) for i in range(nbin)], NullCalibrator([mu1_2d, mu2_2d])
 
     def save(self, group, index):
         pass
@@ -293,7 +291,7 @@ class MetaDetectCalibrator(MetaCalibrator):
 
 
 class LensfitCalibrator(Calibrator):
-    def __init__(self, K, c_n,c_s,dec_cut = True):
+    def __init__(self, K, c_n, c_s, dec_cut=True):
         self.K = K
         self.c_n = c_n
         self.c_s = c_s
@@ -372,7 +370,7 @@ class LensfitCalibrator(Calibrator):
             whether to subtract the constant c term (default True)
         """
         if subtract_mean:
-            if self.dec_cut==True:
+            if self.dec_cut == True:
                 Nmask = dec > -25.0
                 Smask = dec <= -25.0
 
@@ -383,7 +381,7 @@ class LensfitCalibrator(Calibrator):
                 g2[Smask] = (g2[Smask] - self.c_s[1]) / (1 + self.K)
             else:
                 g1 = (g1 - self.c_n[0]) / (1 + self.K)
-                g2 = (g2 - self.c_n[1]) / (1 + self.K)               
+                g2 = (g2 - self.c_n[1]) / (1 + self.K)
         else:
             g1 = g1 / (1 + self.K)
             g2 = g2 / (1 + self.K)
@@ -394,7 +392,7 @@ class HSCCalibrator(Calibrator):
     def __init__(self, R, K):
         self.R = R
         self.K = K
-        
+
     @classmethod
     def load(cls, tomo_file):
         """
@@ -416,6 +414,7 @@ class HSCCalibrator(Calibrator):
             A single HSCalibrator for the 2D bin
         """
         import h5py
+
         with h5py.File(tomo_file, "r") as f:
             K = f["response/K"][:]
             K_2d = f["response/K_2d"][0]
@@ -435,7 +434,7 @@ class HSCCalibrator(Calibrator):
         else:
             outfile["response/R_mean"][i] = self.R
             outfile["response/K"][i] = self.K
-        
+
     def apply(self, g1, g2, c1, c2, aselepsf1=0, aselepsf2=0, msel=0, subtract_mean=False):
         """
         For HSC (see Mandelbaum et al., 2018, arXiv:1705.06745):
@@ -461,12 +460,12 @@ class HSCCalibrator(Calibrator):
             multiplicative selection bias
         """
         # This definition is following Equation 8 of 2304.00702
-        # where aselpsf1/2 and msel are number only present in hsc-y3 not hsc-y1 
-        g1 = ((g1 / (2 * self.R) - c1) / (1 + self.K) - aselepsf1)/(1+msel)
-        g2 = ((g2 / (2 * self.R) - c2) / (1 + self.K) - aselepsf2)/(1+msel)
-        
+        # where aselpsf1/2 and msel are number only present in hsc-y3 not hsc-y1
+        g1 = ((g1 / (2 * self.R) - c1) / (1 + self.K) - aselepsf1) / (1 + msel)
+        g2 = ((g2 / (2 * self.R) - c2) / (1 + self.K) - aselepsf2) / (1 + msel)
+
         if subtract_mean:
-            g1=g1-np.mean(g1)
-            g2=g2-np.mean(g2)
-            
+            g1 = g1 - np.mean(g1)
+            g2 = g2 - np.mean(g2)
+
         return g1, g2

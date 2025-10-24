@@ -2,9 +2,11 @@
 This file contains TXPipe-specific file types, subclassing the more
 generic types in base.py
 """
+
 from .base import HDFFile, DataFile, YamlFile
 import yaml
 import numpy as np
+
 
 def metacalibration_names(names):
     """
@@ -17,6 +19,7 @@ def metacalibration_names(names):
     for name in names:
         out += [name + "_" + s for s in suffices]
     return out
+
 
 class PhotometryCatalog(HDFFile):
     def get_bands(self):
@@ -112,15 +115,15 @@ class ShearCatalog(HDFFile):
 
         return shear_cols, rename
 
-    def get_bands(self, shear_prefix=''):
+    def get_bands(self, shear_prefix=""):
         group = self.file[self.get_primary_catalog_group()]
         if "bands" in group.attrs:
             return group.attrs["bands"]
 
         # If we don't have it listed correctly then we have to do this
-        # messy check. We look for all the columns that start with
-        # mag_ and don't have an extra underscore in, which would indicate
-        # that they are an error like mag_z_err
+        # messy check. We look for all the columns that start with
+        # mag_ and don't have an extra underscore in, which would indicate
+        # that they are an error like mag_z_err
         bands = []
         nunderscore = shear_prefix.count("_")
         l = len(shear_prefix + "mag_")
@@ -132,6 +135,7 @@ class ShearCatalog(HDFFile):
 
 class BinnedCatalog(HDFFile):
     required_datasets = []
+
     def get_bins(self, group_name):
         group = self.file[group_name]
         info = dict(group.attrs)
@@ -141,7 +145,6 @@ class BinnedCatalog(HDFFile):
             name = f"bin_{code}"
             bins.append(name)
         return bins
-
 
 
 class TomographyCatalog(HDFFile):
@@ -163,11 +166,9 @@ class TomographyCatalog(HDFFile):
         """
         d = dict(self.file["tomography"].attrs)
         nbin = d[f"nbin"]
-        zbins = [
-            (d[f"zmin_{i}"], d[f"zmax_{i}"]) for i in range(nbin)
-        ]
+        zbins = [(d[f"zmin_{i}"], d[f"zmax_{i}"]) for i in range(nbin)]
         return zbins
-    
+
     def write_nbin(self, nbin):
         """
         Write number of redshift bins to attributes
@@ -233,10 +234,7 @@ class MapsFile(HDFFile):
         group = self.file[f"maps/{map_name}"]
         info = dict(group.attrs)
         if not "pixelization" in info:
-            raise ValueError(
-                f"Map '{map_name}' not found, "
-                f"or not saved properly in file {self.path}"
-            )
+            raise ValueError(f"Map '{map_name}' not found, or not saved properly in file {self.path}")
         return info
 
     def read_map(self, map_name):
@@ -256,11 +254,12 @@ class MapsFile(HDFFile):
         mask = self.read_map(mask_name)
         mask[mask <= thresh] = 0
         return mask
-    
+
     def read_healsparse(self, map_name, return_all=True):
         import healpy
         import healsparse as hsp
         import numpy as np
+
         group = self.file[f"maps/{map_name}"]
         nside = group.attrs["nside"]
         m = hsp.HealSparseMap.make_empty(32, nside, dtype=type(group["value"][0]), sentinel=healpy.UNSEEN)
@@ -294,19 +293,16 @@ class MapsFile(HDFFile):
             self.file.create_group("maps")
         if not "pixelization" in metadata:
             raise ValueError("Map metadata should include pixelization")
-        pixerr = ValueError(
-                    f"Map pixels and values should be same shape "
-                    f"but are {pixel.shape} vs {value.shape}"
-                )
-        if value.ndim == 2: #value.ndim == 2 allows for 2d stacked maps
+        pixerr = ValueError(f"Map pixels and values should be same shape but are {pixel.shape} vs {value.shape}")
+        if value.ndim == 2:  # value.ndim == 2 allows for 2d stacked maps
             if not pixel.shape[0] == value.shape[1]:
                 raise pixerr
         else:
             if not pixel.shape == value.shape:
                 raise pixerr
 
-        if not 'maps' in self.file.keys():
-            self.file.create_group('maps')
+        if not "maps" in self.file.keys():
+            self.file.create_group("maps")
         subgroup = self.file["maps"].create_group(map_name)
         subgroup.attrs.update(metadata)
         subgroup.create_dataset("pixel", data=pixel)
@@ -318,11 +314,11 @@ class MapsFile(HDFFile):
 
         m, pix, nside = self.read_healpix(map_name, return_all=True)
         lon, lat = healpy.pix2ang(nside, pix, lonlat=True)
-        if rot180: #(optional) rotate 180 degrees in the lon direction
+        if rot180:  # (optional) rotate 180 degrees in the lon direction
             lon += 180
-            lon[lon > 360.] -= 360.
+            lon[lon > 360.0] -= 360.0
             pix_rot = healpy.ang2pix(nside, lon, lat, lonlat=True)
-            m_rot = np.ones(healpy.nside2npix(nside))*healpy.UNSEEN
+            m_rot = np.ones(healpy.nside2npix(nside)) * healpy.UNSEEN
             m_rot[pix_rot] = m[pix]
             m = m_rot
             pix = pix_rot
@@ -337,13 +333,11 @@ class MapsFile(HDFFile):
         lon_range = [lon[w].min() - 0.1, lon[w].max() + 0.1]
         lat_range = [lat[w].min() - 0.1, lat[w].max() + 0.1]
         lat_range = np.clip(lat_range, -90, 90)
-        lon_range = np.clip(lon_range, 0, 360.)
+        lon_range = np.clip(lon_range, 0, 360.0)
         m[m == 0] = healpy.UNSEEN
         title = kwargs.pop("title", map_name)
         if view == "cart":
-            healpy.cartview(
-                m, lonra=lon_range, latra=lat_range, title=title, hold=True, **kwargs
-            )
+            healpy.cartview(m, lonra=lon_range, latra=lat_range, title=title, hold=True, **kwargs)
         elif view == "moll":
             healpy.mollview(m, title=title, hold=True, **kwargs)
         else:
@@ -455,9 +449,7 @@ class SACCFile(DataFile):
         import sacc
 
         if mode == "w":
-            raise ValueError(
-                "Do not use the open_output method to write sacc files.  Use sacc.write_fits"
-            )
+            raise ValueError("Do not use the open_output method to write sacc files.  Use sacc.write_fits")
         return sacc.Sacc.load_fits(path)
 
     def read_provenance(self):
@@ -476,7 +468,6 @@ class SACCFile(DataFile):
 
 
 class FiducialCosmology(YamlFile):
-
     # TODO replace when CCL has more complete serialization tools.
     def to_ccl(self, **kwargs):
         import pyccl as ccl
@@ -499,14 +490,15 @@ class FiducialCosmology(YamlFile):
             wa=params["wa"],
         )
         if ccl.__version__[0] == "2":
-            inits.update(dict(
-            bcm_log10Mc=params["bcm_log10Mc"],
-            bcm_etab=params["bcm_etab"],
-            bcm_ks=params["bcm_ks"],
-            mu_0=params["mu_0"],
-            sigma_0=params["sigma_0"],
-            ))
-
+            inits.update(
+                dict(
+                    bcm_log10Mc=params["bcm_log10Mc"],
+                    bcm_etab=params["bcm_etab"],
+                    bcm_ks=params["bcm_ks"],
+                    mu_0=params["mu_0"],
+                    sigma_0=params["sigma_0"],
+                )
+            )
 
         if "z_mg" in params:
             inits["z_mg"] = params["z_mg"]
@@ -530,6 +522,7 @@ class QPBaseFile(HDFFile):
     @property
     def metadata(self):
         import tables_io
+
         if self._metadata is not None:
             return self._metadata
         try:
@@ -540,21 +533,24 @@ class QPBaseFile(HDFFile):
         self._metadata = meta
         return meta
 
+
 class QPPDFFile(QPBaseFile):
     def iterate(self, chunk_rows, rank=0, size=1):
         import qp
+
         return qp.iterator(self.path, chunk_size=chunk_rows, rank=rank, parallel_size=size)
 
     def get_z(self):
         import qp
+
         metadata = qp.read_metadata(self.path)
-        return metadata['xvals'].copy().squeeze()
+        return metadata["xvals"].copy().squeeze()
 
     def get_pdf_type(self):
         import qp
-        metadata = qp.read_metadata(self.path)
-        return metadata['pdf_name'][0].decode()
 
+        metadata = qp.read_metadata(self.path)
+        return metadata["pdf_name"][0].decode()
 
 
 class QPNOfZFile(QPBaseFile):
@@ -565,10 +561,11 @@ class QPNOfZFile(QPBaseFile):
     grid types, and will raise an error otherwise; in particular the
     stacking stage.
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._ensemble = None
-    
+
     def write_ensemble(self, ensemble):
         if not "qp" in self.file.keys():
             self.file.create_group("qp")
@@ -586,7 +583,7 @@ class QPNOfZFile(QPBaseFile):
         import qp
         import tables_io
 
-        # Use cached ensemble if available
+        # Use cached ensemble if available
         if self._ensemble is not None:
             return self._ensemble
 
@@ -599,16 +596,16 @@ class QPNOfZFile(QPBaseFile):
 
         self._ensemble = qp.from_tables(tables)
         return self._ensemble
-        
+
     def get_qp_pdf_type(self):
         meta = self.metadata
         pdf_name = meta["pdf_name"][0].decode()
         return pdf_name
-    
+
     def get_nbin(self):
         ens = self.read_ensemble()
         return ens.npdf - 1
-    
+
     def get_2d_n_of_z(self, zmax=3.0, nz=301):
         z = np.linspace(0, zmax, nz)
         ensemble = self.read_ensemble()
@@ -618,7 +615,9 @@ class QPNOfZFile(QPBaseFile):
         ensemble = self.read_ensemble()
         npdf = ensemble.npdf
         if bin_index >= npdf - 1:
-            raise ValueError(f"Requested n(z) for bin {bin_index} but only {npdf-1} bins available. For the 2D bin use get_2d_n_of_z.")
+            raise ValueError(
+                f"Requested n(z) for bin {bin_index} but only {npdf - 1} bins available. For the 2D bin use get_2d_n_of_z."
+            )
         z = np.linspace(0, zmax, nz)
         return z, ensemble.pdf(z)[bin_index]
 
@@ -638,8 +637,8 @@ class QPNOfZFile(QPBaseFile):
         else:
             raise ValueError(f"TXPipe cannot read a z grid from QP file with type {pdf_name}")
         return z.squeeze()
-    
-    
+
+
 class QPMultiFile(HDFFile):
     """
     This type represents and HDF file collecting multiple qp objects together.
@@ -647,11 +646,13 @@ class QPMultiFile(HDFFile):
     We currently use it when multiple realizations of the same n(z) are
     being generated in the summarize stage.
     """
+
     def get_names(self):
         return list(self.file["qps"].keys())
 
     def read_metadata(self, name):
         import tables_io
+
         if self.mode != "r":
             raise ValueError("Can only read from file opened in read mode")
         try:
@@ -663,6 +664,7 @@ class QPMultiFile(HDFFile):
     def read_ensemble(self, name):
         import qp
         import tables_io
+
         g = self.file[f"qps/{name}"]
         try:
             read = tables_io.io.readHdf5GroupToDict
@@ -677,7 +679,7 @@ class QPMultiFile(HDFFile):
         else:
             g = self.file.create_group("qps")
         group = g.create_group(name)
-        
+
         tables = ensemble.build_tables()
         for subgroup_name, subtables in tables.items():
             subgroup = group.create_group(subgroup_name)

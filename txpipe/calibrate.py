@@ -34,25 +34,30 @@ class TXShearCalibration(PipelineStage):
     config_options = {
         "use_true_shear": StageParameter(bool, False, msg="Use true shear values instead of observed shear"),
         "chunk_rows": StageParameter(int, 100_000, msg="Number of rows to process in each chunk"),
-        "subtract_mean_shear": StageParameter(bool, True, msg="Whether to subtract the mean shear from the calibrated shear"),
-        'copy_redshift': StageParameter(bool, False, msg="Whether to copy the redshift column from the input catalog"),
-        "add_fiducial_distance": StageParameter(bool, False, msg="Whether to add fiducial comoving distance to the output catalog"),
-        'redshift_name': StageParameter(str, 'redshift_true', msg="Name of the redshift column"),
+        "subtract_mean_shear": StageParameter(
+            bool, True, msg="Whether to subtract the mean shear from the calibrated shear"
+        ),
+        "copy_redshift": StageParameter(bool, False, msg="Whether to copy the redshift column from the input catalog"),
+        "add_fiducial_distance": StageParameter(
+            bool, False, msg="Whether to add fiducial comoving distance to the output catalog"
+        ),
+        "redshift_name": StageParameter(str, "redshift_true", msg="Name of the redshift column"),
         "extra_cols": StageParameter(list, [""], msg="Additional columns to copy from the input catalog"),
-        "shear_catalog_type": StageParameter(str, '', msg="Type of shear catalog (e.g., metadetect, metacal, lensfit, hsc)"),
+        "shear_catalog_type": StageParameter(
+            str, "", msg="Type of shear catalog (e.g., metadetect, metacal, lensfit, hsc)"
+        ),
         "shear_prefix": StageParameter(str, "", msg="Prefix for shear-related columns in the input catalog"),
     }
 
     def run(self):
-
         #  Extract the configuration parameters
         cat_type = read_shear_catalog_type(self)
         use_true = self.config["use_true_shear"]
         extra_cols = [c for c in self.config["extra_cols"] if c]
         subtract_mean_shear = self.config["subtract_mean_shear"]
-        add_fiducial_distance = self.config['add_fiducial_distance']
+        add_fiducial_distance = self.config["add_fiducial_distance"]
         copy_redshift = self.config["copy_redshift"]
-        z_name = self.config['redshift_name']
+        z_name = self.config["redshift_name"]
 
         shear_prefix = self.config["shear_prefix"]
         with self.open_input("shear_catalog", wrapper=True) as f:
@@ -87,7 +92,7 @@ class TXShearCalibration(PipelineStage):
             if cat_type == "metadetect":
                 cat_cols = cat_cols + [f"00/{c}" for c in extra_cols + mag_cols_in]
                 mag_cols_in = [f"00/{c}" for c in mag_cols_in]
-                renames.update({f"00/{c}":c for c in extra_cols})
+                renames.update({f"00/{c}": c for c in extra_cols})
             else:
                 cat_cols = cat_cols + extra_cols + mag_cols_in
 
@@ -98,8 +103,7 @@ class TXShearCalibration(PipelineStage):
                 else:
                     raise ValueError(f"To add fiducial distances the shear catalog needs a redshift")
 
-        
-        if cat_type!='hsc':
+        if cat_type != "hsc":
             output_cols = ["ra", "dec", "weight", "g1", "g2"] + extra_cols + mag_cols_out
         else:
             output_cols = ["ra", "dec", "weight", "g1", "g2", "c1", "c2"] + extra_cols + mag_cols_out
@@ -138,8 +142,6 @@ class TXShearCalibration(PipelineStage):
 
         #  Main loop
         for s, e, data in rename_iterated(it, renames):
-            
-
             if self.rank == 0:
                 print(f"Rank 0 processing data {s:,} - {e:,}")
 
@@ -150,7 +152,6 @@ class TXShearCalibration(PipelineStage):
 
             #  Now output the calibrated bin data for this processor
             for b in my_bins:
-
                 # Select objects to go in this bin
                 if b == "all":
                     # the 2D case is any object from any other bin
@@ -160,20 +161,27 @@ class TXShearCalibration(PipelineStage):
                     # otherwise just objects in this bin
                     w = np.where(data["bin"] == b)
                     cal = cals[b]
-                
+
                 # Cut down the data to just this selection for output
                 d = {name: data[name][w] for name in output_cols}
-                
+
                 # Calibrate the shear columns
-                if cat_type=='hsc':
-                    d["g1"], d["g2"] = cal.apply(d["g1"], d["g2"], d["c1"], d["c2"], d['aselepsf1'], d['aselepsf2'], d['msel'], subtract_mean=subtract_mean_shear)
-                elif cat_type=='lensfit':
+                if cat_type == "hsc":
+                    d["g1"], d["g2"] = cal.apply(
+                        d["g1"],
+                        d["g2"],
+                        d["c1"],
+                        d["c2"],
+                        d["aselepsf1"],
+                        d["aselepsf2"],
+                        d["msel"],
+                        subtract_mean=subtract_mean_shear,
+                    )
+                elif cat_type == "lensfit":
                     # In KiDS, the additive bias is calculated and removed per North and South field
                     # therefore, we add dec to split data into these fields.
                     # You can choose not to by setting dec_cut = 90 in the config, for example.
-                    d["g1"], d["g2"] = cal.apply(
-                        d["dec"],d["g1"], d["g2"], subtract_mean=subtract_mean_shear
-                    )
+                    d["g1"], d["g2"] = cal.apply(d["dec"], d["g1"], d["g2"], subtract_mean=subtract_mean_shear)
                 else:
                     d["g1"], d["g2"] = cal.apply(d["g1"], d["g2"], subtract_mean=subtract_mean_shear)
 
@@ -184,21 +192,20 @@ class TXShearCalibration(PipelineStage):
         output_file.close()
 
     def setup_output(self, extra_cols):
-        add_fiducial_distance = self.config['add_fiducial_distance']
+        add_fiducial_distance = self.config["add_fiducial_distance"]
         # count the expected number of objects per bin from the tomo data
         with self.open_input("shear_tomography_catalog") as f:
             counts = f["counts/counts"][:]
             count2d = f["counts/counts_2d"][0]
             nbin = len(counts)
-        
+
         # Prepare the calibrated output catalog
         f = self.open_output("binned_shear_catalog", parallel=True)
 
         #  we only retain these columns
         cols = ["ra", "dec", "weight", "g1", "g2"] + extra_cols
-        if add_fiducial_distance: 
+        if add_fiducial_distance:
             cols.extend(["r", "z"])
-            
 
         # structure is /shear/bin_1, /shear/bin_2, etc
         g = f.create_group("shear")
@@ -234,14 +241,11 @@ class TXShearCalibration(PipelineStage):
         d["g1"] = d[f"{prefix}_g1"]
         d["g2"] = d[f"{prefix}_g2"]
         del d[f"{prefix}_g1"], d[f"{prefix}_g2"]
-    
+
     def redshift_to_comoving(self, d, name):
         import pyccl as ccl
-        cosmo = self.open_input("fiducial_cosmology", wrapper=True).to_ccl() 
-        #renaming the redshift name
+
+        cosmo = self.open_input("fiducial_cosmology", wrapper=True).to_ccl()
+        # renaming the redshift name
         d["z"] = d[name]
-        d["r"] = ccl.background.comoving_radial_distance(cosmo, 1/(1+d[name]))
-
-
-
-
+        d["r"] = ccl.background.comoving_radial_distance(cosmo, 1 / (1 + d[name]))

@@ -1,14 +1,16 @@
 import numpy as np
 
+
 def read_training_data(spec_file, bands, spec_mag_column_format, spec_redshift_column):
-        fmt = spec_mag_column_format
-        zfmt = spec_redshift_column
-        training_data = {}
-        training_data["sz"] = spec_file[zfmt][:]
-        for band in bands:
-            col = spec_file[fmt.format(band=band)][:]
-            training_data[band] = col
-        return training_data
+    fmt = spec_mag_column_format
+    zfmt = spec_redshift_column
+    training_data = {}
+    training_data["sz"] = spec_file[zfmt][:]
+    for band in bands:
+        col = spec_file[fmt.format(band=band)][:]
+        training_data[band] = col
+    return training_data
+
 
 def build_tomographic_classifier(bands, training_data_table, bin_edges, random_seed, comm):
     # Load the training data
@@ -82,7 +84,7 @@ def apply_classifier(classifier, features, bands, shear_catalog_type, shear_data
         suffixes = ["", "_1p", "_2p", "_1m", "_2m"]
     elif shear_catalog_type == "metadetect":
         prefixes = ["00/", "1p/", "2p/", "1m/", "2m/"]
-        suffixes = ["", "", "", "" "", ""]
+        suffixes = ["", "", "", "", ""]
     else:
         prefixes = [""]
         suffixes = [""]
@@ -100,10 +102,7 @@ def apply_classifier(classifier, features, bands, shear_catalog_type, shear_data
             # or a colour
             else:
                 b1, b2 = f.split("-")
-                col = (
-                    shear_data[f"{prefix}mag_{b1}{suffix}"]
-                    - shear_data[f"{prefix}mag_{b2}{suffix}"]
-                )
+                col = shear_data[f"{prefix}mag_{b1}{suffix}"] - shear_data[f"{prefix}mag_{b2}{suffix}"]
             if np.all(~np.isfinite(col)):
                 # entire column is NaN.  Hopefully this will get deselected elsewhere
                 col[:] = 30.0

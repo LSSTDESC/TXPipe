@@ -517,14 +517,10 @@ def choose_pixelization(**config):
 
         nside = config["nside"]
         if not healpy.isnsideok(nside):
-            raise ValueError(
-                f"nside pixelization parameter must be set to a power of two (used value {nside})"
-            )
+            raise ValueError(f"nside pixelization parameter must be set to a power of two (used value {nside})")
         nest = config.get("nest", False)
         if nest:
-            raise ValueError(
-                "Please do not attempt to use the NEST pixelization.  It will only end badly for you."
-            )
+            raise ValueError("Please do not attempt to use the NEST pixelization.  It will only end badly for you.")
         scheme = HealpixScheme(nside, nest=nest)
     elif pixelization == "gnomonic":
         ra_cent = config["ra_cent"]
@@ -533,9 +529,7 @@ def choose_pixelization(**config):
         ny = config["npix_y"]
         pixel_size = config["pixel_size"]
         if np.isnan([ra_cent, dec_cent, pixel_size]).any() or nx == -1 or ny == -1:
-            raise ValueError(
-                "Must set ra_cent, dec_cent, nx, ny, pixel_size to use Gnomonic/Tangent pixelization"
-            )
+            raise ValueError("Must set ra_cent, dec_cent, nx, ny, pixel_size to use Gnomonic/Tangent pixelization")
         scheme = GnomonicPixelScheme(ra_cent, dec_cent, pixel_size, nx, ny)
     else:
         raise ValueError(f"Pixelization scheme {pixelization} unknown")

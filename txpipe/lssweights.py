@@ -15,11 +15,12 @@ from .utils.theory import theory_3x2pt
 from .utils.fitting import calc_chi2
 from ceci.config import StageParameter
 
+
 class TXLSSDensityBase(TXMapCorrelations):
     """
     Base class for LSS systematics
 
-    Not to be run directly. This is an abstract base class, 
+    Not to be run directly. This is an abstract base class,
     which other subclasses inherit from
     """
 
@@ -32,8 +33,14 @@ class TXLSSDensityBase(TXMapCorrelations):
         "outlier_fraction": StageParameter(float, 0.01, msg="Fraction of outliers to exclude."),
         "allow_weighted_input": StageParameter(bool, False, msg="Allow weighted input catalogs."),
         "nside_coverage": StageParameter(int, 32, msg="HEALPix nside for coverage maps."),
-        "fill_missing_pix": StageParameter(bool, False, msg="If True will fill any pixels that are in the mask but dont have SP maps with teh mean SP map value (use with care)"),
-        "equal_area_bins": StageParameter(bool, True, msg="Use equal area bins in 1d correlations, instead of equal spacing"),
+        "fill_missing_pix": StageParameter(
+            bool,
+            False,
+            msg="If True will fill any pixels that are in the mask but dont have SP maps with teh mean SP map value (use with care)",
+        ),
+        "equal_area_bins": StageParameter(
+            bool, True, msg="Use equal area bins in 1d correlations, instead of equal spacing"
+        ),
     }
 
     def read_healsparse(self, map_path, nside):
@@ -43,10 +50,10 @@ class TXLSSDensityBase(TXMapCorrelations):
         import healsparse
         import os
 
-        #if this is a symlink, use the real path to access the file
+        # if this is a symlink, use the real path to access the file
         if os.path.islink(map_path):
             real_map_path = os.path.realpath(map_path)
-            print(f'{map_path} is a link, we will use the real path {real_map_path}')
+            print(f"{map_path} is a link, we will use the real path {real_map_path}")
         else:
             real_map_path = map_path
 
@@ -86,9 +93,7 @@ class TXLSSDensityBase(TXMapCorrelations):
             means.append(mean)
             stds.append(std)
 
-        return np.array(means), np.array(
-            stds
-        )  # return means and stds to help reconstruct the original maps later
+        return np.array(means), np.array(stds)  # return means and stds to help reconstruct the original maps later
 
     def get_deltag(self, tomobin):
         """
@@ -125,14 +130,10 @@ class TXLSSDensityBase(TXMapCorrelations):
             maskpix = hp.ring2nest(nside, np.where(mask != hp.UNSEEN)[0])
 
         # fractional coverage
-        frac = hsp.HealSparseMap.make_empty(
-            self.config["nside_coverage"], nside, dtype=np.float64
-        )
+        frac = hsp.HealSparseMap.make_empty(self.config["nside_coverage"], nside, dtype=np.float64)
         frac.update_values_pix(maskpix, mask[np.where(mask != hp.UNSEEN)[0]])
 
-        deltag = hsp.HealSparseMap.make_empty(
-            self.config["nside_coverage"], nside, dtype=np.float64
-        )
+        deltag = hsp.HealSparseMap.make_empty(self.config["nside_coverage"], nside, dtype=np.float64)
         deltag.update_values_pix(maskpix, 0.0)
         deltag.update_values_pix(pixel, Ncounts)
         n = deltag[maskpix] / frac[maskpix]
@@ -165,7 +166,7 @@ class TXLSSDensityBase(TXMapCorrelations):
                 healpix_map=(mask == hp.UNSEEN).astype("int"),
                 nest=mask_nest,
                 sentinel=1,
-            ) # in this mask, 1 = bad pixel!
+            )  # in this mask, 1 = bad pixel!
 
         nside = mask_map_info["nside"]
 
@@ -179,17 +180,19 @@ class TXLSSDensityBase(TXMapCorrelations):
             # get actual data for this map
             sys_map = self.read_healsparse(map_path, nside)
 
-            #insist all "good" pixels in the mask have an SP map value for this map
-            n_missing = np.sum(sys_map[mask.valid_pixels]==hp.UNSEEN)
+            # insist all "good" pixels in the mask have an SP map value for this map
+            n_missing = np.sum(sys_map[mask.valid_pixels] == hp.UNSEEN)
             if self.config["fill_missing_pix"]:
                 if n_missing != 0:
                     print(f"Found {n_missing}/{mask.n_valid} mask pixels with missing {sys_name} values", end="")
-                    missing_pix = mask.valid_pixels[sys_map[mask.valid_pixels]==hp.UNSEEN]
-                    mean_sys = np.mean( sys_map.get_values_pix(sys_map.valid_pixels) )
+                    missing_pix = mask.valid_pixels[sys_map[mask.valid_pixels] == hp.UNSEEN]
+                    mean_sys = np.mean(sys_map.get_values_pix(sys_map.valid_pixels))
                     print(f", filling with mean value {mean_sys}")
                     sys_map.update_values_pix(missing_pix, mean_sys)
             else:
-                assert n_missing == 0, f"Found {n_missing}/{mask.n_valid} mask pixels with missing {sys_name} values, and fill_missing_pix was False"
+                assert n_missing == 0, (
+                    f"Found {n_missing}/{mask.n_valid} mask pixels with missing {sys_name} values, and fill_missing_pix was False"
+                )
 
             sys_map.apply_mask(mask, mask_bits=1)
 
@@ -241,23 +244,17 @@ class TXLSSDensityBase(TXMapCorrelations):
             weight = f[f"lens/bin_{tomobin}/weight"][:]  # input object weights
 
             if self.config["allow_weighted_input"] == False:
-                assert (
-                    weight == 1.0
-                ).all()  # Lets assume the input weights have to be 1 by default
+                assert (weight == 1.0).all()  # Lets assume the input weights have to be 1 by default
             else:
                 if (weight == 1.0).all() == False:
                     print("WARNING: Your input lens catalog has weights != 1")
-                    print(
-                        "You have set allow_weighted_input==True so I will allow this"
-                    )
+                    print("You have set allow_weighted_input==True so I will allow this")
                     print("Output weight=input_weight*sys_weight")
 
             if mean_density_map is not None:
                 weight = weight * 1.0 / mean_density_map[obj_pix]
 
-        density_corrs = lsstools.DensityCorrelation(
-            tomobin=tomobin
-        )  # keeps track of the 1d plots
+        density_corrs = lsstools.DensityCorrelation(tomobin=tomobin)  # keeps track of the 1d plots
         for imap, sys_map in enumerate(self.sys_maps):
             sys_vals = sys_map[sys_map.valid_pixels]  # SP value in each valid pixel
             sys_obj = sys_map[obj_pix]  # SP value for each object in catalog
@@ -294,7 +291,9 @@ class TXLSSDensityBase(TXMapCorrelations):
     def compute_bin_edges(self, sys_map):
         import scipy.stats
 
-        nsysbins = self.config["nbin"] # nominal number of SP bins (this can change if too many pixels have the same value)
+        nsysbins = self.config[
+            "nbin"
+        ]  # nominal number of SP bins (this can change if too many pixels have the same value)
         f = 0.5 * self.config["outlier_fraction"]
         percentiles = np.linspace(f, 1 - f, nsysbins + 1)
 
@@ -308,19 +307,21 @@ class TXLSSDensityBase(TXMapCorrelations):
                 np.percentile(sys_vals, 100.0 * percentiles[-1]),
                 nsysbins + 1,
             )
-       
+
         # Remove any duplciates from the edges array
         # This can occur when a large fraction of the survey has the same value in the SP map
-        u_edges, idx = self.unique_tol(edges, tol=10*np.finfo(edges.dtype).eps*np.abs(edges).max(), return_index=True)
+        u_edges, idx = self.unique_tol(
+            edges, tol=10 * np.finfo(edges.dtype).eps * np.abs(edges).max(), return_index=True
+        )
         if len(u_edges) != len(edges):
             edges = edges[np.sort(idx)]
 
-        #remove empty bins
+        # remove empty bins
         counts, _ = np.histogram(sys_vals, bins=edges)
         nonempty = counts > 0
-        keep = np.concatenate(([True], nonempty)) #always keep 1st and last bin edge
+        keep = np.concatenate(([True], nonempty))  # always keep 1st and last bin edge
         edges = edges[keep]
-        
+
         return edges
 
     @staticmethod
@@ -340,7 +341,8 @@ class TXLSSDensityBase(TXMapCorrelations):
 
         if return_index:
             return out, idx
-        return out   
+        return out
+
 
 class TXLSSDensityNullTests(TXLSSDensityBase):
     """
@@ -351,10 +353,16 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
     name = "TXLSSDensityNullTests"
     parallel = False
     inputs = [
-        ("binned_lens_catalog_unweighted", TomographyCatalog),  # this file is used by the stage to compute density correlations
+        (
+            "binned_lens_catalog_unweighted",
+            TomographyCatalog,
+        ),  # this file is used by the stage to compute density correlations
         ("mask", MapsFile),
         ("lens_photoz_stack", HDFFile),  # Photoz stack (need if using theory curve in covariance)
-        ("fiducial_cosmology", FiducialCosmology),  # Needed for the sample variance term if using full covariance calculation
+        (
+            "fiducial_cosmology",
+            FiducialCosmology,
+        ),  # Needed for the sample variance term if using full covariance calculation
     ]
 
     outputs = [
@@ -363,9 +371,15 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
     ]
 
     config_options = {
-        **TXLSSDensityBase.config_options, 
-        "simple_cov": StageParameter(bool, False, msg="if True will use a diagonal shot noise only covariance for the 1d relations"),
-        "diag_blocks_only": StageParameter(bool, True, msg="If True, will compute only the diagonal blocks of the 1D covariance matrix (no correlation between SP maps)"),
+        **TXLSSDensityBase.config_options,
+        "simple_cov": StageParameter(
+            bool, False, msg="if True will use a diagonal shot noise only covariance for the 1d relations"
+        ),
+        "diag_blocks_only": StageParameter(
+            bool,
+            True,
+            msg="If True, will compute only the diagonal blocks of the 1D covariance matrix (no correlation between SP maps)",
+        ),
         "b0": StageParameter(list, [1.0], msg="Galaxy bias values."),
     }
 
@@ -383,6 +397,7 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
         """
         import sacc
         import healsparse
+
         pixel_scheme = choose_pixelization(**self.config)
         self.pixel_metadata = pixel_scheme.metadata
 
@@ -411,14 +426,12 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
             # compute covariance of data vector and add to DensityCorrelation object
             self.calc_covariance(density_corrs)
 
-            # Add the null model n_dens/<n_dens> = 1 to the 
+            # Add the null model n_dens/<n_dens> = 1 to the
             # DensityCorrelation object and compute its chi2
             density_corrs.add_null_model()
 
             # make summary stats and plots
-            self.summarize_density(
-                output_dir, dens_output, density_corrs
-            )
+            self.summarize_density(output_dir, dens_output, density_corrs)
         dens_output.close()
 
     def summarize_density(self, output_dir, dens_output, density_correlation):
@@ -437,7 +450,7 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
 
         # save the 1D density trends
         # tomo bin label is taken from density_correlation
-        density_correlation.save_to_group(dens_output) 
+        density_correlation.save_to_group(dens_output)
 
         # plot 1d density trends
         for imap in np.unique(density_correlation.map_index):
@@ -452,7 +465,7 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
             )
 
         filepath = output_dir.path_for_file(f"chi2_hist_lens{ibin}.png")
-        density_correlation.plot_chi2_hist(filepath, chi2_threshold=None )
+        density_correlation.plot_chi2_hist(filepath, chi2_threshold=None)
 
     def calc_covariance(self, density_correlation):
         """
@@ -471,12 +484,8 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
         if self.config["simple_cov"] == False:
             if self.config["diag_blocks_only"] == False:
                 # add off-diagonal shot noise
-                cov_shot_noise_full = self.calc_covariance_shot_noise_offdiag(
-                    density_correlation, self.sys_maps
-                )
-                density_correlation.add_external_covariance(
-                    cov_shot_noise_full, assert_empty=False
-                )
+                cov_shot_noise_full = self.calc_covariance_shot_noise_offdiag(density_correlation, self.sys_maps)
+                density_correlation.add_external_covariance(cov_shot_noise_full, assert_empty=False)
 
             # add clustering Sample Variance
             cov_sample_variance_full = self.calc_covariance_sample_variance(
@@ -484,9 +493,7 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
                 self.sys_maps,
                 diag_blocks_only=self.config["diag_blocks_only"],
             )
-            density_correlation.add_external_covariance(
-                cov_sample_variance_full, assert_empty=False
-            )
+            density_correlation.add_external_covariance(cov_sample_variance_full, assert_empty=False)
 
         f = time.time()
         print("calc_covariance took {0}s".format(f - s))
@@ -550,9 +557,7 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
                 startj = maskj[0]
                 finishj = maskj[-1] + 1
 
-                n2d_pair, _, _ = np.histogram2d(
-                    sys_obj_i, sys_obj_j, bins=(edgesi, edgesj), weights=weight
-                )
+                n2d_pair, _, _ = np.histogram2d(sys_obj_i, sys_obj_j, bins=(edgesi, edgesj), weights=weight)
                 n2d[imap, jmap] = n2d_pair
 
                 covmat_N[starti:finishi, startj:finishj] = n2d_pair
@@ -560,20 +565,14 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
 
         # convert N (number count) covariance into n (normalized number density) covariance
         # cov(n1,n2) = cov(N1,N2)*norm**2/(Npix1*Npix2)
-        # TODO: replace np.matrix with @ operator
-        npix1npix2 = np.matrix(density_correlation.npix).T * np.matrix(
-            density_correlation.npix
-        )
-        norm2 = np.matrix(density_correlation.norm).T * np.matrix(
-            density_correlation.norm
-        )
+        # TODO: replace np.matrix with @ operator
+        npix1npix2 = np.matrix(density_correlation.npix).T * np.matrix(density_correlation.npix)
+        norm2 = np.matrix(density_correlation.norm).T * np.matrix(density_correlation.norm)
         covmat_ndens = covmat_N * np.array(norm2) / np.array(npix1npix2)
 
         return covmat_ndens
 
-    def calc_covariance_sample_variance(
-        self, density_correlation, sys_maps, diag_blocks_only=False
-    ):
+    def calc_covariance_sample_variance(self, density_correlation, sys_maps, diag_blocks_only=False):
         """
         Sample variance term in 1d binned covariance
 
@@ -614,9 +613,7 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
         else:
             b0 = self.config["b0"]
         bias = b0 * np.ones(len(z_n))
-        gal_tracer = pyccl.NumberCountsTracer(
-            cosmo, dndz=(z_n, nz), bias=(z_n, bias), has_rsd=True
-        )
+        gal_tracer = pyccl.NumberCountsTracer(cosmo, dndz=(z_n, nz), bias=(z_n, bias), has_rsd=True)
         C_l = cosmo.angular_cl(gal_tracer, gal_tracer, theory_ell)
         wtheta = cosmo.correlation(
             ell=theory_ell,
@@ -653,17 +650,15 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
                 print("SV covariance for map", imap)
                 for isp in range(len(edges_i) - 1):
                     cat_i = cats[imap, isp]
-                    indexi = np.where(density_correlation.map_index==imap)[0][isp]
+                    indexi = np.where(density_correlation.map_index == imap)[0][isp]
 
                     for jmap in map_list:
                         edges_j = density_correlation.get_edges(jmap)
                         for jsp in range(len(edges_j) - 1):
-                            indexj = np.where(density_correlation.map_index==jmap)[0][jsp]
+                            indexj = np.where(density_correlation.map_index == jmap)[0][jsp]
                             if indexi > indexj:
                                 continue
-                            if (
-                                diag_blocks_only and imap != jmap
-                            ):  # sometimes we dont need the covariance between maps
+                            if diag_blocks_only and imap != jmap:  # sometimes we dont need the covariance between maps
                                 continue
                             cat_j = cats[jmap, jsp]
 
@@ -683,27 +678,21 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
         for imap in map_list:
             edges_i = density_correlation.get_edges(imap)
             for isp in range(len(edges_i) - 1):
-                indexi = np.where(density_correlation.map_index==imap)[0][isp]
+                indexi = np.where(density_correlation.map_index == imap)[0][isp]
                 for jmap in map_list:
                     edges_j = density_correlation.get_edges(jmap)
                     for jsp in range(len(edges_j) - 1):
-                        indexj = np.where(density_correlation.map_index==jmap)[0][jsp]
+                        indexj = np.where(density_correlation.map_index == jmap)[0][jsp]
                         if indexi > indexj:
                             continue
-                        if (
-                            diag_blocks_only and imap != jmap
-                        ):  # sometimes we dont need the covarinace between maps
+                        if diag_blocks_only and imap != jmap:  # sometimes we dont need the covarinace between maps
                             continue
                         nn = self.sys_meta["sp_pixel_twopoint"][indexi, indexj]
-                        covmat_N[indexi, indexj] = np.sum(
-                            nn.npairs * wtheta_interp(nn.meanr)
-                        )
+                        covmat_N[indexi, indexj] = np.sum(nn.npairs * wtheta_interp(nn.meanr))
                         covmat_N[indexj, indexi] = covmat_N[indexi, indexj]
 
         # I did not include nbar in covmat_N because this would get divided out here
-        npix1npix2 = np.matrix(density_correlation.npix).T * np.matrix(
-            density_correlation.npix
-        )
+        npix1npix2 = np.matrix(density_correlation.npix).T * np.matrix(density_correlation.npix)
         covmat_ndens = covmat_N / np.array(npix1npix2)
 
         return covmat_ndens
@@ -737,9 +726,12 @@ class TXLSSWeights(TXLSSDensityBase):
     parallel = False
     inputs = [
         ("binned_lens_catalog_unweighted", TomographyCatalog),  # this file is used by the stage to compute weights
-        ("lens_tomography_catalog_unweighted", TomographyCatalog),  # this file is copied at the end and a weighted version is made (for stages that use this instead of the binned catalogs)
+        (
+            "lens_tomography_catalog_unweighted",
+            TomographyCatalog,
+        ),  # this file is copied at the end and a weighted version is made (for stages that use this instead of the binned catalogs)
         ("mask", MapsFile),
-        ("unweighted_density_correlation", HDFFile)
+        ("unweighted_density_correlation", HDFFile),
     ]
 
     outputs = [
@@ -751,7 +743,7 @@ class TXLSSWeights(TXLSSDensityBase):
     ]
 
     config_options = {
-        **TXLSSDensityBase.config_options, 
+        **TXLSSDensityBase.config_options,
     }
 
     def run(self):
@@ -785,7 +777,7 @@ class TXLSSWeights(TXLSSDensityBase):
         # output directory for the plots and summary stats
         output_dir = self.open_output("lss_weight_summary", wrapper=True)
 
-        #open density corr file
+        # open density corr file
         dens_output = self.open_output("weighted_density_correlation", wrapper=False)
 
         # load the SP maps, apply the mask, normalize the maps (as needed by the method)
@@ -800,18 +792,14 @@ class TXLSSWeights(TXLSSDensityBase):
             mean_density_map, fit_output = self.compute_weights(density_corrs)
             mean_density_map_list.append(mean_density_map)
 
-            # Calculate the weighted version of the same thing.
-            weighted_density_corrs = self.calculate_1d_density_correlations(
-                ibin, mean_density_map=mean_density_map
-            )
+            # Calculate the weighted version of the same thing.
+            weighted_density_corrs = self.calculate_1d_density_correlations(ibin, mean_density_map=mean_density_map)
             # add info from unweighted density_corrs to weighted
             if weighted_density_corrs is not None:
                 weighted_density_corrs.postprocess(density_corrs)
 
             # make summary stats and plots
-            self.summarize_weights(
-                output_dir, dens_output, density_corrs, weighted_density_corrs, fit_output
-            )
+            self.summarize_weights(output_dir, dens_output, density_corrs, weighted_density_corrs, fit_output)
         dens_output.close()
 
         # save object weights and weight maps
@@ -824,7 +812,7 @@ class TXLSSWeights(TXLSSDensityBase):
         from . import lsstools
 
         with self.open_input("unweighted_density_correlation", wrapper=False) as f:
-            return lsstools.DensityCorrelation.load_from_group( f[f"density_{ibin}"] )
+            return lsstools.DensityCorrelation.load_from_group(f[f"density_{ibin}"])
 
     def save_weights(self, output_dir, mean_density_map_list):
         """
@@ -848,9 +836,7 @@ class TXLSSWeights(TXLSSDensityBase):
         for ibin, mean_density_map in enumerate(mean_density_map_list):
             pix = mean_density_map.valid_pixels
             map_data = 1.0 / mean_density_map[pix]
-            map_output_file.write_map(
-                f"weight_map_bin_{ibin}", pix, map_data, self.pixel_metadata
-            )
+            map_output_file.write_map(f"weight_map_bin_{ibin}", pix, map_data, self.pixel_metadata)
 
         #### save the binned lens samples
         # There is probably a better way to do this using the batch writer
@@ -859,9 +845,7 @@ class TXLSSWeights(TXLSSDensityBase):
             binned_output.copy(binned_input["lens"], "lens")
 
         # Plot a histogram of the weights
-        fig, axs = plt.subplots(
-            1, self.Ntomo, figsize=(3 * self.Ntomo, 3), squeeze=False
-        )
+        fig, axs = plt.subplots(1, self.Ntomo, figsize=(3 * self.Ntomo, 3), squeeze=False)
         for ibin in range(self.Ntomo):
             # get weight per lens object
             subgroup = binned_output[f"lens/bin_{ibin}/"]
@@ -870,12 +854,10 @@ class TXLSSWeights(TXLSSDensityBase):
 
             # Get the pixel index for each galaxy in our density map.
             # could switch to using txpipe tools for this?
-            pix = hp.ang2pix(
-                self.pixel_metadata["nside"], ra, dec, lonlat=True, nest=True
-            )
+            pix = hp.ang2pix(self.pixel_metadata["nside"], ra, dec, lonlat=True, nest=True)
 
             # Compute the weight corresponding to each object
-            w =  mean_density_map_list[ibin][pix]
+            w = mean_density_map_list[ibin][pix]
             obj_weight = 1.0 / w
             obj_weight[w == hp.UNSEEN] = 0.0
 
@@ -883,7 +865,7 @@ class TXLSSWeights(TXLSSDensityBase):
 
             # Draw the histogram for this tomographic bin in the correct
             # panel of the figure
-            axs[0][ibin].hist(obj_weight[obj_weight!=0], bins=100)
+            axs[0][ibin].hist(obj_weight[obj_weight != 0], bins=100)
             axs[0][ibin].set_xlabel("weight")
             axs[0][ibin].set_yticks([])
             axs[0][ibin].set_title(f"lens {ibin}")
@@ -912,9 +894,7 @@ class TXLSSWeights(TXLSSDensityBase):
         tomo_output.close()
         binned_output.close()
 
-    def summarize_weights(
-        self, output_dir, dens_output, density_correlation, weighted_density_correlation, fit_output
-    ):
+    def summarize_weights(self, output_dir, dens_output, density_correlation, weighted_density_correlation, fit_output):
         """
         make 1d density plots and other summary statistics and save them
 
@@ -944,13 +924,13 @@ class TXLSSWeights(TXLSSDensityBase):
             density_correlation.plot1d_singlemap(
                 filepath,
                 imap,
-                label=None, 
+                label=None,
                 extra_density_correlations=[weighted_density_correlation],
-                extra_density_labels=["weighted"]
+                extra_density_labels=["weighted"],
             )
 
         # save the weighted 1D density trends
-        weighted_density_correlation.save_to_group(dens_output) #tomo bin label is taken from density_correlation
+        weighted_density_correlation.save_to_group(dens_output)  # tomo bin label is taken from density_correlation
 
         # save map names, coefficients and chi2 from the fit into an hdf5 file
         fit_summary_file_name = output_dir.path_for_file(f"fit_summary_lens{ibin}.hdf5")
@@ -958,18 +938,10 @@ class TXLSSWeights(TXLSSDensityBase):
         fit_summary_file.file.create_group("fit_summary")
         summary_group = fit_summary_file["fit_summary"]
         if len(fit_output["sig_map_index"]) != 0:
-            summary_group.create_dataset(
-                "fitted_map_id", data=fit_output["sig_map_index"]
-            )
-            fitted_maps_names = np.array(
-                [density_correlation.mapnames[i] for i in fit_output["sig_map_index"]]
-            )
-            summary_group.create_dataset(
-                "fitted_map_names", data=fitted_maps_names.astype(np.bytes_)
-            )
-            summary_group.create_dataset(
-                "all_map_names", data=self.sys_names.astype(np.bytes_)
-            )
+            summary_group.create_dataset("fitted_map_id", data=fit_output["sig_map_index"])
+            fitted_maps_names = np.array([density_correlation.mapnames[i] for i in fit_output["sig_map_index"]])
+            summary_group.create_dataset("fitted_map_names", data=fitted_maps_names.astype(np.bytes_))
+            summary_group.create_dataset("all_map_names", data=self.sys_names.astype(np.bytes_))
             summary_group.create_dataset("coeff", data=fit_output["coeff"])
             if fit_output["coeff_cov"] is not None:
                 summary_group.create_dataset("coeff_cov", data=fit_output["coeff_cov"])
@@ -983,9 +955,7 @@ class TXLSSWeights(TXLSSDensityBase):
         # plot the un-weighted and weighted chi2 distribution
         filepath = output_dir.path_for_file(f"chi2_hist_lens{ibin}.png")
         if "pvalue_threshold" in self.config.keys():
-            chi2_threshold = scipy.stats.chi2(self.config["nbin"]).isf(
-                self.config["pvalue_threshold"]
-            )
+            chi2_threshold = scipy.stats.chi2(self.config["nbin"]).isf(self.config["pvalue_threshold"])
         else:
             chi2_threshold = None
         density_correlation.plot_chi2_hist(
@@ -993,6 +963,7 @@ class TXLSSWeights(TXLSSDensityBase):
             extra_density_correlations=[weighted_density_correlation],
             chi2_threshold=chi2_threshold,
         )
+
 
 class TXLSSWeightsLinBinned(TXLSSWeights):
     """
@@ -1009,8 +980,12 @@ class TXLSSWeightsLinBinned(TXLSSWeights):
     parallel = False
 
     config_options = {
-        **TXLSSWeights.config_options, 
-        "pvalue_threshold": StageParameter(float, 0.05,  msg="max p-value for maps to be included in the corrected (a very simple form of regularization)"),
+        **TXLSSWeights.config_options,
+        "pvalue_threshold": StageParameter(
+            float,
+            0.05,
+            msg="max p-value for maps to be included in the corrected (a very simple form of regularization)",
+        ),
     }
 
     def select_maps(self, density_correlation):
@@ -1070,8 +1045,8 @@ class TXLSSWeightsLinBinned(TXLSSWeights):
         s = time.time()
 
         # first add the null signal as the first model
-        #null_model = np.ones(len(density_correlation.ndens))
-        #density_correlation.add_model(null_model, "null")
+        # null_model = np.ones(len(density_correlation.ndens))
+        # density_correlation.add_model(null_model, "null")
 
         # select only the significant trends
         sig_map_index = self.select_maps(density_correlation)
@@ -1126,9 +1101,7 @@ class TXLSSWeightsLinBinned(TXLSSWeights):
                 chi2 = calc_chi2(dc_ndens_masked, dc_covmat_masked, Fdc.ndens)
                 return chi2 / 2.0
 
-            minimize_output = scipy.optimize.minimize(
-                neg_log_like, p0, method="Nelder-Mead"
-            )
+            minimize_output = scipy.optimize.minimize(neg_log_like, p0, method="Nelder-Mead")
             coeff = minimize_output.x
             coeff_cov = None
 
@@ -1175,9 +1148,11 @@ class TXLSSWeightsLinPix(TXLSSWeightsLinBinned):
     parallel = False
 
     config_options = {
-        **TXLSSWeights.config_options, 
+        **TXLSSWeights.config_options,
         "pvalue_threshold": StageParameter(float, 0.05, msg="max p-value for maps to be corrected"),
-        "regression_class": StageParameter(str, "LinearRegression", msg="sklearn.linear_model class to use in regression"),
+        "regression_class": StageParameter(
+            str, "LinearRegression", msg="sklearn.linear_model class to use in regression"
+        ),
     }
 
     def compute_weights(self, density_correlation):
@@ -1247,12 +1222,8 @@ class TXLSSWeightsLinPix(TXLSSWeightsLinBinned):
 
             # make the delta_g map and fracdet weights
             deltag, frac = self.get_deltag(density_correlation.tomobin)
-            dg1 = (
-                deltag[self.sys_maps[0].valid_pixels] + 1.0
-            )  # deltag+1 for valid pixels
-            weight = frac[
-                self.sys_maps[0].valid_pixels
-            ]  # weight for samples (prop to 1/sigma^2)
+            dg1 = deltag[self.sys_maps[0].valid_pixels] + 1.0  # deltag+1 for valid pixels
+            weight = frac[self.sys_maps[0].valid_pixels]  # weight for samples (prop to 1/sigma^2)
 
             # do linear regression
             if self.config["regression_class"].lower() == "linearregression":
@@ -1262,11 +1233,7 @@ class TXLSSWeightsLinPix(TXLSSWeightsLinBinned):
                 reg = sk_linear_model.ElasticNetCV()
                 reg.fit(sysmap_table_selected.T, dg1, sample_weight=weight)
             else:
-                raise IOError(
-                    "regression method {0} not yet implemented".format(
-                        self.config["regression_class"]
-                    )
-                )
+                raise IOError("regression method {0} not yet implemented".format(self.config["regression_class"]))
 
             # get output of regression
             Fvals = reg.predict(sysmap_table_selected.T)
@@ -1276,9 +1243,7 @@ class TXLSSWeightsLinPix(TXLSSWeightsLinBinned):
                 dtype=np.float64,
                 sentinel=hp.UNSEEN,
             )
-            mean_density_map_bf.update_values_pix(
-                self.sys_maps[0].valid_pixels, Fvals.astype(np.float64)
-            )
+            mean_density_map_bf.update_values_pix(self.sys_maps[0].valid_pixels, Fvals.astype(np.float64))
             coeff = np.append(reg.intercept_, reg.coef_)
             coeff_cov = None
 
@@ -1334,7 +1299,10 @@ class TXLSSWeightsUnit(TXLSSWeights):
 
     inputs = [
         ("binned_lens_catalog_unweighted", TomographyCatalog),  # this file is used by the stage to compute weights
-        ("lens_tomography_catalog_unweighted", TomographyCatalog),  # this file is copied at the end and a weighted version is made (for stages that use this instead of the binned catalogs)
+        (
+            "lens_tomography_catalog_unweighted",
+            TomographyCatalog,
+        ),  # this file is copied at the end and a weighted version is made (for stages that use this instead of the binned catalogs)
         ("mask", MapsFile),
     ]
 
@@ -1368,16 +1336,14 @@ class TXLSSWeightsUnit(TXLSSWeights):
         For unit weights we dont need 1d density trends
         """
         return None
-    
+
     def load_density_corr(self, ibin):
         """
         For unit weights we dont need 1d density trends
         """
         return None
 
-    def summarize_weights(
-        self, output_dir, dens_output, density_correlation, weighted_density_correlation, fit_output
-    ):
+    def summarize_weights(self, output_dir, dens_output, density_correlation, weighted_density_correlation, fit_output):
         """
         For unit weights we have nothing to summarize
         """

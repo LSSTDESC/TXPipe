@@ -45,7 +45,7 @@ class WorkspaceCache:
 
     def put(self, i, j, k, workspace):
         key = workspace.txpipe_key
-        self.keys[i, j, k]  = key
+        self.keys[i, j, k] = key
         p = self.get_path(key)
 
         if not self.low_mem:
@@ -58,6 +58,7 @@ class WorkspaceCache:
             os.makedirs(os.path.dirname(str(p)), exist_ok=True)
 
         workspace.write_to(str(p))
+
 
 def choose_ell_bins(**config):
     """Create an NmtBin object based on configuration parameters,
@@ -83,6 +84,7 @@ def choose_ell_bins(**config):
         The resulting NmtBin object.
     """
     from pymaster import NmtBin
+
     if "ell_edges" in config:
         ell_edges = config["ell_edges"]
         ell_bins = NmtBin.from_edges(ell_edges)
@@ -98,9 +100,7 @@ def choose_ell_bins(**config):
         if ell_spacing == "linear" or ell_spacing == "lin":
             ell_edges = np.unique(np.linspace(ell_min, ell_max, n_ell).astype(int))
         elif ell_spacing == "log":
-            ell_edges = np.unique(
-                np.geomspace(ell_min, ell_max, n_ell).astype(int)
-            )
+            ell_edges = np.unique(np.geomspace(ell_min, ell_max, n_ell).astype(int))
 
         ell_bins = NmtBin.from_edges(ell_edges[:-1], ell_edges[1:])
 
@@ -112,6 +112,8 @@ def choose_ell_bins(**config):
         ell_bins = nmt.NmtBin.from_nside_linear(nside, nlb=bandpower_width)
 
     else:
-        raise ValueError("No valid ell binning configuration found. Specify one of ell_edges, ell_min/ell_max/n_ell, or bandpower_width/nside.")
+        raise ValueError(
+            "No valid ell binning configuration found. Specify one of ell_edges, ell_min/ell_max/n_ell, or bandpower_width/nside."
+        )
 
     return ell_bins

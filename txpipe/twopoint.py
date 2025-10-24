@@ -26,7 +26,7 @@ SHEAR_SHEAR = 0
 SHEAR_POS = 1
 POS_POS = 2
 
-#external cross correlations
+# external cross correlations
 POS_EXT = 3
 SHEAR_EXT = 4
 
@@ -42,15 +42,17 @@ TREECORR_CONFIG = {
     "verbose": StageParameter(int, 1, msg="Verbosity level for TreeCorr output"),
 }
 
+
 class TXTwoPoint(PipelineStage):
     """
     Make 2pt measurements using TreeCorr
 
-    This stage make the full set of cosmic shear, galaxy-galaxy lensing, 
+    This stage make the full set of cosmic shear, galaxy-galaxy lensing,
     and galaxy density measurements on the tomographic catalog using TreeCorr.
 
     Results are saved to a sacc file.
     """
+
     name = "TXTwoPoint"
     inputs = [
         ("binned_shear_catalog", ShearCatalog),
@@ -65,7 +67,9 @@ class TXTwoPoint(PipelineStage):
     outputs = [("twopoint_data_real_raw", SACCFile), ("twopoint_gamma_x", SACCFile)]
     # Add values to the config file that are not previously defined
     config_options = TREECORR_CONFIG | {
-        "calcs": StageParameter(list, [0, 1, 2], msg="Which calculations to perform: 0=shear-shear, 1=shear-position, 2=position-position"),
+        "calcs": StageParameter(
+            list, [0, 1, 2], msg="Which calculations to perform: 0=shear-shear, 1=shear-position, 2=position-position"
+        ),
         "source_bins": StageParameter(list, [-1], msg="List of source bins to use (-1 means all)"),
         "lens_bins": StageParameter(list, [-1], msg="List of lens bins to use (-1 means all)"),
         "reduce_randoms_size": StageParameter(float, 1.0, msg="Factor to reduce the size of random catalogs"),
@@ -80,7 +84,11 @@ class TXTwoPoint(PipelineStage):
         "chunk_rows": StageParameter(int, 100_000, msg="Number of rows to process in each chunk"),
         "share_patch_files": StageParameter(bool, False, msg="Whether to share patch files across processes"),
         "metric": StageParameter(str, "Euclidean", msg="Distance metric to use (Euclidean, Arc, etc.)"),
-        "gaussian_sims_factor": StageParameter(list, default=[1.], msg="Factor by which to decrease lens density to account for increased density contrast."),
+        "gaussian_sims_factor": StageParameter(
+            list,
+            default=[1.0],
+            msg="Factor by which to decrease lens density to account for increased density contrast.",
+        ),
         "use_subsampled_randoms": StageParameter(bool, True, msg="Use subsampled randoms file for RR calculation"),
     }
 
@@ -94,7 +102,6 @@ class TXTwoPoint(PipelineStage):
         if self.config["do_shear_shear"] or self.config["do_shear_pos"]:
             with self.open_input("shear_photoz_stack", wrapper=True) as g:
                 z, Nz = g.get_bin_n_of_z(0)
-
 
     def run(self):
         """
@@ -116,7 +123,7 @@ class TXTwoPoint(PipelineStage):
             # and friends, below. In this base class only the 2D metrics will be
             # available, but subclasses can specify to load a distance column too.
             metric = self.config["metric"] if "metric" in self.config else "Euclidean"
-            print(f"Running TreeCorr with metric \"{metric}\"")
+            print(f'Running TreeCorr with metric "{metric}"')
 
         # Calculate metadata like the area and related
         # quantities
@@ -145,7 +152,7 @@ class TXTwoPoint(PipelineStage):
 
         # For shear-shear we omit pairs with j>i
         if self.config["do_shear_shear"]:
-            print('DOING SHEAR-SHEAR')
+            print("DOING SHEAR-SHEAR")
             k = SHEAR_SHEAR
             for i in source_list:
                 for j in range(i + 1):
@@ -154,7 +161,7 @@ class TXTwoPoint(PipelineStage):
 
         # For shear-position we use all pairs
         if self.config["do_shear_pos"]:
-            print('DOING SHEAR-POS')
+            print("DOING SHEAR-POS")
             k = SHEAR_POS
             for i in source_list:
                 for j in lens_list:
@@ -162,11 +169,9 @@ class TXTwoPoint(PipelineStage):
 
         # For position-position we omit pairs with j>i
         if self.config["do_pos_pos"]:
-            print('DOING POS-POS')
+            print("DOING POS-POS")
             if not self.config["use_randoms"]:
-                raise ValueError(
-                    "You need to have a random catalog to calculate position-position correlations"
-                )
+                raise ValueError("You need to have a random catalog to calculate position-position correlations")
             k = POS_POS
             if self.config["auto_only"]:
                 for i in lens_list:
@@ -239,29 +244,20 @@ class TXTwoPoint(PipelineStage):
 
         # if more bins are input than exist, raise an error
         if not nbin_source <= tomo_nbin_source:
-            raise ValueError(
-                f"Requested too many source bins in the config ({nbin_source}): max is {tomo_nbin_source}"
-            )
+            raise ValueError(f"Requested too many source bins in the config ({nbin_source}): max is {tomo_nbin_source}")
         if not nbin_lens <= tomo_nbin_lens:
-            raise ValueError(
-                f"Requested too many lens bins in the config ({nbin_lens}): max is {tomo_nbin_lens}"
-            )
+            raise ValueError(f"Requested too many lens bins in the config ({nbin_lens}): max is {tomo_nbin_lens}")
 
         # make sure the bin numbers actually exist
         for i in source_list:
             if i not in tomo_source_list:
-                raise ValueError(
-                    f"Requested source bin {i} that is not in the input file"
-                )
+                raise ValueError(f"Requested source bin {i} that is not in the input file")
 
         for i in lens_list:
             if i not in tomo_lens_list:
-                raise ValueError(
-                    f"Requested lens bin {i} that is not in the input file"
-                )
+                raise ValueError(f"Requested lens bin {i} that is not in the input file")
 
         return source_list, lens_list
-
 
     def add_data_points(self, S, results):
         import treecorr
@@ -318,18 +314,21 @@ class TXTwoPoint(PipelineStage):
                         weight=weight[i],
                     )
             else:
-                if self.config['gaussian_sims_factor'] != [1.]:
+                if self.config["gaussian_sims_factor"] != [1.0]:
                     # only for gammat and wtheta, for the gaussian simulations we need to scale the measurements up to correct for
                     # the scaling of the density field when building the simulations.
-                    if 'lens' in tracer2:
-                        if 'lens' in tracer1:
-                            scaling_factor = self.config['gaussian_sims_factor'][int(tracer1[-1])]*self.config['gaussian_sims_factor'][int(tracer2[-1])]
+                    if "lens" in tracer2:
+                        if "lens" in tracer1:
+                            scaling_factor = (
+                                self.config["gaussian_sims_factor"][int(tracer1[-1])]
+                                * self.config["gaussian_sims_factor"][int(tracer2[-1])]
+                            )
                         else:
-                            scaling_factor = self.config['gaussian_sims_factor'][int(tracer2[-1])]
-                            
-                    d.object.xi *=scaling_factor
-                    d.object.varxi *=(scaling_factor**2)
-                    
+                            scaling_factor = self.config["gaussian_sims_factor"][int(tracer2[-1])]
+
+                    d.object.xi *= scaling_factor
+                    d.object.varxi *= scaling_factor**2
+
                 xi = d.object.xi
                 err = np.sqrt(d.object.varxi)
                 n = len(xi)
@@ -342,19 +341,16 @@ class TXTwoPoint(PipelineStage):
                         error=err[i],
                         weight=weight[i],
                     )
-                    
+
             # We build up the comb list to get the covariance of it later
             # in the same order as our data points
             comb.append(d.object)
 
-
-                    
         # Add the covariance.  There are several different jackknife approaches
         # available - see the treecorr docs
         if treecorr.__version__.startswith("4.2."):
             if self.rank == 0:
-                print("Using old TreeCorr - covariance may be slow. "
-                      "Consider using 4.3 from github main branch.")
+                print("Using old TreeCorr - covariance may be slow. Consider using 4.3 from github main branch.")
             cov = treecorr.estimate_multi_cov(comb, self.config["var_method"])
         else:
             if self.rank == 0:
@@ -372,9 +368,7 @@ class TXTwoPoint(PipelineStage):
 
         covs = []
         for index, d in enumerate(results):
-            tracer1 = (
-                f"source_{d.i}" if d.corr_type in [XI, GAMMAT] else f"lens_{d.i}"
-            )
+            tracer1 = f"source_{d.i}" if d.corr_type in [XI, GAMMAT] else f"lens_{d.i}"
             tracer2 = f"source_{d.j}" if d.corr_type in [XI] else f"lens_{d.j}"
 
             if d.corr_type == GAMMAT:
@@ -400,7 +394,6 @@ class TXTwoPoint(PipelineStage):
                         weight=weight[i],
                     )
         S.add_covariance(covs)
-
 
     def write_output(self, source_list, lens_list, meta, results):
         import sacc
@@ -455,18 +448,14 @@ class TXTwoPoint(PipelineStage):
         if self.rank != 0:
             return
 
-
         # Our data points may currently be in any order depending on which processes
         # ran which calculations.  Re-order them.
         S.to_canonical_order()
 
-
         self.write_metadata(S, meta)
-
 
         # Finally, save the output to Sacc file
         S.save_fits(self.get_output("twopoint_data_real_raw"), overwrite=True)
-
 
         # Adding the gammaX calculation:
         if self.config["do_shear_pos"] == True:
@@ -504,17 +493,18 @@ class TXTwoPoint(PipelineStage):
         """
         import sacc
         import pickle
-        #TODO: fix up the caching code
+
+        # TODO: fix up the caching code
         if self.name == "TXTwoPoint" or self.name == "TXTwoPointPixel":
             pickle_filename = self.get_output("twopoint_data_real_raw") + f".checkpoint-{i}-{j}-{k}.pkl"
-            #pickle_filename = f"treecorr-cache-{i}-{j}-{k}.pkl"
+            # pickle_filename = f"treecorr-cache-{i}-{j}-{k}.pkl"
 
             if os.path.exists(pickle_filename):
                 print(f"{self.rank} WARNING USING THIS PICKLE FILE I FOUND: {pickle_filename}")
                 with open(pickle_filename, "rb") as f:
                     result = pickle.load(f)
                 return result
- 
+
         if k == SHEAR_SHEAR:
             xx = self.calculate_shear_shear(i, j)
             xtype = "combined"
@@ -546,7 +536,7 @@ class TXTwoPoint(PipelineStage):
                 print(f"Pickling result to {pickle_filename}")
                 with open(pickle_filename, "wb") as f:
                     pickle.dump(result, f)
- 
+
         return result
 
     def prepare_patches(self, calcs, meta):
@@ -594,7 +584,7 @@ class TXTwoPoint(PipelineStage):
         self.empty_patch_exists = {}
 
         # Parallelization is now done at the patch level
-        for (h, k) in cats:
+        for h, k in cats:
             ktxt = "shear" if k == SHEAR_SHEAR else "position"
             print(f"Rank {self.rank} making patches for {ktxt} catalog bin {h}")
 
@@ -603,12 +593,12 @@ class TXTwoPoint(PipelineStage):
             # them to ensure we don't have two in memory at once.
             if k == SHEAR_SHEAR:
                 cat = self.get_shear_catalog(h)
-                npatch_shear,contains_empty = PatchMaker.run(cat, chunk_rows, self.comm)
+                npatch_shear, contains_empty = PatchMaker.run(cat, chunk_rows, self.comm)
                 self.empty_patch_exists[cat.save_patch_dir] = contains_empty
                 del cat
             else:
                 cat = self.get_lens_catalog(h)
-                npatch_pos,contains_empty = PatchMaker.run(cat, chunk_rows, self.comm)
+                npatch_pos, contains_empty = PatchMaker.run(cat, chunk_rows, self.comm)
                 self.empty_patch_exists[cat.save_patch_dir] = contains_empty
                 del cat
 
@@ -616,13 +606,13 @@ class TXTwoPoint(PipelineStage):
                 # support use_randoms = False
                 if ran_cat is None:
                     continue
-                npatch_ran,contains_empty = PatchMaker.run(ran_cat, chunk_rows, self.comm)
+                npatch_ran, contains_empty = PatchMaker.run(ran_cat, chunk_rows, self.comm)
                 self.empty_patch_exists[ran_cat.save_patch_dir] = contains_empty
                 del ran_cat
 
                 if self.config["use_subsampled_randoms"]:
                     ran_cat = self.get_subsampled_random_catalog(h)
-                    npatch_ran,contains_empty = PatchMaker.run(ran_cat, chunk_rows, self.comm)
+                    npatch_ran, contains_empty = PatchMaker.run(ran_cat, chunk_rows, self.comm)
                     self.empty_patch_exists[ran_cat.save_patch_dir] = contains_empty
                     del ran_cat
 
@@ -706,9 +696,8 @@ class TXTwoPoint(PipelineStage):
             flip_g1=self.config["flip_g1"],
             flip_g2=self.config["flip_g2"],
         )
-        
-        return cat
 
+        return cat
 
     def get_lens_catalog(self, i):
         import treecorr
@@ -769,14 +758,14 @@ class TXTwoPoint(PipelineStage):
     def touch_patches(self, cat):
         # If any patches were empty for this cat
         # run get_patches on rank 0 and bcast
-        # this will re-make patches but prevents processes conflicting 
+        # this will re-make patches but prevents processes conflicting
         # in the gg.process
         # If no patches are empty returns the cat, unaltered
         if cat is None:
             return cat
 
         if self.empty_patch_exists[cat.save_patch_dir]:
-            if self.rank==0:
+            if self.rank == 0:
                 cat.get_patches()
             if self.comm is not None:
                 cat = self.comm.bcast(cat, root=0)
@@ -798,11 +787,8 @@ class TXTwoPoint(PipelineStage):
             cat_j = self.touch_patches(cat_j)
             n_j = cat_j.nobj
 
-
         if self.rank == 0:
-            print(
-                f"Calculating shear-shear bin pair ({i},{j}): {n_i} x {n_j} objects using MPI"
-            )
+            print(f"Calculating shear-shear bin pair ({i},{j}): {n_i} x {n_j} objects using MPI")
 
         if n_i == 0 or n_j == 0:
             if self.rank == 0:
@@ -833,9 +819,7 @@ class TXTwoPoint(PipelineStage):
         n_rand_j = rancat_j.nobj if rancat_j is not None else 0
 
         if self.rank == 0:
-            print(
-                f"Calculating shear-position bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms"
-            )
+            print(f"Calculating shear-position bin pair ({i},{j}): {n_i} x {n_j} objects, {n_rand_j} randoms")
 
         if n_i == 0 or n_j == 0:
             if self.rank == 0:
@@ -882,7 +866,7 @@ class TXTwoPoint(PipelineStage):
             n_j = cat_j.nobj
             n_rand_j = rancat_j.nobj
 
-        if self.config['use_subsampled_randoms']:
+        if self.config["use_subsampled_randoms"]:
             rancat_sub_i = self.get_subsampled_random_catalog(i)
             rancat_sub_i = self.touch_patches(rancat_sub_i)
             n_rand_sub_i = rancat_sub_i.nobj if rancat_sub_i is not None else 0
@@ -894,7 +878,6 @@ class TXTwoPoint(PipelineStage):
                 rancat_sub_j = self.get_subsampled_random_catalog(j)
                 rancat_sub_j = self.touch_patches(rancat_sub_j)
                 n_rand_sub_j = rancat_sub_j.nobj if rancat_sub_j is not None else 0
-
 
         if self.rank == 0:
             print(
@@ -957,12 +940,11 @@ class TXTwoPoint(PipelineStage):
             meta["sigma_e"] = sigma_e
             meta["mean_e1"] = mean_e1
             meta["mean_e2"] = mean_e2
-        
-        except KeyError: #will happen for lens only runs
-            pass
-        
-        return meta
 
+        except KeyError:  # will happen for lens only runs
+            pass
+
+        return meta
 
 
 class TXTwoPointPixel(TXTwoPoint):
@@ -990,7 +972,9 @@ class TXTwoPointPixel(TXTwoPoint):
     # Add values to the config file that are not previously defined
     config_options = TREECORR_CONFIG | {
         # TODO: Allow more fine-grained selection of 2pt subsets to compute
-        "calcs": StageParameter(list, [0, 1, 2], msg="Which calculations to perform: 0=shear-shear, 1=shear-position, 2=position-position"),
+        "calcs": StageParameter(
+            list, [0, 1, 2], msg="Which calculations to perform: 0=shear-shear, 1=shear-position, 2=position-position"
+        ),
         "source_bins": StageParameter(list, [-1], msg="List of source bins to use (-1 means all)"),
         "lens_bins": StageParameter(list, [-1], msg="List of lens bins to use (-1 means all)"),
         "reduce_randoms_size": StageParameter(float, 1.0, msg="Factor to reduce the size of random catalogs"),
@@ -1005,14 +989,19 @@ class TXTwoPointPixel(TXTwoPoint):
         "metric": StageParameter(str, "Euclidean", msg="Distance metric to use (Euclidean, Arc, etc.)"),
         "use_randoms": StageParameter(bool, True, msg="Whether to use random catalogs"),
         "auto_only": StageParameter(bool, False, msg="Whether to compute only auto-correlations"),
-        "gaussian_sims_factor": StageParameter(list, default=[1.], msg="Factor by which to decrease lens density to account for increased density contrast."),
-        "use_subsampled_randoms": StageParameter(bool, False, msg="Use subsampled randoms file for RR calculation (not used for pixel estimator)"),
+        "gaussian_sims_factor": StageParameter(
+            list,
+            default=[1.0],
+            msg="Factor by which to decrease lens density to account for increased density contrast.",
+        ),
+        "use_subsampled_randoms": StageParameter(
+            bool, False, msg="Use subsampled randoms file for RR calculation (not used for pixel estimator)"
+        ),
     }
-    
 
     def get_density_map(self, i):
         import treecorr
-        
+
         with self.open_input("density_maps", wrapper=True) as f:
             info = f.read_map_info(f"delta_{i}")
             map_d, pix, nside = f.read_healpix(f"delta_{i}", return_all=True)
@@ -1022,14 +1011,14 @@ class TXTwoPointPixel(TXTwoPoint):
         with self.open_input("mask", wrapper=True) as f:
             mask = f.read_map("mask")
 
-        scheme = choose_pixelization(**info) 
+        scheme = choose_pixelization(**info)
         ra_pix, dec_pix = scheme.pix2ang(pix)
 
         # Load and calibrate the appropriate bin data
         cat = treecorr.Catalog(
             ra=ra_pix,
             dec=dec_pix,
-            w=mask[pix], #weight pixels by their fracdet
+            w=mask[pix],  # weight pixels by their fracdet
             k=map_d[pix],
             ra_units="degree",
             dec_units="degree",
@@ -1037,14 +1026,13 @@ class TXTwoPointPixel(TXTwoPoint):
         )
         return cat
 
-
     def get_shear_map(self, i):
         import treecorr
         import pdb
-        
+
         with self.open_input("source_maps", wrapper=True) as f:
             info_g1 = f.read_map_info(f"g1_{i}")
-            map_g1, pix_g1, nside  = f.read_healpix(f"g1_{i}", return_all=True)
+            map_g1, pix_g1, nside = f.read_healpix(f"g1_{i}", return_all=True)
             print(f"Loaded shear 1 {i} maps")
 
             info_g2 = f.read_map_info(f"g2_{i}")
@@ -1054,12 +1042,12 @@ class TXTwoPointPixel(TXTwoPoint):
         scheme = choose_pixelization(**info_g1)
         ra_pix, dec_pix = scheme.pix2ang(pix_g1)
 
-        mask_unseen = (map_g1[pix_g1]>-1e30)*(map_g2[pix_g2]>-1e30)
+        mask_unseen = (map_g1[pix_g1] > -1e30) * (map_g2[pix_g2] > -1e30)
 
         cat = treecorr.Catalog(
             ra=ra_pix[mask_unseen],
             dec=dec_pix[mask_unseen],
-            #w=,
+            # w=,
             g1=map_g1[pix_g1][mask_unseen],
             g2=map_g2[pix_g2][mask_unseen],
             ra_units="degree",
@@ -1067,11 +1055,9 @@ class TXTwoPointPixel(TXTwoPoint):
             patch_centers=self.get_input("patch_centers"),
             flip_g1=self.config["flip_g1"],
             flip_g2=self.config["flip_g2"],
-            
         )
         return cat
 
-    
     def calculate_shear_pos(self, i, j):
         import treecorr
 
@@ -1080,9 +1066,7 @@ class TXTwoPointPixel(TXTwoPoint):
         cat_j = self.get_density_map(j)
 
         if self.rank == 0:
-            print(
-                f"Calculating shear-position bin pair ({i},{j})."
-            )
+            print(f"Calculating shear-position bin pair ({i},{j}).")
 
         kg = treecorr.KGCorrelation(self.config)
         t1 = perf_counter()
@@ -1090,12 +1074,10 @@ class TXTwoPointPixel(TXTwoPoint):
 
         return kg
 
-    
     def calculate_pos_pos(self, i, j):
         import treecorr
 
         cat_i = self.get_density_map(i)
-
 
         if i == j:
             cat_j = cat_i
@@ -1103,9 +1085,7 @@ class TXTwoPointPixel(TXTwoPoint):
             cat_j = self.get_density_map(j)
 
         if self.rank == 0:
-            print(
-                f"Calculating position-position bin pair ({i}, {j})"
-            )
+            print(f"Calculating position-position bin pair ({i}, {j})")
 
         t1 = perf_counter()
 
@@ -1114,12 +1094,13 @@ class TXTwoPointPixel(TXTwoPoint):
 
         return kk
 
+
 class TXTwoPointPixelExtCross(TXTwoPointPixel):
     """
     TXTwoPointPixel - External - Cross correlation
     This subclass of TXTwoPointPixel uses maps to compute
-    cross correlations between the galaxy density maps and 
-    an external set of Survey Property (or other contaminant) 
+    cross correlations between the galaxy density maps and
+    an external set of Survey Property (or other contaminant)
     maps
     """
 
@@ -1143,7 +1124,9 @@ class TXTwoPointPixelExtCross(TXTwoPointPixel):
         "do_pos_ext": StageParameter(bool, True, msg="Whether to compute position-external correlations"),
         "do_shear_ext": StageParameter(bool, True, msg="Whether to compute shear-external correlations"),
         # TODO: Remove any unnesesary config options here
-        "calcs": StageParameter(list, [0, 1, 2], msg="Which calculations to perform: 0=shear-shear, 1=shear-position, 2=position-position"),
+        "calcs": StageParameter(
+            list, [0, 1, 2], msg="Which calculations to perform: 0=shear-shear, 1=shear-position, 2=position-position"
+        ),
         "source_bins": StageParameter(list, [-1], msg="List of source bins to use (-1 means all)"),
         "lens_bins": StageParameter(list, [-1], msg="List of lens bins to use (-1 means all)"),
         "reduce_randoms_size": StageParameter(float, 1.0, msg="Factor to reduce the size of random catalogs"),
@@ -1158,12 +1141,19 @@ class TXTwoPointPixelExtCross(TXTwoPointPixel):
         "metric": StageParameter(str, "Euclidean", msg="Distance metric to use (Euclidean, Arc, etc.)"),
         "use_randoms": StageParameter(bool, True, msg="Whether to use random catalogs"),
         "auto_only": StageParameter(bool, False, msg="Whether to compute only auto-correlations"),
-        "gaussian_sims_factor": StageParameter(list, default=[1.], msg="Factor by which to decrease lens density to account for increased density contrast."),
-        "use_subsampled_randoms": StageParameter(bool, False, msg="Use subsampled randoms file for RR calculation (not used for pixel estimator)"),
+        "gaussian_sims_factor": StageParameter(
+            list,
+            default=[1.0],
+            msg="Factor by which to decrease lens density to account for increased density contrast.",
+        ),
+        "use_subsampled_randoms": StageParameter(
+            bool, False, msg="Use subsampled randoms file for RR calculation (not used for pixel estimator)"
+        ),
     }
 
     def get_ext_list(self):
         import glob
+
         root = self.config["supreme_path_root"]
         sys_files = glob.glob(f"{root}*.hs")
         return sys_files
@@ -1175,9 +1165,9 @@ class TXTwoPointPixelExtCross(TXTwoPointPixel):
         """
         calcs = []
 
-        #get the list of external map files
+        # get the list of external map files
         self.ext_list = self.get_ext_list()
-        ext_list = np.arange(len( self.ext_list ))
+        ext_list = np.arange(len(self.ext_list))
 
         # For shear-ext
         if self.config["do_shear_ext"]:
@@ -1205,8 +1195,9 @@ class TXTwoPointPixelExtCross(TXTwoPointPixel):
         """
         import sacc
         import pickle
-        #TODO: fix up the caching code
-        if self.name == "TXTwoPointPixelExtCross": 
+
+        # TODO: fix up the caching code
+        if self.name == "TXTwoPointPixelExtCross":
             pickle_filename = self.get_output("twopoint_data_ext_cross_raw") + f".checkpoint-{i}-{j}-{k}.pkl"
 
             if os.path.exists(pickle_filename):
@@ -1214,7 +1205,7 @@ class TXTwoPointPixelExtCross(TXTwoPointPixel):
                 with open(pickle_filename, "rb") as f:
                     result = pickle.load(f)
                 return result
- 
+
         if k == SHEAR_SHEAR:
             xx = self.calculate_shear_shear(i, j)
             xtype = "combined"
@@ -1227,11 +1218,11 @@ class TXTwoPointPixelExtCross(TXTwoPointPixel):
         elif k == POS_EXT:
             assert self.name == "TXTwoPointPixelExtCross"
             xx = self.calculate_pos_ext(i, j)
-            xtype = sacc.build_data_type_name( "galaxy", ["density", "ext"], "xi" )
+            xtype = sacc.build_data_type_name("galaxy", ["density", "ext"], "xi")
         elif k == SHEAR_EXT:
             assert self.name == "TXTwoPointPixelExtCross"
             xx = self.calculate_shear_ext(i, j)
-            xtype = sacc.build_data_type_name( "galaxy", ["shear", "ext"], "xi" )
+            xtype = sacc.build_data_type_name("galaxy", ["shear", "ext"], "xi")
         else:
             raise ValueError(f"Unknown correlation function {k}")
 
@@ -1254,7 +1245,7 @@ class TXTwoPointPixelExtCross(TXTwoPointPixel):
                 print(f"Pickling result to {pickle_filename}")
                 with open(pickle_filename, "wb") as f:
                     pickle.dump(result, f)
- 
+
         return result
 
     def calculate_pos_ext(self, i, j):
@@ -1265,9 +1256,7 @@ class TXTwoPointPixelExtCross(TXTwoPointPixel):
         cat_j = self.get_ext_map(j)
 
         if self.rank == 0:
-            print(
-                f"Calculating position-external bin pair ({i}, {j})"
-            )
+            print(f"Calculating position-external bin pair ({i}, {j})")
 
         t1 = perf_counter()
 
@@ -1275,7 +1264,6 @@ class TXTwoPointPixelExtCross(TXTwoPointPixel):
         kk.process(cat_i, cat_j, comm=self.comm, low_mem=self.config["low_mem"])
 
         return kk
-
 
     def calculate_shear_ext(self, i, j):
         import treecorr
@@ -1285,9 +1273,7 @@ class TXTwoPointPixelExtCross(TXTwoPointPixel):
         cat_j = self.get_ext_map(j)
 
         if self.rank == 0:
-            print(
-                f"Calculating shear-external bin pair ({i},{j})."
-            )
+            print(f"Calculating shear-external bin pair ({i},{j}).")
 
         kg = treecorr.KGCorrelation(self.config)
         t1 = perf_counter()
@@ -1297,39 +1283,39 @@ class TXTwoPointPixelExtCross(TXTwoPointPixel):
 
     def get_ext_map(self, i):
         """
-        get the ith external map (e.g. SP map) from the directory specified in the config 
+        get the ith external map (e.g. SP map) from the directory specified in the config
         """
         import treecorr
         import healsparse
-        import healpy as hp 
-        
+        import healpy as hp
+
         # Read the mask to get fracdet weights
         with self.open_input("mask", wrapper=True) as f:
-            info = f.read_map_info('mask')
-            mask, pix, nside = f.read_healpix('mask', return_all=True)
+            info = f.read_map_info("mask")
+            mask, pix, nside = f.read_healpix("mask", return_all=True)
 
         # open the input healsparse map
         sys_files = self.get_ext_list()
         sys_file = sys_files[i]
         m = healsparse.HealSparseMap.read(sys_file)
         m = m.degrade(nside)
-        if info['nest'] == True:
+        if info["nest"] == True:
             map_d = m[pix]
         else:
-            map_d = m[hp.ring2nest(nside, pix)] 
+            map_d = m[hp.ring2nest(nside, pix)]
 
-        #convert SP map to an overdensity
-        mean_data = np.average(map_d, weights=mask[pix] )
-        map_d = map_d/mean_data - 1.
+        # convert SP map to an overdensity
+        mean_data = np.average(map_d, weights=mask[pix])
+        map_d = map_d / mean_data - 1.0
 
-        scheme = choose_pixelization(**info) 
+        scheme = choose_pixelization(**info)
         ra_pix, dec_pix = scheme.pix2ang(pix)
 
         # Load and calibrate the appropriate bin data
         cat = treecorr.Catalog(
             ra=ra_pix,
             dec=dec_pix,
-            w=mask[pix], #weight pixels by their fracdet
+            w=mask[pix],  # weight pixels by their fracdet
             k=map_d,
             ra_units="degree",
             dec_units="degree",
@@ -1351,13 +1337,13 @@ class TXTwoPointPixelExtCross(TXTwoPointPixel):
         GAMMAT = sacc.standard_types.galaxy_shearDensity_xi_t
         GAMMAX = sacc.standard_types.galaxy_shearDensity_xi_x
         WTHETA = sacc.standard_types.galaxy_density_xi
-        POS_EXT_TYPE = sacc.build_data_type_name( "galaxy", ["density", "ext"], "xi" )
-        SHEAR_EXT_TYPE = sacc.build_data_type_name( "galaxy", ["shear", "ext"], "xi" )
+        POS_EXT_TYPE = sacc.build_data_type_name("galaxy", ["density", "ext"], "xi")
+        SHEAR_EXT_TYPE = sacc.build_data_type_name("galaxy", ["shear", "ext"], "xi")
 
         comb = []
         for index, d in enumerate(results):
             # First the tracers and generic tags
-            if d.corr_type in [XI,XIP,XIM]:
+            if d.corr_type in [XI, XIP, XIM]:
                 tracer1 = f"source_{d.i}"
                 tracer2 = f"source_{d.j}"
             elif d.corr_type in [GAMMAT, GAMMAX]:
@@ -1373,7 +1359,7 @@ class TXTwoPointPixelExtCross(TXTwoPointPixel):
                 tracer1 = f"source_{d.i}"
                 tracer2 = f"external_{d.j}"
             else:
-                raise RuntimeError('unrecognised corr_type')
+                raise RuntimeError("unrecognised corr_type")
 
             # This happens when there is an empty bin. We can't do a covariance
             # here, or anything useful, really, so we just skip this bin.
@@ -1415,18 +1401,21 @@ class TXTwoPointPixelExtCross(TXTwoPointPixel):
                         tracers_later=tracers_later,
                     )
             else:
-                if self.config['gaussian_sims_factor'] != [1.]:
+                if self.config["gaussian_sims_factor"] != [1.0]:
                     # only for gammat and wtheta, for the gaussian simulations we need to scale the measurements up to correct for
                     # the scaling of the density field when building the simulations.
-                    if 'lens' in tracer2:
-                        if 'lens' in tracer1:
-                            scaling_factor = self.config['gaussian_sims_factor'][int(tracer1[-1])]*self.config['gaussian_sims_factor'][int(tracer2[-1])]
+                    if "lens" in tracer2:
+                        if "lens" in tracer1:
+                            scaling_factor = (
+                                self.config["gaussian_sims_factor"][int(tracer1[-1])]
+                                * self.config["gaussian_sims_factor"][int(tracer2[-1])]
+                            )
                         else:
-                            scaling_factor = self.config['gaussian_sims_factor'][int(tracer2[-1])]
-                            
-                    d.object.xi *=scaling_factor
-                    d.object.varxi *=(scaling_factor**2)
-                    
+                            scaling_factor = self.config["gaussian_sims_factor"][int(tracer2[-1])]
+
+                    d.object.xi *= scaling_factor
+                    d.object.varxi *= scaling_factor**2
+
                 xi = d.object.xi
                 err = np.sqrt(d.object.varxi)
                 n = len(xi)
@@ -1440,19 +1429,16 @@ class TXTwoPointPixelExtCross(TXTwoPointPixel):
                         weight=weight[i],
                         tracers_later=tracers_later,
                     )
-                    
+
             # We build up the comb list to get the covariance of it later
             # in the same order as our data points
             comb.append(d.object)
 
-
-                    
         # Add the covariance.  There are several different jackknife approaches
         # available - see the treecorr docs
         if treecorr.__version__.startswith("4.2."):
             if self.rank == 0:
-                print("Using old TreeCorr - covariance may be slow. "
-                      "Consider using 4.3 from github main branch.")
+                print("Using old TreeCorr - covariance may be slow. Consider using 4.3 from github main branch.")
             cov = treecorr.estimate_multi_cov(comb, self.config["var_method"])
         else:
             if self.rank == 0:
@@ -1460,10 +1446,9 @@ class TXTwoPointPixelExtCross(TXTwoPointPixel):
             cov = treecorr.estimate_multi_cov(comb, self.config["var_method"], comm=self.comm)
         S.add_covariance(cov)
 
-
     def write_output(self, source_list, lens_list, meta, results):
         """
-        Re-define method to use external cross-correlation outputs 
+        Re-define method to use external cross-correlation outputs
         """
         import sacc
         import treecorr
@@ -1490,7 +1475,7 @@ class TXTwoPointPixelExtCross(TXTwoPointPixel):
 
         # Now build up the collection of data points, adding them all to
         # the sacc data one by one.
-        self.add_data_points(S, results, tracers_later=True )
+        self.add_data_points(S, results, tracers_later=True)
 
         # The other processes are only needed for the covariance estimation.
         # They do a bunch of other stuff here that isn't actually needed, but
@@ -1499,22 +1484,17 @@ class TXTwoPointPixelExtCross(TXTwoPointPixel):
         if self.rank != 0:
             return
 
-
         # Our data points may currently be in any order depending on which processes
         # ran which calculations.  Re-order them.
         S.to_canonical_order()
 
-
-        #add list of sp map names to the metadata
-        meta['ext_list'] = self.ext_list
+        # add list of sp map names to the metadata
+        meta["ext_list"] = self.ext_list
 
         self.write_metadata(S, meta)
 
-
         # Finally, save the output to Sacc file
         S.save_fits(self.get_output("twopoint_data_ext_cross_raw"), overwrite=True)
-
-
 
 
 if __name__ == "__main__":

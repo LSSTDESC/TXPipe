@@ -2,11 +2,13 @@ from ..base_stage import PipelineStage
 from ..data_types import ParquetFile, HDFFile, FitsFile
 from ceci.config import StageParameter
 
+
 class TXParqetToHDF(PipelineStage):
     """Generic stage to convert a Parquet File to HDF
 
     This will need to use aliases to be any use.
     """
+
     name = "TXParqetToHDF"
     parallel = False
     inputs = [
@@ -21,14 +23,14 @@ class TXParqetToHDF(PipelineStage):
 
     def run(self):
         import pyarrow.parquet
+
         input_tag = self.get_aliased_tag("input")
         output = self.open_output("output")
-        group = self.config['hdf_group']
+        group = self.config["hdf_group"]
         if group == "/":
             out_group = output
         else:
             out_group = output.create_group(group)
-
 
         # Get the column names.  Oddly, doing f.schema below
         # gives you a different kind of object without the types included

@@ -7,7 +7,7 @@ def array_hash(x):
     b = x.tobytes()
     # We do not need a cryptographic hash here
     h = int(hashlib.md5(b).hexdigest(), 16)
-    # if h > 2**63 reduce it to 64 bits
+    # if h > 2**63 reduce it to 64 bits
     h = h % 2**63
     return h
 

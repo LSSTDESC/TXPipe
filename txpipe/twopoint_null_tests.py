@@ -37,7 +37,6 @@ class TXStarCatalogSplitter(PipelineStage):
     }
 
     def run(self):
-
         cols = ["ra", "dec"]
 
         #  Object we use to make the separate lens bins catalog
@@ -104,7 +103,9 @@ class TXGammaTFieldCenters(TXTwoPoint):
     ]
     # Add values to the config file that are not previously defined
     config_options = TREECORR_CONFIG | {
-        "calcs": StageParameter(list, [0, 1, 2], msg="Which calculations to perform: 0=shear-shear, 1=shear-position, 2=position-position"),
+        "calcs": StageParameter(
+            list, [0, 1, 2], msg="Which calculations to perform: 0=shear-shear, 1=shear-position, 2=position-position"
+        ),
         "reduce_randoms_size": StageParameter(float, 1.0, msg="Factor to reduce the size of random catalogs."),
         "var_method": StageParameter(str, "shot", msg="Method for computing variance (shot, jackknife, etc.)."),
         "npatch": StageParameter(int, 5, msg="Number of patches for null tests."),
@@ -225,7 +226,7 @@ class TXGammaTFieldCenters(TXTwoPoint):
         S = sacc.Sacc()
 
         with self.open_input("shear_photoz_stack", wrapper=True) as f:
-            # The last entry represents the 2D n(z)
+            # The last entry represents the 2D n(z)
             z, Nz = f.get_2d_n_of_z(-1)
 
         # Add the data points that we have one by one, recording which
@@ -293,7 +294,9 @@ class TXGammaTStars(TXTwoPoint):
     ]
     # Add values to the config file that are not previously defined
     config_options = TREECORR_CONFIG | {
-        "calcs": StageParameter(list, [0, 1, 2], msg="Which calculations to perform: 0=shear-shear, 1=shear-position, 2=position-position"),
+        "calcs": StageParameter(
+            list, [0, 1, 2], msg="Which calculations to perform: 0=shear-shear, 1=shear-position, 2=position-position"
+        ),
         "reduce_randoms_size": StageParameter(float, 1.0, msg="Factor to reduce the size of random catalogs."),
         "var_method": StageParameter(str, "shot", msg="Method for computing variance (shot, jackknife, etc.)."),
         "npatch": StageParameter(int, 5, msg="Number of patches for null tests."),
@@ -472,7 +475,9 @@ class TXGammaTRandoms(TXTwoPoint):
     ]
     # Add values to the config file that are not previously defined
     config_options = TREECORR_CONFIG | {
-        "calcs": StageParameter(list, [0, 1, 2], msg="Which calculations to perform: 0=shear-shear, 1=shear-position, 2=position-position"),
+        "calcs": StageParameter(
+            list, [0, 1, 2], msg="Which calculations to perform: 0=shear-shear, 1=shear-position, 2=position-position"
+        ),
         "reduce_randoms_size": StageParameter(float, 1.0, msg="Factor to reduce the size of random catalogs."),
         "var_method": StageParameter(str, "shot", msg="Method for computing variance (shot, jackknife, etc.)."),
         "npatch": StageParameter(int, 5, msg="Number of patches for null tests."),
@@ -627,6 +632,7 @@ class TXApertureMass(TXTwoPoint):
     There are real and imaginary components of the aperture mass
     and its cross term.
     """
+
     name = "TXApertureMass"
     inputs = [
         ("binned_shear_catalog", ShearCatalog),
@@ -639,7 +645,9 @@ class TXApertureMass(TXTwoPoint):
     ]
     # Add values to the config file that are not previously defined
     config_options = TREECORR_CONFIG | {
-        "calcs": StageParameter(list, [0, 1, 2], msg="Which calculations to perform: 0=shear-shear, 1=shear-position, 2=position-position"),
+        "calcs": StageParameter(
+            list, [0, 1, 2], msg="Which calculations to perform: 0=shear-shear, 1=shear-position, 2=position-position"
+        ),
         "source_bins": StageParameter(list, [-1], msg="List of source bins to use (-1 means all)."),
         "lens_bins": StageParameter(list, [-1], msg="List of lens bins to use (-1 means all)."),
         "reduce_randoms_size": StageParameter(float, 1.0, msg="Factor to reduce the size of random catalogs."),
@@ -664,7 +672,6 @@ class TXApertureMass(TXTwoPoint):
         return source_list, lens_list
 
     def select_calculations(self, source_list, lens_list):
-
         # For shear-shear we omit pairs with j>i
         # Lens list is an empty list here, and is unused
         calcs = []
@@ -680,14 +687,12 @@ class TXApertureMass(TXTwoPoint):
         return calcs
 
     def calculate_shear_shear(self, i, j):
-
         gg = super().calculate_shear_shear(i, j)
         gg.mapsq = gg.calculateMapSq()
 
         return gg
 
     def write_output(self, source_list, lens_list, meta, results):
-
         # lens_list is unused in this function, but should always be passed as an empty list
         import sacc
 
@@ -711,7 +716,6 @@ class TXApertureMass(TXTwoPoint):
 
         # Now build up the collection of data points, adding them all to the sacc
         for d in results:
-
             # First the tracers and generic tags
             tracer1 = f"source_{d.i}"
             tracer2 = f"source_{d.j}"

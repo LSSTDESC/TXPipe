@@ -1,13 +1,16 @@
 import numpy as np
 
-REF_FLUX = 1e23 * 10 ** (48.6/-2.5)
+REF_FLUX = 1e23 * 10 ** (48.6 / -2.5)
+
 
 # follow https://pipelines.lsst.io/v/DM-22499/cpp-api/file/_photo_calib_8h.html
 def nanojansky_to_mag_ab(flux):
     return -2.5 * np.log10(flux * 1e-9 / REF_FLUX)
 
+
 def mag_ab_to_nanojansky(mag):
     return 1e9 * REF_FLUX * 10 ** (-0.4 * mag)
+
 
 def nanojansky_err_to_mag_ab(flux, flux_err):
     return 2.5 / np.log(10) * (flux_err / flux)

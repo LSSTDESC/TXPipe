@@ -13,6 +13,7 @@ class PipelineStage(PipelineStageBase):
 
     This stage should not be used directly (hence the name)
     """
+
     name = "BaseStageDoNotRunDirectly"
     inputs = []
     outputs = []
@@ -67,9 +68,7 @@ class PipelineStage(PipelineStageBase):
         host = socket.gethostname()
 
         # Print messsage
-        print(
-            f"{t}: Process {self.rank}:{tag} Remaining memory on {host} {avail:.1f} GB / {total:.1f} GB"
-        )
+        print(f"{t}: Process {self.rank}:{tag} Remaining memory on {host} {avail:.1f} GB / {total:.1f} GB")
         sys.stdout.flush()
 
     def combined_iterators(self, rows, *inputs, parallel=True):
@@ -103,10 +102,7 @@ class PipelineStage(PipelineStageBase):
             Iterator yielding (int, int, dict) tuples of (start, end, data)
         """
         if not len(inputs) % 3 == 0:
-            raise ValueError(
-                "Arguments to combined_iterators should be in threes: "
-                "tag, group, value"
-            )
+            raise ValueError("Arguments to combined_iterators should be in threes: tag, group, value")
         n = len(inputs) // 3
 
         iterators = []
@@ -114,13 +110,11 @@ class PipelineStage(PipelineStageBase):
             tag = inputs[3 * i]
             section = inputs[3 * i + 1]
             cols = inputs[3 * i + 2]
-            iterators.append(
-                self.iterate_hdf(tag, section, cols, rows, parallel=parallel)
-            )
+            iterators.append(self.iterate_hdf(tag, section, cols, rows, parallel=parallel))
 
         for it in zip(*iterators):
             data = {}
-            for (s, e, d) in it:
+            for s, e, d in it:
                 data.update(d)
             yield s, e, data
 

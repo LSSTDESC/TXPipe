@@ -1,6 +1,7 @@
 import numpy as np
 from ..utils import import_dask
 
+
 def make_dask_bright_object_map(ra, dec, mag, extended, threshold, pixel_scheme):
     """
     Create a map of bright objects using Dask.
@@ -34,6 +35,7 @@ def make_dask_bright_object_map(ra, dec, mag, extended, threshold, pixel_scheme)
     bright_object_count_map = da.bincount(pix, weights=bright, minlength=npix).astype(int)
     pix = da.unique(pix)
     return pix, bright_object_count_map
+
 
 def make_dask_depth_map(ra, dec, mag, snr, threshold, delta, pixel_scheme):
     """
@@ -86,15 +88,25 @@ def make_dask_depth_map(ra, dec, mag, snr, threshold, delta, pixel_scheme):
 
     pix = da.unique(pix)
     return {
-        "pix": pix, 
-        "count_map": count_map, 
-        "depth_map": depth_map, 
+        "pix": pix,
+        "count_map": count_map,
+        "depth_map": depth_map,
         "depth_var": depth_var,
     }
 
+
 def make_dask_depth_map_det_prob(
-    ra, dec, mag, det, det_prob_threshold, mag_delta, min_depth, max_depth, pixel_scheme, 
-    smooth_det_frac=False, smooth_window=0.5,
+    ra,
+    dec,
+    mag,
+    det,
+    det_prob_threshold,
+    mag_delta,
+    min_depth,
+    max_depth,
+    pixel_scheme,
+    smooth_det_frac=False,
+    smooth_window=0.5,
 ):
     """
     Generate a depth map using Dask, by finding the mean magnitude of
@@ -111,7 +123,7 @@ def make_dask_depth_map_det_prob(
     det : dask.array
         dask array of boolean detection parameter
     det_prob_threshold : float
-        Detection probability threshold for SSI depth 
+        Detection probability threshold for SSI depth
         (i.e. 0.9 to get magnitude at which 90% of brighter objects are detected)
     mag_delta : float
         size of the magnitude increments at which to compute detection fraction
@@ -138,6 +150,7 @@ def make_dask_depth_map_det_prob(
         - mag_edges (dask.array): grid of magnitudes at which det_frac_by_mag_thres was evaluated
     """
     from scipy.signal import savgol_filter
+
     _, da = import_dask()
     npix = pixel_scheme.npix
     pix = pixel_scheme.ang2pix(ra, dec)
@@ -162,18 +175,18 @@ def make_dask_depth_map_det_prob(
 
     # Optional smoothing of the stacked detection fractions
     if smooth_det_frac:
-        window_length = int(n_depth_bins*smooth_window/(max_depth-min_depth)) #converting to units of mag bin
-        poly_order = 2 # TODO: could make config option
+        window_length = int(n_depth_bins * smooth_window / (max_depth - min_depth))  # converting to units of mag bin
+        poly_order = 2  # TODO: could make config option
 
         # Here extend the chunks of the dask array when applying a local filter to avoid boundary issues
-        det_frac_by_mag_thres = det_frac_by_mag_thres.map_overlap( 
-            lambda a: savgol_filter(a, window_length, poly_order, axis=0), 
-            depth=window_length // 2,   # Extend chunks by half window size
-            boundary="reflect",         # Reflect at edges to avoid NaNs
-            dtype=det_frac_by_mag_thres.dtype, 
-            )
+        det_frac_by_mag_thres = det_frac_by_mag_thres.map_overlap(
+            lambda a: savgol_filter(a, window_length, poly_order, axis=0),
+            depth=window_length // 2,  # Extend chunks by half window size
+            boundary="reflect",  # Reflect at edges to avoid NaNs
+            dtype=det_frac_by_mag_thres.dtype,
+        )
 
-    # In order for pixel to give a valid depth estimate it must have 
+    # In order for pixel to give a valid depth estimate it must have
     # (1) at least one mag_thresh with a computed frac_det above the threshold
     # (2) at least one mag_thresh with a computed frac_det below the threshold
     has_high = (det_frac_by_mag_thres > det_prob_threshold).any(axis=0)
@@ -185,8 +198,8 @@ def make_dask_depth_map_det_prob(
     below_threshold = det_frac_by_mag_thres < det_prob_threshold
     masked = da.where(
         below_threshold, da.arange(det_frac_by_mag_thres.shape[0])[:, None], n_depth_bins - 1
-    )  #if below_threshold is True -> magnitude index, if False -> set to index of maximum depth 
-    thres_index = da.nanmin(masked, axis=0) #the index of the magnitude where det frac drops below threshold
+    )  # if below_threshold is True -> magnitude index, if False -> set to index of maximum depth
+    thres_index = da.nanmin(masked, axis=0)  # the index of the magnitude where det frac drops below threshold
 
     depth_map = mag_edges[thres_index]
     depth_map[~valid_pix_mask] = np.nan
@@ -198,5 +211,5 @@ def make_dask_depth_map_det_prob(
         "inj_count_map": inj_count_map,
         "depth_map": depth_map,
         "det_frac_by_mag_thres": det_frac_by_mag_thres,
-        "mag_edges": mag_edges
+        "mag_edges": mag_edges,
     }

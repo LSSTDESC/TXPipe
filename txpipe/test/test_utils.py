@@ -11,7 +11,6 @@ def test_escape():
 
 
 def test_unique_list():
-
     x = [1, 1, 1, 1]
     assert unique_list(x) == [1]
 

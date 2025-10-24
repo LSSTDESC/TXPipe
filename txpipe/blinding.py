@@ -86,7 +86,6 @@ class TXBlinding(PipelineStage):
         # Save the signature into the output
         sack.metadata["blinding_signature"] = signature
 
-
         ## now try to get predictions
         print("Computing fiducial theory")
         fid_theory = theory_3x2pt(fid_cosmo, sack, bias=self.config["b0"])
@@ -105,6 +104,7 @@ class TXBlinding(PipelineStage):
 
     def get_parameters(self):
         import pyccl
+
         seed = self.config["seed"]
         print(f"Blinding with seed {seed}")
 
@@ -121,10 +121,7 @@ class TXBlinding(PipelineStage):
             print(f"Blinding signature: {signature}")
 
         # Pull out the fiducial parameters from the config
-        fid_params = {
-            p: self.config[p][0]
-            for p in ["Omega_b", "Omega_c", "h", "w0", "sigma8", "n_s"]
-        }
+        fid_params = {p: self.config[p][0] for p in ["Omega_b", "Omega_c", "h", "w0", "sigma8", "n_s"]}
 
         # Get the parameters in the offset space
         offset_params = fid_params.copy()
@@ -138,8 +135,6 @@ class TXBlinding(PipelineStage):
         offset_cosmo = pyccl.Cosmology(**offset_params)
 
         return signature, fid_cosmo, offset_cosmo
-
-
 
 
 class TXNullBlinding(PipelineStage):

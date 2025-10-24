@@ -90,9 +90,7 @@ def full_3x2pt_plots(
         else:
             sacc_data.append(sacc.Sacc.load_fits(f))
 
-    obs_data = [
-        extract_observables_plot_data(s, label) for s, label in zip(sacc_data, labels)
-    ]
+    obs_data = [extract_observables_plot_data(s, label) for s, label in zip(sacc_data, labels)]
 
     if theory_sacc_files is not None:
         sacc_theory = []
@@ -102,10 +100,7 @@ def full_3x2pt_plots(
             else:
                 sacc_theory.append(sacc.Sacc.load_fits(f))
 
-        obs_theory = [
-            extract_observables_plot_data(s, label)
-            for s, label in zip(sacc_theory, theory_labels)
-        ]
+        obs_theory = [extract_observables_plot_data(s, label) for s, label in zip(sacc_theory, theory_labels)]
     else:
         obs_theory = []
 
@@ -131,9 +126,7 @@ def full_3x2pt_plots(
         if any(obs[t] for obs in obs_data):
             print(f"Making Plot {t}")
             f = figures.get(t)
-            output_figures[t] = make_plot(
-                t, obs_data, obs_theory, fig=f, xlogscale=xlogscale, ratios=ratios
-            )
+            output_figures[t] = make_plot(t, obs_data, obs_theory, fig=f, xlogscale=xlogscale, ratios=ratios)
 
     return output_figures
 
@@ -275,9 +268,7 @@ def make_plot(corr, obs_data, obs_theory, fig=None, xlogscale=True, ratios=False
                         )
                         a.axhline(y=1, color="k", ls=":")
                     else:
-                        a.errorbar(
-                            theta, xi, err, fmt=".", label=obs["name"], capsize=5
-                        )
+                        a.errorbar(theta, xi, err, fmt=".", label=obs["name"], capsize=5)
                         a.set_yscale("log")
                     if xlogscale:
                         a.set_xscale("log")
@@ -381,9 +372,7 @@ def make_theory_plot_data(data, cosmo, obs, label, smooth=True, xi=None, ratios=
         nz = smooth_nz(Ti.nz) if smooth else Ti.nz
 
         # Convert to CCL form
-        tracers[name] = pyccl.NumberCountsTracer(
-            cosmo, has_rsd=False, dndz=(Ti.z, nz), bias=(Ti.z, np.ones_like(Ti.z))
-        )
+        tracers[name] = pyccl.NumberCountsTracer(cosmo, has_rsd=False, dndz=(Ti.z, nz), bias=(Ti.z, np.ones_like(Ti.z)))
 
     for i in range(nbin_source):
         for j in range(i + 1):
@@ -392,14 +381,10 @@ def make_theory_plot_data(data, cosmo, obs, label, smooth=True, xi=None, ratios=
             # uncomment to take ratio in Fourier space to get the exact ells
             if ratios and (not xi):
                 if i == 0 and j == 0:
-                    ell, _, _ = obs[
-                        ("galaxy_shearDensity_cl_e", i, j)
-                    ]  # to get the ratio between theory and data
+                    ell, _, _ = obs[("galaxy_shearDensity_cl_e", i, j)]  # to get the ratio between theory and data
 
             # compute power spectra
-            cl = pyccl.angular_cl(
-                cosmo, tracers[f"source_{i}"], tracers[f"source_{j}"], ell
-            )
+            cl = pyccl.angular_cl(cosmo, tracers[f"source_{i}"], tracers[f"source_{j}"], ell)
 
             theory[(EE, i, j)] = ell, cl
 
@@ -407,12 +392,8 @@ def make_theory_plot_data(data, cosmo, obs, label, smooth=True, xi=None, ratios=
             if xi:
                 theta, *_ = obs[(XIP, i, j)]
 
-                theory[(XIP, i, j)] = theta, pyccl.correlation(
-                    cosmo, ell, cl, theta / 60, corr_type="L+"
-                )
-                theory[(XIM, i, j)] = theta, pyccl.correlation(
-                    cosmo, ell, cl, theta / 60, corr_type="L-"
-                )
+                theory[(XIP, i, j)] = theta, pyccl.correlation(cosmo, ell, cl, theta / 60, corr_type="L+")
+                theory[(XIM, i, j)] = theta, pyccl.correlation(cosmo, ell, cl, theta / 60, corr_type="L-")
 
     for i in range(nbin_lens):
         print(f"Computing theory density-density ({i},{i})")
@@ -424,26 +405,19 @@ def make_theory_plot_data(data, cosmo, obs, label, smooth=True, xi=None, ratios=
         # Optionally also compute correlation functions
         if xi:
             theta, *_ = obs[(W, i, i)]
-            theory[W, i, i] = theta, pyccl.correlation(
-                cosmo, ell, cl, theta / 60, corr_type="GG"
-            )
+            theory[W, i, i] = theta, pyccl.correlation(cosmo, ell, cl, theta / 60, corr_type="GG")
 
     for i in range(nbin_source):
-
         for j in range(nbin_lens):
             print(f"Computing theory lensing-density (S{i},L{j})")
 
             # compute power spectra
-            cl = pyccl.angular_cl(
-                cosmo, tracers[f"source_{i}"], tracers[f"lens_{j}"], ell
-            )
+            cl = pyccl.angular_cl(cosmo, tracers[f"source_{i}"], tracers[f"lens_{j}"], ell)
             theory[(ED, i, j)] = ell, cl
 
             # Optionally also compute correlation functions
             if xi:
                 theta, *_ = obs[(GAMMA, i, j)]
-                theory[GAMMA, i, j] = theta, pyccl.correlation(
-                    cosmo, ell, cl, theta / 60, corr_type="GL"
-                )
+                theory[GAMMA, i, j] = theta, pyccl.correlation(cosmo, ell, cl, theta / 60, corr_type="GL")
 
     return theory

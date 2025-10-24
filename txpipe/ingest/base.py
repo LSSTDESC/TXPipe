@@ -2,11 +2,13 @@ from ..base_stage import PipelineStage
 import numpy as np
 from ceci.config import StageParameter
 
+
 class TXIngestCatalogBase(PipelineStage):
     """
-    Base-Class for ingesting catalogs from external sources and saving to a format 
+    Base-Class for ingesting catalogs from external sources and saving to a format
     TXPipe will understand
     """
+
     name = "TXIngestCatalogBase"
 
     def setup_output(self, output_name, column_names, dtypes, n):
@@ -38,7 +40,7 @@ class TXIngestCatalogBase(PipelineStage):
         for new_col, old_col in column_names.items():
             dtype = dtypes[old_col]
             g.create_dataset(new_col, (n,), dtype=dtype)
-        
+
         return output, g
 
     def process_catalog(self, input_name, output_name, column_names, dummy_columns):
@@ -68,7 +70,7 @@ class TXIngestCatalogBase(PipelineStage):
 
         chunk_rows = self.config["chunk_rows"]
 
-        # set up the output file columns 
+        # set up the output file columns
         output, g = self.setup_output(output_name, column_names, dtypes, n)
 
         # iterate over the input file and save to the output columns
@@ -81,14 +83,19 @@ class TXIngestCatalogBase(PipelineStage):
 
         output.close()
 
+
 class TXIngestCatalogFits(TXIngestCatalogBase):
     """
-    Class for ingesting catalogs from FITS format and saving to a format 
+    Class for ingesting catalogs from FITS format and saving to a format
     TXPipe will understand
     """
+
     name = "TXIngestCatalogFits"
-    
-    def get_meta(self, input_name, ):
+
+    def get_meta(
+        self,
+        input_name,
+    ):
         """
         Get some basic info about the input FITS file.
 
@@ -142,13 +149,15 @@ class TXIngestCatalogFits(TXIngestCatalogBase):
             for col in cols:
                 g[col][s:e] = data[column_names[col]]
 
+
 class TXIngestCatalogH5(TXIngestCatalogBase):
     """
-    Class for ingesting catalogs from HDF5 files and saving to a format 
+    Class for ingesting catalogs from HDF5 files and saving to a format
     TXPipe will understand
     """
+
     name = "TXIngestCatalogH5"
-    
+
     def get_meta(self, input_name):
         """
         Get some basic info about the input file
@@ -162,9 +171,9 @@ class TXIngestCatalogH5(TXIngestCatalogBase):
             dtypes
                 data types for each input column
         """
-        import h5py 
+        import h5py
 
-        group = self.config['input_group_name']
+        group = self.config["input_group_name"]
 
         with self.open_input(input_name) as f:
             dtype_list = []
@@ -201,7 +210,7 @@ class TXIngestCatalogH5(TXIngestCatalogBase):
         n : int
             Total number of rows in the dataset.
         """
-        group = self.config['input_group_name']
+        group = self.config["input_group_name"]
 
         cols = list(column_names.keys())
         input_cols = np.unique(list(column_names.values()))
@@ -210,11 +219,13 @@ class TXIngestCatalogH5(TXIngestCatalogBase):
             for col in cols:
                 g[col][s:e] = data[column_names[col]]
 
+
 class TXIngestMapsBase(PipelineStage):
     """
-    Base-Class for ingesting maps from external sources and saving to a format 
+    Base-Class for ingesting maps from external sources and saving to a format
     TXPipe will understand
     """
+
     name = "TXIngestMapsBase"
 
     config_options = {
@@ -240,7 +251,7 @@ class TXIngestMapsBase(PipelineStage):
 
         for group_name in groups:
             maps_group.create_group(group_name)
-        
+
         return output
 
     def process_maps(self, input_filepaths, input_labels, output_name):
@@ -255,23 +266,23 @@ class TXIngestMapsBase(PipelineStage):
         input_labels : list of str
             List of labels for each map. These will be the group names in the output file
             Same ordering as input_filepaths
-        
+
         output_name : str
             The name of the output HDF5 file.
         """
-        #output = self.setup_output(output_name, input_labels)
+        # output = self.setup_output(output_name, input_labels)
 
         maps = {}
 
         for input_label, input_file in zip(input_labels, input_filepaths):
-            print(f'Processing map {input_label}')
+            print(f"Processing map {input_label}")
             pixel, value = self.load_map(input_file, return_nest=False)
             maps[input_label] = (pixel, value)
 
         metadata = {
-            "pixelization":"healpix",
-            "nside":self.config["input_nside"],
-            "nest": False, #currently TXPipe defaults to ring format
+            "pixelization": "healpix",
+            "nside": self.config["input_nside"],
+            "nest": False,  # currently TXPipe defaults to ring format
         }
         print(f"Input nside {self.config['input_nside']}")
 
@@ -279,18 +290,20 @@ class TXIngestMapsBase(PipelineStage):
         with self.open_output(output_name, wrapper=True) as out:
             for map_name, (pix, m) in maps.items():
                 out.write_map(map_name, pix, m, metadata)
-            out.file['maps'].attrs.update(metadata)
+            out.file["maps"].attrs.update(metadata)
+
 
 class TXIngestMapsHsp(TXIngestMapsBase):
     """
-    Class for ingesting maps from external healsparse files and saving to a format 
+    Class for ingesting maps from external healsparse files and saving to a format
     TXPipe will understand
     """
+
     name = "TXIngestMapsHsp"
 
     def load_map(self, input_filepath, return_nest=False):
         """
-        Add a single map to the HDF5 file 
+        Add a single map to the HDF5 file
 
         Parameters
         ----------
