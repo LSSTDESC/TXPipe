@@ -117,6 +117,9 @@ stages:
   - name: TXApertureMass          # Compute aperture-mass statistics
     threads_per_process: 2
   - name: TXTwoPointFourier      # Compute power spectra C_ell
+  - name: TXTwoPointFourierCatalog      # Compute power spectra C_ell
+    aliases:
+        twopoint_data_fourier: twopoint_data_fourier_catalog
   - name: HOSFSB
     # Disabled since not yet synchronised with new Treecorr MPI
   - name: TXTwoPointSCIA   # Self-calibration intrinsic alignments of galaxies
