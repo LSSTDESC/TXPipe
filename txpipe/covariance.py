@@ -64,8 +64,10 @@ class TXFourierGaussianCovariance(PipelineStage):
         # read binning
         two_point_data = self.read_sacc()
 
+        do_shear, do_lens = self.determine_data_types(two_point_data)
+
         # read the n(z) and f_sky from the source summary stats
-        meta = self.read_number_statistics()
+        meta = self.read_number_statistics(do_shear, do_lens)
 
         # Binning choices. The ell binning is a linear piece with all the
         # integer values up to 500 -- these are from firecrown, might need
@@ -84,6 +86,30 @@ class TXFourierGaussianCovariance(PipelineStage):
         cov = self.compute_covariance(cosmo, meta, two_point_data=two_point_data)
 
         self.save_outputs(two_point_data, cov)
+
+    def determine_data_types(self, two_point_data):
+        import sacc
+        data_types = two_point_data.get_data_types()
+        shear_data_types = [
+            sacc.standard_types.galaxy_shear_cl_ee,
+            sacc.standard_types.galaxy_shearDensity_cl_e,
+            sacc.standard_types.galaxy_shear_xi_plus,
+            sacc.standard_types.galaxy_shear_xi_minus
+        ]
+        lens_data_types = [
+            sacc.standard_types.galaxy_density_cl,
+            sacc.standard_types.galaxy_shearDensity_cl_e,
+            sacc.standard_types.galaxy_shearDensity_xi_t,
+            sacc.standard_types.galaxy_density_xi
+        ]
+
+        do_shear = any([dt in shear_data_types for dt in data_types])
+        do_lens = any([dt in lens_data_types for dt in data_types])
+
+        if not (do_shear or do_lens):
+            raise ValueError("No recognized shear or lensing data types found in the input SACC file.")
+        return do_shear, do_lens
+
 
     def save_outputs(self, two_point_data, cov):
         filename = self.get_output("summary_statistics_fourier")
@@ -114,29 +140,8 @@ class TXFourierGaussianCovariance(PipelineStage):
 
         return two_point_data
 
-    def read_number_statistics(self):
+    def read_number_statistics(self, do_shear, do_lens):
         input_data = self.open_input("tracer_metadata")
-
-        # per-bin quantities
-        N_eff = input_data["tracers/N_eff"][:] # for sources
-        N_lens = input_data["tracers/lens_counts"][:]
-        # For the gaussian sims, lambda = nbar(1+b*delta),
-        # instead of lambda = nbar(1+delta), where delta is the density contrast field.
-        # Then, we need to scale up the shot noise term for the lenses
-        # in the covariance for the same b factor.
-        # Here we decrease the number density for this factor, since shot noise term is 1/nbar.
-        print('N_lens:', N_lens)
-        N_lens = N_lens/np.array(self.config["gaussian_sims_factor"])**2
-
-        if self.config["gaussian_sims_factor"] != [1.]:
-            print("ATTENTION: We are dividing N_lens by the gaussian sims factor squared:", np.array(self.config["gaussian_sims_factor"])**2)
-            print("Scaled N_lens is:", N_lens)
-
-        if self.config["use_true_shear"]:
-            nbins = len(input_data["tracers/sigma_e"][:])
-            sigma_e = np.array([0.0 for i in range(nbins)])
-        else:
-            sigma_e = input_data["tracers/sigma_e"][:]
 
         # area in sq deg
         area_deg2 = input_data["tracers"].attrs["area"]
@@ -144,39 +149,70 @@ class TXFourierGaussianCovariance(PipelineStage):
         if area_unit != "deg^2":
             raise ValueError("Units of area have changed")
 
-        input_data.close()
-
         # area in steradians and sky fraction
         area = area_deg2 * np.radians(1) ** 2
         area_arcmin2 = area_deg2 * 60**2
         full_sky = 4 * np.pi
         f_sky = area / full_sky
 
-        # Density information from counts
-        n_eff = N_eff / area
-        n_lens = N_lens / area
-
-        # for printing out only
-        n_eff_arcmin = N_eff / area_arcmin2
-        n_lens_arcmin = N_lens / area_arcmin2
-
-        # Feedback
         print(f"area =  {area_deg2:.1f} deg^2")
         print(f"f_sky:  {f_sky}")
-        print(f"N_eff:  {N_eff} (totals)")
-        print(f"N_lens: {N_lens} (totals)")
-        print(f"n_eff:  {n_eff} / steradian")
-        print(f"     =  {np.around(n_eff_arcmin,2)} / sq arcmin")
-        print(f"lens density: {n_lens} / steradian")
-        print(f"            = {np.around(n_lens_arcmin,2)} / arcmin")
 
-        # Pass all this back as a dictionary
+        # This will be the output dictionary. We will add source
+        # and lens info to it if required.
         meta = {
             "f_sky": f_sky,
-            "sigma_e": sigma_e,
-            "n_eff": n_eff,
-            "n_lens": n_lens,
         }
+
+
+        if do_shear:
+            # per-bin quantities for source sample
+            N_eff = input_data["tracers/N_eff"][:] # for sources
+
+            # Get sigma_e information, or use zeros if using true shear
+            # since it is noiseless.
+            if self.config["use_true_shear"]:
+                nbins = len(input_data["tracers/sigma_e"][:])
+                sigma_e = np.array([0.0 for i in range(nbins)])
+            else:
+                sigma_e = input_data["tracers/sigma_e"][:]
+
+            # Density information from counts
+            n_eff = N_eff / area
+
+            # for printing out only
+            n_eff_arcmin = N_eff / area_arcmin2
+
+            # Feedback
+            print(f"N_eff:  {N_eff} (totals)")
+            print(f"n_eff:  {n_eff} / steradian")
+            print(f"     =  {np.around(n_eff_arcmin,2)} / sq arcmin")
+            print(f"total n_eff:  {np.sum(n_eff_arcmin)} / sq arcmin")
+
+            meta["n_eff"] = n_eff
+            meta["sigma_e"] = sigma_e
+
+        if do_lens:
+            N_lens = input_data["tracers/lens_counts"][:]
+            # For the gaussian sims, lambda = nbar(1+b*delta),
+            # instead of lambda = nbar(1+delta), where delta is the density contrast field.
+            # Then, we need to scale up the shot noise term for the lenses
+            # in the covariance for the same b factor.
+            # Here we decrease the number density for this factor, since shot noise term is 1/nbar.
+            print(f"N_lens: {N_lens} (totals)")
+            N_lens = N_lens/np.array(self.config["gaussian_sims_factor"])**2
+            n_lens_arcmin = N_lens / area_arcmin2
+            print(f"lens density: {n_lens} / steradian")
+            print(f"            = {np.around(n_lens_arcmin,2)} / arcmin")
+
+            if self.config["gaussian_sims_factor"] != [1.]:
+                print("ATTENTION: We are dividing N_lens by the gaussian sims factor squared:", np.array(self.config["gaussian_sims_factor"])**2)
+                print("Scaled N_lens is:", N_lens)
+            n_lens = N_lens / area
+            meta["n_lens"] = n_lens
+
+        input_data.close()
+
 
         return meta
 

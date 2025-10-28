@@ -844,7 +844,7 @@ class TXRoweStatistics(PipelineStage):
             elif self.config["psf_size_units"] == "sigma":
                 T_frac = (g["measured_T"][:] ** 2 - g["model_T"][:] ** 2) / g["measured_T"][:] ** 2
             else:
-                sys.exit("Need to specify measured_T: Tmeas/Tmodel/sigma")
+                raise ValueError("Need to specify measured_T: Tmeas/Tmodel/sigma")
 
             if self.config['subtract_mean']:
                 e_meas = np.array((e1meas-np.mean(e1meas), e2meas-np.mean(e2meas)))

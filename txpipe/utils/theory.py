@@ -169,7 +169,7 @@ def theory_3x2pt(
     # We can optionally smooth the n(z). This helped in Prat et al.
     # Probably this should be happening in CCL somewhere.
     if smooth:
-        smooth_sacc_nz(sacc_data)
+        smooth_sacc_nz(sacc_data, smooth)
 
     # The user can pass in an empty sacc file, with no data points in,
     # if they also pass in either ell or theta values to fill it with.
@@ -215,7 +215,7 @@ def theory_3x2pt(
 
 
 
-def smooth_sacc_nz(sack):
+def smooth_sacc_nz(sack, smoothing_samples):
     """
     Smooth each n(z) in a sacc object, in-place.
 
@@ -227,13 +227,23 @@ def smooth_sacc_nz(sack):
     -------
     None
     """
+    if smoothing_samples is True:
+        smoothing_samples = 2
 
-    for key, tracer in sack.tracers.items():
-        tracer.nz = smooth_nz(tracer.nz)
+    print(f"Smoothing n(z) using Gaussian kernel of width {smoothing_samples} samples")
+    dz = []
+    for _, tracer in sack.tracers.items():
+        dz.append(tracer.z[1] - tracer.z[0])
+        tracer.nz = smooth_nz(tracer.nz, smoothing_samples)
+    if np.allclose(dz, dz[0]):
+        print(f"This is a z width of {dz[0] * smoothing_samples}")
+    else:
+        for i, dz_i in enumerate(dz):
+            print(f"For bin {i} this is a z width of {dz_i * smoothing_samples}")
 
 
 
-def smooth_nz(nz):
+def smooth_nz(nz, smoothing_samples):
     """
     Smooth an n(z) by convolving with a Gassian of width 2 samples
 
@@ -245,7 +255,8 @@ def smooth_nz(nz):
     -------
     array
     """
-    return np.convolve(nz, np.exp(-0.5 * np.arange(-4, 5) ** 2) / 2**2, mode="same")
+    import scipy.ndimage
+    return scipy.ndimage.gaussian_filter1d(nz, smoothing_samples)
 
 
 def make_bias_parameters(bias_option, sacc_data, cosmo):

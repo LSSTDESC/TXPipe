@@ -430,7 +430,7 @@ class TXTwoPoint(PipelineStage):
                         if self.config["do_shear_pos"] == True:
                             S2.add_tracer("NZ", f"source_{i}", z, Nz)
             else:
-                sys.exit("Requesting a measurement that requires source galaxies but no source_list provided")
+                raise ValueError("Requesting do_shear_pos or do_shear_shear but no source_list provided")
 
         if self.config["do_pos_pos"] or self.config["do_shear_pos"]:
             if lens_list:
@@ -442,7 +442,7 @@ class TXTwoPoint(PipelineStage):
                         if self.config["do_shear_pos"] == True:
                             S2.add_tracer("NZ", f"lens_{i}", z, Nz)
             else:
-                sys.exit("Requesting a measurement that requires lens galaxies but no lens_list provided")
+                raise ValueError("Requesting do_pos_pos or do_shear_pos but no lens_list provided")
 
         # Now build up the collection of data points, adding them all to
         # the sacc data one by one.

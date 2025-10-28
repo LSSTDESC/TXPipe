@@ -70,7 +70,7 @@ class TXMapPlots(PipelineStage):
             except:
                 if self.config["debug"]:
                     raise
-                sys.stderr.write(f"Failed to make maps with method {m.__name__}")
+                sys.stderr.write(f"Failed to make maps with method {m.__name__}\n")
 
     def aux_source_plots(self):
         import matplotlib.pyplot as plt

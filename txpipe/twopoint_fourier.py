@@ -600,7 +600,8 @@ class TXTwoPointFourier(PipelineStage):
             )
 
         if n_ell is None:
-            n_ell_coupled = np.zeros((c.shape[0], 3 * self.config["nside"]))
+            nside = field_i.minfo.nside
+            n_ell_coupled = np.zeros((c.shape[0], 3 * nside))
             n_ell = np.zeros_like(c)
 
         def window_pixel(ell, nside):
