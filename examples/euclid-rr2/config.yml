@@ -1,0 +1,39 @@
+TXSourceMaps:
+    nside: 4096
+
+TXTwoPoint:
+    bin_slop: 0.01
+    do_pos_pos: false
+    do_shear_shear: true
+    do_shear_pos: false
+    flip_g2: false
+    min_sep: 2.5
+    max_sep: 250
+    nbins: 10
+    verbose: 0
+    var_method: jackknife
+
+TXRealGaussianCovariance:
+    min_sep: 2.5
+    max_sep: 300.
+    nbins: 12
+
+
+TXJackknifeCenters:
+    npatch: 200
+
+TXTwoPointTheoryReal:
+    smooth: 5
+
+
+TXTwoPointFourier:
+    # low_mem: true
+    ell_min: 50
+    ell_max: 3000
+    n_ell: 20
+    ell_spacing: log
+    analytic_noise: true
+    do_shear_shear: true
+    do_shear_pos: false
+    do_pos_pos: false
+    compute_theory: false

@@ -1,0 +1,71 @@
+stages:
+    - name: TXIngestEuclidRR2
+    - name: TXJackknifeCenters
+    - name: TXTwoPoint
+      threads_per_process: 8
+    - name: TXNullBlinding
+    - name: TXTwoPointTheoryReal
+    - name: TXTwoPointPlotsTheory
+      aliases:
+        twopoint_data_real: summary_statistics_real
+    - name: TXSourceMaps
+    - name: TXMapPlots
+    - name: TXRealGaussianCovariance
+    # - name: TXTwoPointFourier
+    #   threads_per_process: 8
+    # - name: TXTwoPointTheoryFourier
+    # - name: TXTwoPointPlotsFourier
+
+
+# Where to put outputs
+output_dir: data/euclid-rr2/outputs
+
+# How to run the pipeline: mini, parsl, or cwl
+launcher:
+    name: mini
+    interval: 1.0
+
+# Where to run the pipeline: cori-interactive, cori-batch, or local
+site:
+    name: local
+    max_threads: 8
+
+# modules and packages to import that have pipeline
+# stages defined in them
+modules: >
+    txpipe
+
+# where to find any modules that are not in this repo,
+# and any other code we need.
+python_paths: ["."]
+
+# configuration settings
+config: examples/euclid-rr2/config.yml
+
+
+inputs:
+    # These input files are downloaded from CosmoHub
+    euclid_rr2_parquet: {{ data_dir }}/rr2.parquet
+    euclid_rr2_shear_photoz_stack: {{ data_dir }}/Reg2_SHE_tombins_unitweights_nz_SOMbin_C2020z.fits
+    euclid_rr2_randoms: {{ data_dir }}/random_tombin_14_07_2025.tar.gz
+    euclid_rr2_masks: {{ data_dir }}/visibility_tombinid_14_07_2025.tar.gz
+    fiducial_cosmology: data/fiducial_cosmology.yml
+    # We skip all lens-related files for now, but will introduce them later
+    binned_lens_catalog: none
+    binned_random_catalog_sub: none
+    lens_photoz_stack: none
+    lens_maps: none
+    density_maps: none
+    aux_source_maps: none
+    aux_lens_maps: none
+    lens_noise_maps: none
+    # using analytic noise instead:
+    source_noise_maps: none
+
+# if supported by the launcher, restart the pipeline where it left off
+# if interrupted
+resume: true
+# where to put output logs for individual stages
+log_dir: data/euclid-rr2/logs
+# where to put an overall parsl pipeline log
+pipeline_log: data/euclid-rr2/logs/pipeline_log.txt
