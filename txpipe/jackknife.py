@@ -39,7 +39,6 @@ class TXJackknifeCenters(PipelineStage):
 
         jk_plot = self.open_output("jk", wrapper=True, figsize=(6.0, 4.5))
         # Choose colormap
-        # cm = plt.cm.get_cmap("tab20c")
         rng = np.random.default_rng(12345)
         cm = matplotlib.colors.ListedColormap(rng.random(size=(256, 3)))
         sc = plt.scatter(ra, dec, c=patch, cmap=cm, s=1, vmin=0)
