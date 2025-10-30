@@ -1,16 +1,6 @@
 from ceci.config import StageParameter
 from .base_stage import PipelineStage
-from .data_types import (
-    Directory,
-    ShearCatalog,
-    HDFFile,
-    PNGFile,
-    TomographyCatalog,
-    RandomsCatalog,
-    YamlFile,
-    TextFile
-
-)
+from .data_types import Directory, ShearCatalog, HDFFile, PNGFile, TomographyCatalog, RandomsCatalog, YamlFile, TextFile
 import numpy as np
 import sys
 import os
@@ -159,9 +149,7 @@ class TXPSFDiagnostics(PipelineStage):
         fig = self.open_output(output_name + "_hist", wrapper=True, figsize=(6, 15))
         for s in STAR_TYPES:
             plt.subplot(len(STAR_TYPES), 1, s + 1)
-            manual_step_histogram(
-                edges, counts[s], color=STAR_COLORS[s], label=STAR_TYPE_NAMES[s]
-            )
+            manual_step_histogram(edges, counts[s], color=STAR_COLORS[s], label=STAR_TYPE_NAMES[s])
             plt.title(STAR_TYPE_NAMES[s])
             plt.xlabel(xlabel)
             plt.ylabel(r"$N_{stars}$")
@@ -177,41 +165,41 @@ class TXPSFDiagnostics(PipelineStage):
 
         return results
 
+
 class TXPSFMomentCorr(PipelineStage):
     """
     Compute PSF Moments
     """
 
-    name     = "TXPSFMomentCorr"
+    name = "TXPSFMomentCorr"
     parallel = False
-    inputs   = [("star_catalog", HDFFile)]
-    outputs  = [
-                ("moments_stats", HDFFile)
-               ]
+    inputs = [("star_catalog", HDFFile)]
+    outputs = [("moments_stats", HDFFile)]
 
     config_options = {
-                      "min_sep"  : StageParameter(float, default=0.5, msg="Minimum separation in arcmin."),
-                      "max_sep"  : StageParameter(float, default=250.0, msg="Maximum separation in arcmin."),
-                      "nbins"    : StageParameter(int, default=20, msg="Number of bins."),
-                      "bin_slop" : StageParameter(float, default=0.01, msg="Bin slop for treecorr."),
-                      "sep_units": StageParameter(str, default="arcmin", msg="Separation units."),
-                      "subtract_mean" : StageParameter(bool, default=False, msg="Subtract mean from data."),
-                     }
+        "min_sep": StageParameter(float, default=0.5, msg="Minimum separation in arcmin."),
+        "max_sep": StageParameter(float, default=250.0, msg="Maximum separation in arcmin."),
+        "nbins": StageParameter(int, default=20, msg="Number of bins."),
+        "bin_slop": StageParameter(float, default=0.01, msg="Bin slop for treecorr."),
+        "sep_units": StageParameter(str, default="arcmin", msg="Separation units."),
+        "subtract_mean": StageParameter(bool, default=False, msg="Subtract mean from data."),
+    }
 
     def run(self):
         import treecorr
         import h5py
         import matplotlib
+
         self.config["num_threads"] = int(os.environ.get("OMP_NUM_THREADS", 1))
 
         matplotlib.use("agg")
 
         # Load the star catalog
         ra, dec, e_meas, e_mod, de, moment4_meas, moment4_mod, dmoment4, star_type = self.load_stars()
-        
+
         moments_stats = {}
         for t in STAR_TYPES:
-            s = np.where(star_type==t)[0]
+            s = np.where(star_type == t)[0]
             moments_stats[0, t] = self.compute_momentcorr(0, s, ra, dec, e_mod, e_mod)
             moments_stats[1, t] = self.compute_momentcorr(1, s, ra, dec, moment4_mod, e_mod)
             moments_stats[2, t] = self.compute_momentcorr(2, s, ra, dec, moment4_mod, moment4_mod)
@@ -222,43 +210,45 @@ class TXPSFMomentCorr(PipelineStage):
             moments_stats[7, t] = self.compute_momentcorr(7, s, ra, dec, de, de)
             moments_stats[8, t] = self.compute_momentcorr(8, s, ra, dec, de, dmoment4)
             moments_stats[9, t] = self.compute_momentcorr(9, s, ra, dec, dmoment4, dmoment4)
-            
+
         self.save_stats(moments_stats)
 
     def load_stars(self):
         with self.open_input("star_catalog") as f:
-            g         = f["stars"]
-            ra        = g["ra"][:]
-            dec       = g["dec"][:]
-            e1meas    = g["measured_e1"][:]
-            e2meas    = g["measured_e2"][:]
-            e1mod     = g["model_e1"][:]
-            e2mod     = g["model_e2"][:]
+            g = f["stars"]
+            ra = g["ra"][:]
+            dec = g["dec"][:]
+            e1meas = g["measured_e1"][:]
+            e2meas = g["measured_e2"][:]
+            e1mod = g["model_e1"][:]
+            e2mod = g["model_e2"][:]
             e1meas_moment4 = g["measured_moment4_e1"][:]
             e2meas_moment4 = g["measured_moment4_e2"][:]
-            e1mod_moment4  = g["model_moment4_e1"][:]
-            e2mod_moment4  = g["model_moment4_e2"][:]
-            
-            # Note: definition are flipped for this paper
-            de1         = e1mod - e1meas
-            de2         = e2mod - e2meas 
-            de1_moment4 = e1mod_moment4 - e1meas_moment4 
-            de2_moment4 = e2mod_moment4 - e2meas_moment4 
+            e1mod_moment4 = g["model_moment4_e1"][:]
+            e2mod_moment4 = g["model_moment4_e2"][:]
 
-            if self.config['subtract_mean']:
-                e_meas       = np.array((e1meas-np.mean(e1meas), e2meas-np.mean(e2meas)))
-                e_mod        = np.array((e1mod-np.mean(e1mod)  , e2mod-np.mean(e2mod)))
-                de           = np.array((de1-np.mean(de1)      , de2-np.mean(de2)))
-                moment4_meas = np.array((e1meas_moment4-np.mean(e1meas_moment4), e2meas_moment4-np.mean(e2meas_moment4)))
-                moment4_mod  = np.array((e1mod_moment4-np.mean(e1mod_moment4)  , e2mod_moment4-np.mean(e2mod_moment4)))
-                dmoment4     = np.array((de1_moment4-np.mean(de1_moment4)      , de2_moment4-np.mean(de2_moment4)))
+            # Note: definition are flipped for this paper
+            de1 = e1mod - e1meas
+            de2 = e2mod - e2meas
+            de1_moment4 = e1mod_moment4 - e1meas_moment4
+            de2_moment4 = e2mod_moment4 - e2meas_moment4
+
+            if self.config["subtract_mean"]:
+                e_meas = np.array((e1meas - np.mean(e1meas), e2meas - np.mean(e2meas)))
+                e_mod = np.array((e1mod - np.mean(e1mod), e2mod - np.mean(e2mod)))
+                de = np.array((de1 - np.mean(de1), de2 - np.mean(de2)))
+                moment4_meas = np.array(
+                    (e1meas_moment4 - np.mean(e1meas_moment4), e2meas_moment4 - np.mean(e2meas_moment4))
+                )
+                moment4_mod = np.array((e1mod_moment4 - np.mean(e1mod_moment4), e2mod_moment4 - np.mean(e2mod_moment4)))
+                dmoment4 = np.array((de1_moment4 - np.mean(de1_moment4), de2_moment4 - np.mean(de2_moment4)))
             else:
-                e_meas       = np.array((e1meas, e2meas ))
-                e_mod        = np.array((e1mod , e2mod  ))
-                de           = np.array((de1   , de2    ))
+                e_meas = np.array((e1meas, e2meas))
+                e_mod = np.array((e1mod, e2mod))
+                de = np.array((de1, de2))
                 moment4_meas = np.array((e1meas_moment4, e2meas_moment4))
-                moment4_mod  = np.array((e1mod_moment4 , e2mod_moment4))
-                dmoment4     = np.array((de1_moment4   , de2_moment4))
+                moment4_mod = np.array((e1mod_moment4, e2mod_moment4))
+                dmoment4 = np.array((de1_moment4, de2_moment4))
 
             star_type = load_star_type(g)
 
@@ -266,21 +256,17 @@ class TXPSFMomentCorr(PipelineStage):
 
     def compute_momentcorr(self, i, s, ra, dec, q1, q2):
         # select a subset of the stars
-        ra  = ra[s]
+        ra = ra[s]
         dec = dec[s]
-        q1  = q1[:, s]
-        q2  = q2[:, s]
-        n   = len(ra)
+        q1 = q1[:, s]
+        q2 = q2[:, s]
+        n = len(ra)
         print(f"Computing Rowe statistic rho_{i} from {n} objects")
         import treecorr
 
         corr = treecorr.GGCorrelation(self.config)
-        cat1 = treecorr.Catalog(
-            ra=ra, dec=dec, g1=q1[0], g2=q1[1], ra_units="deg", dec_units="deg"
-        )
-        cat2 = treecorr.Catalog(
-            ra=ra, dec=dec, g1=q2[0], g2=q2[1], ra_units="deg", dec_units="deg"
-        )
+        cat1 = treecorr.Catalog(ra=ra, dec=dec, g1=q1[0], g2=q1[1], ra_units="deg", dec_units="deg")
+        cat2 = treecorr.Catalog(ra=ra, dec=dec, g1=q2[0], g2=q2[1], ra_units="deg", dec_units="deg")
         corr.process(cat1, cat2)
         return corr.meanr, corr.xip, corr.varxip**0.5
 
@@ -288,17 +274,15 @@ class TXPSFMomentCorr(PipelineStage):
         # First plot - stats 1,3,4
         import matplotlib.pyplot as plt
         import matplotlib.transforms as mtrans
-        
-        f = self.open_output("moments",wrapper=True,figsize=(10,6*len(STAR_TYPES)))
+
+        f = self.open_output("moments", wrapper=True, figsize=(10, 6 * len(STAR_TYPES)))
 
         for s in STAR_TYPES:
             ax = plt.subplot(len(STAR_TYPES), 1, s + 1)
-            
-            for j,i in enumerate([0]):
-                theta,xi,err = rowe_stats[i,s]
-                tr = mtrans.offset_copy(
-                    ax.transData, f.file, 0.05 * (j - 1), 0, units="inches"
-                )
+
+            for j, i in enumerate([0]):
+                theta, xi, err = rowe_stats[i, s]
+                tr = mtrans.offset_copy(ax.transData, f.file, 0.05 * (j - 1), 0, units="inches")
                 plt.errorbar(
                     theta,
                     abs(xi),
@@ -316,18 +300,17 @@ class TXPSFMomentCorr(PipelineStage):
             plt.title(STAR_TYPE_NAMES[s])
         f.close()
 
-
     def save_stats(self, moments_stats):
         f = self.open_output("moments_stats")
         g = f.create_group("moment_statistics")
-        for i in range(0,10):
+        for i in range(0, 10):
             for s in STAR_TYPES:
                 theta, xi, err = moments_stats[i, s]
                 name = STAR_TYPE_NAMES[s]
                 h = g.create_group(f"moment4_{i}_{name}")
-                h.create_dataset("theta"  , data=theta)
+                h.create_dataset("theta", data=theta)
                 h.create_dataset("xi_plus", data=xi)
-                h.create_dataset("xi_err" , data=err)
+                h.create_dataset("xi_err", data=err)
         f.close()
 
 
@@ -336,36 +319,37 @@ class TXTauStatistics(PipelineStage):
     Compute and plot PSF Tau statistics where the definition of Tau stats are eq. 20-22
     of Gatti et al 2023.
     """
-    name     = "TXTauStatistics"
+
+    name = "TXTauStatistics"
     parallel = False
-    inputs   = [("binned_shear_catalog"    , ShearCatalog),
-                ("star_catalog"            , HDFFile),
-                ("rowe_stats"              , HDFFile),
-               ]
+    inputs = [
+        ("binned_shear_catalog", ShearCatalog),
+        ("star_catalog", HDFFile),
+        ("rowe_stats", HDFFile),
+    ]
 
-    outputs  = [
-                ("tau0"    , PNGFile), 
-                ("tau2"    , PNGFile),
-                ("tau5"    , PNGFile),
-                ("tau_stats", HDFFile),
-               ]
-
+    outputs = [
+        ("tau0", PNGFile),
+        ("tau2", PNGFile),
+        ("tau5", PNGFile),
+        ("tau_stats", HDFFile),
+    ]
 
     config_options = {
-                       "min_sep"       : StageParameter(float, default=0.5, msg="Minimum separation in arcmin."),
-                       "max_sep"       : StageParameter(float, default=250.0, msg="Maximum separation in arcmin."),
-                       "nbins"         : StageParameter(int, default=20, msg="Number of bins."),
-                       "bin_slop"      : StageParameter(float, default=0.01, msg="Bin slop for treecorr."),
-                       "sep_units"     : StageParameter(str, default="arcmin", msg="Separation units."),
-                       "npatch"        : StageParameter(int, default=150, msg="Number of patches for variance calculation and processing."),
-                       "psf_size_units": StageParameter(str, default="sigma", msg="Units for PSF size."),
-                       "subtract_mean" : StageParameter(bool, default=False, msg="Subtract mean from data."),
-                       "dec_cut"       : StageParameter(bool, default=True, msg="Affects KiDS-1000 only."),
-                       "star_type"     : StageParameter(str, default='PSF-reserved', msg="Star type to use."),
-                       "cov_method"    : StageParameter(str, default='bootstrap', msg="Covariance method."),
-                       "flip_g2"       : StageParameter(bool, default=False, msg="Flip g2 sign."),
-                       "tomographic"   : StageParameter(bool, default=True, msg="Use tomographic bins."),
-                     }
+        "min_sep": StageParameter(float, default=0.5, msg="Minimum separation in arcmin."),
+        "max_sep": StageParameter(float, default=250.0, msg="Maximum separation in arcmin."),
+        "nbins": StageParameter(int, default=20, msg="Number of bins."),
+        "bin_slop": StageParameter(float, default=0.01, msg="Bin slop for treecorr."),
+        "sep_units": StageParameter(str, default="arcmin", msg="Separation units."),
+        "npatch": StageParameter(int, default=150, msg="Number of patches for variance calculation and processing."),
+        "psf_size_units": StageParameter(str, default="sigma", msg="Units for PSF size."),
+        "subtract_mean": StageParameter(bool, default=False, msg="Subtract mean from data."),
+        "dec_cut": StageParameter(bool, default=True, msg="Affects KiDS-1000 only."),
+        "star_type": StageParameter(str, default="PSF-reserved", msg="Star type to use."),
+        "cov_method": StageParameter(str, default="bootstrap", msg="Covariance method."),
+        "flip_g2": StageParameter(bool, default=False, msg="Flip g2 sign."),
+        "tomographic": StageParameter(bool, default=True, msg="Use tomographic bins."),
+    }
 
     def run(self):
         import treecorr
@@ -374,35 +358,34 @@ class TXTauStatistics(PipelineStage):
         import emcee
 
         matplotlib.use("agg")
-        
-        tau_stats  = {}
+
+        tau_stats = {}
         p_bestfits = {}
 
         # Load star properties
         ra, dec, e_psf, e_mod, de_psf, T_f, star_type = self.load_stars()
 
         for s in STAR_TYPES:
-            
             if STAR_TYPE_NAMES[s] != self.config.star_type:
                 continue
 
-            # Load precomputed Rowe stats 
+            # Load precomputed Rowe stats
             rowe_stats = self.load_rowe(s)
 
-            # set ranges for mcmc 
+            # set ranges for mcmc
             ranges = {}
-            ranges['alpha'] = [-1000.00, 1000.00]
-            ranges['beta'] = [-1000.00, 1000.00]
-            ranges['eta'] = [-1000.00, 1000.00]
-            
-            tau_stats[s]  = {}
+            ranges["alpha"] = [-1000.00, 1000.00]
+            ranges["beta"] = [-1000.00, 1000.00]
+            ranges["eta"] = [-1000.00, 1000.00]
+
+            tau_stats[s] = {}
             p_bestfits[s] = {}
             # Load galaxies
-            if self.config['tomographic']:
+            if self.config["tomographic"]:
                 with self.open_input("binned_shear_catalog") as f:
-                     nzbin = list(range(f["shear"].attrs["nbin_source"])) + ['all']
+                    nzbin = list(range(f["shear"].attrs["nbin_source"])) + ["all"]
             else:
-                nzbin = ['all']
+                nzbin = ["all"]
             print(nzbin)
             for n in nzbin:
                 gal_ra, gal_dec, gal_g1, gal_g2, gal_weight = self.load_galaxies(n)
@@ -410,133 +393,141 @@ class TXTauStatistics(PipelineStage):
                 print(f"computing tau stats for bin {n}")
                 # Joint tau 0-2-5 data vector and cov
                 # tau_stats contains [ang, tau0, tau2, tau5, cov]
-                tau_stats[s][f'bin_{n}'] = self.compute_all_tau(gal_ra, gal_dec, gal_g, gal_weight, 
-                                                    s, ra, dec, e_psf, e_mod, de_psf, T_f, star_type)
+                tau_stats[s][f"bin_{n}"] = self.compute_all_tau(
+                    gal_ra, gal_dec, gal_g, gal_weight, s, ra, dec, e_psf, e_mod, de_psf, T_f, star_type
+                )
 
                 # Run simple mcmc to find best-fit values for alpha,beta,eta
-                p_bestfits[s][f'bin_{n}'] = self.sample(tau_stats[s][f'bin_{n}'],rowe_stats,ranges)
-        #Save tau stats in a h5 file
+                p_bestfits[s][f"bin_{n}"] = self.sample(tau_stats[s][f"bin_{n}"], rowe_stats, ranges)
+        # Save tau stats in a h5 file
         self.save_tau_stats(tau_stats, p_bestfits)
 
         # Save tau plots
         self.tau_plots(tau_stats)
 
-    def load_rowe(self,s):
-        f = self.open_input("rowe_stats")   
+    def load_rowe(self, s):
+        f = self.open_input("rowe_stats")
         rowe_stats = {}
 
         for i in 0, 1, 2, 3, 4, 5:
-            name    = STAR_TYPE_NAMES[s]
-            theta   = f['rowe_statistics'][f"rowe_{i}_{name}"]['theta'][:]
-            xi_plus = f['rowe_statistics'][f"rowe_{i}_{name}"]['xi_plus'][:]
-            xi_minus = f['rowe_statistics'][f"rowe_{i}_{name}"]['xi_minus'][:]
-            xip_err  = f['rowe_statistics'][f"rowe_{i}_{name}"]['xip_err'][:]
-            xim_err  = f['rowe_statistics'][f"rowe_{i}_{name}"]['xim_err'][:]
-            
+            name = STAR_TYPE_NAMES[s]
+            theta = f["rowe_statistics"][f"rowe_{i}_{name}"]["theta"][:]
+            xi_plus = f["rowe_statistics"][f"rowe_{i}_{name}"]["xi_plus"][:]
+            xi_minus = f["rowe_statistics"][f"rowe_{i}_{name}"]["xi_minus"][:]
+            xip_err = f["rowe_statistics"][f"rowe_{i}_{name}"]["xip_err"][:]
+            xim_err = f["rowe_statistics"][f"rowe_{i}_{name}"]["xim_err"][:]
+
             rowe_stats[i] = theta, xi_plus, xi_minus, xip_err, xim_err
-        
+
         return rowe_stats
 
     def sample(self, tau_stats, rowe_stats, ranges, nwalkers=32, ndim=3):
-        '''
-        Run a simple mcmc chain to detemine the best-fit values for alpha, beta, eta  
-        '''
+        """
+        Run a simple mcmc chain to detemine the best-fit values for alpha, beta, eta
+        """
         import emcee
         import scipy.optimize as optimize
- 
+
         _, _, _, _, _, _, _, cov = tau_stats
-        mask   = cov.diagonal() > 0
-        cov    = cov[mask][:, mask]
+        mask = cov.diagonal() > 0
+        cov = cov[mask][:, mask]
         # We debias the covariance with two correction factors from Hartlap et. al 2006 eq. 17 and Dodelson & Schneider 2013 eq. 28
-        Njk    = self.config['npatch']
-        Ndv    = 6*self.config['nbins']
+        Njk = self.config["npatch"]
+        Ndv = 6 * self.config["nbins"]
         if not Ndv < Njk - 2:
             raise ValueError("Hartlap correction only valid for N data vector elements < N jackknife patches - 2")
-        f_H    = 1.*(Njk-Ndv-2)/(Njk-1)
-        f_DS   = 1/(1+(Ndv-ndim)*(Njk-Ndv-2)/(Njk-Ndv-1)/(Njk-Ndv-4))
-        cov    = cov / f_H / f_DS 
-        
-        _, tau0p, tau0m, tau2p, tau2m, tau5p, tau5m, _  = tau_stats
+        f_H = 1.0 * (Njk - Ndv - 2) / (Njk - 1)
+        f_DS = 1 / (1 + (Ndv - ndim) * (Njk - Ndv - 2) / (Njk - Ndv - 1) / (Njk - Ndv - 4))
+        cov = cov / f_H / f_DS
+
+        _, tau0p, tau0m, tau2p, tau2m, tau5p, tau5m, _ = tau_stats
         invcov = np.linalg.inv(cov)
-        
-        initguess = [0,-1,1]
-        bestpars = optimize.minimize(self.chi2, initguess, args=(tau_stats, rowe_stats, invcov, mask),
-                                      method='Nelder-Mead', tol=1e-6)
-        initpos = [bestpars.x + 1e-4*np.random.randn(ndim) for i in range(nwalkers)]
+
+        initguess = [0, -1, 1]
+        bestpars = optimize.minimize(
+            self.chi2, initguess, args=(tau_stats, rowe_stats, invcov, mask), method="Nelder-Mead", tol=1e-6
+        )
+        initpos = [bestpars.x + 1e-4 * np.random.randn(ndim) for i in range(nwalkers)]
 
         print("Computing best-fit alpha, beta, eta")
-        sampler = emcee.EnsembleSampler(nwalkers, ndim, self.logProb, args=(tau_stats, rowe_stats, ranges, invcov, mask))
-        sampler.run_mcmc(initpos, nsteps=4000, progress=False);
-        flat_samples = sampler.get_chain(discard=2000,flat=True)
-        
+        sampler = emcee.EnsembleSampler(
+            nwalkers, ndim, self.logProb, args=(tau_stats, rowe_stats, ranges, invcov, mask)
+        )
+        sampler.run_mcmc(initpos, nsteps=4000, progress=False)
+        flat_samples = sampler.get_chain(discard=2000, flat=True)
+
         ret = {}
-        var = ['alpha','beta','eta']
-        for i,v in enumerate(var):
-            mcmc   = np.percentile(flat_samples[:, i], [16, 50, 84])
-            q      = np.diff(mcmc)
-            ret[v] = {'median': mcmc[1],'lerr': q[0], 'rerr': q[1]}
-            
-        chi2 = self.chi2([ret['alpha']['median'],ret['beta']['median'],ret['eta']['median']], tau_stats,rowe_stats,invcov,mask)
+        var = ["alpha", "beta", "eta"]
+        for i, v in enumerate(var):
+            mcmc = np.percentile(flat_samples[:, i], [16, 50, 84])
+            q = np.diff(mcmc)
+            ret[v] = {"median": mcmc[1], "lerr": q[0], "rerr": q[1]}
+
+        chi2 = self.chi2(
+            [ret["alpha"]["median"], ret["beta"]["median"], ret["eta"]["median"]], tau_stats, rowe_stats, invcov, mask
+        )
         # degree of freedom = nbins * 6 (i.e. tau 0+/-, tau2+/-, tau5+/-) - ndim
-        dof  = (self.config['nbins']*6) - ndim
-        print("Best-fit finished. Resulting chi^2/dof: ", chi2/dof)
+        dof = (self.config["nbins"] * 6) - ndim
+        print("Best-fit finished. Resulting chi^2/dof: ", chi2 / dof)
         return ret
 
-    def logPrior(self,theta,ranges):
-        '''
+    def logPrior(self, theta, ranges):
+        """
         If parameter in defined range return 0, otherwise -np.inf
-        '''
+        """
         alpha, beta, eta = theta
 
-        if (ranges['alpha'][0] < alpha < ranges['alpha'][1]) and (ranges['beta'][0] < beta < ranges['beta'][1]) and (ranges['eta'][0] < eta < ranges['eta'][1]):
+        if (
+            (ranges["alpha"][0] < alpha < ranges["alpha"][1])
+            and (ranges["beta"][0] < beta < ranges["beta"][1])
+            and (ranges["eta"][0] < eta < ranges["eta"][1])
+        ):
             return 0.0
         return -np.inf
 
-
     def chi2(self, theta, tau_stats, rowe_stats, invcov, mask):
-        '''
+        """
         Compute likelihood
         theta     : parameters
         tau_stats : Measured tau stats
-        rowe_stats: Measured rowe stats to be used for Tau 
-        invcov    : Inverse covariance matrix 
-        '''
-        
+        rowe_stats: Measured rowe stats to be used for Tau
+        invcov    : Inverse covariance matrix
+        """
+
         # Load parameters
         alpha, beta, eta = theta
 
         # Load rowe and tau
-        _, rowe0p, rowe0m, _, _  = rowe_stats[0]
-        _, rowe1p, rowe1m, _, _  = rowe_stats[1]
-        _, rowe2p, rowe2m, _, _  = rowe_stats[2]
-        _, rowe3p, rowe3m, _, _  = rowe_stats[3]
-        _, rowe4p, rowe4m, _, _  = rowe_stats[4]
-        _, rowe5p, rowe5m, _, _  = rowe_stats[5]
-        _, tau0p, tau0m, tau2p, tau2m, tau5p, tau5m, _  = tau_stats
+        _, rowe0p, rowe0m, _, _ = rowe_stats[0]
+        _, rowe1p, rowe1m, _, _ = rowe_stats[1]
+        _, rowe2p, rowe2m, _, _ = rowe_stats[2]
+        _, rowe3p, rowe3m, _, _ = rowe_stats[3]
+        _, rowe4p, rowe4m, _, _ = rowe_stats[4]
+        _, rowe5p, rowe5m, _, _ = rowe_stats[5]
+        _, tau0p, tau0m, tau2p, tau2m, tau5p, tau5m, _ = tau_stats
 
         # Create combined template
-        T0p    = alpha*rowe0p + beta*rowe2p + eta*rowe5p
-        T0m    = alpha*rowe0m + beta*rowe2m + eta*rowe5m
-        T2p    = alpha*rowe2p + beta*rowe1p + eta*rowe4p
-        T2m    = alpha*rowe2m + beta*rowe1m + eta*rowe4m
-        T5p    = alpha*rowe5p + beta*rowe4p + eta*rowe3p
-        T5m    = alpha*rowe5m + beta*rowe4m + eta*rowe3m
-        
-        # Create data and template vector
-        Tall  = np.concatenate([T0p, T0m, T2p, T2m, T5p, T5m])[mask]
-        Xall  = np.concatenate([tau0p, tau0m, tau2p, tau2m, tau5p, tau5m])[mask]
+        T0p = alpha * rowe0p + beta * rowe2p + eta * rowe5p
+        T0m = alpha * rowe0m + beta * rowe2m + eta * rowe5m
+        T2p = alpha * rowe2p + beta * rowe1p + eta * rowe4p
+        T2m = alpha * rowe2m + beta * rowe1m + eta * rowe4m
+        T5p = alpha * rowe5p + beta * rowe4p + eta * rowe3p
+        T5m = alpha * rowe5m + beta * rowe4m + eta * rowe3m
 
-        return np.dot(Xall-Tall,np.dot(Xall-Tall,invcov))
+        # Create data and template vector
+        Tall = np.concatenate([T0p, T0m, T2p, T2m, T5p, T5m])[mask]
+        Xall = np.concatenate([tau0p, tau0m, tau2p, tau2m, tau5p, tau5m])[mask]
+
+        return np.dot(Xall - Tall, np.dot(Xall - Tall, invcov))
 
     def logProb(self, theta, tau_stats, rowe_stats, ranges, invcov, mask):
-        lp = self.logPrior(theta,ranges)
+        lp = self.logPrior(theta, ranges)
         if not np.isfinite(lp):
             return -np.inf
-        return lp + (-0.5)*self.chi2(theta, tau_stats, rowe_stats, invcov, mask)
-
+        return lp + (-0.5) * self.chi2(theta, tau_stats, rowe_stats, invcov, mask)
 
     def compute_all_tau(self, gra, gdec, g, gw, s, sra, sdec, e_meas, e_mod, de, T_f, star_type):
-        '''
+        """
         Compute tau0, tau2, tau5.
         All three needs to be computed at once due to covariance.
 
@@ -548,33 +539,41 @@ class TXTauStatistics(PipelineStage):
         s      : indices of stars to use in calculation
         sra    : RA of stars
         sdec   : DEC of stars
-        
+
         e_meas : measured ellipticities of PSF from stars -- np.array((e1meas, e2meas))
         e_mod  : model ellipticities of PSF               -- np.array((e1mod, e2mod))
         de     : e_meas-e_mod                              -- np.array((de1, de2))
         T_f    : (T_meas - T_model)/T_meas                -- np.array(T_f)
-        '''
-        
+        """
+
         import treecorr
 
         p = e_mod
         q = de
         w = e_meas * T_f
-        
-        sra, sdec = np.array((sra[star_type==s], sdec[star_type==s])) # Get ra/dec for specific stars
-        p = np.array(( [p[0][star_type==s], p[1][star_type==s]]))     # Get p for specific stars
-        q = np.array(( [q[0][star_type==s], q[1][star_type==s]]))     # Get q for specific stars
-        w = np.array(( [w[0][star_type==s], w[1][star_type==s]]))     # Get w for specific stars
+
+        sra, sdec = np.array((sra[star_type == s], sdec[star_type == s]))  # Get ra/dec for specific stars
+        p = np.array(([p[0][star_type == s], p[1][star_type == s]]))  # Get p for specific stars
+        q = np.array(([q[0][star_type == s], q[1][star_type == s]]))  # Get q for specific stars
+        w = np.array(([w[0][star_type == s], w[1][star_type == s]]))  # Get w for specific stars
 
         print(f"Computing Tau 0,2,5 and the covariance")
         self.config["num_threads"] = int(os.environ.get("OMP_NUM_THREADS", 1))
-        
+
         # Load all catalogs
-        catg = treecorr.Catalog(ra=gra, dec=gdec, g1=g[0], g2=g[1], w=gw, ra_units="deg", dec_units="deg",npatch=self.config['npatch']) # galaxy shear
-        catp = treecorr.Catalog(ra=sra, dec=sdec, g1=p[0], g2=p[1], ra_units="deg", dec_units="deg",patch_centers=catg.patch_centers) # e_model
-        catq = treecorr.Catalog(ra=sra, dec=sdec, g1=q[0], g2=q[1], ra_units="deg", dec_units="deg",patch_centers=catg.patch_centers) # (e_* - e_model)
-        catw = treecorr.Catalog(ra=sra, dec=sdec, g1=w[0], g2=w[1], ra_units="deg", dec_units="deg",patch_centers=catg.patch_centers) # (e_*(T_* - T_model)/T_* )
-        
+        catg = treecorr.Catalog(
+            ra=gra, dec=gdec, g1=g[0], g2=g[1], w=gw, ra_units="deg", dec_units="deg", npatch=self.config["npatch"]
+        )  # galaxy shear
+        catp = treecorr.Catalog(
+            ra=sra, dec=sdec, g1=p[0], g2=p[1], ra_units="deg", dec_units="deg", patch_centers=catg.patch_centers
+        )  # e_model
+        catq = treecorr.Catalog(
+            ra=sra, dec=sdec, g1=q[0], g2=q[1], ra_units="deg", dec_units="deg", patch_centers=catg.patch_centers
+        )  # (e_* - e_model)
+        catw = treecorr.Catalog(
+            ra=sra, dec=sdec, g1=w[0], g2=w[1], ra_units="deg", dec_units="deg", patch_centers=catg.patch_centers
+        )  # (e_*(T_* - T_model)/T_* )
+
         # Compute all corrleations
         print(f"Computing shear-e_model correlation {catg.nobj} x {catp.nobj}")
         corr0 = treecorr.GGCorrelation(self.config)
@@ -585,169 +584,168 @@ class TXTauStatistics(PipelineStage):
         print(f"Computing shear-(e_*(T_* - T_model)/T_*) correlation {catg.nobj} x {catw.nobj}")
         corr5 = treecorr.GGCorrelation(self.config)
         corr5.process(catg, catw)
-        
+
         # Estimate covariance using bootstrap. The ordering is xip0,xim0,xip2,xim2,xip5,xim5.
-        cov = treecorr.estimate_multi_cov([corr0,corr2,corr5], self.config.cov_method)
+        cov = treecorr.estimate_multi_cov([corr0, corr2, corr5], self.config.cov_method)
         if self.config["cov_method"] == "shot":
             cov = np.diag(cov)
-        
+
         return corr0.meanr, corr0.xip, corr0.xim, corr2.xip, corr2.xim, corr5.xip, corr5.xim, cov
-        
 
     def save_tau_stats(self, tau_stats, p_bestfits):
-        '''
+        """
         tau_stats: (dict) dictionary containing theta,tau0,tau2,tau5 and cov
-        '''            
+        """
         f = self.open_output("tau_stats")
         g = f.create_group("tau_statistics")
 
         for s in STAR_TYPES:
             if STAR_TYPE_NAMES[s] != self.config.star_type:
                 continue
-            if self.config['tomographic']:
+            if self.config["tomographic"]:
                 with self.open_input("binned_shear_catalog") as h:
-                        nbin = list(range(h["shear"].attrs["nbin_source"])) + ['all']
+                    nbin = list(range(h["shear"].attrs["nbin_source"])) + ["all"]
             else:
-                nbin = ['all']
+                nbin = ["all"]
             for n in nbin:
-                theta, tau0p, tau0m, tau2p, tau2m, tau5p, tau5m, cov = tau_stats[s][f'bin_{n}']
+                theta, tau0p, tau0m, tau2p, tau2m, tau5p, tau5m, cov = tau_stats[s][f"bin_{n}"]
                 name = STAR_TYPE_NAMES[s]
                 h = g.create_group(f"tau_{name}/bin_{n}/")
-                h.create_dataset("theta" , data=theta)
-                h.create_dataset("tau0p" , data=tau0p)
-                h.create_dataset("tau0m" , data=tau0m)
-                h.create_dataset("tau2p" , data=tau2p)
-                h.create_dataset("tau2m" , data=tau2m)
-                h.create_dataset("tau5p" , data=tau5p)
-                h.create_dataset("tau5m" , data=tau5m)
-                h.create_dataset("cov"   , data=cov)
+                h.create_dataset("theta", data=theta)
+                h.create_dataset("tau0p", data=tau0p)
+                h.create_dataset("tau0m", data=tau0m)
+                h.create_dataset("tau2p", data=tau2p)
+                h.create_dataset("tau2m", data=tau2m)
+                h.create_dataset("tau5p", data=tau5p)
+                h.create_dataset("tau5m", data=tau5m)
+                h.create_dataset("cov", data=cov)
 
-                # Also save best-fit values 
+                # Also save best-fit values
                 h = g.create_group(f"bestfits_{name}/bin_{n}")
-                alpha_err = max(p_bestfits[s][f'bin_{n}']['alpha']['lerr'],p_bestfits[s][f'bin_{n}']['alpha']['rerr']) 
-                beta_err  = max(p_bestfits[s][f'bin_{n}']['beta']['lerr'] ,p_bestfits[s][f'bin_{n}']['beta']['rerr']) 
-                eta_err   = max(p_bestfits[s][f'bin_{n}']['eta']['lerr']  ,p_bestfits[s][f'bin_{n}']['eta']['rerr']) 
-                h.create_dataset("alpha"    , data=p_bestfits[s][f'bin_{n}']['alpha']['median'])
+                alpha_err = max(p_bestfits[s][f"bin_{n}"]["alpha"]["lerr"], p_bestfits[s][f"bin_{n}"]["alpha"]["rerr"])
+                beta_err = max(p_bestfits[s][f"bin_{n}"]["beta"]["lerr"], p_bestfits[s][f"bin_{n}"]["beta"]["rerr"])
+                eta_err = max(p_bestfits[s][f"bin_{n}"]["eta"]["lerr"], p_bestfits[s][f"bin_{n}"]["eta"]["rerr"])
+                h.create_dataset("alpha", data=p_bestfits[s][f"bin_{n}"]["alpha"]["median"])
                 h.create_dataset("alpha_err", data=alpha_err)
-                h.create_dataset("beta"     , data=p_bestfits[s][f'bin_{n}']['beta']['median'])
-                h.create_dataset("beta_err" , data=beta_err)
-                h.create_dataset("eta"      , data=p_bestfits[s][f'bin_{n}']['eta']['median'])
-                h.create_dataset("eta_err"  , data=eta_err)
+                h.create_dataset("beta", data=p_bestfits[s][f"bin_{n}"]["beta"]["median"])
+                h.create_dataset("beta_err", data=beta_err)
+                h.create_dataset("eta", data=p_bestfits[s][f"bin_{n}"]["eta"]["median"])
+                h.create_dataset("eta_err", data=eta_err)
 
         f.close()
 
     def load_stars(self):
         with self.open_input("star_catalog") as f:
-            g      = f["stars"]
-            ra     = g["ra"][:]
-            dec    = g["dec"][:]
-            e1meas  = g["measured_e1"][:]
-            e2meas  = g["measured_e2"][:]
-            e1mod  = g["model_e1"][:]
-            e2mod  = g["model_e2"][:]
+            g = f["stars"]
+            ra = g["ra"][:]
+            dec = g["dec"][:]
+            e1meas = g["measured_e1"][:]
+            e2meas = g["measured_e2"][:]
+            e1mod = g["model_e1"][:]
+            e2mod = g["model_e2"][:]
             if self.config["flip_g2"]:
                 e2meas *= -1
-                e2mod  *= -1
-            de1    = e1meas - e1mod
-            de2    = e2meas - e2mod
-            
+                e2mod *= -1
+            de1 = e1meas - e1mod
+            de2 = e2meas - e2mod
+
             if self.config["psf_size_units"] == "Tmeas":
                 T_frac = (g["measured_T"][:] - g["model_T"][:]) / g["measured_T"][:]
             elif self.config["psf_size_units"] == "Tmodel":
-                T_frac = (g["measured_T"][:] - g["model_T"][:]) / g["model_T"][:]  
+                T_frac = (g["measured_T"][:] - g["model_T"][:]) / g["model_T"][:]
             elif self.config["psf_size_units"] == "sigma":
                 T_frac = (g["measured_T"][:] ** 2 - g["model_T"][:] ** 2) / g["measured_T"][:] ** 2
             else:
                 raise ValueError("Need to specify measured_T: Tmeas/Tmodel/sigma")
 
-            if self.config['subtract_mean']:
-                e_meas = np.array((e1meas-np.mean(e1meas), e2meas-np.mean(e2meas)))
-                e_mod  = np.array((e1mod-np.mean(e1mod)  , e2mod-np.mean(e2mod)))
-                de     = np.array((de1-np.mean(de1)      , de2-np.mean(de2)))
+            if self.config["subtract_mean"]:
+                e_meas = np.array((e1meas - np.mean(e1meas), e2meas - np.mean(e2meas)))
+                e_mod = np.array((e1mod - np.mean(e1mod), e2mod - np.mean(e2mod)))
+                de = np.array((de1 - np.mean(de1), de2 - np.mean(de2)))
 
             else:
-                e_meas = np.array((e1meas, e2meas ))
-                e_mod  = np.array((e1mod , e2mod  ))
-                de     = np.array((de1   , de2    ))
+                e_meas = np.array((e1meas, e2meas))
+                e_mod = np.array((e1mod, e2mod))
+                de = np.array((de1, de2))
 
             star_type = load_star_type(g)
 
         return ra, dec, e_meas, e_mod, de, T_frac, star_type
-    
+
     def load_galaxies(self, zbin):
         with self.open_input("binned_shear_catalog") as f:
-            g   = f[f'shear/bin_{zbin}/']
-            ra  = g['ra'][:]
-            dec = g['dec'][:]
-            g1  = g['g1'][:]
-            g2  = g['g2'][:]
-            w   = g['weight'][:]
-        
-        if self.config['subtract_mean']:
-            g1 = g1 - np.average(g1,weights=w)
-            g2 = g2 - np.average(g1,weights=w)
-            
-        if self.config['flip_g2']:
+            g = f[f"shear/bin_{zbin}/"]
+            ra = g["ra"][:]
+            dec = g["dec"][:]
+            g1 = g["g1"][:]
+            g2 = g["g2"][:]
+            w = g["weight"][:]
+
+        if self.config["subtract_mean"]:
+            g1 = g1 - np.average(g1, weights=w)
+            g2 = g2 - np.average(g1, weights=w)
+
+        if self.config["flip_g2"]:
             g2 *= -1
-            
+
         return ra, dec, g1, g2, w
 
     def tau_plots(self, tau_stats):
         # Plot non-tomographic stats 1,3,4
         import matplotlib.pyplot as plt
         import matplotlib.transforms as mtrans
-        
+
         for s in STAR_TYPES:
             if STAR_TYPE_NAMES[s] != self.config.star_type:
                 continue
-                
-            theta, tau0p, tau0m, tau2p, tau2m, tau5p, tau5m, cov = tau_stats[s]['bin_all']
-            nb    = len(theta)
-            taus  = {'0p':tau0p, '0m':tau0m, '2p':tau2p, '2m':tau2m, '5p':tau5p, '5m':tau5m}
-            errs  = {'0p': np.diag(cov[ 0*nb:1*nb , 0*nb:1*nb ])**0.5,
-                     '0m': np.diag(cov[ 1*nb:2*nb , 1*nb:2*nb ])**0.5,
-                     '2p': np.diag(cov[ 2*nb:3*nb , 2*nb:3*nb ])**0.5,
-                     '2m': np.diag(cov[ 3*nb:4*nb , 3*nb:4*nb ])**0.5,
-                     '5p': np.diag(cov[ 4*nb:5*nb , 4*nb:5*nb ])**0.5,
-                     '5m': np.diag(cov[ 5*nb:6*nb , 5*nb:6*nb ])**0.5
-                    }
-    
-            for j,i in enumerate([0,2,5]):
-                f = self.open_output(f"tau{i}",wrapper=True,figsize=(10,6*len(STAR_TYPES)))
+
+            theta, tau0p, tau0m, tau2p, tau2m, tau5p, tau5m, cov = tau_stats[s]["bin_all"]
+            nb = len(theta)
+            taus = {"0p": tau0p, "0m": tau0m, "2p": tau2p, "2m": tau2m, "5p": tau5p, "5m": tau5m}
+            errs = {
+                "0p": np.diag(cov[0 * nb : 1 * nb, 0 * nb : 1 * nb]) ** 0.5,
+                "0m": np.diag(cov[1 * nb : 2 * nb, 1 * nb : 2 * nb]) ** 0.5,
+                "2p": np.diag(cov[2 * nb : 3 * nb, 2 * nb : 3 * nb]) ** 0.5,
+                "2m": np.diag(cov[3 * nb : 4 * nb, 3 * nb : 4 * nb]) ** 0.5,
+                "5p": np.diag(cov[4 * nb : 5 * nb, 4 * nb : 5 * nb]) ** 0.5,
+                "5m": np.diag(cov[5 * nb : 6 * nb, 5 * nb : 6 * nb]) ** 0.5,
+            }
+
+            for j, i in enumerate([0, 2, 5]):
+                f = self.open_output(f"tau{i}", wrapper=True, figsize=(10, 6 * len(STAR_TYPES)))
                 ax = plt.subplot(len(STAR_TYPES), 1, s + 1)
-        
-                tr = mtrans.offset_copy(
-                                        ax.transData, f.file, 0.05 * (j - 1), 0, units="inches"
-                                       )
+
+                tr = mtrans.offset_copy(ax.transData, f.file, 0.05 * (j - 1), 0, units="inches")
                 plt.errorbar(
-                             theta,
-                             taus[f'{i}p'],
-                             errs[f'{i}p'],
-                             fmt=".",
-                             label=rf"$\tau_{i}+$",
-                             capsize=3,
-                             color="blue",
-                             transform=tr,
-                            )
+                    theta,
+                    taus[f"{i}p"],
+                    errs[f"{i}p"],
+                    fmt=".",
+                    label=rf"$\tau_{i}+$",
+                    capsize=3,
+                    color="blue",
+                    transform=tr,
+                )
                 plt.errorbar(
-                             theta,
-                             taus[f'{i}m'],
-                             errs[f'{i}m'],
-                             fmt=".",
-                             label=rf"$\tau_{i}-$",
-                             capsize=3,
-                             color="red",
-                             transform=tr,
-                            )
-                
+                    theta,
+                    taus[f"{i}m"],
+                    errs[f"{i}m"],
+                    fmt=".",
+                    label=rf"$\tau_{i}-$",
+                    capsize=3,
+                    color="red",
+                    transform=tr,
+                )
+
                 plt.xscale("log")
                 plt.yscale("symlog")
                 plt.xlabel(r"$\theta$")
                 plt.ylabel(rf"$\tau_{i}(\theta)$")
                 plt.legend()
-                plt.title('Non-tomographic'+STAR_TYPE_NAMES[s])
+                plt.title("Non-tomographic" + STAR_TYPE_NAMES[s])
 
                 f.close()
+
 
 class TXRoweStatistics(PipelineStage):
     """
@@ -761,8 +759,7 @@ class TXRoweStatistics(PipelineStage):
 
     name = "TXRoweStatistics"
     parallel = False
-    inputs = [("star_catalog", HDFFile),
-             ("patch_centers", TextFile)]
+    inputs = [("star_catalog", HDFFile), ("patch_centers", TextFile)]
     outputs = [
         ("rowe134", PNGFile),
         ("rowe25", PNGFile),
@@ -777,10 +774,10 @@ class TXRoweStatistics(PipelineStage):
         "bin_slop": StageParameter(float, default=0.01, msg="Bin slop for treecorr."),
         "sep_units": StageParameter(str, default="arcmin", msg="Separation units."),
         "psf_size_units": StageParameter(str, default="sigma", msg="Units for PSF size."),
-        "definition"    : StageParameter(str, default='des-y1', msg="Definition for Rowe statistics."),
-        "subtract_mean" : StageParameter(bool, default=False, msg="Subtract mean from data."),
-        "star_type": StageParameter(str, default='PSF-reserved', msg="Star type to use."),
-        "var_method": StageParameter(str, default='bootstrap', msg="Variance method."),
+        "definition": StageParameter(str, default="des-y1", msg="Definition for Rowe statistics."),
+        "subtract_mean": StageParameter(bool, default=False, msg="Subtract mean from data."),
+        "star_type": StageParameter(str, default="PSF-reserved", msg="Star type to use."),
+        "var_method": StageParameter(str, default="bootstrap", msg="Variance method."),
         "flip_g2": StageParameter(bool, default=False, msg="Flip g2 sign."),
     }
 
@@ -794,10 +791,10 @@ class TXRoweStatistics(PipelineStage):
         ra, dec, e_meas, e_mod, de, T_f, star_type = self.load_stars()
         rowe_stats = {}
         for t in STAR_TYPES:
-            s = np.where(star_type==t)[0]
-            if len(s)==0:
+            s = np.where(star_type == t)[0]
+            if len(s) == 0:
                 continue
-            if self.config['definition']=='des-y1' or self.config['definition']=='des-y3':
+            if self.config["definition"] == "des-y1" or self.config["definition"] == "des-y3":
                 print("Using DES's definition of Rowes")
                 rowe_stats[0, t] = self.compute_rowe(0, s, ra, dec, e_mod, e_mod)
                 rowe_stats[1, t] = self.compute_rowe(1, s, ra, dec, de, de)
@@ -805,7 +802,7 @@ class TXRoweStatistics(PipelineStage):
                 rowe_stats[3, t] = self.compute_rowe(3, s, ra, dec, e_meas * T_f, e_meas * T_f)
                 rowe_stats[4, t] = self.compute_rowe(4, s, ra, dec, de, e_meas * T_f)
                 rowe_stats[5, t] = self.compute_rowe(5, s, ra, dec, e_mod, e_meas * T_f)
-            elif self.config['definition'] == 'hsc-y1' or  self.config['definition'] == 'hsc-y3':
+            elif self.config["definition"] == "hsc-y1" or self.config["definition"] == "hsc-y3":
                 print("Using HSC's definition of Rowes")
                 # de =  g_meas - g_model
                 # dT = (T_meas - T_model)/Tmodel
@@ -825,36 +822,36 @@ class TXRoweStatistics(PipelineStage):
 
     def load_stars(self):
         with self.open_input("star_catalog") as f:
-            g      = f["stars"]
-            ra     = g["ra"][:]
-            dec    = g["dec"][:]
+            g = f["stars"]
+            ra = g["ra"][:]
+            dec = g["dec"][:]
             e1meas = g["measured_e1"][:]
             e2meas = g["measured_e2"][:]
-            e1mod  = g["model_e1"][:]
-            e2mod  = g["model_e2"][:]
+            e1mod = g["model_e1"][:]
+            e2mod = g["model_e2"][:]
             if self.config["flip_g2"]:
                 e2meas *= -1
-                e2mod  *= -1
-            de1    = e1meas - e1mod
-            de2    = e2meas - e2mod
+                e2mod *= -1
+            de1 = e1meas - e1mod
+            de2 = e2meas - e2mod
             if self.config["psf_size_units"] == "Tmeas":
                 T_frac = (g["measured_T"][:] - g["model_T"][:]) / g["measured_T"][:]
             elif self.config["psf_size_units"] == "Tmodel":
-                T_frac = (g["measured_T"][:] - g["model_T"][:]) / g["model_T"][:]    
+                T_frac = (g["measured_T"][:] - g["model_T"][:]) / g["model_T"][:]
             elif self.config["psf_size_units"] == "sigma":
                 T_frac = (g["measured_T"][:] ** 2 - g["model_T"][:] ** 2) / g["measured_T"][:] ** 2
             else:
                 sys.exit("Need to specify measured_T: Tmeas/Tmodel/sigma")
 
-            if self.config['subtract_mean']:
-                e_meas = np.array((e1meas-np.mean(e1meas), e2meas-np.mean(e2meas)))
-                e_mod  = np.array((e1mod-np.mean(e1mod)  , e2mod-np.mean(e2mod)))
-                de     = np.array((de1-np.mean(de1)      , de2-np.mean(de2)))
+            if self.config["subtract_mean"]:
+                e_meas = np.array((e1meas - np.mean(e1meas), e2meas - np.mean(e2meas)))
+                e_mod = np.array((e1mod - np.mean(e1mod), e2mod - np.mean(e2mod)))
+                de = np.array((de1 - np.mean(de1), de2 - np.mean(de2)))
 
             else:
-                e_meas = np.array((e1meas, e2meas ))
-                e_mod  = np.array((e1mod , e2mod  ))
-                de     = np.array((de1   , de2    ))
+                e_meas = np.array((e1meas, e2meas))
+                e_mod = np.array((e1mod, e2mod))
+                de = np.array((de1, de2))
 
             star_type = load_star_type(g)
 
@@ -862,22 +859,32 @@ class TXRoweStatistics(PipelineStage):
 
     def compute_rowe(self, i, s, ra, dec, q1, q2):
         # select a subset of the stars
-        ra  = ra[s]
+        ra = ra[s]
         dec = dec[s]
-        q1  = q1[:, s]
-        q2  = q2[:, s]
-        n   = len(ra)
+        q1 = q1[:, s]
+        q2 = q2[:, s]
+        n = len(ra)
         print(f"Computing Rowe statistic rho_{i} from {n} objects")
         import treecorr
-    
+
         corr = treecorr.GGCorrelation(self.config)
         cat1 = treecorr.Catalog(
-            ra=ra, dec=dec, g1=q1[0], g2=q1[1], ra_units="deg", dec_units="deg",
-            patch_centers=self.get_input("patch_centers")
+            ra=ra,
+            dec=dec,
+            g1=q1[0],
+            g2=q1[1],
+            ra_units="deg",
+            dec_units="deg",
+            patch_centers=self.get_input("patch_centers"),
         )
         cat2 = treecorr.Catalog(
-            ra=ra, dec=dec, g1=q2[0], g2=q2[1], ra_units="deg", dec_units="deg",
-            patch_centers=self.get_input("patch_centers")
+            ra=ra,
+            dec=dec,
+            g1=q2[0],
+            g2=q2[1],
+            ra_units="deg",
+            dec_units="deg",
+            patch_centers=self.get_input("patch_centers"),
         )
         corr.process(cat1, cat2)
         return corr.meanr, corr.xip, corr.xim, corr.varxip**0.5, corr.varxim**0.5
@@ -886,18 +893,16 @@ class TXRoweStatistics(PipelineStage):
         # First plot - stats 1,3,4
         import matplotlib.pyplot as plt
         import matplotlib.transforms as mtrans
-        
-        f = self.open_output("rowe0",wrapper=True,figsize=(10,6*len(STAR_TYPES)))
+
+        f = self.open_output("rowe0", wrapper=True, figsize=(10, 6 * len(STAR_TYPES)))
         for s in STAR_TYPES:
             if STAR_TYPE_NAMES[s] != self.config.star_type:
                 continue
             ax = plt.subplot(len(STAR_TYPES), 1, s + 1)
-            
-            for j,i in enumerate([0]):
-                theta, xip, xim, xip_err, xim_err = rowe_stats[i,s]
-                tr = mtrans.offset_copy(
-                    ax.transData, f.file, 0.05 * (j - 1), 0, units="inches"
-                )
+
+            for j, i in enumerate([0]):
+                theta, xip, xim, xip_err, xim_err = rowe_stats[i, s]
+                tr = mtrans.offset_copy(ax.transData, f.file, 0.05 * (j - 1), 0, units="inches")
                 plt.errorbar(
                     theta,
                     xip,
@@ -931,12 +936,10 @@ class TXRoweStatistics(PipelineStage):
             if STAR_TYPE_NAMES[s] != self.config.star_type:
                 continue
             ax = plt.subplot(len(STAR_TYPES), 1, s + 1)
-            mkr = ["o","s","D"]
+            mkr = ["o", "s", "D"]
             for j, i in enumerate([1, 3, 4]):
                 theta, xip, xim, xip_err, xim_err = rowe_stats[i, s]
-                tr = mtrans.offset_copy(
-                    ax.transData, f.file, 0.05 * (j - 1), 0, units="inches"
-                )
+                tr = mtrans.offset_copy(ax.transData, f.file, 0.05 * (j - 1), 0, units="inches")
                 plt.errorbar(
                     theta,
                     xip,
@@ -970,12 +973,10 @@ class TXRoweStatistics(PipelineStage):
             if STAR_TYPE_NAMES[s] != self.config.star_type:
                 continue
             ax = plt.subplot(len(STAR_TYPES), 1, s + 1)
-            mkr = ["o","s"]
-            for j, i in enumerate([2, 5]): 
+            mkr = ["o", "s"]
+            for j, i in enumerate([2, 5]):
                 theta, xip, xim, xip_err, xim_err = rowe_stats[i, s]
-                tr = mtrans.offset_copy(
-                    ax.transData, f.file, 0.05 * j - 0.025, 0, units="inches"
-                )
+                tr = mtrans.offset_copy(ax.transData, f.file, 0.05 * j - 0.025, 0, units="inches")
                 plt.errorbar(
                     theta,
                     xip,
@@ -1052,7 +1053,7 @@ class TXGalaxyStarShear(PipelineStage):
         "sep_units": StageParameter(str, default="arcmin", msg="Separation units."),
         "psf_size_units": StageParameter(str, default="sigma", msg="Units for PSF size."),
         "shear_catalog_type": StageParameter(str, default="metacal", msg="Shear catalog type."),
-        "star_type": StageParameter(str, default='PSF-reserved', msg="Star type to use."),
+        "star_type": StageParameter(str, default="PSF-reserved", msg="Star type to use."),
         "flip_g2": StageParameter(bool, default=False, msg="Flip g2 sign."),
     }
 
@@ -1072,19 +1073,11 @@ class TXGalaxyStarShear(PipelineStage):
         for t in STAR_TYPES:
             s = star_type == t
             if STAR_TYPE_NAMES[t] != self.config.star_type:
-                    continue
-            galaxy_star_stats[1, t] = self.compute_galaxy_star(
-                ra, dec, e_psf, s, ra_gal, dec_gal, g1, g2, weight
-            )
-            galaxy_star_stats[2, t] = self.compute_galaxy_star(
-                ra, dec, de_psf, s, ra_gal, dec_gal, g1, g2, weight
-            )
-            star_star_stats[1, t] = self.compute_star_star(
-                ra, dec, e_psf, s, ra_gal, dec_gal, e_psf, weight
-            )
-            star_star_stats[2, t] = self.compute_star_star(
-                ra, dec, de_psf, s, ra_gal, dec_gal, de_psf, weight
-            )
+                continue
+            galaxy_star_stats[1, t] = self.compute_galaxy_star(ra, dec, e_psf, s, ra_gal, dec_gal, g1, g2, weight)
+            galaxy_star_stats[2, t] = self.compute_galaxy_star(ra, dec, de_psf, s, ra_gal, dec_gal, g1, g2, weight)
+            star_star_stats[1, t] = self.compute_star_star(ra, dec, e_psf, s, ra_gal, dec_gal, e_psf, weight)
+            star_star_stats[2, t] = self.compute_star_star(ra, dec, de_psf, s, ra_gal, dec_gal, de_psf, weight)
 
         self.save_stats(galaxy_star_stats, star_star_stats)
         self.galaxy_star_plots(galaxy_star_stats)
@@ -1107,7 +1100,6 @@ class TXGalaxyStarShear(PipelineStage):
         return ra, dec, e_psf, de_psf, star_type
 
     def load_galaxies(self):
-
         # Columns we need from the shear catalog
         # TODO: not sure of an application where we would want to use true shear but can be added
         cat_type = read_shear_catalog_type(self)
@@ -1154,13 +1146,13 @@ class TXGalaxyStarShear(PipelineStage):
 
         if cat_type == "metacal" or cat_type == "metadetect":
             # We use S=0 here because we have already included it in R_total
-            g1, g2 = cal.apply(g1,g2)
+            g1, g2 = cal.apply(g1, g2)
 
         elif cat_type == "lensfit":
             # In KiDS, the additive bias is calculated and removed per North and South field
-            # therefore, we add dec to split data into these fields. 
+            # therefore, we add dec to split data into these fields.
             # You can choose not to by setting dec_cut = 90 in the config, for example.
-            g1, g2 = cal.apply(dec,g1,g2)
+            g1, g2 = cal.apply(dec, g1, g2)
         else:
             print("Shear calibration type not recognized.")
 
@@ -1177,9 +1169,7 @@ class TXGalaxyStarShear(PipelineStage):
         import treecorr
 
         corr = treecorr.GGCorrelation(self.config)
-        cat1 = treecorr.Catalog(
-            ra=ra, dec=dec, g1=q[0], g2=q[1], ra_units="deg", dec_units="deg"
-        )
+        cat1 = treecorr.Catalog(ra=ra, dec=dec, g1=q[0], g2=q[1], ra_units="deg", dec_units="deg")
         cat2 = treecorr.Catalog(
             ra=ra_gal,
             dec=dec_gal,
@@ -1204,12 +1194,8 @@ class TXGalaxyStarShear(PipelineStage):
         import treecorr
 
         corr = treecorr.GGCorrelation(self.config)
-        cat1 = treecorr.Catalog(
-            ra=ra, dec=dec, g1=q1[0], g2=q1[1], ra_units="deg", dec_units="deg"
-        )
-        cat2 = treecorr.Catalog(
-            ra=ra, dec=dec, g1=q2[0], g2=q2[1], ra_units="deg", dec_units="deg"
-        )
+        cat1 = treecorr.Catalog(ra=ra, dec=dec, g1=q1[0], g2=q1[1], ra_units="deg", dec_units="deg")
+        cat2 = treecorr.Catalog(ra=ra, dec=dec, g1=q2[0], g2=q2[1], ra_units="deg", dec_units="deg")
         corr.process(cat1, cat2)
         return corr.meanr, corr.xip, corr.varxip**0.5
 
@@ -1217,13 +1203,11 @@ class TXGalaxyStarShear(PipelineStage):
         import matplotlib.pyplot as plt
         import matplotlib.transforms as mtrans
 
-        f = self.open_output(
-            "star_shear_test", wrapper=True, figsize=(10, 6 * len(STAR_TYPES))
-        )
+        f = self.open_output("star_shear_test", wrapper=True, figsize=(10, 6 * len(STAR_TYPES)))
         TEST_TYPES = ["shear", "residual"]
         for s in STAR_TYPES:
             if STAR_TYPE_NAMES[s] != self.config.star_type:
-                    continue
+                continue
             ax = plt.subplot(len(STAR_TYPES), 1, s + 1)
             for j, i in enumerate([1, 2]):
                 theta, xi, err = galaxy_star_stats[i, s]
@@ -1232,7 +1216,7 @@ class TXGalaxyStarShear(PipelineStage):
                     abs(xi),
                     err,
                     fmt=".",
-                    label=f"galaxy cross star {TEST_TYPES[i-1]}",
+                    label=f"galaxy cross star {TEST_TYPES[i - 1]}",
                     capsize=3,
                 )
                 plt.title(STAR_TYPE_NAMES[s])
@@ -1247,13 +1231,11 @@ class TXGalaxyStarShear(PipelineStage):
         import matplotlib.pyplot as plt
         import matplotlib.transforms as mtrans
 
-        f = self.open_output(
-            "star_star_test", wrapper=True, figsize=(10, 6 * len(STAR_TYPES))
-        )
+        f = self.open_output("star_star_test", wrapper=True, figsize=(10, 6 * len(STAR_TYPES)))
         TEST_TYPES = ["shear", "residual"]
         for s in STAR_TYPES:
             if STAR_TYPE_NAMES[s] != self.config.star_type:
-                    continue
+                continue
             ax = plt.subplot(len(STAR_TYPES), 1, s + 1)
             for j, i in enumerate([1, 2]):
                 theta, xi, err = star_star_stats[i, s]
@@ -1262,7 +1244,7 @@ class TXGalaxyStarShear(PipelineStage):
                     abs(xi),
                     err,
                     fmt=".",
-                    label=f"star cross star {TEST_TYPES[i-1]}",
+                    label=f"star cross star {TEST_TYPES[i - 1]}",
                     capsize=3,
                 )
                 plt.title(STAR_TYPE_NAMES[s])
@@ -1274,7 +1256,6 @@ class TXGalaxyStarShear(PipelineStage):
         f.close()
 
     def save_stats(self, galaxy_star_stats, star_star_stats):
-
         f = self.open_output("star_shear_stats")
         g = f.create_group("star_cross_galaxy")
         for i in 1, 2:
@@ -1300,7 +1281,6 @@ class TXGalaxyStarShear(PipelineStage):
                 h.create_dataset("xi_plus", data=xi)
                 h.create_dataset("xi_err", data=err)
         f.close()
-
 
 
 class TXGalaxyStarDensity(PipelineStage):
@@ -1332,7 +1312,7 @@ class TXGalaxyStarDensity(PipelineStage):
         "bin_slop": StageParameter(float, default=0.1, msg="Bin slop for treecorr."),
         "sep_units": StageParameter(str, default="arcmin", msg="Separation units."),
         "psf_size_units": StageParameter(str, default="sigma", msg="Units for PSF size."),
-        "star_type": StageParameter(str, default='PSF-reserved', msg="Star type to use."),
+        "star_type": StageParameter(str, default="PSF-reserved", msg="Star type to use."),
         "flip_g2": StageParameter(bool, default=False, msg="Flip g2 sign."),
     }
 
@@ -1351,13 +1331,9 @@ class TXGalaxyStarDensity(PipelineStage):
         for t in STAR_TYPES:
             s = star_type == t
             if STAR_TYPE_NAMES[t] != self.config.star_type:
-                    continue
-            galaxy_star_stats[1, t] = self.compute_galaxy_star(
-                ra, dec, s, ra_gal, dec_gal, ra_random, dec_random
-            )
-            galaxy_star_stats[2, t] = self.compute_star_star(
-                ra, dec, s, ra_gal, dec_gal, ra_random, dec_random
-            )
+                continue
+            galaxy_star_stats[1, t] = self.compute_galaxy_star(ra, dec, s, ra_gal, dec_gal, ra_random, dec_random)
+            galaxy_star_stats[2, t] = self.compute_star_star(ra, dec, s, ra_gal, dec_gal, ra_random, dec_random)
 
         self.save_stats(galaxy_star_stats)
         self.galaxy_star_plots(galaxy_star_stats)
@@ -1373,7 +1349,6 @@ class TXGalaxyStarDensity(PipelineStage):
         return ra, dec, star_type
 
     def load_randoms(self):
-
         with self.open_input("random_cats") as f:
             group = f["randoms"]
             ra_random = group["ra"][:]
@@ -1381,7 +1356,6 @@ class TXGalaxyStarDensity(PipelineStage):
         return ra_random, dec_random
 
     def load_galaxies(self):
-
         # Columns we need from the shear catalog
         # TODO: not sure of an application where we would want to use true shear but can be added
         read_shear_catalog_type(self)
@@ -1410,9 +1384,7 @@ class TXGalaxyStarDensity(PipelineStage):
 
         import treecorr
 
-        rancat = treecorr.Catalog(
-            ra=ra_random, dec=dec_random, ra_units="degree", dec_units="degree"
-        )
+        rancat = treecorr.Catalog(ra=ra_random, dec=dec_random, ra_units="degree", dec_units="degree")
 
         cat1 = treecorr.Catalog(ra=ra, dec=dec, ra_units="deg", dec_units="deg")
         cat2 = treecorr.Catalog(ra=ra_gal, dec=dec_gal, ra_units="deg", dec_units="deg")
@@ -1440,9 +1412,7 @@ class TXGalaxyStarDensity(PipelineStage):
 
         import treecorr
 
-        rancat = treecorr.Catalog(
-            ra=ra_random, dec=dec_random, ra_units="degree", dec_units="degree"
-        )
+        rancat = treecorr.Catalog(ra=ra_random, dec=dec_random, ra_units="degree", dec_units="degree")
 
         cat1 = treecorr.Catalog(ra=ra, dec=dec, ra_units="deg", dec_units="deg")
         cat2 = treecorr.Catalog(ra=ra_gal, dec=dec_gal, ra_units="deg", dec_units="deg")
@@ -1464,25 +1434,21 @@ class TXGalaxyStarDensity(PipelineStage):
         import matplotlib.pyplot as plt
         import matplotlib.transforms as mtrans
 
-        f = self.open_output(
-            "star_density_test", wrapper=True, figsize=(10, 6 * len(STAR_TYPES))
-        )
+        f = self.open_output("star_density_test", wrapper=True, figsize=(10, 6 * len(STAR_TYPES)))
         TEST_TYPES = ["star cross galaxy", "star cross star"]
         for s in STAR_TYPES:
             if STAR_TYPE_NAMES[s] != self.config.star_type:
-                    continue
+                continue
             ax = plt.subplot(len(STAR_TYPES), 1, s + 1)
             for j, i in enumerate([1, 2]):
                 theta, xi, err = galaxy_star_stats[i, s]
-                tr = mtrans.offset_copy(
-                    ax.transData, f.file, 0.05 * j - 0.025, 0, units="inches"
-                )
+                tr = mtrans.offset_copy(ax.transData, f.file, 0.05 * j - 0.025, 0, units="inches")
                 plt.errorbar(
                     theta,
                     abs(xi),
                     err,
                     fmt=".",
-                    label=f"{TEST_TYPES[i-1]} density stats",
+                    label=f"{TEST_TYPES[i - 1]} density stats",
                     capsize=3,
                     # transform=tr,
                 )
@@ -1495,7 +1461,6 @@ class TXGalaxyStarDensity(PipelineStage):
         f.close()
 
     def save_stats(self, galaxy_star_stats):
-
         f = self.open_output("star_density_stats")
         g = f.create_group("star_density")
         for i in 1, 2:
@@ -1662,11 +1627,11 @@ class TXBrighterFatterPlot(PipelineStage):
 
 
 def load_star_type(data):
-    used     = data["calib_psf_used"][:].astype('int')
-    reserved = data["calib_psf_reserved"][:].astype('int')
-    
-    star_type              = np.full(used.size, -99, dtype=int)
-    star_type[used==1]     = STAR_PSF_USED
-    star_type[reserved==1] = STAR_PSF_RESERVED
+    used = data["calib_psf_used"][:].astype("int")
+    reserved = data["calib_psf_reserved"][:].astype("int")
+
+    star_type = np.full(used.size, -99, dtype=int)
+    star_type[used == 1] = STAR_PSF_USED
+    star_type[reserved == 1] = STAR_PSF_RESERVED
 
     return star_type

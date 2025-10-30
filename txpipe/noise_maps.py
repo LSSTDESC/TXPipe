@@ -26,6 +26,7 @@ class TXSourceNoiseMaps(TXBaseMaps):
     This takes the shear catalogs and tomography and randomly spins the
     shear values in it, removing the shear signal and leaving only shape noise
     """
+
     name = "TXSourceNoiseMaps"
 
     inputs = [
@@ -83,7 +84,6 @@ class TXSourceNoiseMaps(TXBaseMaps):
         return (npix, G1, G2, GW, index_map, reverse_map, nbin_source)
 
     def data_iterator(self):
-
         with self.open_input("shear_catalog", wrapper=True) as f:
             shear_cols, renames = f.get_primary_catalog_names(self.config["true_shear"])
 
@@ -152,9 +152,7 @@ class TXSourceNoiseMaps(TXBaseMaps):
 
         # Sum everything at root
         if self.comm is not None:
-            mpi_reduce_large(
-                G1, self.comm, max_chunk_count=2**26
-            )  # fiducial is 2**30
+            mpi_reduce_large(G1, self.comm, max_chunk_count=2**26)  # fiducial is 2**30
             mpi_reduce_large(G2, self.comm, max_chunk_count=2**26)
             mpi_reduce_large(GW, self.comm, max_chunk_count=2**26)
             if self.rank != 0:
@@ -172,7 +170,6 @@ class TXSourceNoiseMaps(TXBaseMaps):
 
         for b in range(nbin_source):
             for i in range(lensing_realizations):
-
                 bin_mask = np.where(GW[:, b] > 0)
 
                 g1 = G1[:, b, i] / GW[:, b]
@@ -199,6 +196,7 @@ class TXLensNoiseMaps(TXBaseMaps):
     This randomly assigns each galaxy to one of two bins and uses the
     different between the halves to get a noise estimate.
     """
+
     name = "TXLensNoiseMaps"
 
     inputs = [
@@ -225,7 +223,6 @@ class TXLensNoiseMaps(TXBaseMaps):
         return choose_pixelization(**pix_info)
 
     def prepare_mappers(self, pixel_scheme):
-
         with self.open_input("mask", wrapper=True) as maps_file:
             mask = maps_file.read_map("mask")
 
@@ -245,9 +242,7 @@ class TXLensNoiseMaps(TXBaseMaps):
         npix = reverse_map.size
         clustering_realizations = self.config["clustering_realizations"]
 
-        ngal_split = np.zeros(
-            (npix, nbin_lens, clustering_realizations, 2), dtype=np.int32
-        )
+        ngal_split = np.zeros((npix, nbin_lens, clustering_realizations, 2), dtype=np.int32)
         # TODO: Clustering weights go here
 
         return (npix, ngal_split, index_map, reverse_map, mask, nbin_lens)
@@ -361,6 +356,7 @@ class TXExternalLensNoiseMaps(TXLensNoiseMaps):
     This randomly assigns each galaxy to one of two bins and uses the
     different between the halves to get a noise estimate.
     """
+
     name = "TXExternalLensNoiseMaps"
 
     inputs = [
@@ -397,9 +393,7 @@ def GW_add(GW, masked_pixels, masked_source_bin, masked_weights):
     return GW.at[masked_pixels, masked_source_bin].add(masked_weights)
 
 
-def ngal_split_add(
-    ngal_split, pixels_lb_mask, clustering_realizations, split_lb_mask, lens_bin_lb_mask
-):
+def ngal_split_add(ngal_split, pixels_lb_mask, clustering_realizations, split_lb_mask, lens_bin_lb_mask):
     from jax import numpy as jnp
 
     return ngal_split.at[
@@ -448,7 +442,9 @@ class TXNoiseMapsJax(PipelineStage):
         from jax import random, jit, device_get, device_put
         from .utils import choose_pixelization
 
-        raise ValueError("This code needs rewriting because source_bin and lens_bin now have the same name in the tomo files.")
+        raise ValueError(
+            "This code needs rewriting because source_bin and lens_bin now have the same name in the tomo files."
+        )
 
         # get the number of bins.
         nbin_source, nbin_lens, ngal_maps, mask, map_info = self.read_inputs()
@@ -489,10 +485,7 @@ class TXNoiseMapsJax(PipelineStage):
         # The memory usage of this class can get high, so we report what is expected here, so
         # if a crash happens a few moments later it's clear why.
         if self.rank == 0:
-            nmaps = (
-                nbin_source * (2 * lensing_realizations + 1)
-                + nbin_lens * clustering_realizations * 2
-            )
+            nmaps = nbin_source * (2 * lensing_realizations + 1) + nbin_lens * clustering_realizations * 2
             nGB = (npix * nmaps * 8) / 1000.0**3
             print(f"Allocating maps of size {nGB:.2f} GB")
 
@@ -505,9 +498,7 @@ class TXNoiseMapsJax(PipelineStage):
 
         # clustering map - we start by generating a random split in the number count
         # maps, and later convert this to overdensity maps
-        ngal_split = jnp.zeros(
-            (npix, nbin_lens, clustering_realizations, 2), dtype=np.int32
-        )
+        ngal_split = jnp.zeros((npix, nbin_lens, clustering_realizations, 2), dtype=np.int32)
         # TODO: Clustering weights go here
 
         # Initialize PRNG key for Jax with a seed, which can either be
@@ -532,7 +523,7 @@ class TXNoiseMapsJax(PipelineStage):
 
         # Loop through the data
         # TODO: this whole bit should be a single jax.jit kernel for speed
-        for (s, e, data) in it:
+        for s, e, data in it:
             # Number of objects in this chunk
             n = e - s
             print(f"Rank {self.rank} processing rows {s} - {e}")
@@ -561,9 +552,7 @@ class TXNoiseMapsJax(PipelineStage):
 
             # random rotations of the g1, g2 values
             key, subkey = random.split(key)
-            phi = random.uniform(
-                subkey, shape=(lensing_realizations, n), minval=0, maxval=2 * jnp.pi
-            )
+            phi = random.uniform(subkey, shape=(lensing_realizations, n), minval=0, maxval=2 * jnp.pi)
             cos = jnp.cos(phi)
             sin = jnp.sin(phi)
             g1r = jnp.transpose(cos * g1 + sin * g2)
@@ -639,20 +628,15 @@ class TXNoiseMapsJax(PipelineStage):
             # Loop through each realization of each bin
             for b in range(nbin_source):
                 for i in range(lensing_realizations):
-
                     # Normalize this bin with the weights
                     bin_mask = np.where(GW[:, b] > 0)
                     g1 = G1[:, b, i] / GW[:, b]
                     g2 = G2[:, b, i] / GW[:, b]
 
                     # and save g1 and g2 maps to the file.
-                    outfile.write_map(
-                        f"rotation_{i}/g1_{b}", pixels[bin_mask], g1[bin_mask], metadata
-                    )
+                    outfile.write_map(f"rotation_{i}/g1_{b}", pixels[bin_mask], g1[bin_mask], metadata)
 
-                    outfile.write_map(
-                        f"rotation_{i}/g2_{b}", pixels[bin_mask], g2[bin_mask], metadata
-                    )
+                    outfile.write_map(f"rotation_{i}/g2_{b}", pixels[bin_mask], g2[bin_mask], metadata)
 
             # Similar for the lensing noise maps
             outfile = self.open_output("lens_noise_maps", wrapper=True)
@@ -687,7 +671,6 @@ class TXNoiseMapsJax(PipelineStage):
                     outfile.write_map(f"split_{i}/ngal2_{b}", pixels, half2, metadata)
 
     def read_inputs(self):
-
         with self.open_input("mask", wrapper=True) as f:
             mask = f.read_map("mask")
             # pixelization etc

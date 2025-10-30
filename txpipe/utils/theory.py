@@ -62,10 +62,7 @@ def fill_empty_sacc(sacc_data, ell_values=None, theta_values=None):
     if (ell_values is None) and (theta_values is None):
         raise ValueError("Supplied an empty sacc file but no ell or theta values to fill it")
     elif (ell_values is not None) and (theta_values is not None):
-        raise ValueError(
-            "Supplied an empty sacc file and both theta and ell values to fill it. Just pick one"
-        )
-
+        raise ValueError("Supplied an empty sacc file and both theta and ell values to fill it. Just pick one")
 
     is_fourier = ell_values is not None
 
@@ -115,8 +112,7 @@ def fill_empty_sacc(sacc_data, ell_values=None, theta_values=None):
 
 
 def theory_3x2pt(
-    cosmo, sacc_data, bias=None, smooth=False, ell_values=None, theta_values=None,
-    theory_model=default_theory_model
+    cosmo, sacc_data, bias=None, smooth=False, ell_values=None, theta_values=None, theory_model=default_theory_model
 ):
     """
     Use FireCrown to generate the theory predictions for the data
@@ -186,9 +182,7 @@ def theory_3x2pt(
     # These stages are a copy of what is done inside the FireCrown connectors
     likelihood, tools = load_likelihood_from_script(theory_model, build_parameters)
 
-    systematic_params = {
-        **make_bias_parameters(bias, sacc_data, cosmo)
-    }
+    systematic_params = {**make_bias_parameters(bias, sacc_data, cosmo)}
     # Apply the systematics parameters
     likelihood.update(ParamsMap(systematic_params))
     tools.update(ParamsMap(systematic_params))
@@ -214,7 +208,6 @@ def theory_3x2pt(
     return sacc_theory
 
 
-
 def smooth_sacc_nz(sack):
     """
     Smooth each n(z) in a sacc object, in-place.
@@ -230,7 +223,6 @@ def smooth_sacc_nz(sack):
 
     for key, tracer in sack.tracers.items():
         tracer.nz = smooth_nz(tracer.nz)
-
 
 
 def smooth_nz(nz):
@@ -259,7 +251,7 @@ def make_bias_parameters(bias_option, sacc_data, cosmo):
     - a float (biases following the growth rate)
 
     In each case we force the bias to be flat within the tomographic
-    bin by 
+    bin by
 
     Parameters
     ----------
@@ -274,19 +266,20 @@ def make_bias_parameters(bias_option, sacc_data, cosmo):
     dict
     """
     import pyccl as ccl
-    lens_tracers = {name: t for name, t in sacc_data.tracers.items() if name.startswith('lens')}
 
-     # Form 1: a string with bias values separated by commas
+    lens_tracers = {name: t for name, t in sacc_data.tracers.items() if name.startswith("lens")}
+
+    # Form 1: a string with bias values separated by commas
     if isinstance(bias_option, str):
-        bias_values = np.array(bias_option.split(','), dtype=float)
+        bias_values = np.array(bias_option.split(","), dtype=float)
         bias_dict = {}
         for name in lens_tracers.keys():
-            i = int(name.split('_')[1])
+            i = int(name.split("_")[1])
             bias_dict[name + "_bias"] = bias_values[i]
 
     # Form 2: a dictionary of tracer name -> bias value
     elif isinstance(bias_option, dict):
-        bias_dict = {name + "_bias":value for name, value in bias_option.items()}
+        bias_dict = {name + "_bias": value for name, value in bias_option.items()}
 
     # Form 3: None (unit bias)
     elif bias_option is None:
@@ -296,7 +289,7 @@ def make_bias_parameters(bias_option, sacc_data, cosmo):
     elif not np.isscalar(bias_option):
         bias_dict = {}
         for name in lens_tracers.keys():
-            i = int(name.split('_')[1])
+            i = int(name.split("_")[1])
             bias_dict[name + "_bias"] = bias_option[i]
 
     # Form 5: float
@@ -321,5 +314,3 @@ def make_bias_parameters(bias_option, sacc_data, cosmo):
         bias_dict[name + "_z_piv"] = 1.0
 
     return bias_dict
-
-

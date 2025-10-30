@@ -10,13 +10,14 @@ import sacc
 import pyccl as ccl
 import numpy as np
 
+
 def build_likelihood(build_parameters):
     """
     This is a generic 3x2pt theory model, but with only
     bias as a systematic.
 
     """
-    sacc_data = build_parameters['sacc_data']
+    sacc_data = build_parameters["sacc_data"]
 
     # items in the build_parameters are supposed to be
     # just str, int, etc, not complicated parameters.
@@ -30,7 +31,6 @@ def build_likelihood(build_parameters):
     # Add a dummy covariance, always, because the shot noise one
     # may be non-positive definite
     sacc_data.add_covariance(np.ones(len(sacc_data)), overwrite=True)
-
 
     # Creating sources, each one maps to a specific section of a SACC file. In
     # this case src0, src1, src2 and src3 describe weak-lensing probes. The
@@ -57,11 +57,11 @@ def build_likelihood(build_parameters):
     computable_indices = []
     for dt in sacc_data.get_data_types():
         for t1, t2 in sacc_data.get_tracer_combinations(dt):
-            try:                
+            try:
                 stat = TwoPoint(
-                        source0=sources[t1],
-                        source1=sources[t2],
-                        sacc_data_type=dt,
+                    source0=sources[t1],
+                    source1=sources[t2],
+                    sacc_data_type=dt,
                 )
                 stats[f"{stat}_{t1}_{t2}"] = stat
                 computable_indices.extend(sacc_data.indices(dt, (t1, t2)))
@@ -93,5 +93,3 @@ def build_likelihood(build_parameters):
     tools._tx_indices = computable_indices
 
     return lk, tools
-
-

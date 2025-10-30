@@ -1,7 +1,8 @@
 """
-Classes and functions to help computing lss tools 
+Classes and functions to help computing lss tools
 (primarily within the lss weights stages)
 """
+
 import numpy as np
 from ..utils.fitting import calc_chi2
 
@@ -21,9 +22,7 @@ class DensityCorrelation:
         self.N = np.array([])  # number of galaxies
         self.npix = np.array([])  # number of pixels
         self.ndens_perpixel = np.array([])  # number density per healpix pixel
-        self.norm = np.array(
-            []
-        )  # normalization (could be slightly different per map due to outliers)
+        self.norm = np.array([])  # normalization (could be slightly different per map due to outliers)
         self.ndens = np.array([])  # normalized number density
 
         self.ndens_err = None
@@ -156,9 +155,7 @@ class DensityCorrelation:
                     sys_vals <= edges[i_sp_bin + 1]
                 )  # this is to match the behaviour of np.histogram
             else:
-                sp_select_bin = (sys_vals >= edges[i_sp_bin]) * (
-                    sys_vals < edges[i_sp_bin + 1]
-                )
+                sp_select_bin = (sys_vals >= edges[i_sp_bin]) * (sys_vals < edges[i_sp_bin + 1])
             sp_select.append(sp_select_bin)
         self.precomputed_array[map_index] = np.array(sp_select)
 
@@ -219,11 +216,13 @@ class DensityCorrelation:
         select_map = self.map_index == map_index
         return np.array([line[select_map] for line in self.covmat[select_map]])
 
-    def plot1d_singlemap(self, filepath, map_index, label=None, extra_density_correlations=None, extra_density_labels=None):
+    def plot1d_singlemap(
+        self, filepath, map_index, label=None, extra_density_correlations=None, extra_density_labels=None
+    ):
         import matplotlib.pyplot as plt
         import textwrap
 
-        fig, ax = plt.subplots(figsize=(4,4))
+        fig, ax = plt.subplots(figsize=(4, 4))
         ax.axhline(1, color="k", ls="--")
 
         ##### plot data from this object
@@ -244,15 +243,9 @@ class DensityCorrelation:
                 chi2_null = self.chi2["null"][map_index]
                 if label is None:
                     label = ""
-                legend_label = (
-                label + " "
-                "null"
-                + ": "
-                + r"$\chi^2=$"
-                + "{0}/{1}".format(np.round(chi2_null, 1), ndata)
-                )
+                legend_label = label + " null" + ": " + r"$\chi^2=$" + "{0}/{1}".format(np.round(chi2_null, 1), ndata)
             except KeyError:
-                legend_label = 'null'
+                legend_label = "null"
             ndens_err = self.ndens_err[select_map]
             ax.errorbar(
                 smean,
@@ -270,7 +263,7 @@ class DensityCorrelation:
                 select_map_extra = dc.map_index == map_index
                 smean_extra = dc.smean[select_map_extra]
                 ndens_extra = dc.ndens[select_map_extra]
-                #offset = (idc + 1) * 0.05 * np.min(np.diff(smean_extra))
+                # offset = (idc + 1) * 0.05 * np.min(np.diff(smean_extra))
                 offset = 0
                 if dc.sys_meta["normed"]:
                     sys_width_extra = dc.sys_meta["std"][int(map_index)]
@@ -289,18 +282,15 @@ class DensityCorrelation:
                     try:
                         legend_label_extra = (
                             label_extra + " "
-                            "null"
-                            + ": "
-                            + r"$\chi^2=$"
-                            + "{0}/{1}".format(np.round(chi2_null_extra, 1), ndata_extra)
+                            "null" + ": " + r"$\chi^2=$" + "{0}/{1}".format(np.round(chi2_null_extra, 1), ndata_extra)
                         )
                     except KeyError:
                         legend_label_extra = "null"
                     ndens_err_extra = dc.ndens_err[select_map_extra]
                     ax.fill_between(
                         smean_extra,
-                        ndens_extra-ndens_err_extra,
-                        ndens_extra+ndens_err_extra,
+                        ndens_extra - ndens_err_extra,
+                        ndens_extra + ndens_err_extra,
                         alpha=0.3,
                         color="green",
                         label=legend_label_extra,
@@ -313,12 +303,7 @@ class DensityCorrelation:
             ndens_model = self.ndens_models[model_name][select_map]
             chi2 = self.chi2[model_name][map_index]
             ndata = len(ndens)
-            legend_label = (
-                model_name
-                + ": "
-                + r"$\chi^2=$"
-                + "{0}/{1}".format(np.round(chi2, 1), ndata)
-            )
+            legend_label = model_name + ": " + r"$\chi^2=$" + "{0}/{1}".format(np.round(chi2, 1), ndata)
             # legend_label = None
             ax.plot(smean, ndens_model, "-", label=legend_label)
 
@@ -326,9 +311,9 @@ class DensityCorrelation:
             xlabel = self.mapnames[map_index]
         else:
             xlabel = f"SP {map_index}"
-        
-        #wrap the x axis label in case it is too big
-        xlabel = "\n".join(textwrap.wrap(xlabel, 40)) 
+
+        # wrap the x axis label in case it is too big
+        xlabel = "\n".join(textwrap.wrap(xlabel, 40))
 
         ax.set_xlabel(xlabel)
         ax.set_ylabel(r"$n_{\rm gal}/n_{\rm gal \ mean}$", fontsize=16)
@@ -338,9 +323,7 @@ class DensityCorrelation:
         fig.clear()
         plt.close()
 
-    def plot_chi2_hist(
-        self, filepath, extra_density_correlations=None, chi2_threshold=None, nbins=10
-    ):
+    def plot_chi2_hist(self, filepath, extra_density_correlations=None, chi2_threshold=None, nbins=10):
         import matplotlib.pyplot as plt
         import scipy.stats
 
@@ -438,7 +421,7 @@ class DensityCorrelation:
         dicts -> make a subgroup then loop over the entries
         """
         if key == "sp_pixel_twopoint":
-            return #dont save the treecorr correlations of the pixels
+            return  # dont save the treecorr correlations of the pixels
         if isinstance(val, np.ndarray):
             group.create_dataset(key, data=val)
         elif isinstance(val, (int, float, str, bool, np.generic)):
@@ -448,7 +431,7 @@ class DensityCorrelation:
             for k, v in val.items():
                 self._save_item(subgrp, str(k), v)
         else:
-            raise RuntimeError(f'I dont know how to save {key}={val} to {group}')
+            raise RuntimeError(f"I dont know how to save {key}={val} to {group}")
 
     @classmethod
     def load_from_group(cls, group):
