@@ -2,6 +2,7 @@ from .base_stage import PipelineStage
 from .data_types import TomographyCatalog, HDFFile, PNGFile, QPPDFFile, QPNOfZFile
 from .utils.mpi_utils import in_place_reduce
 from .utils import rename_iterated
+from .utils.theory import smooth_nz
 import numpy as np
 import warnings
 from ceci.config import StageParameter
@@ -253,12 +254,14 @@ class TXPhotozPlot(PipelineStage):
     config_options = {
         "label": StageParameter(str, "", msg="Label for the n(z) plot."),
         "zmax": StageParameter(float, 3.0, msg="Maximum redshift for plotting."),
+        "smooth": StageParameter(int, 0, msg="Number of samples to smooth the n(z) for plotting"),
     }
 
     def run(self):
         import matplotlib
         matplotlib.use("agg")
         import matplotlib.pyplot as plt
+        smooth = self.config["smooth"]
 
         with self.open_input("photoz_stack", wrapper=True) as f:
             ensemble = f.read_ensemble()
@@ -276,9 +279,15 @@ class TXPhotozPlot(PipelineStage):
             zg = np.linspace(0, zmax, int(zmax * 100))
             pdfs = ensemble.pdf(zg)
             for i in range(ensemble.npdf - 1):
-                ax.plot(zg, pdfs[i], label=f"Bin {i}")
+                nz = pdfs[i]
+                if smooth > 0:
+                    nz = smooth_nz(nz, smooth)
+                ax.plot(zg, nz, label=f"Bin {i}")
 
-            ax.plot(zg, pdfs[ensemble.npdf - 1] * (ensemble.npdf - 1), label=f"Total", linestyle='--')
+            nz = pdfs[ensemble.npdf - 1] * (ensemble.npdf - 1)
+            if smooth > 0:
+                nz = smooth_nz(nz, smooth)
+            ax.plot(zg, nz, label=f"Total", linestyle='--')
 
             plt.legend()
             plt.title(label)

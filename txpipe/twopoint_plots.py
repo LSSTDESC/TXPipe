@@ -198,7 +198,12 @@ class TXTwoPointPlotsFourier(PipelineStage):
         )
 
         for fig in outputs.values():
-            fig.close()
+            # weirdly this is where matplotlib crashes
+            # when some of the plots are empty
+            try:
+                fig.close()
+            except SystemError:
+                continue
 
         # The same but plotting ratios. The key here is not a mistake -
         # it tells the function calle below what the axis labels etc should be

@@ -22,7 +22,7 @@ class TXTwoPointTheoryReal(PipelineStage):
 
     config_options = {
         "galaxy_bias": StageParameter(list, [0.0], msg="Galaxy bias values per bin, [0.0] for unit bias, or single negative value for global bias parameter"),
-        "smooth": StageParameter(bool, False, msg="Whether to smooth the n(z) for theory predictions"),
+        "smooth": StageParameter(int, 0, msg="Number of samples to smooth the n(z) for theory predictions"),
     }
 
     def run(self):
@@ -53,6 +53,7 @@ class TXTwoPointTheoryReal(PipelineStage):
             bias = None
         elif len(bias) == 1 and bias[0] < 0:
             bias = -bias[0]
+        print(self.config)
         s_theory = theory_3x2pt(cosmo, s, bias=bias, smooth=self.config["smooth"])
 
         # Remove covariance

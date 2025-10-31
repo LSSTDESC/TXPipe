@@ -105,8 +105,13 @@ class TXFourierGaussianCovariance(PipelineStage):
 
         do_shear = any([dt in shear_data_types for dt in data_types])
         do_lens = any([dt in lens_data_types for dt in data_types])
-
-        if not (do_shear or do_lens):
+        if do_shear and do_lens:
+            print("Computing covariance for both shear and clustering data.")
+        elif do_shear:
+            print("Computing covariance for shear data only.")
+        elif do_lens:
+            print("Computing covariance for clustering data only.")
+        else:
             raise ValueError("No recognized shear or lensing data types found in the input SACC file.")
         return do_shear, do_lens
 
@@ -433,7 +438,11 @@ class TXFourierGaussianCovariance(PipelineStage):
 
     def get_angular_bins(self, cl_sacc):
         from .utils.nmt_utils import choose_ell_bins
-        return choose_ell_bins(**cl_sacc.metadata)
+        meta = {k.removeprefix("binning/"): v for k, v in cl_sacc.metadata.items() if k.startswith("binning/")}
+        nmt_ell_bins = choose_ell_bins(**meta)
+        ell_bins = [nmt_ell_bins.get_ell_max(i) for i in range(nmt_ell_bins.get_n_bands())]
+        ell_bins.insert(0, nmt_ell_bins.get_ell_min(0))
+        return np.array(ell_bins)
 
     def make_wigner_transform(self, meta):
         import threadpoolctl
@@ -880,8 +889,8 @@ class TXFourierTJPCovariance(PipelineStage):
         # TODO: Move this to txpipe/utils/nmt_utils.py
         from .utils.nmt_utils import choose_ell_bins
 
-
-        ell_bins = choose_ell_bins(**cl_sacc.metadata)
+        meta = {k.removeprefix("binning/"): v for k, v in cl_sacc.metadata.items() if k.startswith("binning/")}
+        ell_bins = choose_ell_bins(**meta)
 
         # Check that the binning is compatible with the one in the file
         dtype = cl_sacc.get_data_types()[0]

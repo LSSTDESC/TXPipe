@@ -614,12 +614,15 @@ class QPNOfZFile(QPBaseFile):
         ensemble = self.read_ensemble()
         return z, ensemble.pdf(z)[-1]
 
-    def get_bin_n_of_z(self, bin_index, zmax=3.0, nz=301):
+    def get_bin_n_of_z(self, bin_index, zmax=None, nz=None):
         ensemble = self.read_ensemble()
+        if zmax is None:
+            z = ensemble.x_samples()
+        else:
+            z = np.linspace(0, zmax, nz)
         npdf = ensemble.npdf
         if bin_index >= npdf - 1:
             raise ValueError(f"Requested n(z) for bin {bin_index} but only {npdf-1} bins available. For the 2D bin use get_2d_n_of_z.")
-        z = np.linspace(0, zmax, nz)
         return z, ensemble.pdf(z)[bin_index]
 
     def get_z(self):

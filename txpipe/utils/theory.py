@@ -168,7 +168,7 @@ def theory_3x2pt(
 
     # We can optionally smooth the n(z). This helped in Prat et al.
     # Probably this should be happening in CCL somewhere.
-    if smooth:
+    if smooth > 0:
         smooth_sacc_nz(sacc_data, smooth)
 
     # The user can pass in an empty sacc file, with no data points in,
@@ -227,9 +227,6 @@ def smooth_sacc_nz(sack, smoothing_samples):
     -------
     None
     """
-    if smoothing_samples is True:
-        smoothing_samples = 2
-
     print(f"Smoothing n(z) using Gaussian kernel of width {smoothing_samples} samples")
     dz = []
     for _, tracer in sack.tracers.items():

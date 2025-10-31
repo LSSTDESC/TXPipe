@@ -1004,7 +1004,7 @@ class TXTwoPointPixel(TXTwoPoint):
         "share_patch_files": StageParameter(bool, False, msg="Whether to share patch files across processes"),
         "metric": StageParameter(str, "Euclidean", msg="Distance metric to use (Euclidean, Arc, etc.)"),
         "use_randoms": StageParameter(bool, True, msg="Whether to use random catalogs"),
-        "auto_only": StageParameter(bool, False, msg="Whether to compute only auto-correlations"),
+        "auto_only": StageParameter(bool, False, msg="Whether to compute only auto-correlations for density-density"),
         "gaussian_sims_factor": StageParameter(list, default=[1.], msg="Factor by which to decrease lens density to account for increased density contrast."),
         "use_subsampled_randoms": StageParameter(bool, False, msg="Use subsampled randoms file for RR calculation (not used for pixel estimator)"),
     }
