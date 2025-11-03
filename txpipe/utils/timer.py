@@ -13,7 +13,5 @@ class Timer:
         t = default_timer()
         dt1 = t - self.t0
         dt2 = t - self.stamps[-1][1]
-        print(
-            f"MARK {label}  {dt1} seconds since start and {dt2} seconds since last mark"
-        )
+        print(f"MARK {label}  {dt1} seconds since start and {dt2} seconds since last mark")
         self.stamps.append((label, t))

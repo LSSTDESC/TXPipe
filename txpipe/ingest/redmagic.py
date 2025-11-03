@@ -1,6 +1,7 @@
 from ..base_stage import PipelineStage
 from ..data_types import HDFFile, FitsFile, QPNOfZFile
 import numpy as np
+from ceci.config import StageParameter
 
 
 class TXIngestRedmagic(PipelineStage):
@@ -9,6 +10,7 @@ class TXIngestRedmagic(PipelineStage):
 
     This starts with the FITS file format, but may be outdated.
     """
+
     name = "TXIngestRedmagic"
     parallel = False
     inputs = [
@@ -22,16 +24,17 @@ class TXIngestRedmagic(PipelineStage):
     ]
 
     config_options = {
-        "lens_zbin_edges": [float],
-        "chunk_rows": 100_000,
-        "zmin": 0.0,
-        "zmax": 3.0,
-        "dz": 0.01,
-        "bands": "grizy",
+        "lens_zbin_edges": StageParameter(list, [float], msg="Edges of lens redshift bins."),
+        "chunk_rows": StageParameter(int, 100_000, msg="Number of rows to process in each chunk."),
+        "zmin": StageParameter(float, 0.0, msg="Minimum redshift for binning."),
+        "zmax": StageParameter(float, 3.0, msg="Maximum redshift for binning."),
+        "dz": StageParameter(float, 0.01, msg="Redshift bin width."),
+        "bands": StageParameter(str, "grizy", msg="Bands to use for redmagic selection."),
     }
 
     def run(self):
         import qp
+
         # Count number of objects
         f = self.open_input("redmagic_catalog")
         n = f[1].get_nrows()
@@ -63,7 +66,7 @@ class TXIngestRedmagic(PipelineStage):
         for b in bands:
             g.create_dataset(f"mag_{b}", (n,), dtype=np.float64)
             g.create_dataset(f"mag_err_{b}", (n,), dtype=np.float64)
-        g.attrs["bands"]  = bands
+        g.attrs["bands"] = bands
 
         h = tomo.create_group("tomography")
         h.create_dataset("bin", (n,), dtype=np.int32)
@@ -81,7 +84,7 @@ class TXIngestRedmagic(PipelineStage):
         # all cols that might be useful
         cols = ["ra", "dec", "zredmagic", "mag", "mag_err", "chisq", "zspec"]
 
-        for (s, e, data) in self.iterate_fits("redmagic_catalog", 1, cols, chunk_rows):
+        for s, e, data in self.iterate_fits("redmagic_catalog", 1, cols, chunk_rows):
             n = data["ra"].size
             z = data["zredmagic"]
             z_true = data["zspec"]
@@ -103,7 +106,7 @@ class TXIngestRedmagic(PipelineStage):
             z_grid_index = np.floor((z_true - zmin) / dz).astype(int)
             for i, (i_z, b) in enumerate(zip(z_grid_index, zbin)):
                 if b >= 0:
-                    nz_grid[b,i_z] += weight[i]
+                    nz_grid[b, i_z] += weight[i]
 
             # Build up the counts
             any_bin = zbin >= 0
@@ -128,11 +131,10 @@ class TXIngestRedmagic(PipelineStage):
         h_counts["counts"][:] = counts
         h_counts["counts_2d"][:] = counts_2d
 
-        # Generate and save the 2D n(z) histogram also, just
-        # by summing up all the individual values.
+        # Generate and save the 2D n(z) histogram also, just
+        # by summing up all the individual values.
         nz_grid[-1] = nz_grid[:-1].sum(axis=0)
 
-        stack_object = qp.Ensemble(qp.hist, data={"bins":z_grid, "pdfs":nz_grid[:, :-1]})
+        stack_object = qp.Ensemble(qp.hist, data={"bins": z_grid, "pdfs": nz_grid[:, :-1]})
         with self.open_output("lens_photoz_stack", wrapper=True) as stack:
             stack.write_ensemble(stack_object)
-

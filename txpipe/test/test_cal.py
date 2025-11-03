@@ -141,7 +141,7 @@ def core_metadet(comm):
     for sel in [select_all_bool_md, select_all_where_md, select_all_index_md]:
         cal = MetaDetectCalculator(sel, delta_gamma)
         cal.add_data(data)
-        R, n , _  = cal.collect(comm, allgather=True)
+        R, n, _ = cal.collect(comm, allgather=True)
 
         assert np.allclose(R, R_true)
         assert np.allclose(n, N * nproc)
@@ -155,7 +155,7 @@ def core_metadet(comm):
     for sel in [select_all_bool_md, select_all_where_md, select_all_index_md]:
         cal = MetaDetectCalculator(sel, delta_gamma)
         cal.add_data(data)
-        R, n, _  = cal.collect(comm, allgather=True)
+        R, n, _ = cal.collect(comm, allgather=True)
         print("R = ", R)
         assert np.allclose(n, N * nproc)
 
@@ -168,7 +168,7 @@ def core_metadet(comm):
     for sel in [select_all_bool_md, select_all_where_md, select_all_index_md]:
         cal = MetaDetectCalculator(sel, delta_gamma)
         cal.add_data(data)
-        R, n, _  = cal.collect(comm, allgather=True)
+        R, n, _ = cal.collect(comm, allgather=True)
         print("R = ", R)
 
         assert np.allclose(R, R_true)
@@ -206,19 +206,15 @@ def test_mean_shear():
         "x_2p": np.array([-0.5, -0.5, -0.5, -0.5, 0.5, 0.5, 0.5, 0.5]),
         "x_2m": np.array([-0.5, -0.5, -0.5, -0.5, 0.5, 0.5, 0.5, 0.5]),
         "mcal_g1": np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]),
-        "mcal_g1_1p": np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3])
-        + 0.5 * delta_gamma,
-        "mcal_g1_1m": np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3])
-        - 0.5 * delta_gamma,
+        "mcal_g1_1p": np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]) + 0.5 * delta_gamma,
+        "mcal_g1_1m": np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]) - 0.5 * delta_gamma,
         "mcal_g1_2p": np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]),
         "mcal_g1_2m": np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]),
         "mcal_g2": 2 * np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]),
         "mcal_g2_1p": 2 * np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]),
         "mcal_g2_1m": 2 * np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]),
-        "mcal_g2_2p": 2 * np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3])
-        + 0.5 * delta_gamma,
-        "mcal_g2_2m": 2 * np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3])
-        - 0.5 * delta_gamma,
+        "mcal_g2_2p": 2 * np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]) + 0.5 * delta_gamma,
+        "mcal_g2_2m": 2 * np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]) - 0.5 * delta_gamma,
         "weight": np.array([1, 1, 1, 1, 1, 1, 1, 1]),
     }
     b1.add_data(data)

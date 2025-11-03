@@ -1,8 +1,8 @@
-
 from .base_stage import PipelineStage
 from .data_types import SACCFile, PNGFile
 import numpy as np
 import os
+from ceci.config import StageParameter
 
 
 class TXTwoPointPlots(PipelineStage):
@@ -26,8 +26,8 @@ class TXTwoPointPlots(PipelineStage):
     ]
 
     config_options = {
-        "wspace": 0.05,
-        "hspace": 0.05,
+        "wspace": StageParameter(float, 0.05, msg="Width space between subplots."),
+        "hspace": StageParameter(float, 0.05, msg="Height space between subplots."),
     }
 
     def run(self):
@@ -45,9 +45,7 @@ class TXTwoPointPlots(PipelineStage):
         nbin_source, nbin_lens = self.read_nbin(s)
 
         outputs = {
-            "galaxy_density_xi": self.open_output(
-                "density_xi", figsize=(3.5 * nbin_lens, 3 * nbin_lens), wrapper=True
-            ),
+            "galaxy_density_xi": self.open_output("density_xi", figsize=(3.5 * nbin_lens, 3 * nbin_lens), wrapper=True),
             "galaxy_shearDensity_xi_t": self.open_output(
                 "shearDensity_xi",
                 figsize=(3.5 * nbin_lens, 3 * nbin_source),
@@ -75,8 +73,6 @@ class TXTwoPointPlots(PipelineStage):
 
         for fig in outputs.values():
             fig.close()
-
-
 
         outputs = {
             "galaxy_shearDensity_xi_x": self.open_output(
@@ -112,12 +108,11 @@ class TXTwoPointPlots(PipelineStage):
             lens_tracers.add(b2)
 
         # matplotlib crashes if you try to plot with zero bins
-        # as you get a 0 x 0 figure. So we set a minimum of 1.
+        # as you get a 0 x 0 figure. So we set a minimum of 1.
         nbin_source = max(len(source_tracers), 1)
         nbin_lens = max(len(lens_tracers), 1)
 
         return nbin_source, nbin_lens
-
 
 
 class TXTwoPointPlotsFourier(PipelineStage):
@@ -139,8 +134,8 @@ class TXTwoPointPlotsFourier(PipelineStage):
     ]
 
     config_options = {
-        "wspace": 0.05,
-        "hspace": 0.05,
+        "wspace": StageParameter(float, 0.05, msg="Width space between subplots."),
+        "hspace": StageParameter(float, 0.05, msg="Height space between subplots."),
     }
 
     def read_nbin(self, s):
@@ -170,9 +165,7 @@ class TXTwoPointPlotsFourier(PipelineStage):
         filename_theory = self.get_input("twopoint_theory_fourier")
 
         outputs = {
-            "galaxy_density_cl": self.open_output(
-                "density_cl", figsize=(3.5 * nbin_lens, 3 * nbin_lens), wrapper=True
-            ),
+            "galaxy_density_cl": self.open_output("density_cl", figsize=(3.5 * nbin_lens, 3 * nbin_lens), wrapper=True),
             "galaxy_shearDensity_cl_e": self.open_output(
                 "shearDensity_cl",
                 figsize=(3.5 * nbin_lens, 3 * nbin_source),
@@ -234,12 +227,10 @@ if __name__ == "__main__":
 ##############
 
 
-
-
-
 ########
 
-class TXTwoPointPlotsTheory( TXTwoPointPlots ):
+
+class TXTwoPointPlotsTheory(TXTwoPointPlots):
     name = "TXTwoPointPlotsTheory"
     parallel = False
     inputs = [
@@ -253,15 +244,15 @@ class TXTwoPointPlotsTheory( TXTwoPointPlots ):
         ("shearDensity_xi", PNGFile),
         ("density_xi", PNGFile),
         ("shear_xi_plus_ratio", PNGFile),
-       ("shear_xi_minus_ratio", PNGFile),
-       ("shearDensity_xi_ratio", PNGFile),
-       ("density_xi_ratio", PNGFile),
+        ("shear_xi_minus_ratio", PNGFile),
+        ("shearDensity_xi_ratio", PNGFile),
+        ("density_xi_ratio", PNGFile),
         ("shearDensity_xi_x", PNGFile),
     ]
 
     config_options = {
-        "wspace": 0.05,
-        "hspace": 0.05,
+        "wspace": StageParameter(float, 0.05, msg="Width space between subplots."),
+        "hspace": StageParameter(float, 0.05, msg="Height space between subplots."),
     }
 
     def run(self):
@@ -282,9 +273,7 @@ class TXTwoPointPlotsTheory( TXTwoPointPlots ):
         filename_theory = self.get_input("twopoint_theory_real")
 
         outputs = {
-            "galaxy_density_xi": self.open_output(
-                "density_xi", figsize=(3.5 * nbin_lens, 3 * nbin_lens), wrapper=True
-            ),
+            "galaxy_density_xi": self.open_output("density_xi", figsize=(3.5 * nbin_lens, 3 * nbin_lens), wrapper=True),
             "galaxy_shearDensity_xi_t": self.open_output(
                 "shearDensity_xi",
                 figsize=(3.5 * nbin_lens, 3 * nbin_source),
@@ -351,7 +340,6 @@ class TXTwoPointPlotsTheory( TXTwoPointPlots ):
 
         for fig in outputs.values():
             fig.close()
-
 
         outputs = {
             "galaxy_shearDensity_xi_x": self.open_output(

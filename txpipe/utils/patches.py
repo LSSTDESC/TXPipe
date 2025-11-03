@@ -61,10 +61,7 @@ class PatchMaker:
         self.ball = sklearn.neighbors.BallTree(patch_centers)
 
         # Open and set up the output patch files.
-        self.files = {
-            i: self.setup_file(patch_filenames[i], initial_size, max_size)
-            for i in my_patches
-        }
+        self.files = {i: self.setup_file(patch_filenames[i], initial_size, max_size) for i in my_patches}
 
         # The current and maximum size of each patch
         self.max_size = max_size
@@ -207,7 +204,7 @@ class PatchMaker:
     def patches_missing(cat):
         # Check if the number of patch files matches that in cat.npatch
 
-        saved_patch_files = [f for f in os.listdir(cat.config['save_patch_dir']) if '.hdf5' in f]
+        saved_patch_files = [f for f in os.listdir(cat.config["save_patch_dir"]) if ".hdf5" in f]
         nsaved = len(saved_patch_files)
 
         return cat.npatch != nsaved
@@ -257,9 +254,7 @@ class PatchMaker:
 
         if cat.save_patch_dir is None:
             if is_root:
-                print(
-                    f"Catalog {cat.file_name} does not have a patch directory set, so not making patches."
-                )
+                print(f"Catalog {cat.file_name} does not have a patch directory set, so not making patches.")
             return 0, False
 
         patch_filenames = cat.get_patch_file_names(cat.save_patch_dir)
@@ -278,7 +273,6 @@ class PatchMaker:
             g = f[cat.config["ext"]]
             ra_col = cat.config["ra_col"]
             max_size = g[ra_col].size
-
 
         # Do the parallelization - split up the patches in chunks
         if comm is None:
@@ -314,7 +308,7 @@ class PatchMaker:
                 s = i * chunk_rows
                 e = s + chunk_rows
                 data = {}
-                for (simple_name, cat_name) in cols.items():
+                for simple_name, cat_name in cols.items():
                     d = g[cat_name][s:e]
                     if simple_name == "g1" and cat.config["flip_g1"]:
                         d = -d
@@ -353,9 +347,7 @@ class PatchMaker:
             # Since the order is guaranteed this should never end up overwriting
             # an existing patch before it is moved.
             for old_name, new_name in renames.items():
-                print(
-                    f"Renaming patch {old_name} - {new_name} since some patches empty"
-                )
+                print(f"Renaming patch {old_name} - {new_name} since some patches empty")
                 os.rename(old_name, new_name)
 
             # Touch a sentinel file to indicate that this completed

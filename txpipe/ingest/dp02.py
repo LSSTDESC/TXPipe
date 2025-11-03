@@ -4,6 +4,7 @@ from .lsst import process_photometry_data, process_shear_data
 import numpy as np
 import glob
 import math
+from ceci.config import StageParameter
 
 
 class TXIngestDataPreview02(PipelineStage):
@@ -13,6 +14,7 @@ class TXIngestDataPreview02(PipelineStage):
     There is no metacal on this, and there won't be.
 
     """
+
     name = "TXIngestDataPreview02"
     parallel = False
     inputs = []
@@ -22,8 +24,10 @@ class TXIngestDataPreview02(PipelineStage):
         ("shear_catalog", ShearCatalog),
     ]
     config_options = {
-        "pq_path": "/global/cfs/cdirs/lsst/shared/rubin/DP0.2/objectTable/",
-        "tracts": "",
+        "pq_path": StageParameter(
+            str, "/global/cfs/cdirs/lsst/shared/rubin/DP0.2/objectTable/", msg="Path to Parquet objectTable files."
+        ),
+        "tracts": StageParameter(str, "", msg="Comma-separated list of tracts to use (empty for all)."),
     }
 
     def run(self):
@@ -32,16 +36,16 @@ class TXIngestDataPreview02(PipelineStage):
         from ..utils.hdf_tools import h5py_shorten, repack
 
         tracts = self.config["tracts"]
-        pq_path = self.config['pq_path']
+        pq_path = self.config["pq_path"]
 
         cat_files = glob.glob(f"{pq_path}/objectTable*.parq")
 
         if tracts:
-            tracts = [tract.strip() for tract in tracts.split(',')]
+            tracts = [tract.strip() for tract in tracts.split(",")]
             print(f"Using {len(tracts)} tracts out of {len(cat_files)}")
             cat_files = [c for c in cat_files if c.split("/")[-1].split("_")[2] in tracts]
             if len(cat_files) != len(tracts):
-                raise ValueError("Some tracts not found")                
+                raise ValueError("Some tracts not found")
 
         n = 0
         for fn in cat_files:
@@ -50,17 +54,26 @@ class TXIngestDataPreview02(PipelineStage):
 
         print(f"Full catalog size = {n:,}")
 
-
         # Input columns for photometry
         photo_cols = ["objectId", "coord_ra", "coord_dec", "refExtendedness", "tract"]
 
-            
-            
-        shape_cols = ["objectId", "coord_ra", "coord_dec", "refExtendedness", "tract", 
-                      "i_hsmShapeRegauss_e1", "i_hsmShapeRegauss_e2", "i_hsmShapeRegauss_sigma", "i_hsmShapeRegauss_flag",
-                      "i_ixx", "i_ixy", "i_iyy",
-                      "i_ixxPSF", "i_ixyPSF", "i_iyyPSF",
-                     ]
+        shape_cols = [
+            "objectId",
+            "coord_ra",
+            "coord_dec",
+            "refExtendedness",
+            "tract",
+            "i_hsmShapeRegauss_e1",
+            "i_hsmShapeRegauss_e2",
+            "i_hsmShapeRegauss_sigma",
+            "i_hsmShapeRegauss_flag",
+            "i_ixx",
+            "i_ixy",
+            "i_iyy",
+            "i_ixxPSF",
+            "i_ixyPSF",
+            "i_iyyPSF",
+        ]
 
         # Magnitude columns, given to both photometry and shear catalogs
         for band in "ugrizy":
@@ -81,13 +94,13 @@ class TXIngestDataPreview02(PipelineStage):
             with ParquetFile(fn) as f:
                 n_chunk = math.ceil(f.metadata.num_rows / batch_size)
                 it = f.iter_batches(columns=cols)
-                for j,d in enumerate(it):
+                for j, d in enumerate(it):
                     d = {col.name: d[col.name].to_numpy(zero_copy_only=False) for col in d.schema}
                     if i == 0 and j == 0:
                         output_names = set(d.keys())
                         for col in cols:
                             assert col in output_names, f"Column {col} not found"
-                    
+
                     photo_data = process_photometry_data(d)
                     shear_data = process_shear_data(d)
 
@@ -95,14 +108,13 @@ class TXIngestDataPreview02(PipelineStage):
                         photo_outfile = self.setup_output("photometry_catalog", "photometry", photo_data, n)
                         shear_outfile = self.setup_output("shear_catalog", "shear", shear_data, n)
 
-                    end1 = start1 + len(photo_data['ra'])
-                    end2 = start2 + len(shear_data['ra'])
+                    end1 = start1 + len(photo_data["ra"])
+                    end2 = start2 + len(shear_data["ra"])
                     self.write_output(photo_outfile, "photometry", photo_data, start1, end1)
                     self.write_output(shear_outfile, "shear", shear_data, start2, end2)
-                    print(f"Processing chunk {j+1}/{n_chunk} of file {i+1}/{nfile} into rows {start1:,} - {end1:,}")
+                    print(f"Processing chunk {j + 1}/{n_chunk} of file {i + 1}/{nfile} into rows {start1:,} - {end1:,}")
                     start1 = end1
                     start2 = end2
-
 
         print("Final selected objects: {end1:,} in photometry and {end2:,} in shear")
         # Cut down to just include stars.
@@ -124,9 +136,7 @@ class TXIngestDataPreview02(PipelineStage):
         repack(self.get_output("photometry_catalog"))
         repack(self.get_output("shear_catalog"))
 
-
     def setup_output(self, tag, group, first_chunk, n):
-
         f = self.open_output(tag)
         g = f.create_group(group)
 

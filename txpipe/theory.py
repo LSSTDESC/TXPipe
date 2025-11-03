@@ -1,7 +1,9 @@
 from .base_stage import PipelineStage
 from .data_types import FiducialCosmology, SACCFile
 from .utils.theory import theory_3x2pt
+from ceci.config import StageParameter
 import numpy as np
+
 
 class TXTwoPointTheoryReal(PipelineStage):
     """
@@ -20,9 +22,13 @@ class TXTwoPointTheoryReal(PipelineStage):
     ]
 
     config_options = {
-        "galaxy_bias": [0.0],
-        "smooth": False,
-        }
+        "galaxy_bias": StageParameter(
+            list,
+            [0.0],
+            msg="Galaxy bias values per bin, [0.0] for unit bias, or single negative value for global bias parameter",
+        ),
+        "smooth": StageParameter(bool, False, msg="Whether to smooth the n(z) for theory predictions"),
+    }
 
     def run(self):
         import sacc
@@ -33,9 +39,7 @@ class TXTwoPointTheoryReal(PipelineStage):
         # TODO: when there is a better Cosmology serialization method
         # switch to that
         print("Manually specifying matter_power_spectrum and Neff")
-        cosmo = self.open_input("fiducial_cosmology", wrapper=True).to_ccl(
-            matter_power_spectrum="halofit", Neff=3.046
-        )
+        cosmo = self.open_input("fiducial_cosmology", wrapper=True).to_ccl(matter_power_spectrum="halofit", Neff=3.046)
 
         print(cosmo)
 
@@ -47,7 +51,7 @@ class TXTwoPointTheoryReal(PipelineStage):
         # 3) a bias parameter per bin
         # I know version (2) is confusing, but we want the result to work
         # even when there's only a single bin.
-        bias = self.config['galaxy_bias']
+        bias = self.config["galaxy_bias"]
         if bias == [0.0]:
             bias = None
         elif len(bias) == 1 and bias[0] < 0:
@@ -59,7 +63,6 @@ class TXTwoPointTheoryReal(PipelineStage):
 
         # save the output to Sacc file
         s_theory.save_fits(self.get_output("twopoint_theory_real"), overwrite=True)
-
 
 
 class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
@@ -79,10 +82,14 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
     ]
 
     config_options = {
-        "galaxy_bias": [0.0],
-        "smooth": False,
-        }
-    
+        "galaxy_bias": StageParameter(
+            list,
+            [0.0],
+            msg="Galaxy bias values per bin, [0.0] for unit bias, or single negative value for global bias parameter",
+        ),
+        "smooth": StageParameter(bool, False, msg="Whether to smooth the n(z) for theory predictions"),
+    }
+
     def run(self):
         import sacc
 
@@ -92,9 +99,7 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
         # TODO: when there is a better Cosmology serialization method
         # switch to that
         print("Manually specifying matter_power_spectrum and Neff")
-        cosmo = self.open_input("fiducial_cosmology", wrapper=True).to_ccl(
-            matter_power_spectrum="halofit", Neff=3.046
-        )
+        cosmo = self.open_input("fiducial_cosmology", wrapper=True).to_ccl(matter_power_spectrum="halofit", Neff=3.046)
         print(cosmo)
 
         s_theory = theory_3x2pt(cosmo, s, smooth=self.config["smooth"])

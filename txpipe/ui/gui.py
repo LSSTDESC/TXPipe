@@ -12,9 +12,7 @@ from .pipeline_monitor import PipelineMonitor
 
 def window_focus():
     if platform.system() == "Darwin":  # How Mac OS X is identified by Python
-        os.system(
-            """/usr/bin/osascript -e 'tell app "Finder" to set frontmost of process "Python" to true' """
-        )
+        os.system("""/usr/bin/osascript -e 'tell app "Finder" to set frontmost of process "Python" to true' """)
 
 
 class ConfigWindow:
@@ -116,9 +114,7 @@ def start_monitor(username, key_filename, remote_dir, config_file, from_gui):
     if from_gui:
         print("")
         print("You can quickstart this using this command in future:")
-        print(
-            f"python -m txpipe.ui {username} {key_filename} {remote_dir} {config_file}"
-        )
+        print(f"python -m txpipe.ui {username} {key_filename} {remote_dir} {config_file}")
 
     # start a new TK instance
     root = tk.Tk()

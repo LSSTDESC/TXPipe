@@ -10,6 +10,7 @@ from .data_types import (
     TomographyCatalog,
     QPNOfZFile,
 )
+from ceci.config import StageParameter
 import glob
 import time
 import numpy as np
@@ -47,21 +48,23 @@ class TXLogNormalGlass(PipelineStage):
     ]
 
     config_options = {
-        "num_dens": None,
-        "zmin": 0.0,
-        "zmax": 2.0,
-        "dx": 100,
-        "bias0": 2.0, #linear bias at zpivot
-        "alpha_bz":0.0, #controls redshift evolution of bias
-        "zpivot": 0.6, 
-        "shift": 1.0, #lognormal shift
-        "contaminate": False,
-        "random_seed": 0,
-        "cl_optional_file": "none",
-        "ell_binned_min": 0.1,
-        "ell_binned_max": 5.0e5,
-        "ell_binned_nbins": 100,
-        "output_density_shell_maps":False,
+        "num_dens": StageParameter(float, required=True, msg="Number density of galaxies per square arcmin"),
+        "zmin": StageParameter(float, 0.0, msg="Minimum redshift for the simulation"),
+        "zmax": StageParameter(float, 2.0, msg="Maximum redshift for the simulation"),
+        "dx": StageParameter(int, 100, msg="Comoving distance spacing for redshift shells in Mpc"),
+        "bias0": StageParameter(float, 2.0, msg="Linear bias at zpivot"),
+        "alpha_bz": StageParameter(float, 0.0, msg="Controls redshift evolution of bias"),
+        "zpivot": StageParameter(float, 0.6, msg="Pivot redshift for bias evolution"),
+        "shift": StageParameter(float, 1.0, msg="Lognormal shift parameter"),
+        "contaminate": StageParameter(bool, False, msg="Whether to apply contamination to the density field"),
+        "random_seed": StageParameter(int, 0, msg="Random seed for reproducibility"),
+        "cl_optional_file": StageParameter(
+            str, "none", msg="Optional file for input C(l) values. Otherwise they are computed (slow)"
+        ),
+        "ell_binned_min": StageParameter(float, 0.1, msg="Minimum ell for binned C(l) output"),
+        "ell_binned_max": StageParameter(float, 5.0e5, msg="Maximum ell for binned C(l) output"),
+        "ell_binned_nbins": StageParameter(int, 100, msg="Number of ell bins for binned C(l) output"),
+        "output_density_shell_maps": StageParameter(bool, False, msg="Whether to output density maps for each shell"),
     }
 
     def run(self):
@@ -124,7 +127,11 @@ class TXLogNormalGlass(PipelineStage):
         bias0 = self.config["bias0"]
         alpha_bz = self.config["alpha_bz"]
         zpivot = self.config["zpivot"]
-        return bias0 * (1. + (1./3.)*((1+z)**alpha_bz - 1) )/(1. + (1./3.)*((1+zpivot)**alpha_bz - 1) )
+        return (
+            bias0
+            * (1.0 + (1.0 / 3.0) * ((1 + z) ** alpha_bz - 1))
+            / (1.0 + (1.0 / 3.0) * ((1 + zpivot) ** alpha_bz - 1))
+        )
 
     def generate_shell_cls(self):
         """
@@ -153,9 +160,9 @@ class TXLogNormalGlass(PipelineStage):
             # Make density shell objects for CCL
             density = []
             for ishell in range(self.nshells):
-                #make bias const in shell
-                b_shell = self.get_bias_at_z( self.ws[ishell].zeff )
-                bz = np.ones( len(zb_grid) ) * b_shell
+                # make bias const in shell
+                b_shell = self.get_bias_at_z(self.ws[ishell].zeff)
+                bz = np.ones(len(zb_grid)) * b_shell
 
                 wa_interped = scipy.interpolate.interp1d(
                     self.ws[ishell].za,
@@ -180,10 +187,10 @@ class TXLogNormalGlass(PipelineStage):
             for i in range(1, self.nshells + 1):
                 for j in range(i, 0, -1):
                     cl_bin = cosmo.angular_cl(density[i - 1], density[j - 1], self.ell)
-                    
-                    #fix monopole to 0
+
+                    # fix monopole to 0
                     cl_bin[0] = 0
-                    
+
                     self.cls.append(cl_bin)
                     self.cls_index.append((i, j))
 
@@ -247,9 +254,7 @@ class TXLogNormalGlass(PipelineStage):
         self.cls_index_binned = []
         for i in range(1, len(nzs) + 1):
             for j in range(i, 0, -1):
-                cl_bin = cosmo.angular_cl(
-                    density[i - 1], density[j - 1], self.ell_binned
-                )
+                cl_bin = cosmo.angular_cl(density[i - 1], density[j - 1], self.ell_binned)
                 self.cls_binned.append(cl_bin)
                 self.cls_index_binned.append((i, j))
 
@@ -290,9 +295,7 @@ class TXLogNormalGlass(PipelineStage):
             mask = map_file.read_map("mask")
             self.mask_map_info = map_file.read_map_info("mask")
         mask[mask == hp.UNSEEN] = 0.0  # set UNSEEN pixels to 0 (GLASS needs this)
-        mask_area = np.sum(mask[mask != hp.UNSEEN]) * hp.nside2pixarea(
-            self.nside, degrees=True
-        )
+        mask_area = np.sum(mask[mask != hp.UNSEEN]) * hp.nside2pixarea(self.nside, degrees=True)
 
         # get number density arcmin^-2 for each z bin from config
         target_num_dens = np.array(self.config["num_dens"])
@@ -317,9 +320,7 @@ class TXLogNormalGlass(PipelineStage):
                     g[g < 0] = 0.0
 
         # generator for lognormal matter fields
-        matter = glass.fields.generate_lognormal(
-            self.gls, self.nside, shift=self.config["shift"], ncorr=3, rng=rng
-        )
+        matter = glass.fields.generate_lognormal(self.gls, self.nside, shift=self.config["shift"], ncorr=3, rng=rng)
 
         # prepare for weight maps
         if self.config["contaminate"]:
@@ -341,9 +342,7 @@ class TXLogNormalGlass(PipelineStage):
                 continue
 
             # compute galaxy density (for each n(z)) in this shell
-            ngal_in_shell = (
-                target_num_dens * np.trapz(dndz_i, z_i) / np.trapz(nzs, z_nz)
-            )
+            ngal_in_shell = target_num_dens * np.trapz(dndz_i, z_i) / np.trapz(nzs, z_nz)
 
             self.write_shell_output(ishell, delta_i, ngal_in_shell, self.ws[ishell].zeff)
 
@@ -357,16 +356,12 @@ class TXLogNormalGlass(PipelineStage):
             ):
                 # Figure out which bin was generated (len(ngal_in_shell) = Nbins)
                 occupied_bins = np.where(gal_count != 0)[0]
-                assert (
-                    len(occupied_bins) == 1
-                )  # only one bin should be generated per call
+                assert len(occupied_bins) == 1  # only one bin should be generated per call
                 ibin = occupied_bins[0]
                 gal_count_bin = gal_count[ibin]
 
                 # sample redshifts uniformly in shell
-                gal_z = glass.galaxies.redshifts_from_nz(
-                    gal_count_bin, self.ws[ishell].za, self.ws[ishell].wa
-                )
+                gal_z = glass.galaxies.redshifts_from_nz(gal_count_bin, self.ws[ishell].za, self.ws[ishell].wa)
 
                 gal_lon[gal_lon < 0] += 360  # keeps 0 < ra < 360
 
@@ -386,9 +381,7 @@ class TXLogNormalGlass(PipelineStage):
                     gal_z = gal_z[obj_accept_contaminated]
                     gal_count_bin = np.sum(obj_accept_contaminated.astype("int"))
 
-                self.write_catalog_output_chunk(
-                    count, count + gal_count_bin, gal_lon, gal_lat, gal_z, ibin
-                )
+                self.write_catalog_output_chunk(count, count + gal_count_bin, gal_lon, gal_lat, gal_z, ibin)
 
                 count += gal_count_bin
 
@@ -410,27 +403,15 @@ class TXLogNormalGlass(PipelineStage):
 
         phot_output = self.open_output("photometry_catalog")
         group = phot_output.create_group("photometry")
-        group.create_dataset(
-            "ra", (self.est_max_n,), maxshape=self.est_max_n, dtype="f"
-        )
-        group.create_dataset(
-            "dec", (self.est_max_n,), maxshape=self.est_max_n, dtype="f"
-        )
-        group.create_dataset(
-            "redshift_true", (self.est_max_n,), maxshape=self.est_max_n, dtype="f"
-        )
+        group.create_dataset("ra", (self.est_max_n,), maxshape=self.est_max_n, dtype="f")
+        group.create_dataset("dec", (self.est_max_n,), maxshape=self.est_max_n, dtype="f")
+        group.create_dataset("redshift_true", (self.est_max_n,), maxshape=self.est_max_n, dtype="f")
         self.phot_output = phot_output
 
-        tomo_output = self.open_output(
-            "lens_tomography_catalog_unweighted"
-        )
+        tomo_output = self.open_output("lens_tomography_catalog_unweighted")
         group = tomo_output.create_group("tomography")
-        group.create_dataset(
-            "bin", (self.est_max_n,), maxshape=self.est_max_n, dtype="i"
-        )
-        group.create_dataset(
-            "lens_weight", (self.est_max_n,), maxshape=self.est_max_n, dtype="f"
-        )
+        group.create_dataset("bin", (self.est_max_n,), maxshape=self.est_max_n, dtype="i")
+        group.create_dataset("lens_weight", (self.est_max_n,), maxshape=self.est_max_n, dtype="f")
         group.create_dataset("counts", (self.nbin_lens,), dtype="i")
         group.create_dataset("counts_2d", (1,), dtype="i")
         self.tomo_output = tomo_output
@@ -440,30 +421,23 @@ class TXLogNormalGlass(PipelineStage):
             group = density_shell_output.create_group("density_shell_maps")
             fullsky_npix = hp.nside2npix(self.nside)
             for ishell in range(self.nshells):
-                group.create_dataset(
-                    f"shell{ishell}", (fullsky_npix,), dtype="f"
-                )
+                group.create_dataset(f"shell{ishell}", (fullsky_npix,), dtype="f")
         group = density_shell_output.create_group("num_dens_shell")
-        group.create_dataset(
-                f"num_dens_shell", (self.nbin_lens, self.nshells), dtype="f"
-            )
-        group.create_dataset(
-                f"zeff_shell", (self.nshells,), dtype="f"
-            )
-        self.density_shell_output = density_shell_output 
+        group.create_dataset(f"num_dens_shell", (self.nbin_lens, self.nshells), dtype="f")
+        group.create_dataset(f"zeff_shell", (self.nshells,), dtype="f")
+        self.density_shell_output = density_shell_output
 
     def write_shell_output(self, ishell, delta_i, ngal_in_shell, zeff_shell):
         """
         write a single density shell to output
         """
         if self.config["output_density_shell_maps"]:
-            group = self.density_shell_output['density_shell_maps']
+            group = self.density_shell_output["density_shell_maps"]
             group[f"shell{ishell}"][:] = delta_i
 
-        group = self.density_shell_output['num_dens_shell']
-        group["num_dens_shell"][:,ishell] = ngal_in_shell
+        group = self.density_shell_output["num_dens_shell"]
+        group["num_dens_shell"][:, ishell] = ngal_in_shell
         group["zeff_shell"][ishell] = zeff_shell
-
 
     def write_catalog_output_chunk(self, start, end, gal_lon, gal_lat, gal_z, tomobin):
         """
@@ -504,7 +478,7 @@ class TXLogNormalGlass(PipelineStage):
         group["counts_2d"][:] = np.array([total_count])
         group.attrs["nbin"] = self.nbin_lens
 
-        #close everything
+        # close everything
         self.phot_output.close()
         self.tomo_output.close()
         self.density_shell_output.close()

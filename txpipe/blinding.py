@@ -4,6 +4,7 @@ from .utils.theory import theory_3x2pt
 import numpy as np
 import warnings
 import os
+from ceci.config import StageParameter
 
 
 class TXBlinding(PipelineStage):
@@ -25,15 +26,15 @@ class TXBlinding(PipelineStage):
         ("twopoint_data_real", SACCFile),
     ]
     config_options = {
-        "seed": 1972,  ## seed uniquely specifies the shift in parameters
-        "Omega_b": [0.0485, 0.001],  ## fiducial_model_value, shift_sigma
-        "Omega_c": [0.2545, 0.01],
-        "w0": [-1.0, 0.1],
-        "h": [0.682, 0.02],
-        "sigma8": [0.801, 0.01],
-        "n_s": [0.971, 0.03],
-        "b0": 0.95,  ### we assume bias to be of the form b0/growth
-        "delete_unblinded": False,
+        "seed": StageParameter(int, 1972, msg="Seed uniquely specifies the shift in parameters."),
+        "Omega_b": StageParameter(list, [0.0485, 0.001], msg="Fiducial value and shift sigma for Omega_b."),
+        "Omega_c": StageParameter(list, [0.2545, 0.01], msg="Fiducial value and shift sigma for Omega_c."),
+        "w0": StageParameter(list, [-1.0, 0.1], msg="Fiducial value and shift sigma for w0."),
+        "h": StageParameter(list, [0.682, 0.02], msg="Fiducial value and shift sigma for h."),
+        "sigma8": StageParameter(list, [0.801, 0.01], msg="Fiducial value and shift sigma for sigma8."),
+        "n_s": StageParameter(list, [0.971, 0.03], msg="Fiducial value and shift sigma for n_s."),
+        "b0": StageParameter(float, 0.95, msg="Bias parameter (b0/growth)."),
+        "delete_unblinded": StageParameter(bool, False, msg="Whether to delete unblinded data after blinding."),
     }
 
     def run(self):
@@ -85,7 +86,6 @@ class TXBlinding(PipelineStage):
         # Save the signature into the output
         sack.metadata["blinding_signature"] = signature
 
-
         ## now try to get predictions
         print("Computing fiducial theory")
         fid_theory = theory_3x2pt(fid_cosmo, sack, bias=self.config["b0"])
@@ -104,6 +104,7 @@ class TXBlinding(PipelineStage):
 
     def get_parameters(self):
         import pyccl
+
         seed = self.config["seed"]
         print(f"Blinding with seed {seed}")
 
@@ -120,10 +121,7 @@ class TXBlinding(PipelineStage):
             print(f"Blinding signature: {signature}")
 
         # Pull out the fiducial parameters from the config
-        fid_params = {
-            p: self.config[p][0]
-            for p in ["Omega_b", "Omega_c", "h", "w0", "sigma8", "n_s"]
-        }
+        fid_params = {p: self.config[p][0] for p in ["Omega_b", "Omega_c", "h", "w0", "sigma8", "n_s"]}
 
         # Get the parameters in the offset space
         offset_params = fid_params.copy()
@@ -137,8 +135,6 @@ class TXBlinding(PipelineStage):
         offset_cosmo = pyccl.Cosmology(**offset_params)
 
         return signature, fid_cosmo, offset_cosmo
-
-
 
 
 class TXNullBlinding(PipelineStage):

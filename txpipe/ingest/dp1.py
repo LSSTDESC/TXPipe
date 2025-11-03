@@ -1,15 +1,15 @@
 from ..base_stage import PipelineStage
 from ..data_types import ShearCatalog, PhotometryCatalog, HDFFile, FileCollection
 from .lsst import process_photometry_data, process_shear_data
+from ceci.config import StageParameter
 import numpy as np
 
 
-
 # From https://rtn-095.lsst.io/
-# The three main fields we want for cosmology are
+# The three main fields we want for cosmology are
 # the ones in the wide-fast-deep region, excluding
-# the globular cluster field and nebula field. That leaves:
-#   Euclid Deep Field South
+# the globular cluster field and nebula field. That leaves:
+#   Euclid Deep Field South
 #   Extended Chandra Deep Field South
 #   Low Galactic Latitude Field aka Rubin_SV_095_-25
 
@@ -24,22 +24,16 @@ DP1_COSMOLOGY_FIELDS = [
 DP1_TRACTS = {
     # Euclid Deep Field South
     "EDFS": [2393, 2234, 2235, 2394],
-
     # Extended Chandra Deep Field South
-    "ECDFS": [5062, 5063, 5064, 4848, 4849], 
-
+    "ECDFS": [5062, 5063, 5064, 4848, 4849],
     # Low Galactic Latitude Field / Rubin_SV_095_-25
     "LGLF": [5305, 5306, 5525, 5526],
-
     # Fornax Dwarf Spheroidal Galaxy
     "FDSG": [4016, 4217, 4218, 4017],
-
     # Low Ecliptic Latitude Field / Rubin_SV_38_7
     "LELF": [10464, 10221, 10222, 10704, 10705, 10463],
-
     # Seagull Nebula
     "Seagull": [7850, 7849, 7610, 7611],
-
     # 47 Tuc Globular Cluster
     "47Tuc": [531, 532, 453, 454],
 }
@@ -48,7 +42,7 @@ DP1_COSMOLOGY_TRACTS = sum([DP1_TRACTS[_field] for _field in DP1_COSMOLOGY_FIELD
 ALL_TRACTS = sum(DP1_TRACTS.values(), [])
 
 
-# In case useful later:
+# In case useful later:
 DP1_FIELD_CENTERS = {
     "47 Tuc Globular Cluster": (6.02, -72.08),
     "Low Ecliptic Latitude Field": (37.86, 6.98),
@@ -63,7 +57,7 @@ DP1_FIELD_CENTERS = {
 DP1_SURVEY_PROPERTIES = {
     "deepCoadd_exposure_time_consolidated_map_sum": "Total exposure time accumulated per sky position (second)",
     "deepCoadd_epoch_consolidated_map_min": "Earliest observation epoch (MJD)",
-    "deepCoadd_epoch_consolidated_map_max":  "Latest observation epoch (MJD)",
+    "deepCoadd_epoch_consolidated_map_max": "Latest observation epoch (MJD)",
     "deepCoadd_epoch_consolidated_map_mean": "Mean observation epoch (MJD)",
     "deepCoadd_psf_size_consolidated_map_weighted_mean": "Weighted mean of PSF characteristic width as computed from the determinant radius (pixel)",
     "deepCoadd_psf_e1_consolidated_map_weighted_mean": "Weighted mean of PSF ellipticity component e1",
@@ -82,6 +76,7 @@ class TXIngestDataPreview1(PipelineStage):
     """
     Ingest galaxy catalogs from DP1
     """
+
     name = "TXIngestDataPreview1"
     inputs = []
     outputs = [
@@ -91,25 +86,31 @@ class TXIngestDataPreview1(PipelineStage):
         ("survey_property_maps", FileCollection),
     ]
     config_options = {
-        "butler_config_file": "/global/cfs/cdirs/lsst/production/gen3/rubin/DP1/repo/butler.yaml",
-        "cosmology_tracts_only": True,
-        "select_field": "",  # If set, only select objects in this field. Overrides cosmology_tracts_only.
-        "collections": "LSSTComCam/DP1",
+        "butler_config_file": StageParameter(
+            str,
+            "/global/cfs/cdirs/lsst/production/gen3/rubin/DP1/repo/butler.yaml",
+            msg="Path to the LSST butler config file.",
+        ),
+        "cosmology_tracts_only": StageParameter(bool, True, msg="Use only cosmology tracts."),
+        "select_field": StageParameter(str, "", msg="Field to select (overrides cosmology_tracts_only)."),
+        "collections": StageParameter(str, "LSSTComCam/DP1", msg="Butler collections to use."),
     }
 
     def run(self):
-        error_msg = "The LSST Science Pipelines are not installed in this environment, " \
-                              "or are not configured correctly to access the data. " \
-                              "See the note in the file example/dp1/ingest.yml for how to set "\
-                              "this up on NERSC."
+        error_msg = (
+            "The LSST Science Pipelines are not installed in this environment, "
+            "or are not configured correctly to access the data. "
+            "See the note in the file example/dp1/ingest.yml for how to set "
+            "this up on NERSC."
+        )
         try:
             from lsst.daf.butler import Butler
         except:
             raise ImportError(error_msg)
 
         # Configure and create the butler. There seem to be several ways
-        # to do this, and there is a central collective butler yaml file
-        # on NERSC
+        # to do this, and there is a central collective butler yaml file
+        # on NERSC
         butler_config_file = self.config["butler_config_file"]
         collections = self.config["collections"]
         try:
@@ -124,52 +125,50 @@ class TXIngestDataPreview1(PipelineStage):
         else:
             selected_tracts = ALL_TRACTS
 
-
         self.ingest_survey_property_maps(butler, selected_tracts)
         self.ingest_photometry(butler, selected_tracts)
         self.ingest_visits(butler, selected_tracts)
 
-
     def ingest_photometry(self, butler, tracts):
         from ..utils.hdf_tools import h5py_shorten, repack
-        columns = [
-            'objectId',
-            'tract',
-            'patch',
-            'coord_dec',
-            'coord_ra',
-            'g_cModelFlux',
-            'g_cModelFluxErr',
-            'g_cModel_flag',
-            'i_cModelFlux',
-            'i_cModelFluxErr',
-            'i_cModel_flag',
-            'i_hsmShapeRegauss_e1',
-            'i_hsmShapeRegauss_e2',
-            'i_hsmShapeRegauss_flag',
-            'i_hsmShapeRegauss_sigma',
-            'i_ixx',
-            'i_ixxPSF',
-            'i_ixy',
-            'i_ixyPSF',
-            'i_iyy',
-            'i_iyyPSF',
-            'r_cModelFlux',
-            'r_cModelFluxErr',
-            'r_cModel_flag',
-            'refExtendedness',
-            'u_cModelFlux',
-            'u_cModelFluxErr',
-            'u_cModel_flag',
-            'y_cModelFlux',
-            'y_cModelFluxErr',
-            'y_cModel_flag',
-            'z_cModelFlux',
-            'z_cModelFluxErr',
-            'z_cModel_flag',
-            'deblend_skipped',
-            'deblend_failed',
 
+        columns = [
+            "objectId",
+            "tract",
+            "patch",
+            "coord_dec",
+            "coord_ra",
+            "g_cModelFlux",
+            "g_cModelFluxErr",
+            "g_cModel_flag",
+            "i_cModelFlux",
+            "i_cModelFluxErr",
+            "i_cModel_flag",
+            "i_hsmShapeRegauss_e1",
+            "i_hsmShapeRegauss_e2",
+            "i_hsmShapeRegauss_flag",
+            "i_hsmShapeRegauss_sigma",
+            "i_ixx",
+            "i_ixxPSF",
+            "i_ixy",
+            "i_ixyPSF",
+            "i_iyy",
+            "i_iyyPSF",
+            "r_cModelFlux",
+            "r_cModelFluxErr",
+            "r_cModel_flag",
+            "refExtendedness",
+            "u_cModelFlux",
+            "u_cModelFluxErr",
+            "u_cModel_flag",
+            "y_cModelFlux",
+            "y_cModelFluxErr",
+            "y_cModel_flag",
+            "z_cModelFlux",
+            "z_cModelFluxErr",
+            "z_cModel_flag",
+            "deblend_skipped",
+            "deblend_failed",
         ]
         n = self.get_catalog_size(butler, "object")
 
@@ -179,21 +178,20 @@ class TXIngestDataPreview1(PipelineStage):
         data_set_refs = butler.query_datasets("object")
         n_chunks = len(data_set_refs)
 
-
         for i, ref in enumerate(data_set_refs):
             tract = ref.dataId["tract"]
             if tract not in tracts:
-                print(f"Skipping chunk {i+1} / {n_chunks} since tract {tract} is not selected")
+                print(f"Skipping chunk {i + 1} / {n_chunks} since tract {tract} is not selected")
                 continue
 
-            d = butler.get("object", dataId=ref.dataId, parameters={'columns': columns})
+            d = butler.get("object", dataId=ref.dataId, parameters={"columns": columns})
             chunk_size = len(d)
 
             if chunk_size == 0:
-                print(f"Skipping chunk {i+1} / {n_chunks} since it is empty")
+                print(f"Skipping chunk {i + 1} / {n_chunks} since it is empty")
                 continue
 
-            # This renames columns, and does some selection and
+            # This renames columns, and does some selection and
             # processing like fluxes to magnitudes and shear moments
             # to shear components.
             photo_data = process_photometry_data(d)
@@ -207,31 +205,31 @@ class TXIngestDataPreview1(PipelineStage):
                 photo_outfile = self.setup_output("photometry_catalog", "photometry", photo_data, n)
                 shear_outfile = self.setup_output("shear_catalog", "shear", shear_data, n)
                 # We don't have a good shear catalog yet, so all our shears are going to be
-                # uncalibrated. So let's not even try to calibrate them, and instead just 
-                # pretend they are precalibrated.
+                # uncalibrated. So let's not even try to calibrate them, and instead just
+                # pretend they are precalibrated.
                 shear_outfile["shear"].attrs["catalog_type"] = "simple"
 
-            # Output these chunks to the output files
-            photo_end = photo_start + len(photo_data['ra'])
-            shear_end = shear_start + len(shear_data['ra'])
+            # Output these chunks to the output files
+            photo_end = photo_start + len(photo_data["ra"])
+            shear_end = shear_start + len(shear_data["ra"])
             self.write_output(photo_outfile, "photometry", photo_data, photo_start, photo_end)
             self.write_output(shear_outfile, "shear", shear_data, shear_start, shear_end)
 
-            print(f"Processing chunk {i+1} / {n_chunks} into rows {photo_start:,} - {photo_end:,}")
+            print(f"Processing chunk {i + 1} / {n_chunks} into rows {photo_start:,} - {photo_end:,}")
             photo_start = photo_end
             shear_start = shear_end
 
         print(f"Final selected objects: {photo_end:,} in photometry and {shear_end:,} in shear")
 
         # When we created the files we used the maximum possible length
-        # for the column sizes (which is what we would get if there were
-        # no stars in the catalog). Now we can trim the columns to the
+        # for the column sizes (which is what we would get if there were
+        # no stars in the catalog). Now we can trim the columns to the
         # actual size of the data we have. Everything after that is empty.
         print("Trimming columns:")
         for col in photo_data.keys():
             print("    ", col)
             h5py_shorten(photo_outfile["photometry"], col, photo_end)
-        
+
         print("Trimming shear columns:")
         for col in shear_data.keys():
             print("    ", col)
@@ -247,6 +245,7 @@ class TXIngestDataPreview1(PipelineStage):
 
     def ingest_survey_property_maps(self, butler, selected_tracts):
         import healpy
+
         skymap = butler.get("skyMap")
 
         map_types = butler.registry.queryDatasetTypes(expression="*consolidated_map*")
@@ -274,10 +273,7 @@ class TXIngestDataPreview1(PipelineStage):
                 filenames.append(filename)
         f.write_listing(filenames)
 
-
-
     def ingest_visits(self, butler, selected_tracts):
-
         skymap = butler.get("skyMap")
 
         # There aren't that many columns, we can just dump the whole thing
@@ -295,8 +291,8 @@ class TXIngestDataPreview1(PipelineStage):
                 data = sanitize(d1[col])
                 g.create_dataset(col, data=data)
 
-            # Let's also save the detector visits table as we can use
-            # if for null tests on chip center tangential shear.
+            # Let's also save the detector visits table as we can use
+            # if for null tests on chip center tangential shear.
             g = f.create_group("detector_visits")
             d2 = butler.get("visit_detector_table")
 
@@ -308,8 +304,6 @@ class TXIngestDataPreview1(PipelineStage):
             for col in d2.columns:
                 data = sanitize(d2[col])
                 g.create_dataset(col, data=data)
-
-
 
     def setup_output(self, tag, group, first_chunk, n):
         f = self.open_output(tag)
@@ -327,9 +321,9 @@ class TXIngestDataPreview1(PipelineStage):
                 col = col.filled(np.nan)
             g[name][start:end] = col
 
-
     def get_catalog_size(self, butler, dataset_type):
         import pyarrow.parquet
+
         n = 0
         for ref in butler.query_datasets(dataset_type):
             uri = butler.getURI(ref)
@@ -347,7 +341,7 @@ def sanitize(data):
     # convert unicode to strings
     if data.dtype.kind == "U":
         data = data.astype("S")
-    # convert dates to integers
+    # convert dates to integers
     elif data.dtype.kind == "M":
         data = data.astype(int)
 

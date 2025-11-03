@@ -27,8 +27,10 @@ from .utils.calibrators import (
     NullCalibrator,
 )
 from .binning import build_tomographic_classifier, apply_classifier, read_training_data
+from ceci.config import StageParameter
 import numpy as np
 import warnings
+
 
 class BinStats:
     """
@@ -79,7 +81,7 @@ class BinStats:
             group["sigma_e_2d"][:] = self.sigma_e
         else:
             group["counts"][i] = self.source_count
-            group["N_eff"][i]   = self.N_eff
+            group["N_eff"][i] = self.N_eff
             group["mean_e1"][i] = self.mean_e[0]
             group["mean_e2"][i] = self.mean_e[1]
             group["sigma_e"][i] = self.sigma_e
@@ -124,17 +126,21 @@ class TXSourceSelectorBase(PipelineStage):
     outputs = [("shear_tomography_catalog", TomographyCatalog)]
 
     config_options = {
-        "input_pz": False,
-        "true_z": False,
-        "bands": "riz",  # bands from metacal to use
-        "verbose": False,
-        "T_cut": float,
-        "s2n_cut": float,
-        "chunk_rows": 10000,
-        "source_zbin_edges": [float],
-        "random_seed": 42,
-        "spec_mag_column_format": "photometry/{band}",
-        "spec_redshift_column": "photometry/redshift",
+        "input_pz": StageParameter(bool, False, msg="Whether to use input photo-z posteriors"),
+        "true_z": StageParameter(bool, False, msg="Whether to use true redshifts instead of photo-z"),
+        "bands": StageParameter(str, "riz", msg="Bands from the catalog to use for selection"),
+        "verbose": StageParameter(bool, False, msg="Whether to print verbose output"),
+        "T_cut": StageParameter(float, required=True, msg="Size cut threshold for object selection"),
+        "s2n_cut": StageParameter(float, required=True, msg="Signal-to-noise cut threshold for object selection"),
+        "chunk_rows": StageParameter(int, 10000, msg="Number of rows to process in each chunk"),
+        "source_zbin_edges": StageParameter(list, required=True, msg="Redshift bin edges for source tomography"),
+        "random_seed": StageParameter(int, 42, msg="Random seed for reproducibility"),
+        "spec_mag_column_format": StageParameter(
+            str, "photometry/{band}", msg="Format string for spectroscopic magnitude columns"
+        ),
+        "spec_redshift_column": StageParameter(
+            str, "photometry/redshift", msg="Column name for spectroscopic redshifts"
+        ),
     }
 
     def run(self):
@@ -145,8 +151,7 @@ class TXSourceSelectorBase(PipelineStage):
         # accidentally doing so we give a clear message if they try.
         if self.name == "TXSourceSelector":
             raise ValueError(
-                "Do not use the class TXSourceSelector any more. "
-                "Use one of the subclasses like TXSourceSelectorMetacal"
+                "Do not use the class TXSourceSelector any more. Use one of the subclasses like TXSourceSelectorMetacal"
             )
 
         # Suppress some warnings from numpy that are not relevant
@@ -168,7 +173,6 @@ class TXSourceSelectorBase(PipelineStage):
 
         # Build a classifier used to put objects into tomographic bins
         if not (self.config["input_pz"] or self.config["true_z"]):
-
             with self.open_input("spectroscopic_catalog") as spec_file:
                 training_data = read_training_data(
                     spec_file,
@@ -176,7 +180,6 @@ class TXSourceSelectorBase(PipelineStage):
                     self.config["spec_mag_column_format"],
                     self.config["spec_redshift_column"],
                 )
-
 
             classifier, features = build_tomographic_classifier(
                 bands,
@@ -191,14 +194,12 @@ class TXSourceSelectorBase(PipelineStage):
         # matrices for each chunk and do a weighted average at the end.
         nbin_source = len(self.config["source_zbin_edges"]) - 1
 
-        number_density_stats = SourceNumberDensityStats(
-            nbin_source, comm=self.comm, shear_type=shear_catalog_type
-        )
+        number_density_stats = SourceNumberDensityStats(nbin_source, comm=self.comm, shear_type=shear_catalog_type)
 
         calculators = self.setup_response_calculators(nbin_source)
 
         # Loop through the input data, processing it chunk by chunk
-        for (start, end, shear_data) in it:
+        for start, end, shear_data in it:
             print(f"Process {self.rank} running selection for rows {start:,}-{end:,}")
 
             # Either apply a simple z cut if we have an input PZ estimate or
@@ -217,9 +218,7 @@ class TXSourceSelectorBase(PipelineStage):
                 )
             # Combine this selection with size and snr cuts to produce a source selection
             # and calculate the shear bias it would generate
-            tomo_bin, R, counts = self.calculate_tomography(
-                pz_data, shear_data, calculators
-            )
+            tomo_bin, R, counts = self.calculate_tomography(pz_data, shear_data, calculators)
 
             # Save the tomography for this chunk
             self.write_tomography(output_file, start, end, tomo_bin, R)
@@ -246,9 +245,7 @@ class TXSourceSelectorBase(PipelineStage):
 
         pz_data_bin = np.zeros(len(zz), dtype=int) - 1
         for zi in range(len(self.config["source_zbin_edges"]) - 1):
-            mask_zbin = (zz >= self.config["source_zbin_edges"][zi]) & (
-                zz < self.config["source_zbin_edges"][zi + 1]
-            )
+            mask_zbin = (zz >= self.config["source_zbin_edges"][zi]) & (zz < self.config["source_zbin_edges"][zi + 1])
             pz_data_bin[mask_zbin] = zi
 
         return {"zbin": pz_data_bin}
@@ -318,7 +315,7 @@ class TXSourceSelectorBase(PipelineStage):
         output = self.open_output("shear_tomography_catalog", parallel=True, wrapper=True)
         outfile = output.file
         group = outfile.create_group("tomography")
-        group.attrs['catalog_type'] = cat_type
+        group.attrs["catalog_type"] = cat_type
         output.write_zbins(zbins)
         group.create_dataset("bin", (n,), dtype="i")
 
@@ -421,8 +418,8 @@ class TXSourceSelectorBase(PipelineStage):
         variant = data.suffix
 
         shear_prefix = self.config["shear_prefix"]
-        s2n  = data[f"{shear_prefix}s2n{variant}"]
-        T    = data[f"{shear_prefix}T{variant}"]
+        s2n = data[f"{shear_prefix}s2n{variant}"]
+        T = data[f"{shear_prefix}T{variant}"]
         Tpsf = data[f"{shear_prefix}psf_T_mean"]
         flag = data[f"{shear_prefix}flags{variant}"]
 
@@ -452,15 +449,11 @@ class TXSourceSelectorBase(PipelineStage):
         # as above
         if verbose and calling_from_select:
             print(
-                f"Tomo selection ({variant}) {f1:.2%} flag, {f2:.2%} size, "
-                f"{f3:.2%} SNR, ",
+                f"Tomo selection ({variant}) {f1:.2%} flag, {f2:.2%} size, {f3:.2%} SNR, ",
                 end="",
             )
         elif verbose:
-            print(
-                f"2D selection ({variant}) {f1:.2%} flag, {f2:.2%} size, "
-                f"{f3:.2%} SNR, {f4:.2%} any z bin"
-            )
+            print(f"2D selection ({variant}) {f1:.2%} flag, {f2:.2%} size, {f3:.2%} SNR, {f4:.2%} any z bin")
             print("total 2D", sel.sum())
         return sel
 
@@ -479,10 +472,11 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
     # add one option to the base class configuration
     config_options = {
         **TXSourceSelectorBase.config_options,
-        "delta_gamma": float,
-        "use_diagonal_response": False
+        "delta_gamma": StageParameter(float, required=True, msg="Delta gamma value for metacal response calculation"),
+        "use_diagonal_response": StageParameter(
+            bool, False, msg="Whether to use only diagonal elements of the response matrix"
+        ),
     }
-
 
     # The main differences between the classes are to do with how the data is read
     # and what output response values are generated.
@@ -494,13 +488,9 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
         just choosing which columns to read.
         """
         bands = self.config["bands"]
-        shear_cols = metacal_variants(
-            "mcal_T", "mcal_s2n", "mcal_g1", "mcal_g2", "mcal_flags", "weight"
-        )
+        shear_cols = metacal_variants("mcal_T", "mcal_s2n", "mcal_g1", "mcal_g2", "mcal_flags", "weight")
         shear_cols += ["ra", "dec", "mcal_psf_T_mean"]
-        shear_cols += band_variants(
-            bands, "mcal_mag", "mcal_mag_err", shear_catalog_type="metacal"
-        )
+        shear_cols += band_variants(bands, "mcal_mag", "mcal_mag_err", shear_catalog_type="metacal")
 
         if self.config["input_pz"]:
             shear_cols += metacal_variants("mean_z")
@@ -541,10 +531,8 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
     def setup_response_calculators(self, nbin_source):
         delta_gamma = self.config["delta_gamma"]
         use_diagonal_response = self.config["use_diagonal_response"]
-        calculators = [
-            MetacalCalculator(self.select, delta_gamma,use_diagonal_response) for i in range(nbin_source)
-        ]
-        calculators.append(MetacalCalculator(self.select_2d, delta_gamma,use_diagonal_response))
+        calculators = [MetacalCalculator(self.select, delta_gamma, use_diagonal_response) for i in range(nbin_source)]
+        calculators.append(MetacalCalculator(self.select_2d, delta_gamma, use_diagonal_response))
         return calculators
 
     def write_tomography(self, outfile, start, end, source_bin, R):
@@ -630,9 +618,10 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
     # add one option to the base class configuration
     config_options = {
         **TXSourceSelectorBase.config_options,
-        "delta_gamma": float
+        "delta_gamma": StageParameter(
+            float, required=True, msg="Delta gamma value for metadetect response calculation"
+        ),
     }
-
 
     def data_iterator(self):
         # As above, this is where we work out which columns we need.
@@ -640,14 +629,10 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         bands = self.config["bands"]
 
         # Core quantities we need
-        shear_cols = metadetect_variants(
-            "T", "s2n", "g1", "g2", "ra", "dec", "mcal_psf_T_mean", "weight", "flags"
-        )
+        shear_cols = metadetect_variants("T", "s2n", "g1", "g2", "ra", "dec", "mcal_psf_T_mean", "weight", "flags")
 
         # Magnitudes and errors
-        shear_cols += band_variants(
-            bands, "mag", "mag_err", shear_catalog_type="metadetect"
-        )
+        shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="metadetect")
         renames = {}
 
         # We need truth shears and/or PZ point-estimates for each shear too
@@ -662,16 +647,12 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
 
         # This is a parent ceci.PipelineStage method.
         # It returns an iterator we loop through
-        it = self.iterate_hdf(
-            "shear_catalog", "shear", shear_cols, chunk_rows, longest=True
-        )
+        it = self.iterate_hdf("shear_catalog", "shear", shear_cols, chunk_rows, longest=True)
         return rename_iterated(it, renames)
 
     def setup_response_calculators(self, nbin_source):
         delta_gamma = self.config["delta_gamma"]
-        calculators = [
-            MetaDetectCalculator(self.select, delta_gamma) for i in range(nbin_source)
-        ]
+        calculators = [MetaDetectCalculator(self.select, delta_gamma) for i in range(nbin_source)]
         calculators.append(MetaDetectCalculator(self.select_2d, delta_gamma))
         return calculators
 
@@ -730,6 +711,7 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         # Like metacal, N_eff = N for metadetect
         return BinStats(N, Neff, mean_e, sigma_e, calibrator)
 
+
 class TXSourceSelectorLensfit(TXSourceSelectorBase):
     """
     Source selection and tomography for lensfit catalogs
@@ -745,10 +727,11 @@ class TXSourceSelectorLensfit(TXSourceSelectorBase):
     # add one option to the base class configuration
     config_options = {
         **TXSourceSelectorBase.config_options,
-        "input_m_is_weighted": bool,
-        "dec_cut": True,
+        "input_m_is_weighted": StageParameter(
+            bool, required=True, msg="Whether the input m values are already weighted"
+        ),
+        "dec_cut": StageParameter(bool, True, msg="Whether to apply a declination cut"),
     }
-
 
     def data_iterator(self):
         chunk_rows = self.config["chunk_rows"]
@@ -765,9 +748,7 @@ class TXSourceSelectorLensfit(TXSourceSelectorBase):
             "weight",
             "m",
         ]
-        shear_cols += band_variants(
-            bands, "mag", "mag_err", shear_catalog_type="lensfit"
-        )
+        shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="lensfit")
         if self.config["input_pz"]:
             shear_cols += ["mean_z"]
         elif self.config["true_z"]:
@@ -779,9 +760,7 @@ class TXSourceSelectorLensfit(TXSourceSelectorBase):
             LensfitCalculator(self.select, input_m_is_weighted=self.config["input_m_is_weighted"])
             for i in range(nbin_source)
         ]
-        calculators.append(
-            LensfitCalculator(self.select_2d, input_m_is_weighted=self.config["input_m_is_weighted"])
-        )
+        calculators.append(LensfitCalculator(self.select_2d, input_m_is_weighted=self.config["input_m_is_weighted"]))
         return calculators
 
     def setup_output(self):
@@ -802,18 +781,20 @@ class TXSourceSelectorLensfit(TXSourceSelectorBase):
         return outfile
 
     def compute_output_stats(self, calculator, mean, variance):
-        K, C_N,C_S, N, Neff = calculator.collect(self.comm, allgather=True)
+        K, C_N, C_S, N, Neff = calculator.collect(self.comm, allgather=True)
         calibrator = LensfitCalibrator(K, C_N, C_S)
-        mean_e = (C_N+C_S)/2
+        mean_e = (C_N + C_S) / 2
         sigma_e = np.sqrt((0.5 * (variance[0] + variance[1]))) / (1 + K)
 
         return BinStats(N, Neff, mean_e, sigma_e, calibrator)
+
 
 class TXSourceSelectorSimple(TXSourceSelectorBase):
     """
     Source selection and tomography for mock catalogs that do not
     require any calibration.
     """
+
     name = "TXSourceSelectorSimple"
     config_options = TXSourceSelectorBase.config_options.copy()
 
@@ -856,7 +837,6 @@ class TXSourceSelectorSimple(TXSourceSelectorBase):
         return BinStats(N, Neff, mean_e, sigma_e, calibrator)
 
 
-
 class TXSourceSelectorHSC(TXSourceSelectorBase):
     """
     Source selection and tomography for HSC catalogs
@@ -872,8 +852,8 @@ class TXSourceSelectorHSC(TXSourceSelectorBase):
 
     name = "TXSourceSelectorHSC"
     config_options = TXSourceSelectorBase.config_options.copy()
-    config_options["max_shear_cut"] = 0.0
-    
+    config_options["max_shear_cut"] = StageParameter(float, 0.0, msg="Maximum shear value for object selection")
+
     def data_iterator(self):
         chunk_rows = self.config["chunk_rows"]
         bands = self.config["bands"]
@@ -931,10 +911,7 @@ class TXSourceSelectorHSC(TXSourceSelectorBase):
 
     def compute_per_object_response(self, data):
         w_tot = np.sum(data["weight"])
-        R = np.array(
-            [1.0 - np.sum(data["weight"] * data["sigma_e"]) / w_tot]
-            * len(data["weight"])
-        )
+        R = np.array([1.0 - np.sum(data["weight"] * data["sigma_e"]) / w_tot] * len(data["weight"]))
         return R
 
     def compute_output_stats(self, calculator, mean, variance):
@@ -944,13 +921,8 @@ class TXSourceSelectorHSC(TXSourceSelectorBase):
         return BinStats(N, Neff, mean, sigma_e, calibrator)
 
     def setup_response_calculators(self, nbin_source):
-        calculators = [
-            HSCCalculator(self.select)
-            for i in range(nbin_source)
-        ]
-        calculators.append(
-            HSCCalculator(self.select_2d)
-        )
+        calculators = [HSCCalculator(self.select) for i in range(nbin_source)]
+        calculators.append(HSCCalculator(self.select_2d))
         return calculators
 
     def select_2d(self, data, calling_from_select=False):
@@ -970,6 +942,7 @@ class TXSourceSelectorHSC(TXSourceSelectorBase):
             p = sel.sum() / sel.size * 100
             print(f" after shear cut retain {p:.2f}% of objects")
         return sel
+
 
 if __name__ == "__main__":
     PipelineStage.main()

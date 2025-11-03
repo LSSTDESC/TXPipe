@@ -293,6 +293,15 @@ TXMapCorrelations:
     outlier_fraction: 0.05
     nbin: 20
 
+TXShearCalibration:
+    add_fiducial_distance: True
+    copy_redshift: True
+    redshift_name: 'redshift_true'
+    shear_prefix: mcal_
+
+TXTwoPointSCIA:
+    do_pos_pos: False
+    use_randoms: False
 
 PZRailSummarizeLens:
     leafsize: 20

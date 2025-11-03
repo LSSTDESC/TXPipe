@@ -20,9 +20,7 @@ class PipelineMonitor:
             client = paramiko.SSHClient()
             client.load_system_host_keys()
             key_filename = os.path.expanduser(key_filename)
-            client.connect(
-                "cori.nersc.gov", username=username, key_filename=key_filename
-            )
+            client.connect("cori.nersc.gov", username=username, key_filename=key_filename)
             config_remote_path = os.path.join(remote_dir, config_file)
 
             cmd = f"cat {config_remote_path}"
@@ -30,18 +28,14 @@ class PipelineMonitor:
             stdin, stdout, stderr = client.exec_command(cmd)
             err = stderr.read()
         if err:
-            raise ValueError(
-                f"Remote config file {config_file} not found on NERSC: {err}"
-            )
+            raise ValueError(f"Remote config file {config_file} not found on NERSC: {err}")
         config_data = stdout.read()
 
         config = yaml.safe_load(config_data)
         # d/l file
 
         # Info we need from the pipeline
-        self.stages = [
-            ceci.PipelineStage.get_stage(stage["name"]) for stage in config["stages"]
-        ]
+        self.stages = [ceci.PipelineStage.get_stage(stage["name"]) for stage in config["stages"]]
         self.inputs = config["inputs"]
 
         # determine which directories to watch - log dir and output dir
@@ -81,14 +75,10 @@ class PipelineMonitor:
         complete_files, running_files = self.check_file_statuses(output_files)
 
         # check stage statuses
-        complete_stages, running_stages = self.check_stage_statuses(
-            complete_files, log_files
-        )
+        complete_stages, running_stages = self.check_stage_statuses(complete_files, log_files)
 
         # Build the dag
-        self.dag = self.build_dag(
-            running_stages, complete_stages, running_files, complete_files
-        )
+        self.dag = self.build_dag(running_stages, complete_stages, running_files, complete_files)
 
         return True
 
@@ -136,7 +126,6 @@ class PipelineMonitor:
         return complete_stages, running_stages
 
     def build_dag(self, running_stages, complete_stages, running_files, complete_files):
-
         G = pygraphviz.AGraph(
             directed=True,
             rankdir="LR",

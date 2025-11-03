@@ -1,6 +1,7 @@
 from ..base_stage import PipelineStage
 from ..data_types import ShearCatalog, HDFFile
 from ..utils import band_variants, metacal_variants, moments_to_shear
+from ceci.config import StageParameter
 import numpy as np
 import glob
 import re
@@ -24,11 +25,11 @@ class TXMetacalGCRInput(PipelineStage):
     ]
 
     config_options = {
-        "cat_name": str,
-        "single_tract": "",
-        "length": 0,
-        "table_dir": "",
-        "data_release": "",
+        "cat_name": StageParameter(str, "", msg="Name of the GCR catalog to load."),
+        "single_tract": StageParameter(str, "", msg="Single tract to use (optional)."),
+        "length": StageParameter(int, 0, msg="Pre-known length, if the catalog has been checked at previously."),
+        "table_dir": StageParameter(str, "", msg="Directory for table files (optional)."),
+        "data_release": StageParameter(str, "", msg="Data release identifier (optional)."),
     }
 
     def run(self):
@@ -84,9 +85,7 @@ class TXMetacalGCRInput(PipelineStage):
                 "mcal_flags",
             ]
             + metacal_variants("mcal_g1", "mcal_g2", "mcal_T", "mcal_s2n")
-            + band_variants(
-                bands, "mcal_mag", "mcal_mag_err", shear_catalog_type="metacal"
-            )
+            + band_variants(bands, "mcal_mag", "mcal_mag_err", shear_catalog_type="metacal")
         )
 
         # Input columns for photometry
@@ -106,9 +105,7 @@ class TXMetacalGCRInput(PipelineStage):
         shear_cols += ["IxxPSF", "IxyPSF", "IyyPSF"]
 
         # For the photometry output we strip off the _cModeel suffix.
-        photo_out_cols = [
-            col[:-7] if col.endswith("_cModel") else col for col in photo_cols
-        ]
+        photo_out_cols = [col[:-7] if col.endswith("_cModel") else col for col in photo_cols]
 
         # eliminate duplicates before loading
         cols = list(set(shear_cols + photo_cols))
@@ -135,20 +132,14 @@ class TXMetacalGCRInput(PipelineStage):
             # It is easier this way (no need to check types etc)
             # if we change the column list
             if shear_output is None:
-                shear_output = self.setup_output(
-                    "shear_catalog", "shear", data, shear_out_cols, n
-                )
-                photo_output = self.setup_output(
-                    "photometry_catalog", "photometry", data, photo_out_cols, n
-                )
+                shear_output = self.setup_output("shear_catalog", "shear", data, shear_out_cols, n)
+                photo_output = self.setup_output("photometry_catalog", "photometry", data, photo_out_cols, n)
 
             # Write out this chunk of data to HDF
             end = start + len(data["ra"])
             print(f"    Saving {start} - {end}")
             self.write_output(shear_output, "shear", shear_out_cols, start, end, data)
-            self.write_output(
-                photo_output, "photometry", photo_out_cols, start, end, data
-            )
+            self.write_output(photo_output, "photometry", photo_out_cols, start, end, data)
             start = end
 
         # All done!
@@ -193,6 +184,7 @@ class TXIngestStars(PipelineStage):
     Includes shape information (i.e. PSF samples) and whether the star was used
     in PSF estimation.
     """
+
     name = "TXIngestStars"
     parallel = False
     inputs = []
@@ -201,9 +193,9 @@ class TXIngestStars(PipelineStage):
         ("star_catalog", HDFFile),
     ]
     config_options = {
-        "single_tract": "",
-        "cat_name": str,
-        "length": 0,
+        "single_tract": StageParameter(str, "", msg="Single tract to use (optional)."),
+        "cat_name": StageParameter(str, "", msg="Name of the GCR catalog to load."),
+        "length": StageParameter(int, 0, msg="Pre-known length, if the catalog has been checked at previously."),
     }
 
     def run(self):
@@ -299,12 +291,8 @@ class TXIngestStars(PipelineStage):
             star_data = self.compute_star_data(data)
             star_end = star_start + len(star_data["ra"])
             if star_output is None:
-                star_output = self.setup_output(
-                    "star_catalog", "stars", star_data, star_out_cols, n
-                )
-            self.write_output(
-                star_output, "stars", star_out_cols, star_start, star_end, star_data
-            )
+                star_output = self.setup_output("star_catalog", "stars", star_data, star_out_cols, n)
+            self.write_output(star_output, "stars", star_out_cols, star_start, star_end, star_data)
 
             start = end
             star_start = star_end
@@ -374,14 +362,6 @@ class TXIngestStars(PipelineStage):
         return star_data
 
 
-
-
-
-        
-
-
-
-
 # response to an old Stack Overflow question of mine:
 # https://stackoverflow.com/questions/33529057/indices-that-intersect-and-sort-two-numpy-arrays
 def intersecting_indices(x, y):
@@ -391,4 +371,3 @@ def intersecting_indices(x, y):
     i_idx_x = u_idx_x[np.in1d(u_x, i_xy, assume_unique=True)]
     i_idx_y = u_idx_y[np.in1d(u_y, i_xy, assume_unique=True)]
     return i_idx_x, i_idx_y
-

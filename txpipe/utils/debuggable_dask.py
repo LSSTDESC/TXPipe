@@ -1,6 +1,7 @@
 import numpy as np
 import os
 
+
 class MockDaskArray(np.ndarray):
     """
     Mock dask array class that subclasses numpy.ndarray. This is used to
@@ -12,6 +13,7 @@ class MockDaskArray(np.ndarray):
     See:
     https://numpy.org/doc/stable/user/basics.subclassing.html#simple-example-adding-an-extra-attribute-to-ndarray
     """
+
     def __new__(cls, input_array, chunksize=None):
         obj = np.asarray(input_array).view(cls)
         obj.chunksize = chunksize
@@ -20,15 +22,18 @@ class MockDaskArray(np.ndarray):
     def __array_finalize__(self, obj):
         if obj is None:
             return
-        self.chunksize = getattr(obj, 'chunksize', None)
+        self.chunksize = getattr(obj, "chunksize", None)
+
 
 def from_array(arr, chunks=None):
     arr = MockDaskArray(arr)
     arr.chunksize = 1
     return arr
 
+
 def compute(anything):
-    return anything,
+    return (anything,)
+
 
 def import_dask(actually_numpy=False):
     """
@@ -60,4 +65,5 @@ def import_dask(actually_numpy=False):
     else:
         import dask
         import dask.array as da
+
         return dask, da

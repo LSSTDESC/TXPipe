@@ -135,9 +135,7 @@ class Splitter:
             c = self.bin_sizes[b]
             n = self.index[b]
             if c != n:
-                raise ValueError(
-                    f"Count error in bin {b}: expected {c} but copied in {n}"
-                )
+                raise ValueError(f"Count error in bin {b}: expected {c} but copied in {n}")
 
 
 class DynamicSplitter(Splitter):

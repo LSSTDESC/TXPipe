@@ -1,6 +1,8 @@
 from .base_stage import PipelineStage
 from .data_types import RandomsCatalog, ShearCatalog, PNGFile, TextFile
+from ceci.config import StageParameter
 import numpy as np
+
 
 class TXJackknifeCenters(PipelineStage):
     """
@@ -21,8 +23,8 @@ class TXJackknifeCenters(PipelineStage):
         ("jk", PNGFile),
     ]
     config_options = {
-        "npatch": 10,
-        "every_nth": 100,
+        "npatch": StageParameter(int, 10, msg="Number of jackknife patches to create"),
+        "every_nth": StageParameter(int, 100, msg="Use every nth point from the random catalog to reduce data size"),
     }
 
     def plot(self, ra, dec, patch):
@@ -37,17 +39,17 @@ class TXJackknifeCenters(PipelineStage):
 
         jk_plot = self.open_output("jk", wrapper=True, figsize=(6.0, 4.5))
         # Choose colormap
-        #cm = plt.cm.get_cmap("tab20c")
         rng = np.random.default_rng(12345)
-        cm = matplotlib.colors.ListedColormap(rng.random(size=(256,3)))
-        sc = plt.scatter(ra, dec, c=patch,cmap=cm,  s=1, vmin=0)
+        cm = matplotlib.colors.ListedColormap(rng.random(size=(256, 3)))
+        sc = plt.scatter(ra, dec, c=patch, cmap=cm, s=1, vmin=0)
         plt.xlabel("RA")
         plt.ylabel("DEC")
         plt.tight_layout()
         jk_plot.close()
-    
+
     def generate_catalog(self):
         import treecorr
+
         input_filename = self.get_input("random_cats")
 
         # Build config info
@@ -89,14 +91,17 @@ class TXJackknifeCentersSource(TXJackknifeCenters):
     """
     Generate jack-knife centers from a shear catalog.
     """
+
     name = "TXJackknifeCentersSource"
     parallel = False
 
     inputs = [
         ("shear_catalog", ShearCatalog),
     ]
+
     def generate_catalog(self):
         import treecorr
+
         input_filename = self.get_input("shear_catalog")
 
         with self.open_input("shear_catalog", wrapper=True) as f:
@@ -113,6 +118,7 @@ class TXJackknifeCentersSource(TXJackknifeCenters):
             "dec_units": "degree",
             "every_nth": every_nth,
             "npatch": npatch,
+            "file_type": "HDF5",
         }
 
         # Create the catalog

@@ -13,6 +13,7 @@ from .utils import LensNumberDensityStats, Splitter, rename_iterated
 from .binning import build_tomographic_classifier, apply_classifier, read_training_data
 import numpy as np
 import warnings
+from ceci.config import StageParameter
 
 
 class TXBaseLensSelector(PipelineStage):
@@ -33,25 +34,25 @@ class TXBaseLensSelector(PipelineStage):
     ]
 
     config_options = {
-        "verbose": False,
-        "chunk_rows": 10000,
-        "lens_zbin_edges": [float],
+        "verbose": StageParameter(bool, False, msg="Enable verbose output for lens selection."),
+        "chunk_rows": StageParameter(int, 10000, msg="Number of rows to process in each chunk."),
+        "lens_zbin_edges": StageParameter(list, [float], msg="Edges of lens redshift bins."),
         # Mag cuts
         # Default photometry cuts based on the BOSS Galaxy Target Selection:
         # http://www.sdss3.org/dr9/algorithms/boss_galaxy_ts.php
-        "cperp_cut": 0.2,
-        "r_cpar_cut": 13.5,
-        "r_lo_cut": 16.0,
-        "r_hi_cut": 19.6,
-        "i_lo_cut": 17.5,
-        "i_hi_cut": 19.9,
-        "r_i_cut": 2.0,
-        "random_seed": 42,
-        "selection_type": "boss",
-        "maglim_band": "i",
-        "maglim_limit": 24.1,
-        "extra_cols": [""],
-        "apply_mask":False,
+        "cperp_cut": StageParameter(float, 0.2, msg="cperp cut for BOSS selection."),
+        "r_cpar_cut": StageParameter(float, 13.5, msg="r_cpar cut for BOSS selection."),
+        "r_lo_cut": StageParameter(float, 16.0, msg="Lower r-band magnitude cut."),
+        "r_hi_cut": StageParameter(float, 19.6, msg="Upper r-band magnitude cut."),
+        "i_lo_cut": StageParameter(float, 17.5, msg="Lower i-band magnitude cut."),
+        "i_hi_cut": StageParameter(float, 19.9, msg="Upper i-band magnitude cut."),
+        "r_i_cut": StageParameter(float, 2.0, msg="r-i color cut."),
+        "random_seed": StageParameter(int, 42, msg="Random seed for reproducibility."),
+        "selection_type": StageParameter(str, "boss", msg="Type of lens selection (e.g., boss)."),
+        "maglim_band": StageParameter(str, "i", msg="Band for magnitude limit."),
+        "maglim_limit": StageParameter(float, 24.1, msg="Magnitude limit value."),
+        "extra_cols": StageParameter(list, [""], msg="Extra columns to include in output."),
+        "apply_mask": StageParameter(bool, False, msg="Whether to apply a mask to the selection."),
     }
 
     def run(self):
@@ -86,8 +87,8 @@ class TXBaseLensSelector(PipelineStage):
 
         # If we are going to remove lens galaxies that sit outside the mask, load the mask
         if self.config["apply_mask"]:
-            with self.open_input('mask', wrapper=True) as f:
-                    self.mask, self.mask_nside= f.read_healsparse('mask', return_all=True)
+            with self.open_input("mask", wrapper=True) as f:
+                self.mask, self.mask_nside = f.read_healsparse("mask", return_all=True)
 
         # We will collect the selection biases for each bin
         # as a matrix.  We will collect together the different
@@ -97,7 +98,7 @@ class TXBaseLensSelector(PipelineStage):
         number_density_stats = LensNumberDensityStats(nbin_lens, self.comm)
 
         # Loop through the input data, processing it chunk by chunk
-        for (start, end, phot_data) in iterator:
+        for start, end, phot_data in iterator:
             print(f"Process {self.rank} running selection for rows {start:,}-{end:,}")
 
             pz_data = self.apply_redshift_cut(phot_data, selector)
@@ -129,7 +130,6 @@ class TXBaseLensSelector(PipelineStage):
         return None
 
     def apply_redshift_cut(self, phot_data, _):
-
         pz_data = {}
         nbin = len(self.config["lens_zbin_edges"]) - 1
 
@@ -141,12 +141,12 @@ class TXBaseLensSelector(PipelineStage):
         nfinite = np.isfinite(z).sum()
         zmean = np.nanmean(z)
         for zi in range(nbin):
-            mask_zbin = (z >= self.config["lens_zbin_edges"][zi]) & (
-                z < self.config["lens_zbin_edges"][zi + 1]
-            )
+            mask_zbin = (z >= self.config["lens_zbin_edges"][zi]) & (z < self.config["lens_zbin_edges"][zi + 1])
             nsel += mask_zbin.sum()
             zbin[mask_zbin] = zi
-        print(f"Rank {self.rank} found {nsel} / {ntot} galaxies within the selection redshift range, in any bin. {nfinite} galaxies had finite z. Mean z of these was {zmean}")
+        print(
+            f"Rank {self.rank} found {nsel} / {ntot} galaxies within the selection redshift range, in any bin. {nfinite} galaxies had finite z. Mean z of these was {zmean}"
+        )
 
         pz_data[f"zbin"] = zbin
 
@@ -168,8 +168,8 @@ class TXBaseLensSelector(PipelineStage):
         output.write_zbins(self.config["lens_zbin_edges"])
         group.create_dataset("bin", (n,), dtype="i")
         group.create_dataset("lens_weight", (n,), dtype="f")
-        group["class_id"] = group["bin"] #hard link to bin column. needed for RAIL masked summarizer stages
-        
+        group["class_id"] = group["bin"]  # hard link to bin column. needed for RAIL masked summarizer stages
+
         group_counts = outfile.create_group("counts")
         group_counts.create_dataset("counts", (nbin_lens,), dtype="i")
         group_counts.create_dataset("counts_2d", (1,), dtype="i")
@@ -228,13 +228,13 @@ class TXBaseLensSelector(PipelineStage):
         if t == "boss":
             s = self.select_lens_boss(phot_data)
         elif t == "maglim":
-            s= self.select_lens_maglim(phot_data)
+            s = self.select_lens_maglim(phot_data)
         elif t == "DESmaglim":
-            s= self.select_lens_DESmaglim(phot_data)
+            s = self.select_lens_DESmaglim(phot_data)
         else:
             raise ValueError(f"Unknown lens selection type {t} - expected boss or maglim")
-        
-        #select only galaxies that are in the footprint
+
+        # select only galaxies that are in the footprint
         s *= self.select_in_footprint(phot_data)
 
         ntot = s.size
@@ -289,7 +289,7 @@ class TXBaseLensSelector(PipelineStage):
         lens_gals[lens_mask] = 1
 
         return lens_gals
-    
+
     def select_lens_maglim(self, phot_data):
         band = self.config["maglim_band"]
         limit = self.config["maglim_limit"]
@@ -309,14 +309,13 @@ class TXBaseLensSelector(PipelineStage):
         sg = phot_data["EXTENDED_CLASS_SOF"]
         flags = phot_data["FLAGS_GOLD"]
 
-        cut1 = (mag_i > bright_limit) #cut very bright gaalxies
-        cut2 = (mag_i < a*z + b) #the z-dependant mag cut
-        cut3 = (sg == 3) #star/galaxy separator
-        
-        # flags, selects objects flagged by bits 2^1, 2^2, 2^3, 2^4, 2^5, 2^6 but not 2^7
-        # from Rodriguez-Monroy et al 
-        cut4 = (np.bitwise_and(flags,126) == 0) 
+        cut1 = mag_i > bright_limit  # cut very bright gaalxies
+        cut2 = mag_i < a * z + b  # the z-dependant mag cut
+        cut3 = sg == 3  # star/galaxy separator
 
+        # flags, selects objects flagged by bits 2^1, 2^2, 2^3, 2^4, 2^5, 2^6 but not 2^7
+        # from Rodriguez-Monroy et al
+        cut4 = np.bitwise_and(flags, 126) == 0
 
         s = (cut1 & cut2 & cut3 & cut4).astype(np.int8)
         return s
@@ -326,21 +325,23 @@ class TXBaseLensSelector(PipelineStage):
         Remove objects that fall outside of the mask
         """
         import healpy as hp
-        if self.config['apply_mask']:
-            assert ('mask' in self.input_tags()), "If apply_mask if True you must use a sub-class that uses 'mask' as an input"
-            
-            #with self.open_input('mask', wrapper=True) as f:
-                #mask, nside= f.read_healsparse('mask', return_all=True)
 
-            pix = hp.ang2pix(self.mask_nside, phot_data['ra'], phot_data['dec'], lonlat=True)
-            s = np.where( self.mask[pix]==hp.UNSEEN,0,1 )
-            print(f'{len(s)-np.sum(s)}/{len(s)} objects removed because they are outside the mask')
+        if self.config["apply_mask"]:
+            assert "mask" in self.input_tags(), (
+                "If apply_mask if True you must use a sub-class that uses 'mask' as an input"
+            )
+
+            # with self.open_input('mask', wrapper=True) as f:
+            # mask, nside= f.read_healsparse('mask', return_all=True)
+
+            pix = hp.ang2pix(self.mask_nside, phot_data["ra"], phot_data["dec"], lonlat=True)
+            s = np.where(self.mask[pix] == hp.UNSEEN, 0, 1)
+            print(f"{len(s) - np.sum(s)}/{len(s)} objects removed because they are outside the mask")
             return s
         else:
             return 1
 
     def calculate_tomography(self, pz_data, phot_data, lens_gals):
-
         nbin = len(self.config["lens_zbin_edges"]) - 1
         n = len(phot_data["mag_i"])
 
@@ -382,9 +383,7 @@ class TXTruthLensSelector(TXBaseLensSelector):
         # of the data one by one later when we do the for loop.
         # This code can be run in parallel, and different processes will
         # each get different chunks of the data
-        for s, e, data in self.iterate_hdf(
-            "photometry_catalog", "photometry", phot_cols, chunk_rows
-        ):
+        for s, e, data in self.iterate_hdf("photometry_catalog", "photometry", phot_cols, chunk_rows):
             data["z"] = data["redshift_true"]
             yield s, e, data
 
@@ -422,6 +421,7 @@ class TXMeanLensSelector(TXBaseLensSelector):
 
         return rename_iterated(it, rename)
 
+
 class TXModeLensSelector(TXBaseLensSelector):
     """
     Select lens objects based on best-fit redshifts and BOSS criteria
@@ -455,6 +455,7 @@ class TXModeLensSelector(TXBaseLensSelector):
 
         return rename_iterated(it, rename)
 
+
 class TXCustomLensSelector(TXBaseLensSelector):
     """
     Select lens objects based on best-fit redshifts and BOSS criteria
@@ -472,8 +473,8 @@ class TXCustomLensSelector(TXBaseLensSelector):
     def data_iterator(self):
         chunk_rows = self.config["chunk_rows"]
         phot_cols = ["mag_i", "mag_r", "mag_g", "ra", "dec"]
-        z_cols = [self.config['zcol']]
-        rename = {self.config['zcol']: "z"}
+        z_cols = [self.config["zcol"]]
+        rename = {self.config["zcol"]: "z"}
         extra_cols = [c for c in self.config["extra_cols"] if c]
         phot_cols += extra_cols
 
@@ -489,6 +490,7 @@ class TXCustomLensSelector(TXBaseLensSelector):
 
         return rename_iterated(it, rename)
 
+
 class TXRandomForestLensSelector(TXBaseLensSelector):
     name = "TXRandomForestLensSelector"
     inputs = [
@@ -496,15 +498,21 @@ class TXRandomForestLensSelector(TXBaseLensSelector):
         ("spectroscopic_catalog", HDFFile),
     ]
     config_options = TXBaseLensSelector.config_options.copy()
-    config_options.update({
-        "verbose": False,
-        "bands": "ugrizy",
-        "chunk_rows": 10000,
-        "lens_zbin_edges": [float],
-        "random_seed": 42,
-        "spec_mag_column_format": "photometry/{band}",
-        "spec_redshift_column": "photometry/redshift",
-    })
+    config_options.update(
+        {
+            "verbose": StageParameter(bool, False, msg="Enable verbose output for lens selection."),
+            "bands": StageParameter(str, "ugrizy", msg="Photometric bands to use for classification."),
+            "chunk_rows": StageParameter(int, 10000, msg="Number of rows to process in each chunk."),
+            "lens_zbin_edges": StageParameter(list, required=True, msg="Edges of lens redshift bins."),
+            "random_seed": StageParameter(int, 42, msg="Random seed for reproducibility."),
+            "spec_mag_column_format": StageParameter(
+                str, "photometry/{band}", msg="Format string for spectroscopic magnitude columns."
+            ),
+            "spec_redshift_column": StageParameter(
+                str, "photometry/redshift", msg="Column name for spectroscopic redshift."
+            ),
+        }
+    )
 
     def data_iterator(self):
         chunk_rows = self.config["chunk_rows"]
@@ -512,9 +520,7 @@ class TXRandomForestLensSelector(TXBaseLensSelector):
         extra_cols = [c for c in self.config["extra_cols"] if c]
         phot_cols += extra_cols
 
-        for s, e, data in self.iterate_hdf(
-            "photometry_catalog", "photometry", phot_cols, chunk_rows
-        ):
+        for s, e, data in self.iterate_hdf("photometry_catalog", "photometry", phot_cols, chunk_rows):
             yield s, e, data
 
     def prepare_selector(self):
@@ -525,7 +531,6 @@ class TXRandomForestLensSelector(TXBaseLensSelector):
                 self.config["spec_mag_column_format"],
                 self.config["spec_redshift_column"],
             )
-
 
         return build_tomographic_classifier(
             self.config["bands"],
@@ -539,11 +544,8 @@ class TXRandomForestLensSelector(TXBaseLensSelector):
         classifier, features = selector
         shear_catalog_type = "not applicable"
         bands = self.config["bands"]
-        pz_data = apply_classifier(
-            classifier, features, bands, shear_catalog_type, phot_data
-        )
+        pz_data = apply_classifier(classifier, features, bands, shear_catalog_type, phot_data)
         return pz_data
-
 
 
 class TXLensCatalogSplitter(PipelineStage):
@@ -567,15 +569,16 @@ class TXLensCatalogSplitter(PipelineStage):
     ]
 
     config_options = {
-        "initial_size": 100_000,
-        "chunk_rows": 100_000,
-        "extra_cols": [""],
-        "redshift_column": "zmean",
+        "initial_size": StageParameter(int, 100_000, msg="Initial size of the output catalog."),
+        "chunk_rows": StageParameter(int, 100_000, msg="Number of rows to process in each chunk."),
+        "extra_cols": StageParameter(list, [""], msg="Extra columns to include in output."),
+        "redshift_column": StageParameter(str, "zmean", msg="Name of the redshift column to use."),
     }
 
-    def get_lens_tomo_name(self): #can overwrite this in a weighted subclass
+    def get_lens_tomo_name(self):  # can overwrite this in a weighted subclass
         return "lens_tomography_catalog_unweighted"
-    def get_binned_lens_name(self): #can overwrite this in a weighted subclass
+
+    def get_binned_lens_name(self):  # can overwrite this in a weighted subclass
         return "binned_lens_catalog_unweighted"
 
     def get_bands(self):
@@ -584,15 +587,14 @@ class TXLensCatalogSplitter(PipelineStage):
         return bands
 
     def run(self):
-
         with self.open_input(self.get_lens_tomo_name()) as f:
             nbin = f["tomography"].attrs["nbin"]
             counts = f["counts/counts"][:]
             count2d = f["counts/counts_2d"][:]
 
         # We also copy over the magnitudes and their errors to tbe new
-        # per-bin catalogs. This makes it easier to run photo-z with RAIL
-        # on each of the bins. So here we add those columns to our list
+        # per-bin catalogs. This makes it easier to run photo-z with RAIL
+        # on each of the bins. So here we add those columns to our list
         bands = self.get_bands()
         if self.rank == 0:
             print(f"Copying photometry bands {bands} to sub-catalogs")
@@ -602,7 +604,7 @@ class TXLensCatalogSplitter(PipelineStage):
         self.config["extra_cols"] += band_cols
 
         # For some reason we briefly ended up with None or empty columns
-        # in the configuration.
+        # in the configuration.
         extra_cols = [c for c in self.config["extra_cols"] if c]
 
         # Regular columns.
@@ -666,6 +668,7 @@ class TXLensCatalogSplitter(PipelineStage):
 
     def add_redshifts(self, iterator):
         import pyccl
+
         z_col = self.config["redshift_column"]
         # This iterates through chunks of the input catalogs, but for each
         # chunk it also intercepts and adds the radial distance. So this function
@@ -676,9 +679,9 @@ class TXLensCatalogSplitter(PipelineStage):
         for s, e, data in iterator:
             z = data[z_col]
             a = 1.0 / (1 + z)
-            #if redshift estimate is negative set radial distance to 0
+            # if redshift estimate is negative set radial distance to 0
             d = np.zeros(len(a))
-            d[z>0] = pyccl.comoving_radial_distance(cosmo, a[z>0]) 
+            d[z > 0] = pyccl.comoving_radial_distance(cosmo, a[z > 0])
             data["comoving_distance"] = d
             yield s, e, data
 
@@ -689,15 +692,15 @@ class TXTruthLensCatalogSplitter(TXLensCatalogSplitter):
 
     The redshifts are used to calculate the comoving distances.
     """
+
     name = "TXTruthLensCatalogSplitter"
     inputs = [
-            ("lens_tomography_catalog_unweighted", TomographyCatalog),
-            ("photometry_catalog", PhotometryCatalog),
-            ("fiducial_cosmology", FiducialCosmology),
-        ]
+        ("lens_tomography_catalog_unweighted", TomographyCatalog),
+        ("photometry_catalog", PhotometryCatalog),
+        ("fiducial_cosmology", FiducialCosmology),
+    ]
     config_options = TXLensCatalogSplitter.config_options.copy()
-    config_options["redshift_column"] = "redshift_true"
-
+    config_options["redshift_column"] = StageParameter(str, "redshift_true", msg="Column name for true redshift.")
 
     def data_iterator(self):
         z_col = self.config["redshift_column"]
@@ -726,8 +729,9 @@ class TXExternalLensCatalogSplitter(TXLensCatalogSplitter):
     Implemented as a subclass of TXLensCatalogSplitter, and
     changes only file names.
     """
+
     config_options = TXLensCatalogSplitter.config_options.copy()
-    config_options["redshift_column"] = "redshift"
+    config_options["redshift_column"] = StageParameter(str, "redshift", msg="Column name for redshift.")
 
     name = "TXExternalLensCatalogSplitter"
     inputs = [
@@ -738,15 +742,12 @@ class TXExternalLensCatalogSplitter(TXLensCatalogSplitter):
 
     def get_bands(self):
         with self.open_input("lens_catalog", wrapper=True) as f:
-            bands = f.file['lens'].attrs["bands"]
+            bands = f.file["lens"].attrs["bands"]
         return bands
-
 
     def data_iterator(self):
         z_col = self.config["redshift_column"]
-        extra_cols = [
-            c for c in self.config["extra_cols"] if c and c != "comoving_distance"
-        ]
+        extra_cols = [c for c in self.config["extra_cols"] if c and c != "comoving_distance"]
         iterator = self.combined_iterators(
             self.config["chunk_rows"],
             # first file
@@ -762,31 +763,33 @@ class TXExternalLensCatalogSplitter(TXLensCatalogSplitter):
 
         return self.add_redshifts(iterator)
 
+
 class TXTruthLensCatalogSplitterWeighted(TXTruthLensCatalogSplitter):
     """
     Split a lens catalog file into a new file with separate bins with true redshifts.
 
     The redshifts are used to calculate the comoving distances.
     """
+
     name = "TXTruthLensCatalogSplitterWeighted"
     inputs = [
-            ("lens_tomography_catalog", TomographyCatalog),
-            ("photometry_catalog", PhotometryCatalog),
-            ("fiducial_cosmology", FiducialCosmology),
-        ]
+        ("lens_tomography_catalog", TomographyCatalog),
+        ("photometry_catalog", PhotometryCatalog),
+        ("fiducial_cosmology", FiducialCosmology),
+    ]
     outputs = [
         ("binned_lens_catalog", HDFFile),
     ]
-    def get_lens_tomo_name(self): #can overwrite this in a weighted subclass
+
+    def get_lens_tomo_name(self):  # can overwrite this in a weighted subclass
         return "lens_tomography_catalog"
-    def get_binned_lens_name(self): #can overwrite this in a weighted subclass
+
+    def get_binned_lens_name(self):  # can overwrite this in a weighted subclass
         return "binned_lens_catalog"
-    
+
     def data_iterator(self):
         z_col = self.config["redshift_column"]
-        extra_cols = [
-            c for c in self.config["extra_cols"] if c and c != "comoving_distance"
-        ]
+        extra_cols = [c for c in self.config["extra_cols"] if c and c != "comoving_distance"]
         iterator = self.combined_iterators(
             self.config["chunk_rows"],
             # first file
@@ -799,7 +802,7 @@ class TXTruthLensCatalogSplitterWeighted(TXTruthLensCatalogSplitter):
             ["ra", "dec", z_col] + extra_cols,
             parallel=False,
         )
-        
+
         return self.add_redshifts(iterator)
 
 
