@@ -15,7 +15,7 @@ class CLClusterSACC(PipelineStage):
 
     config_options = {
         #radial bin definition
-        "r_min" : 0.2, #in Mpc
+        "r_min" : 0.5, #in Mpc
         "r_max" : 5.0, #in Mpc
     }
 
