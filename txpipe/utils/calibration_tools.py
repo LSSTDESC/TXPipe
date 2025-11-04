@@ -22,6 +22,8 @@ def metacal_variants(*names):
 def metadetect_variants(*names):
     return [f"{group}/{name}" for group in ["00", "1p", "1m", "2p", "2m"] for name in names]
 
+def anacal_variants(*names):
+    return [name + suffix for suffix in ["_dg1", "_dg2"] for name in names]
 
 def band_variants(bands, *names, shear_catalog_type="metacal"):
     if shear_catalog_type == "metacal":
