@@ -865,5 +865,137 @@ class TXTwoPointFourier(PipelineStage):
         S.save_fits(output_filename, overwrite=True)
 
 
+class TXTwoPointFourierCatalog(TXTwoPointFourier):
+    name = "TXTwoPointFourierCatalog"
+    inputs = [
+        ("binned_shear_catalog", HDFFile),
+        ("binned_lens_catalog", HDFFile),
+        ("binned_random_catalog", HDFFile),
+        ("binned_random_catalog_sub", HDFFile),
+        ("tracer_metadata", HDFFile),
+        ("shear_photoz_stack", QPNOfZFile),  # Photoz stack
+        ("lens_photoz_stack", QPNOfZFile),  # Photoz stack
+        ("mask", MapsFile),
+        ("fiducial_cosmology", FiducialCosmology),
+        ("source_maps", MapsFile),
+        ("lens_maps", MapsFile),
+    ]
+
+    config_options_cat = {  # Config specific to catalog-based C_ells
+        "use_randoms": StageParameter(
+            bool,
+            True,
+            msg="Whether to use random catalogs"
+        ),
+        "use_subsampled_randoms": StageParameter(
+            bool,
+            True,
+            msg="Use subsampled randoms file for RR calculation"
+        ),
+        "use_mask_clustering": StageParameter(
+            bool,
+            False,
+            msg="Use a mask instead of randoms for clustering calculations"
+        ),
+        
+    }
+    config_options = TXTwoPointFourier.config | config_options_cat
+
+
+    def load_maps(self):
+        import healpy
+
+        # Load mask for galaxy clustering
+        if self.config["use_mask_clustering"] or self.config["deproject_syst_clustering"]:
+            with self.open_input("mask", wrapper=True) as f:
+                info = f.read_map_info("mask")
+                mask_gc = f.read_mask(thresh=self.config["mask_threshold"])
+                if self.rank == 0:
+                    print("Loaded mask")
+        else:
+            mask_gc = None
+
+        # Load HEALPix systematics maps if required
+        if deproject_syst_clustering:
+            print("Deprojecting systematics maps for number counts")
+            n_systmaps = 0
+            s_maps = []
+            systmaps_clustering_dir = self.config["systmaps_clustering_dir"]
+            systmaps_path = pathlib.Path(systmaps_clustering_dir)
+            for systmap in systmaps_path.iterdir():
+                try:
+                    if systmap.is_file():
+                        if pathlib.Path(systmap).suffix != ".fits":
+                            print(
+                                "Warning: Problem reading systematics map file",
+                                systmap,
+                                "Not a HEALPix .fits file.",
+                            )
+                            warnings.warn("Systematics map file must be a HEALPix .fits file.")
+                            print("Ignoring", systmap)
+                        else:
+                            systmap_file = str(systmap)
+                            self.config[f"clustering_deproject_{n_systmaps}"] = systmap_file  # for provenance
+                            print("Reading clustering systematics map file:", systmap_file)
+                            syst_map = healpy.read_map(systmap_file, verbose=False)
+
+                            # normalize map for Namaster
+                            # calculate the mean, accounting for case where mask isn't binary
+                            unmasked = mask_gc > 0.0
+                            mean = (syst_map[unmasked] * mask_gc[unmasked]).sum() / mask_gc[
+                                unmasked
+                            ].sum()
+                            print("Syst map: mean value = ", mean)
+                            # subtract the mean rather than normalise by it, as some systematics will have ~0 mean
+                            # (other pixels can stay as hp.UNSEEN since they are masked anyway)
+                            syst_map[unmasked] -= mean
+
+                            s_maps.append(syst_map)
+                            n_systmaps += 1
+                except:
+                    print("Warning: Problem with systematics map file", systmap)
+                    print("Ignoring", systmap)
+
+            print("Number of systematics maps read: ", n_systmaps)
+            if n_systmaps == 0:
+                print("No systematics maps found. Skipping deprojection.")
+                deproject_syst_clustering = False
+            else:
+                print("Using systematics maps for galaxy number counts.")
+                # We assume all systematics maps have the same nside
+                nside = healpy.pixelfunc.get_nside(syst_map)
+                npix = healpy.nside2npix(nside)
+                # needed for NaMaster:
+                s_maps_gc = np.array(s_maps).reshape([n_systmaps, 1, npix])
+
+        else:
+            print("Not using systematics maps for deprojection in NaMaster")
+            s_maps_gc = None
+        
+        return mask_gc, s_maps_gc
+
+
+    def load_cats(self):
+        import pymaster as nmt
+
+        # Specify max ell for NaMaster
+        lmax = self.config["ell_max"] - 1
+
+        # Construct shear field if needed
+        if self.config["do_shear_shear"] or self.config["do_shear_pos"]:
+            with self.open_input(["binned_shear_catalog"], wrapper=True) as f:
+                nbin_source = f.file["shear"].attrs["nbin"]
+                group = f[""]
+                pos_source = np.array([group["ra"], group["dec"]])
+                shear = [group["g1"], group["g2"]]
+            
+        
+        # Construct clustering field if needed
+        if self.config["do_shear_pos"] or self.config["do_pos_pos"]:
+
+        
+
+
+
 if __name__ == "__main__":
     PipelineStage.main()
