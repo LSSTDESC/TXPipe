@@ -23,7 +23,7 @@ dependencies:
   - pandas=2.2.*
   - psutil=5.9.*
   - pyccl=3.2.*
-  - python=3.10.*
+  - python=3.12.*
   - scikit-learn=1.5.*
   - scipy=1.13.*
   - tables-io-full=1.0.*
