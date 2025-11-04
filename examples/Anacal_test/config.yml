@@ -1,0 +1,5 @@
+global:
+    chunk_rows: 100000
+    sparse: true  # Generate sparse maps - faster if using small areas
+    pixelization: healpix
+    nside: 512

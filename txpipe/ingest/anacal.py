@@ -1,9 +1,9 @@
-from base import TXIngestCatalogFits
+from .base import TXIngestCatalogFits
 from ..data_types import ShearCatalog, PhotometryCatalog, HDFFile, FileCollection, FitsFile
 from .lsst import process_photometry_data, process_shear_data
 from ceci.config import StageParameter
 import numpy as np
-from ..utils import nanojansky_err_to_mag_ab, nanojansky_to_mag_ab,
+from ..utils import nanojansky_err_to_mag_ab, nanojansky_to_mag_ab
 from ..utils.hdf_tools import h5py_shorten, repack
 
 class TXIngestAnacal(TXIngestCatalogFits):
@@ -12,14 +12,11 @@ class TXIngestAnacal(TXIngestCatalogFits):
     """
 
     name = "TXIngestAnacal"
-    input = [
-        ("Aanacal_catalog", FitsFile)
+    inputs = [
+        ("anacal_catalog", FitsFile)
     ]
     outputs = [
-        ("photometry_catalog", PhotometryCatalog),
         ("shear_catalog", ShearCatalog),
-        ("exposures", HDFFile),
-        ("survey_propety_maps", FileCollection),
     ]
     config_options = {
         "tracts": StageParameter(str, "", msg="Comma-separated list of tracts to use (empty for all)."),
@@ -30,13 +27,12 @@ class TXIngestAnacal(TXIngestCatalogFits):
 
     def run(self):
         tracts = self.config["tracts"]
-        file_path = self.config["file_path"]
 
-        n, dtypes = self.get_meta(f"{file_path}/anacal_anacal_table.fits")
-        cols = self.setup_input("shear_catalog")
+        n, dtypes = self.get_meta("anacal_catalog")
+        cols = self.setup_input()
         prefix = self.config["prefix"]
 
-        file = self.open_input("Anacal_catalog")
+        file = self.open_input("anacal_catalog")
         data = file[1][cols]
         shear_data = self.process_anacal_shear_data(data)
 
@@ -70,30 +66,30 @@ class TXIngestAnacal(TXIngestCatalogFits):
                  for suffix in ["_dg1", "_dg2"]
                  ]
         bands = self.config["bands"]
-        for i in range(4):
-            cols += [band + "_flux_gauss" + i for band in bands]
-            cols += [band + "_flux_gauss" + i + "_err" for band in bands]
+        for i in [0, 2, 4]:
+            cols += [band + "_flux_gauss" + f"{i}" for band in bands]
+            cols += [band + "_flux_gauss" + f"{i}" + "_err" for band in bands]
             cols += [
-                     band + "_dflux_gauss" + i + suffix
+                     band + "_dflux_gauss" + f"{i}" + suffix
                      for band in bands
                      for suffix in ["_dg1", "_dg2"]
                      ]
         return cols
     
-    def process_anacal_shear_data(data):
+    def process_anacal_shear_data(self, data):
         bands = self.config["bands"]
         s = self.config["scale"]
         output = {
-                  "ra": data["ra"],
-                  "dec": data["dec"],
-                  "weight":data["wsel"], 
-                  "weight_detection": data["wdet"],
-                  "weight_dg1": data["dwsel_dg1"],
-                  "weight_dg2": data["dwsel_dg2"],
+                  "ra": data["ra"][:],
+                  "dec": data["dec"][:],
+                  "weight":data["wsel"][:], 
+                  "weight_detection": data["wdet"][:],
+                  "weight_dg1": data["dwsel_dg1"][:],
+                  "weight_dg2": data["dwsel_dg2"][:],
                   }
         for band in bands:
-            f = data[f"{band}_flux_{s}"]
-            f_err = data[f"{band}_flux_{s}_err"]
+            f = data[f"{band}_flux_{s}"][:]
+            f_err = data[f"{band}_flux_{s}_err"][:]
             output[f"mag_{band}"] = nanojansky_to_mag_ab(f)
             output[f"mag_err_{band}"] = nanojansky_err_to_mag_ab(f, f_err)
 
@@ -101,7 +97,7 @@ class TXIngestAnacal(TXIngestCatalogFits):
                 output["s2n"] = f / f_err
             
             for d in ["_dg1", "_dg2"]:
-                dd = data[f"{band}_dflux_{s}"+d]
+                dd = data[f"{band}_dflux_{s}"+d][:]
                 output[f"mag_{band}_{d}"] = nanojansky_to_mag_ab(dd)
                 
         return output
