@@ -1,0 +1,55 @@
+#this step depends on where you run
+#for CCin2p3
+# site:
+#     name: cc-parallel
+#     mpi_command: "mpirun -n"
+
+#for NERSC
+site:
+    name: cori-batch
+    image: ghcr.io/lsstdesc/txpipe-dev
+
+
+#all the following steps should not depend on where you run 
+launcher:
+    name: mini
+    interval: 3.0
+
+modules: >
+    txpipe
+    rail.estimation.algos.bpz_lite
+
+python_paths: []
+
+stages:
+  - name: TXSourceSelectorMetadetect
+    nprocess: 1
+  - name: BPZliteInformer
+    nprocess: 1
+  - name: BPZ_lite
+    nprocess: 1
+  - name: CLClusterBinningRedshiftRichness
+    nprocess: 1
+  - name: TXTwoPointRLens
+    nprocess: 1
+
+
+
+output_dir: notebooks/cluster_counts/gt_treecor_test/outputs-1deg2-CL
+config: notebooks/cluster_counts/gt_treecor_test/config-1deg2-CL.yml
+
+inputs:
+    # See README for paths to download these files
+    #shear_catalog: ./data/example/inputs/metadetect_shear_catalog.hdf5
+    #photometry_catalog:  ./data/example/inputs/photometry_catalog.hdf5
+    fiducial_cosmology: ./data/fiducial_cosmology.yml
+    #calibration_table: ./data/example/inputs/sample_cosmodc2_w10year_errors.dat
+    #spectroscopic_catalog: ./data/example/inputs/mock_spectroscopic_catalog.hdf5
+    cluster_catalog: ./data/example/inputs/cluster_catalog.hdf5
+    shear_tomography_catalog: ./data/example/outputs_metadetect/shear_tomography_catalog.hdf5
+    source_photoz_pdfs: ./data/example/inputs/photoz_pdfs.hdf5
+    #cluster_shear_catalogs: ./data/cosmodc2/outputs-1deg2-CL/cluster_shear_catalogs.hdf5
+resume: true
+log_dir: ./data/cosmodc2/logs
+pipeline_log: ./data/cosmodc2/log_1deg2.txt
+

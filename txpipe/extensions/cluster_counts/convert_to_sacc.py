@@ -17,6 +17,7 @@ class CLClusterSACC(PipelineStage):
         #radial bin definition
         "r_min" : 0.2, #in Mpc
         "r_max" : 5.0, #in Mpc
+        "clmm_profile" : True
     }
 
     def run(self):
@@ -65,8 +66,10 @@ class CLClusterSACC(PipelineStage):
             rich_edges = (bin_data['cluster_bin_edges']['rich_min'], bin_data['cluster_bin_edges']['rich_max'])
             bin_z_dict[bin_z] = z_edges
             bin_rich_dict[bin_rich] = rich_edges
-
-        radius_centers = np.array(data['bin_zbin_0_richbin_0']['clmm_cluster_ensemble'].stacked_data['radius'])
+        if self.config["clmm_profile"]:
+            radius_centers = np.array(data['bin_zbin_0_richbin_0']['clmm_cluster_ensemble'].stacked_data['radius'])
+        else:
+            radius_centers = bin_data['radial_bins']
         rmin = self.config_options['r_min']
         rmax = self.config_options['r_max'] 
         radius_edges = np.logspace(np.log10(rmin), np.log10(rmax), len(radius_centers) + 1)
@@ -114,7 +117,11 @@ class CLClusterSACC(PipelineStage):
         for bin_comb, bin_data in data.items():
             bin_z, bin_rich = self.transform_bin_string(bin_comb)
             for i, bin_radius in enumerate(radius_bins):
-                tangential_comp = bin_data['clmm_cluster_ensemble'].stacked_data[i]['tangential_comp']
+                tangential_comp = None
+                if self.config["clmm_profile"]:
+                    tangential_comp = bin_data['clmm_cluster_ensemble'].stacked_data[i]['tangential_comp']
+                else:
+                    tangential_comp = bin_data["xi"][i] 
                 sacc_obj.add_data_point(cluster_shear, (survey_name, bin_rich, bin_z, bin_radius), tangential_comp)
 
     def add_covariance_data(self, sacc_obj, data: dict):
@@ -125,11 +132,27 @@ class CLClusterSACC(PipelineStage):
         cluster_count = sacc.standard_types.cluster_counts
         counts_points = np.array(sacc_obj.get_data_points(cluster_count))
         counts_cov = np.array([point.value for point in counts_points])
-
-        deltasigma_cov = [
-            bin_data['clmm_cluster_ensemble'].cov['tan_sc'].diagonal()
-            for bin_data in data.values()
-        ]
+        deltasigma_cov = None
+        if self.config["clmm_profile"]:
+            # --- Existing CLMM ensemble method ---
+            deltasigma_cov = [
+                bin_data['clmm_cluster_ensemble'].cov['tan_sc'].diagonal()
+                for bin_data in data.values()
+            ]
+        else:
+            # --- New TreeCorr stacked output method ---
+            deltasigma_cov = []
+            for key, bin_data in data.items():
+                # Check if 'cov' exists
+                if 'cov' in bin_data:
+                    # Use diagonal of covariance if 2D, otherwise assume already 1D
+                    if bin_data['cov'].ndim == 2:
+                        deltasigma_cov.append(np.diag(bin_data['cov']))
+                    else:
+                        deltasigma_cov.append(bin_data['cov'])
+                else:
+                    # If no covariance is available, fill with NaNs
+                    deltasigma_cov.append(np.full(len(bin_data['radial_bins']), np.nan))
 
         diag_cov_vector = np.concatenate([counts_cov.flatten(), np.array(deltasigma_cov).flatten()])
         sacc_obj.add_covariance(np.diag(diag_cov_vector))
