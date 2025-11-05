@@ -1008,7 +1008,7 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
             s_maps_gc = None
 
         maps = {
-            "mask": mask_gc,
+            "mask_lens": mask_gc,
             "nbin_source": nbin_source,
             "nbin_lens": nbin_lens,
             "systmaps": s_maps_gc,
@@ -1078,7 +1078,7 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
                 pos_rand = None
                 weight_rand = None
                 # In this case we do need the mask - retrieve from maps
-                mask_gc = maps["mask"]
+                mask_gc = maps["mask_lens"]
             field = nmt.NmtFieldCatalogClustering(
                 positions,
                 weight,
@@ -1105,6 +1105,65 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
         else:
             with self.open_input("binned_random_catalog") as f:
                 return int(f["provenance"].attrs["uuid"], 16)
+
+    def make_workspaces(self, maps, calcs, ell_bins):
+        import pymaster as nmt
+        from .utils.nmt_utils import WorkspaceCache
+
+        # Make the field object
+        if self.rank == 0:
+            print("Preparing workspaces")
+
+        # load the cache
+        cache = WorkspaceCache(self.config["cache_dir"], low_mem=self.config["low_mem"])
+        shear_id = self.get_uuid("shear")
+        lens_id = self.get_uuid("lens")
+        if self.config["use_randoms_clustering"]:
+            mask_id = self.get_uuid("randoms")
+        else:
+            mask_id = array_hash(maps["mask_lens"])
+
+        for (i, j, k) in calcs:
+            if k == SHEAR_SHEAR:
+                f1 = self.get_field(maps, i, "shear", get_shears=False)
+                f2 = self.get_field(maps, j, "shear", get_shears=False)
+                id1 = shear_id ^ hash(f"bin_{i}")
+                id2 = shear_id ^ hash(f"bin_{j}")
+            elif k == SHEAR_POS:
+                f1 = self.get_field(maps, i, "shear", get_shears=False)
+                f2 = self.get_field(maps, j, "density", get_shears=False)
+                id1 = shear_id ^ hash(f"bin_{i}")
+                id2 = lens_id ^ hash(f"bin_{j}") ^ mask_id
+            else:
+                f1 = self.get_field(maps, i, "density", get_shears=False)
+                f2 = self.get_field(maps, j, "density", get_shears=False)
+                id1 = lens_id ^ hash(f"bin_{i}")
+                id2 = lens_id ^ hash(f"bin_{j}") ^ mask_id
+
+            # Key on these shear and position catalogs and the ell binning
+            key = id1 ^ id2 ^ array_hash(ell_bins.get_effective_ells())
+
+            space = cache.get(i, j, k, key=key)
+        
+            # If not, compute it.  We will save it later
+            if space is None:
+                print(f"Rank {self.rank} computing coupling matrix " f"{i}, {j}, {k}")
+                space = nmt.NmtWorkspace.from_fields(f1, f2, ell_bins)
+            else:
+                print(
+                    f"Rank {self.rank} getting coupling matrix "
+                    f"{i}, {j}, {k} from cache."
+                )
+            # This is a bit awkward - we attach the key to the
+            # object to avoid more book-keeping.  This is used inside
+            # the workspace cache
+            space.txpipe_key = key
+
+            # We now automatically cache everything, non-optionally,
+            # but to save memory we don't keep them all loaded
+            cache.put(i, j, k, space)
+
+        return cache
 
 
 if __name__ == "__main__":
