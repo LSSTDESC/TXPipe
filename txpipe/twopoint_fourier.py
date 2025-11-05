@@ -913,7 +913,7 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
     config_options_cat = {  # Config specific to catalog-based C_ells
         "use_randoms_clustering": StageParameter(
             bool,
-            True,
+            False,
             msg="Whether to use randoms instead of a map-based mask for clustering"
         ),
         "calc_noise_dp_bias": StageParameter(
