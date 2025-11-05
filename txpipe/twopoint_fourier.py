@@ -1165,6 +1165,83 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
 
         return cache
 
+    def compute_power_spectra(self, pixel_scheme, i, j, k, maps, workspace_cache, ell_bins, cl_theory, f_sky):
+        # Compute power spectra
+        # TODO: now all possible auto- and cross-correlation are computed.
+        #      This should be tunable.
+
+        # k refers to the type of measurement we are making
+        import sacc
+        import pymaster as nmt
+        import healpy
+
+        CEE = sacc.standard_types.galaxy_shear_cl_ee
+        CEB = sacc.standard_types.galaxy_shear_cl_eb
+        CBE = sacc.standard_types.galaxy_shear_cl_be
+        CBB = sacc.standard_types.galaxy_shear_cl_bb
+        CdE = sacc.standard_types.galaxy_shearDensity_cl_e
+        CdB = sacc.standard_types.galaxy_shearDensity_cl_b
+        Cdd = sacc.standard_types.galaxy_density_cl
+
+        type_name = NAMES[k]
+        print(f"Process {self.rank} calculating {type_name} spectrum for bin pair {i},{j}")
+        sys.stdout.flush()
+
+        if k == SHEAR_SHEAR:
+            field_i = self.get_field(maps, i, "shear")
+            field_j = self.get_field(maps, j, "shear")
+            results_to_use = [(0, CEE), (1, CEB), (2, CBE), (3, CBB)]
+
+        elif k == POS_POS:
+            field_i = self.get_field(maps, i, "pos")
+            field_j = self.get_field(maps, j, "pos")
+            results_to_use = [(0, Cdd)]
+
+        elif k == SHEAR_POS:
+            field_i = self.get_field(maps, i, "shear")
+            field_j = self.get_field(maps, j, "pos")
+            results_to_use = [(0, CdE), (1, CdB)]
+
+        workspace = workspace_cache.get(i, j, k)
+
+        # Cannot use compute_full_master here as deproj. bias not implemented for cat-based C_ells
+        pcl = nmt.compute_coupled_cell(field_i, field_j)
+        # Noise is automatically computed analytically and subtracted for cat-based C_ells,
+        # but noise deprojection bias needs subtracting manually
+        if i == j:
+            n_ell_coupled = field_i.Nf
+            if self.config["calc_noise_dp_bias"]:
+                noise_db = field_i.get_noise_deprojection_bias()
+            else:
+                noise_db = 0
+        else:
+            n_ell_coupled = np.zeros((c.shape[0], self.config["ell_max"]))
+        n_ell = workspace.decouple_cell(n_ell_coupled)
+        c = workspace.decouple_cell(pcl - noise_db)
+
+        # The binning information - effective (mid) ell values and
+        # the window information
+        ls = ell_bins.get_effective_ells()
+        print("c_beam, k, i, j", c, k, i, j)
+
+        # this has shape n_cls, n_bpws, n_cls, lmax+1
+        bandpowers = workspace.get_bandpower_windows()
+
+        # Save all the results, skipping things we don't want like EB modes
+        for index, name in results_to_use:
+            win = bandpowers[index, :, index, :]
+            self.results.append(
+                Measurement(
+                    name,
+                    ls,
+                    c[index],
+                    n_ell[index],
+                    n_ell_coupled[index],
+                    win,
+                    i,
+                    j,
+                )
+            )
 
 if __name__ == "__main__":
     PipelineStage.main()
