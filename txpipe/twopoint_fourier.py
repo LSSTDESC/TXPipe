@@ -901,7 +901,6 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
         ("binned_shear_catalog", HDFFile),
         ("binned_lens_catalog", HDFFile),
         ("binned_random_catalog", HDFFile),
-        ("binned_random_catalog_sub", HDFFile),
         ("tracer_metadata", HDFFile),
         ("shear_photoz_stack", QPNOfZFile),  # Photoz stack
         ("lens_photoz_stack", QPNOfZFile),  # Photoz stack
@@ -1099,10 +1098,13 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
     def get_uuid(self, kind):
         if kind == "shear":
             with self.open_input("binned_shear_catalog") as f:
-                return int(f['provenance'].attrs["uuid"], 16)
-        else:
+                return int(f["provenance"].attrs["uuid"], 16)
+        elif kind == "lens":
             with self.open_input("binned_lens_catalog") as f:
-                return int(f['provenance'].attrs["uuid"], 16)
+                return int(f["provenance"].attrs["uuid"], 16)
+        else:
+            with self.open_input("binned_random_catalog") as f:
+                return int(f["provenance"].attrs["uuid"], 16)
 
 
 if __name__ == "__main__":
