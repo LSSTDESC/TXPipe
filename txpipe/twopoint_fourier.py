@@ -912,28 +912,35 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
     ]
 
     config_options_cat = {  # Config specific to catalog-based C_ells
-        "use_randoms": StageParameter(
+        "use_randoms_clustering": StageParameter(
             bool,
             True,
-            msg="Whether to use random catalogs"
+            msg="Whether to use randoms instead of a map-based mask for clustering"
         ),
-        "use_subsampled_randoms": StageParameter(
-            bool,
-            True,
-            msg="Use subsampled randoms file for RR calculation"
-        ),
-        "use_mask_clustering": StageParameter(
+        "calc_noise_dp_bias": StageParameter(
             bool,
             False,
-            msg="Use a mask instead of randoms for clustering calculations"
+            msg="Whether to analytically compute bias in the shot noise component "
+                "induced by deprojection."
         ),
-        
+        "ell_max_deproj": StageParameter(
+            int,
+            1500,
+            "Maximum multipole to use for mode deprojection."
+        )
     }
     config_options = TXTwoPointFourier.config | config_options_cat
 
 
     def load_maps(self):
-        import healpy
+        import pymaster as nmt
+        import healpy as hp
+        ell_max = self.config["ell_max"]
+
+        with self.open_input("binned_lens_catalog", wrapper=True) as f:
+            nbin_lens = f.file["lens"].attrs["nbin_lens"]
+        with self.open_input("binned_shear_catalog", wrapper=True) as f:
+            nbin_source = f.file["shear"].attrs["nbin_source"]
 
         # Load mask for galaxy clustering
         if self.config["use_mask_clustering"] or self.config["deproject_syst_clustering"]:
@@ -967,7 +974,7 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
                             systmap_file = str(systmap)
                             self.config[f"clustering_deproject_{n_systmaps}"] = systmap_file  # for provenance
                             print("Reading clustering systematics map file:", systmap_file)
-                            syst_map = healpy.read_map(systmap_file, verbose=False)
+                            syst_map = hp.read_map(systmap_file, verbose=False)
 
                             # normalize map for Namaster
                             # calculate the mean, accounting for case where mask isn't binary
@@ -993,38 +1000,102 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
             else:
                 print("Using systematics maps for galaxy number counts.")
                 # We assume all systematics maps have the same nside
-                nside = healpy.pixelfunc.get_nside(syst_map)
-                npix = healpy.nside2npix(nside)
+                nside = hp.pixelfunc.get_nside(syst_map)
+                npix = hp.nside2npix(nside)
                 # needed for NaMaster:
                 s_maps_gc = np.array(s_maps).reshape([n_systmaps, 1, npix])
 
         else:
             print("Not using systematics maps for deprojection in NaMaster")
             s_maps_gc = None
+
+        maps = {
+            "mask": mask_gc,
+            "nbin_source": nbin_source,
+            "nbin_lens": nbin_lens,
+            "systmaps": s_maps_gc,
+            "nside": nside
+        }
+
+        print(maps)
         
         return mask_gc, s_maps_gc
 
-
-    def load_cats(self):
+    def get_field(self, maps, i, kind, get_shears=True):
+        # In this subclass we load the catalog field objects dynamically,
+        # because they are much larger than the map objects, or can be
+        # at full LSST scale
         import pymaster as nmt
+        import healpy as hp
 
-        # Specify max ell for NaMaster
+        # If I don't do the -1 here I get an error in namaster
         lmax = self.config["ell_max"] - 1
 
-        # Construct shear field if needed
-        if self.config["do_shear_shear"] or self.config["do_shear_pos"]:
-            with self.open_input(["binned_shear_catalog"], wrapper=True) as f:
-                nbin_source = f.file["shear"].attrs["nbin"]
-                group = f[""]
-                pos_source = np.array([group["ra"], group["dec"]])
-                shear = [group["g1"], group["g2"]]
-            
+        if kind == "shear":
+            if self.rank == 0:
+                print("Loading shear catalog for bin", i)
+            with self.open_input("binned_shear_catalog") as f:
+                group = f[f"shear/bin_{i}"]
+                weight = group["weight"][:]
+                positions = np.array(
+                    [group["ra"][:], group["dec"][:]]
+                )
+                if get_shears:
+                    g1 = group["g1"][:] * (-1) ** self.config["flip_g1"]
+                    g2 = group["g2"][:] * (-1) ** self.config["flip_g2"]
+                    shear = [g1, g2]
+                else:
+                    shear = None
+            field = nmt.NmtFieldCatalog(positions,
+                weight,
+                shear,
+                lmax=lmax,
+                lmax_mask=lmax,
+                spin=2,
+                lonlat=True
+            )
+        else:
+            if self.rank == 0:
+                print("Loading lens catalog for bin", i)
+            with self.open_input("binned_lens_catalog") as f:
+                group = f[f"lens/bin_{i}"]
+                positions = np.array(
+                    [group["ra"][:], group["dec"][:]]
+                )
+                weight = group["weight"][:]
+            # Load randoms for this bin if using them
+            if self.config["use_randoms_clustering"]:
+                with self.open_input("binned_random_catalog") as f:
+                    group = f[f"randoms/bin_{i}"][:]
+                    pos_rand = np.array([
+                        group["ra"][:], group["dec"][:]
+                    ])
+                    weight_rand = group["weight"][:]
+                # Get values of each template at position of each random
+                ipix_rand = hp.ang2pix(maps["nside"], *pos_rand, lonlat=True)
+                s_maps_nc = s_maps_nc[:, :, ipix_rand].squeeze()
+                # No need for mask - set to None
+                mask_gc = None
+            else:
+                pos_rand = None
+                weight_rand = None
+                # In this case we do need the mask - retrieve from maps
+                mask_gc = maps["mask"]
+            field = nmt.NmtFieldCatalogClustering(
+                positions,
+                weight,
+                positions_rand=pos_rand,
+                weights_rand=weight_rand,
+                lmax=lmax,
+                mask=mask_gc,
+                lmax_mask=lmax,
+                lmax_deproj=self.config["ell_max_deproj"],
+                spin=0,
+                lonlat=True,
+                calculate_noise_dp_bias=self.config["calc_noise_dp_bias"]
+            )
         
-        # Construct clustering field if needed
-        if self.config["do_shear_pos"] or self.config["do_pos_pos"]:
-
-        
-
+        return field
 
 
 if __name__ == "__main__":
