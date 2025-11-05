@@ -935,7 +935,6 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
     def load_maps(self):
         import pymaster as nmt
         import healpy as hp
-        ell_max = self.config["ell_max"]
 
         with self.open_input("binned_lens_catalog", wrapper=True) as f:
             nbin_lens = f.file["lens"].attrs["nbin_lens"]
@@ -1096,6 +1095,14 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
             )
         
         return field
+
+    def get_uuid(self, kind):
+        if kind == "shear":
+            with self.open_input("binned_shear_catalog") as f:
+                return int(f['provenance'].attrs["uuid"], 16)
+        else:
+            with self.open_input("binned_lens_catalog") as f:
+                return int(f['provenance'].attrs["uuid"], 16)
 
 
 if __name__ == "__main__":
