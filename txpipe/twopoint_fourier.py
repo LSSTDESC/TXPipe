@@ -118,13 +118,13 @@ class TXTwoPointFourier(PipelineStage):
         if self.rank == 0:
             print("Loaded maps.")
 
-        nbin_source = len(maps["g"])
-        nbin_lens = len(maps["d"])
+        nbin_source = maps["nbin_source"]
+        nbin_lens = maps["nbin_lens"]
 
-        # Do this at the beggining since its fast and sometimes crashes.
-        # It is best to avoid loosing running time later.
+        # Do this at the beginning since its fast and sometimes crashes.
+        # It is best to avoid losing running time later.
         # Load the n(z) values, which are both saved in the output
-        # file alongside the spectra, and then used to calcualate the
+        # file alongside the spectra, and then used to calculate the
         # fiducial theory C_ell, which is used in the deprojection calculation
         tracer_sacc = self.load_tracers(nbin_source, nbin_lens)
 
@@ -133,7 +133,12 @@ class TXTwoPointFourier(PipelineStage):
                 cosmo = f.to_ccl()
 
             theory_ell = np.unique(np.geomspace(self.config["ell_min"], self.config["ell_max"], 100).astype(int))
-            theory_sacc = theory_3x2pt(cosmo, tracer_sacc, bias=self.config["b0"], smooth=True, ell_values=theory_ell)
+            theory_sacc = theory_3x2pt(cosmo,
+                                    tracer_sacc,
+                                    bias=self.config["b0"],
+                                    smooth=True,
+                                    ell_values=theory_ell
+            )
         else:
             theory_sacc = sacc.Sacc()
 
@@ -164,7 +169,9 @@ class TXTwoPointFourier(PipelineStage):
         # It's not the most optimal way of doing it
         # as it's not dynamic, just a round-robin assignment.
         for i, j, k in calcs:
-            self.compute_power_spectra(pixel_scheme, i, j, k, maps, workspace_cache, ell_bins, theory_sacc, f_sky)
+            self.compute_power_spectra(
+                pixel_scheme, i, j, k, maps, workspace_cache, ell_bins, theory_sacc, f_sky
+            )
 
         if self.rank == 0:
             print(f"Collecting results together")
@@ -189,7 +196,7 @@ class TXTwoPointFourier(PipelineStage):
             mask = f.read_mask(thresh=self.config["mask_threshold"])
             if self.rank == 0:
                 print("Loaded mask")
-
+        
         # Using a flat mask as the clustering weight for now, since I need to know
         # how to turn the depth map into a weight
         clustering_weight = mask
@@ -200,12 +207,16 @@ class TXTwoPointFourier(PipelineStage):
                 nbin_source = f.file["maps"].attrs["nbin_source"]
                 g1_maps = [f.read_map(f"g1_{b}") for b in range(nbin_source)]
                 g2_maps = [f.read_map(f"g2_{b}") for b in range(nbin_source)]
-                lensing_weights = [f.read_map(f"lensing_weight_{b}") for b in range(nbin_source)]
+                lensing_weights = [
+                    f.read_map(f"lensing_weight_{b}") for b in range(nbin_source)
+                ]
                 if self.rank == 0:
                     print(f"Loaded 2 x {nbin_source} shear maps")
                     print(f"Loaded {nbin_source} lensing weight maps")
         else:
             g1_maps, g2_maps, lensing_weights = [], [], []
+            nbin_source = 0
+
 
         if self.config["do_shear_pos"] or self.config["do_pos_pos"]:
             # And finally the density maps
@@ -215,6 +226,8 @@ class TXTwoPointFourier(PipelineStage):
                 print(f"Loaded {nbin_lens} overdensity maps")
         else:
             d_maps = []
+            nbin_lens = 0
+
 
         # Choose pixelization and read mask and systematics maps
         pixel_scheme = choose_pixelization(**info)
@@ -262,12 +275,18 @@ class TXTwoPointFourier(PipelineStage):
                                 systmap,
                                 "Not a HEALPix .fits file.",
                             )
-                            warnings.warn("Systematics map file must be a HEALPix .fits file.")
+                            warnings.warn(
+                                "Systematics map file must be a HEALPix .fits file."
+                            )
                             print("Ignoring", systmap)
                         else:
                             systmap_file = str(systmap)
-                            self.config[f"clustering_deproject_{n_systmaps}"] = systmap_file  # for provenance
-                            print("Reading clustering systematics map file:", systmap_file)
+                            self.config[
+                                f"clustering_deproject_{n_systmaps}"
+                            ] = systmap_file  # for provenance
+                            print(
+                                "Reading clustering systematics map file:", systmap_file
+                            )
                             syst_map = healpy.read_map(systmap_file, verbose=False)
 
                             # normalize map for Namaster
@@ -331,6 +350,8 @@ class TXTwoPointFourier(PipelineStage):
             "d": d_maps,
             "lf": lensing_fields,
             "df": density_fields,
+            "nbin_source": nbin_source,
+            "nbin_lens": nbin_lens,
         }
 
         return pixel_scheme, maps, f_sky
@@ -504,35 +525,18 @@ class TXTwoPointFourier(PipelineStage):
         sys.stdout.flush()
 
         if k == SHEAR_SHEAR:
-            field_i = maps["lf"][i]
-            field_j = maps["lf"][j]
-            results_to_use = [
-                (
-                    0,
-                    CEE,
-                ),
-                (
-                    1,
-                    CEB,
-                ),
-                (
-                    2,
-                    CBE,
-                ),
-                (
-                    3,
-                    CBB,
-                ),
-            ]
+            field_i = self.get_field(maps, i, "shear")
+            field_j = self.get_field(maps, j, "shear")
+            results_to_use = [(0, CEE), (1, CEB), (2, CBE), (3, CBB)]
 
         elif k == POS_POS:
-            field_i = maps["df"][i]
-            field_j = maps["df"][j]
+            field_i = self.get_field(maps, i, "pos")
+            field_j = self.get_field(maps, j, "pos")
             results_to_use = [(0, Cdd)]
 
         elif k == SHEAR_POS:
-            field_i = maps["lf"][i]
-            field_j = maps["df"][j]
+            field_i = self.get_field(maps, i, "shear")
+            field_j = self.get_field(maps, j, "pos")
             results_to_use = [(0, CdE), (1, CdB)]
 
         workspace = workspace_cache.get(i, j, k)
@@ -554,15 +558,21 @@ class TXTwoPointFourier(PipelineStage):
                 cl_guess=cl_guess,
                 workspace=workspace,
             )
+            pcl = nmt.compute_coupled_cell(field_i, field_j)
+            c = workspace.decouple_cell(pcl)
             # noise to subtract (already decoupled)
-            n_ell, n_ell_coupled = self.compute_noise_analytic(i, j, k, maps, f_sky, workspace, mask)
+            n_ell, n_ell_coupled = self.compute_noise_analytic(
+                i, j, k, maps, f_sky, workspace, mask
+            )
             if n_ell is not None:
                 c = c - n_ell
 
             # Writing out the noise for later cross-checks
         else:
             # Get the coupled noise C_ell values to give to the master algorithm
-            n_ell, n_ell_coupled = self.compute_noise(i, j, k, ell_bins, maps, workspace)
+            n_ell, n_ell_coupled = self.compute_noise(
+                i, j, k, ell_bins, maps, workspace
+            )
             c = nmt.compute_full_master(
                 field_i,
                 field_j,
@@ -589,7 +599,7 @@ class TXTwoPointFourier(PipelineStage):
 
         # Current treatment of the beam is incorrect so commented out for now.
         # Issue has been opened on GitHub (#344)
-        c_beam = c  # / window_pixel(ls, pixel_scheme.nside) ** 2
+        c_beam = c# / window_pixel(ls, pixel_scheme.nside) ** 2
         print("c_beam, k, i, j", c_beam, k, i, j)
 
         # this has shape n_cls, n_bpws, n_cls, lmax+1
@@ -611,7 +621,19 @@ class TXTwoPointFourier(PipelineStage):
                 )
             )
 
+    def get_field(self, maps, i, kind):
+        # In this class this is very simple, just retrieving a map from
+        # the dictionary. But we want to avoid loading the full catalogs
+        # for all of the tomographic bins at once in the sub-class that
+        # uses them, so we make this a method that it can override to load
+        # them dynamically.
+        if kind == "shear":
+            return maps["lf"][i]
+        else:
+            return maps["df"][i]
+
     def compute_noise(self, i, j, k, ell_bins, maps, workspace):
+
         if self.config["true_shear"] and k == SHEAR_SHEAR:
             # if using true shear (i.e. no shape noise) we do not need to add any noise for the shear-shear case
             return None
@@ -674,6 +696,7 @@ class TXTwoPointFourier(PipelineStage):
 
         if (i != j) or (k == SHEAR_POS):
             return None, None
+
         # This bit only works with healpix maps but it's checked beforehand so that's fine
         if k == SHEAR_SHEAR:
             with self.open_input("source_maps", wrapper=True) as f:
@@ -705,6 +728,7 @@ class TXTwoPointFourier(PipelineStage):
             n_ell_coupled = n_ls * np.ones((1, 3 * nside))
 
         n_ell = workspace.decouple_cell(n_ell_coupled)
+        
 
         return n_ell, n_ell_coupled
 
@@ -774,8 +798,13 @@ class TXTwoPointFourier(PipelineStage):
         # bin pair and spectrum type, but many data points at different angles.
         # Here we pull them all out to add to sacc
         for d in self.results:
-            tracer1 = f"source_{d.i}" if d.corr_type in [CEE, CEB, CBE, CBB, CdE, CdB] else f"lens_{d.i}"
+            tracer1 = (
+                f"source_{d.i}"
+                if d.corr_type in [CEE, CEB, CBE, CBB, CdE, CdB]
+                else f"lens_{d.i}"
+            )
             tracer2 = f"source_{d.j}" if d.corr_type in [CEE, CEB, CBE, CBB] else f"lens_{d.j}"
+
 
             n = len(d.l)
             # The full set of ell values (unbinned), used to store the
@@ -817,6 +846,7 @@ class TXTwoPointFourier(PipelineStage):
             # the coupled noise is constant
             tr = S.tracers[tracer1]
             if (tracer1 == tracer2) and ("n_ell_coupled" not in tr.metadata):
+
                 if self.config["analytic_noise"] is False:
                     # If computed through simulations, it might be better to
                     # take the mean since, for now, only a float can be passed
