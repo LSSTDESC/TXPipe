@@ -150,7 +150,7 @@ class TXTwoPointFourier(PipelineStage):
         # Binning scheme, currently chosen from the geometry.
         ell_bins = choose_ell_bins(**config)
 
-        self.hash_metadata = None  # Filled in make_workspaces
+        self.hash_metadata = {}  # Filled in make_workspaces
         workspace_cache = self.make_workspaces(maps, calcs, ell_bins)
 
         # If we are rank zero print out some info
@@ -382,10 +382,8 @@ class TXTwoPointFourier(PipelineStage):
         hashes = {id(x): array_hash(x) for x in lensing_weights}
         hashes[id(density_weight)] = array_hash(density_weight)
 
-        self.hash_metadata = {
-            "ell_hash": ell_hash,
-            "mask_lens": hashes[id(density_weight)],
-        }
+        self.hash_metadata["ell_hash"] = ell_hash
+        self.hash_metadata["mask_lens"] = hashes[id(density_weight)]
 
         for i, w in enumerate(lensing_weights):
             self.hash_metadata[f"mask_source_{i}"] = hashes[id(w)]
@@ -1055,6 +1053,8 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
                 spin=2,
                 lonlat=True
             )
+            # Store hash metadata
+            self.hash_metadata[f"mask_source_{i}"] = array_hash(positions) ^ array_hash(weight)
         else:
             if self.rank == 0:
                 print("Loading lens catalog for bin", i)
@@ -1083,11 +1083,16 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
                     maps["systmaps"] = None
                 # No need for mask - set to None
                 mask_gc = None
+                # Store hash metadata
+                self.hash_metadata[f"mask_lens_{i}"] = array_hash(positions)\
+                    ^ array_hash(weight) ^ array_hash(pos_rand) ^ array_hash(weight_rand)
             else:
                 pos_rand = None
                 weight_rand = None
                 # In this case we do need the mask - retrieve from maps
                 mask_gc = maps["mask_lens"]
+                # Store hash metadata
+                self.hash_metadata[f"mask_lens_{i}"] = array_hash(mask_gc)
             field = nmt.NmtFieldCatalogClustering(
                 positions,
                 weight,
@@ -1101,19 +1106,7 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
                 lonlat=True,
                 calculate_noise_dp_bias=self.config["calc_noise_dp_bias"]
             )
-        
         return field
-
-    def get_uuid(self, kind):
-        if kind == "shear":
-            with self.open_input("binned_shear_catalog") as f:
-                return int(f["provenance"].attrs["uuid"], 16)
-        elif kind == "lens":
-            with self.open_input("binned_lens_catalog") as f:
-                return int(f["provenance"].attrs["uuid"], 16)
-        else:
-            with self.open_input("binned_random_catalog") as f:
-                return int(f["provenance"].attrs["uuid"], 16)
 
     def make_workspaces(self, maps, calcs, ell_bins):
         import pymaster as nmt
@@ -1125,36 +1118,37 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
 
         # load the cache
         cache = WorkspaceCache(self.config["cache_dir"], low_mem=self.config["low_mem"])
-        shear_id = self.get_uuid("shear")
-        lens_id = self.get_uuid("lens")
-        if self.config["use_randoms_clustering"]:
-            mask_id = self.get_uuid("randoms")
-        else:
-            mask_id = array_hash(maps["mask_lens"])
         ell_hash = array_hash(ell_bins.get_effective_ells())
-        self.hash_metadata = {
-            "ell_hash": ell_hash
-        }
+        self.hash_metadata["ell_hash"] = ell_hash
 
         for (i, j, k) in calcs:
             if k == SHEAR_SHEAR:
                 f1 = self.get_field(maps, i, "shear", get_shears=False)
                 f2 = self.get_field(maps, j, "shear", get_shears=False)
-                id1 = shear_id ^ hash(f"bin_{i}")
-                id2 = shear_id ^ hash(f"bin_{j}")
+                h1 = self.hash_metadata[f"mask_source_{i}"]
+                h2 = self.hash_metadata[f"mask_source_{j}"]
             elif k == SHEAR_POS:
                 f1 = self.get_field(maps, i, "shear", get_shears=False)
                 f2 = self.get_field(maps, j, "density", get_shears=False)
-                id1 = shear_id ^ hash(f"bin_{i}")
-                id2 = lens_id ^ hash(f"bin_{j}") ^ mask_id
+                h1 = self.hash_metadata[f"mask_source_{i}"]
+                h2 = self.hash_metadata[f"mask_lens_{j}"]
             else:
                 f1 = self.get_field(maps, i, "density", get_shears=False)
                 f2 = self.get_field(maps, j, "density", get_shears=False)
-                id1 = lens_id ^ hash(f"bin_{i}") ^ mask_id
-                id2 = lens_id ^ hash(f"bin_{j}") ^ mask_id
+                h1 = self.hash_metadata[f"mask_lens_{i}"]
+                h2 = self.hash_metadata[f"mask_lens_{j}"]
 
-            # Key on these shear and position catalogs and the ell binning
-            key = hash((i, j, k))
+            # First we derive a hash which will change whenever either
+            # the mask changes or the ell binning.
+            # We combine the hashes of those three objects together
+            # using xor (python  ^ operator), which seems to be standard.
+            key = h1 ^ ell_hash
+            # ... except that if we are using the same field twice then
+            # x ^ x = 0, which causes problems (all the auto-bins would
+            # have the same key).  So we only combine the hashes if the
+            # fields are different.
+            if h2 != h1:
+                key ^= h2
 
             space = cache.get(i, j, k, key=key)
         
