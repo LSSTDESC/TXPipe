@@ -890,8 +890,10 @@ class TXTwoPointFourier(PipelineStage):
         S.metadata["binning/ell_spacing"] = self.config["ell_spacing"]
         S.metadata["binning/n_ell"] = self.config["n_ell"]
 
+        # Get output name (will be different if subclass used)
+        output = self.outputs[0][0]
         # And we're all done!
-        output_filename = self.get_output("twopoint_data_fourier")
+        output_filename = self.get_output(output)
         S.save_fits(output_filename, overwrite=True)
 
 
@@ -909,7 +911,7 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
         ("source_maps", MapsFile),
         ("lens_maps", MapsFile),
     ]
-    outputs = [("twopoint_data_fourier", SACCFile)]
+    outputs = [("twopoint_data_fourier_cat", SACCFile)]
     config_options_cat = {  # Config specific to catalog-based C_ells
         "use_randoms_clustering": StageParameter(
             bool,
