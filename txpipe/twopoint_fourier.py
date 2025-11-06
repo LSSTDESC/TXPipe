@@ -1153,7 +1153,7 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
                 id2 = lens_id ^ hash(f"bin_{j}") ^ mask_id
 
             # Key on these shear and position catalogs and the ell binning
-            key = id1 ^ id2 ^ ell_hash
+            key = hash((k,i,j))
 
             space = cache.get(i, j, k, key=key)
         
