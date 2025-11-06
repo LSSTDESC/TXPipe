@@ -359,8 +359,8 @@ PZRealizationsPlotLens:
         photoz_realizations_plot: lens_photoz_realizations_plot
 
 TXShearCalibration:
-    add_fiducial_distance: True
-    copy_redshift: True
+    add_fiducial_distance: true
+    copy_redshift: true
     redshift_name: '00/redshift_true'
 
 TXTwoPointSCIA:
