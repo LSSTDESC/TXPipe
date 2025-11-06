@@ -150,7 +150,9 @@ class TXTwoPointFourier(PipelineStage):
         # Binning scheme, currently chosen from the geometry.
         ell_bins = choose_ell_bins(**config)
 
-        self.hash_metadata = {}  # Filled in make_workspaces
+        # Fill hash metadata in make_workspaces (and in get_fields if using
+        # TXTwoPointFourierCatalog subclass)
+        self.hash_metadata = {}  
         workspace_cache = self.make_workspaces(maps, calcs, ell_bins)
 
         # If we are rank zero print out some info
@@ -896,6 +898,15 @@ class TXTwoPointFourier(PipelineStage):
 
 
 class TXTwoPointFourierCatalog(TXTwoPointFourier):
+    """
+    This subclass of TXTwoPointFourier computes the angular power spectra
+    directly from the catalogs using the catalog-based pseudo-Cl formalism,
+    instead of requiring that maps of the relevant fields be created in advance.
+    Template deprojection can still be used to mitigate systematic effects if 
+    the systematics templates are provided as input. The mask for galaxy clustering
+    fields can either be provided directly (in map form), or one can instead
+    provide a catalog of randoms.
+    """
     name = "TXTwoPointFourierCatalog"
     inputs = [
         ("binned_shear_catalog", HDFFile),
@@ -932,6 +943,8 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
 
 
     def load_maps(self):
+        # In this subclass this function is just used for loading the mask (if provided)
+        # and the clustering systematics templates (if deprojecting).
         import pymaster as nmt
         import healpy as hp
 
@@ -1016,7 +1029,6 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
             "nside": nside
         }
 
-        print(maps)
         # Have to return Nones as placeholders to be consistent with TXTwoPointFourier
         return None, maps, None
 
@@ -1053,7 +1065,7 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
                 spin=2,
                 lonlat=True
             )
-            # Store hash metadata
+            # MCM depends on positions and weights of sources
             self.hash_metadata[f"mask_source_{i}"] = array_hash(positions) ^ array_hash(weight)
         else:
             if self.rank == 0:
@@ -1083,7 +1095,9 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
                     maps["systmaps"] = None
                 # No need for mask - set to None
                 mask_gc = None
-                # Store hash metadata
+                # MCM depends on positions and weights of data AND of randoms;
+                # final hash ensures there is no chance of reusing an existing workspace
+                # if a future run uses a mask instead of randoms
                 self.hash_metadata[f"mask_lens_{i}"] = array_hash(positions)\
                     ^ array_hash(weight) ^ array_hash(pos_rand) ^ array_hash(weight_rand)\
                     ^ hash("randoms")
@@ -1092,7 +1106,7 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
                 weight_rand = None
                 # In this case we do need the mask - retrieve from maps
                 mask_gc = maps["mask_lens"]
-                # Store hash metadata
+                # MCM depends only on the mask
                 self.hash_metadata[f"mask_lens_{i}"] = array_hash(mask_gc) ^ hash("mask")
             field = nmt.NmtFieldCatalogClustering(
                 positions,
