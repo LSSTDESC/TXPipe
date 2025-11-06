@@ -909,7 +909,7 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
         ("source_maps", MapsFile),
         ("lens_maps", MapsFile),
     ]
-
+    outputs = [("twopoint_data_fourier", SACCFile)]
     config_options_cat = {  # Config specific to catalog-based C_ells
         "use_randoms_clustering": StageParameter(
             bool,
@@ -928,7 +928,7 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
             "Maximum multipole to use for mode deprojection."
         )
     }
-    config_options = TXTwoPointFourier.config | config_options_cat
+    config_options = TXTwoPointFourier.config_options | config_options_cat
 
 
     def load_maps(self):
@@ -940,8 +940,10 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
         with self.open_input("binned_shear_catalog", wrapper=True) as f:
             nbin_source = f.file["shear"].attrs["nbin_source"]
 
+        # We will obtain nside from somewhere if needed, but for now set to None
+        nside = None
         # Load mask for galaxy clustering
-        if self.config["use_mask_clustering"] or self.config["deproject_syst_clustering"]:
+        if self.config["deproject_syst_clustering"] or not self.config["use_randoms_clustering"]:
             with self.open_input("mask", wrapper=True) as f:
                 info = f.read_map_info("mask")
                 mask_gc = f.read_mask(thresh=self.config["mask_threshold"])
@@ -951,7 +953,7 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
             mask_gc = None
 
         # Load HEALPix systematics maps if required
-        if deproject_syst_clustering:
+        if self.config["deproject_syst_clustering"]:
             print("Deprojecting systematics maps for number counts")
             n_systmaps = 0
             s_maps = []
@@ -994,7 +996,6 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
             print("Number of systematics maps read: ", n_systmaps)
             if n_systmaps == 0:
                 print("No systematics maps found. Skipping deprojection.")
-                deproject_syst_clustering = False
             else:
                 print("Using systematics maps for galaxy number counts.")
                 # We assume all systematics maps have the same nside
@@ -1016,8 +1017,8 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
         }
 
         print(maps)
-        
-        return mask_gc, s_maps_gc
+        # Have to return Nones as placeholders to be consistent with TXTwoPointFourier
+        return None, maps, None
 
     def get_field(self, maps, i, kind, get_shears=True):
         # In this subclass we load the catalog field objects dynamically,
@@ -1069,9 +1070,12 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
                         group["ra"][:], group["dec"][:]
                     ])
                     weight_rand = group["weight"][:]
-                # Get values of each template at position of each random
-                ipix_rand = hp.ang2pix(maps["nside"], *pos_rand, lonlat=True)
-                s_maps_nc = s_maps_nc[:, :, ipix_rand].squeeze()
+                if self.config["deproject_syst_clustering"]:
+                    # Get values of each template at position of each random
+                    ipix_rand = hp.ang2pix(maps["nside"], *pos_rand, lonlat=True)
+                    maps["systmaps"] = maps["systmaps"][:, :, ipix_rand].squeeze()
+                else:
+                    maps["systmaps"] = None
                 # No need for mask - set to None
                 mask_gc = None
             else:
@@ -1087,8 +1091,8 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
                 lmax=lmax,
                 mask=mask_gc,
                 lmax_mask=lmax,
+                templates=maps["systmaps"],
                 lmax_deproj=self.config["ell_max_deproj"],
-                spin=0,
                 lonlat=True,
                 calculate_noise_dp_bias=self.config["calc_noise_dp_bias"]
             )
@@ -1123,6 +1127,12 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
         else:
             mask_id = array_hash(maps["mask_lens"])
 
+        ell_hash = array_hash(ell_bins.get_effective_ells())
+        self.hash_metadata = {
+            "ell_hash": ell_hash,
+            "mask_lens": mask_id
+        }
+
         for (i, j, k) in calcs:
             if k == SHEAR_SHEAR:
                 f1 = self.get_field(maps, i, "shear", get_shears=False)
@@ -1141,7 +1151,7 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
                 id2 = lens_id ^ hash(f"bin_{j}") ^ mask_id
 
             # Key on these shear and position catalogs and the ell binning
-            key = id1 ^ id2 ^ array_hash(ell_bins.get_effective_ells())
+            key = id1 ^ id2 ^ ell_hash
 
             space = cache.get(i, j, k, key=key)
         
@@ -1208,14 +1218,13 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
         pcl = nmt.compute_coupled_cell(field_i, field_j)
         # Noise is automatically computed analytically and subtracted for cat-based C_ells,
         # but noise deprojection bias needs subtracting manually
+        noise_db = 0
         if i == j:
-            n_ell_coupled = field_i.Nf
-            if self.config["calc_noise_dp_bias"]:
+            n_ell_coupled = field_i.Nf * np.ones((len(results_to_use), self.config["ell_max"]))
+            if self.config["calc_noise_dp_bias"] and self.config["deproject_syst_clustering"]:
                 noise_db = field_i.get_noise_deprojection_bias()
-            else:
-                noise_db = 0
         else:
-            n_ell_coupled = np.zeros((c.shape[0], self.config["ell_max"]))
+            n_ell_coupled = np.zeros((len(results_to_use), self.config["ell_max"]))
         n_ell = workspace.decouple_cell(n_ell_coupled)
         c = workspace.decouple_cell(pcl - noise_db)
 
