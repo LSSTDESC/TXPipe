@@ -1067,11 +1067,14 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
             # Load randoms for this bin if using them
             if self.config["use_randoms_clustering"]:
                 with self.open_input("binned_random_catalog") as f:
-                    group = f[f"randoms/bin_{i}"][:]
+                    group = f[f"randoms/bin_{i}"]
                     pos_rand = np.array([
                         group["ra"][:], group["dec"][:]
                     ])
-                    weight_rand = group["weight"][:]
+                    if "weight" in group.keys():
+                        weight_rand = group["weight"][:]
+                    else:
+                        weight_rand = np.ones_like(pos_rand[0])
                 if self.config["deproject_syst_clustering"]:
                     # Get values of each template at position of each random
                     ipix_rand = hp.ang2pix(maps["nside"], *pos_rand, lonlat=True)
@@ -1128,11 +1131,9 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
             mask_id = self.get_uuid("randoms")
         else:
             mask_id = array_hash(maps["mask_lens"])
-
         ell_hash = array_hash(ell_bins.get_effective_ells())
         self.hash_metadata = {
-            "ell_hash": ell_hash,
-            "mask_lens": mask_id
+            "ell_hash": ell_hash
         }
 
         for (i, j, k) in calcs:
@@ -1153,7 +1154,7 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
                 id2 = lens_id ^ hash(f"bin_{j}") ^ mask_id
 
             # Key on these shear and position catalogs and the ell binning
-            key = hash((k,i,j))
+            key = hash((i, j, k))
 
             space = cache.get(i, j, k, key=key)
         
