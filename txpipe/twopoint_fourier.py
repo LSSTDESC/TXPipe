@@ -1149,7 +1149,7 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
             else:
                 f1 = self.get_field(maps, i, "density", get_shears=False)
                 f2 = self.get_field(maps, j, "density", get_shears=False)
-                id1 = lens_id ^ hash(f"bin_{i}")
+                id1 = lens_id ^ hash(f"bin_{i}") ^ mask_id
                 id2 = lens_id ^ hash(f"bin_{j}") ^ mask_id
 
             # Key on these shear and position catalogs and the ell binning
