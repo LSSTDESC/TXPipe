@@ -1085,14 +1085,15 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
                 mask_gc = None
                 # Store hash metadata
                 self.hash_metadata[f"mask_lens_{i}"] = array_hash(positions)\
-                    ^ array_hash(weight) ^ array_hash(pos_rand) ^ array_hash(weight_rand)
+                    ^ array_hash(weight) ^ array_hash(pos_rand) ^ array_hash(weight_rand)\
+                    ^ hash("randoms")
             else:
                 pos_rand = None
                 weight_rand = None
                 # In this case we do need the mask - retrieve from maps
                 mask_gc = maps["mask_lens"]
                 # Store hash metadata
-                self.hash_metadata[f"mask_lens_{i}"] = array_hash(mask_gc)
+                self.hash_metadata[f"mask_lens_{i}"] = array_hash(mask_gc) ^ hash("mask")
             field = nmt.NmtFieldCatalogClustering(
                 positions,
                 weight,
