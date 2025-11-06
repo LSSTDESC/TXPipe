@@ -64,3 +64,42 @@ def process_shear_data(data):
     output["psf_g2"] = psf_g2
 
     return output
+
+
+def process_metadetect_data(data):
+    output = {}
+    for variant in ["00", "1p", "1m", "2p", "2m"]:
+        var_data = data[data["metaStep"] == variant]
+
+        var_output = {
+            "ra": var_data["radec"][0],
+            "dec": var_data["radec"][1],
+            "cell_id": var_data["cellId"],
+            "id": var_data["shearObjectId"],
+            "metaStep": var_data["metaStep"],
+            "object_mask_fraction": var_data["maskFractionObj"],
+            "cell_mask_fraction": var_data["maskFractionCell"],
+            "n_epoch": var_data["nEpochCell"],
+            "g1": var_data["g1"],
+            "g2": var_data["g2"],
+            "g1_err": var_data["gCov"][0],
+            "g2_err": var_data["gCov"][1],
+            "g_cross": var_data["gCov"][2],
+            "T": var_data["T"],
+            "s2n": var_data["SNR"],
+            "T_err": var_data["TErr"],
+            "psf_g1": var_data["g1PSFOrig"],
+            "psf_g2": var_data["g2PSFOrig"],
+            "mcal_psf_g1": var_data["g1PSFMeta"],
+            "mcal_psf_g2": var_data["g2PSFMeta"],
+            "mcal_psf_T_mean": var_data["TPSFMeta"],
+            "flags": var_data["flags"],
+        }
+        for band in "ugrizy":
+            f = var_data["stdFlux"][band]
+            f_err = var_data["stdFluxErr"][band]
+            var_output[f"flux_{band}"] = f
+            var_output[f"flux_err_{band}"] = f_err
+        output[f"{variant}"] = var_output
+
+    return output

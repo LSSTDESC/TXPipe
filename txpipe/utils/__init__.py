@@ -10,7 +10,7 @@ from .calibrators import (
     LensfitCalibrator,
     HSCCalibrator,
 )
-from .splitters import Splitter, DynamicSplitter
+from .splitters import Splitter, DynamicSplitter, MetaDetectSplitter
 from .calibration_tools import read_shear_catalog_type, band_variants, metacal_variants, metadetect_variants
 from .calibration_tools import MetacalCalculator, LensfitCalculator, MeanShearInBins
 from .conversion import nanojansky_err_to_mag_ab, nanojansky_to_mag_ab, moments_to_shear, mag_ab_to_nanojansky

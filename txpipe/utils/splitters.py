@@ -206,3 +206,39 @@ class DynamicSplitter(Splitter):
             sz = self.index[b]
             for col in self.columns:
                 sub[col].resize((sz,))
+
+
+class MetaDetectSplitter(DynamicSplitter):
+    """
+    A splitter for splitting the metadetect data into subgroups for the different variants
+    """
+    def __init__(self, group, columns, bin_sizes, dtypes=None):
+        """Create a fixed-size splitter
+
+        Parameters
+        ----------
+        group: h5py.Group
+            The group where the output data will be written
+        name: str
+            The base name of the different bins to write
+        columns: list
+            The str names of the columns to be split
+        bin_sizes: dict
+            Maps bin_name (can be anything printable) to final_bin_size (int)
+        dtypes: dict or None
+            Maps bins to HDF5 data types for the output columns.  Bins default
+            to 8 byte floats if not found in this.
+        """
+        self.bins = list(bin_sizes.keys())
+
+        self.group = group
+
+        self.columns = columns
+
+        # self.index will track how much data is written so far
+        self.index = {b: 0 for b in self.bins}
+        self.bin_sizes = bin_sizes
+
+        # Make a subgroup for each bin in our data
+        self.subgroups = {b: self.group.create_group(f"{b}") for b in self.bins}
+        self._setup_columns(dtypes or {})
