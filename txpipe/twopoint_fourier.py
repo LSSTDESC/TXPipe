@@ -935,7 +935,7 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
         ),
         "ell_max_deproj": StageParameter(
             int,
-            1500,
+            -1,
             "Maximum multipole to use for mode deprojection."
         )
     }
@@ -1013,21 +1013,21 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
                 print("Using systematics maps for galaxy number counts.")
                 # We assume all systematics maps have the same nside
                 nside = hp.pixelfunc.get_nside(syst_map)
-                npix = hp.nside2npix(nside)
                 # needed for NaMaster:
-                s_maps_gc = np.array(s_maps).reshape([n_systmaps, 1, npix])
+                s_maps = np.array(s_maps)
 
         else:
             print("Not using systematics maps for deprojection in NaMaster")
-            s_maps_gc = None
+            s_maps = None
 
         maps = {
             "mask_lens": mask_gc,
             "nbin_source": nbin_source,
             "nbin_lens": nbin_lens,
-            "systmaps": s_maps_gc,
+            "systmaps": s_maps,
             "nside": nside
         }
+        print(maps)
 
         # Have to return Nones as placeholders to be consistent with TXTwoPointFourier
         return None, maps, None
@@ -1068,6 +1068,9 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
             # MCM depends on positions and weights of sources
             self.hash_metadata[f"mask_source_{i}"] = array_hash(positions) ^ array_hash(weight)
         else:
+            # Retrieve templates (in map form, if loaded at all)
+            templates = maps["systmaps"]
+
             if self.rank == 0:
                 print("Loading lens catalog for bin", i)
             with self.open_input("binned_lens_catalog") as f:
@@ -1090,9 +1093,7 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
                 if self.config["deproject_syst_clustering"]:
                     # Get values of each template at position of each random
                     ipix_rand = hp.ang2pix(maps["nside"], *pos_rand, lonlat=True)
-                    maps["systmaps"] = maps["systmaps"][:, :, ipix_rand].squeeze()
-                else:
-                    maps["systmaps"] = None
+                    templates = maps["systmaps"][:, ipix_rand]
                 # No need for mask - set to None
                 mask_gc = None
                 # MCM depends on positions and weights of data AND of randoms;
@@ -1108,6 +1109,11 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
                 mask_gc = maps["mask_lens"]
                 # MCM depends only on the mask
                 self.hash_metadata[f"mask_lens_{i}"] = array_hash(mask_gc) ^ hash("mask")
+            # Set lmax_deproj to None if not provided explicitly (will only matter if deprojecting)
+            if self.config["ell_max_deproj"] < 0:
+                lmax_deproj = None
+            else:
+                lmax_deproj = self.config["ell_max_deproj"]
             field = nmt.NmtFieldCatalogClustering(
                 positions,
                 weight,
@@ -1116,8 +1122,8 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
                 lmax=lmax,
                 mask=mask_gc,
                 lmax_mask=lmax,
-                templates=maps["systmaps"],
-                lmax_deproj=self.config["ell_max_deproj"],
+                templates=templates,
+                lmax_deproj=lmax_deproj,
                 lonlat=True,
                 calculate_noise_dp_bias=self.config["calc_noise_dp_bias"]
             )
@@ -1231,7 +1237,7 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
         # Noise is automatically computed analytically and subtracted for cat-based C_ells,
         # but noise deprojection bias needs subtracting manually
         noise_db = 0
-        if i == j:
+        if i == j and k == POS_POS:
             n_ell_coupled = field_i.Nf * np.ones((len(results_to_use), self.config["ell_max"]))
             if self.config["calc_noise_dp_bias"] and self.config["deproject_syst_clustering"]:
                 noise_db = field_i.get_noise_deprojection_bias()
