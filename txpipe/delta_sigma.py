@@ -11,6 +11,11 @@ class TXDeltaSigma(TXTwoPoint):
 
     This is a subclass of TXTwoPoint that re-weights the lenses by the
     inverse critical surface density based on the source redshift distribution.
+
+    The strategy used here is to pre-compute sigma_crit^-1(z_lens) splines
+    for each source bin, and then use Treecorr's "w_eval" feature to apply
+    the appropriate weight to each lens based on its redshift when loading
+    the lens catalog.
     """
 
     name = "TXDeltaSigma"
