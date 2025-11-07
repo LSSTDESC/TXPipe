@@ -18,7 +18,6 @@ dependencies:
   - matplotlib=3.8.*
   - mpi4py=4.0.*
   - mpich=4.3.0=external_*
-  - namaster=2.4.*
   - numpy=2.2.*
   - pandas=2.2.*
   - psutil=5.9.*
@@ -56,3 +55,4 @@ dependencies:
     - pz-rail[algos] @ git+https://github.com/LSSTDESC/RAIL@v1.1.2
     - numpy==2.2.*
     - git+https://github.com/LSSTDESC/dataregistry.git
+    - pymaster==2.5.*
