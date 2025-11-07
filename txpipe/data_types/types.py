@@ -468,6 +468,27 @@ class SACCFile(DataFile):
 
 
 class FiducialCosmology(YamlFile):
+
+    def to_astropy(self):
+        from astropy.cosmology import w0waCDM
+
+        with open(self.path, "r") as fp:
+            params = yaml.load(fp, Loader=yaml.Loader)
+
+        astropy_params = dict(
+            H0=params["H0"],
+            Om0=params["Omega_m"],
+            Ode0=1 - params["Omega_k"] - params["Omega_m"],
+            w0=params["w0"],
+            wa=params["wa"],
+            Neff=params["Neff"],
+            m_nu=params["sum_nu_masses"]
+
+        )
+
+        cosmo = w0waCDM(**astropy_params)
+
+        return cosmo
     # TODO replace when CCL has more complete serialization tools.
     def to_ccl(self, **kwargs):
         import pyccl as ccl

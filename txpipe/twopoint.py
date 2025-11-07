@@ -81,7 +81,7 @@ class TXTwoPoint(PipelineStage):
         "use_randoms": StageParameter(bool, True, msg="Whether to use random catalogs"),
         "low_mem": StageParameter(bool, False, msg="Whether to use low memory mode"),
         "patch_dir": StageParameter(str, "./cache/patches", msg="Directory for storing patch files"),
-        "chunk_rows": StageParameter(int, 100_000, msg="Number of rows to process in each chunk"),
+        "chunk_rows": StageParameter(int, 100_000, msg="Number of rows to process in each chunk when making patches"),
         "share_patch_files": StageParameter(bool, False, msg="Whether to share patch files across processes"),
         "metric": StageParameter(str, "Euclidean", msg="Distance metric to use (Euclidean, Arc, etc.)"),
         "gaussian_sims_factor": StageParameter(
@@ -423,7 +423,7 @@ class TXTwoPoint(PipelineStage):
                         if self.config["do_shear_pos"] == True:
                             S2.add_tracer("NZ", f"source_{i}", z, Nz)
             else:
-                sys.exit("Requesting a measurement that requires source galaxies but no source_list provided")
+                raise ValueError("Requesting a measurement that requires source galaxies but no source_list provided")
 
         if self.config["do_pos_pos"] or self.config["do_shear_pos"]:
             if lens_list:
@@ -435,7 +435,7 @@ class TXTwoPoint(PipelineStage):
                         if self.config["do_shear_pos"] == True:
                             S2.add_tracer("NZ", f"lens_{i}", z, Nz)
             else:
-                sys.exit("Requesting a measurement that requires lens galaxies but no lens_list provided")
+                raise ValueError("Requesting a measurement that requires lens galaxies but no lens_list provided")
 
         # Now build up the collection of data points, adding them all to
         # the sacc data one by one.
