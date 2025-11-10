@@ -120,6 +120,8 @@ stages:
   - name: HOSFSB
     # Disabled since not yet synchronised with new Treecorr MPI
   - name: TXTwoPointSCIA   # Self-calibration intrinsic alignments of galaxies
+  - name: TXDeltaSigma
+  - name: TXDeltaSigmaPlots
 
     # Disabling these as they takes too long for a quick test.
     # The latter two need NaMaster

@@ -608,7 +608,7 @@ class TXLensCatalogSplitter(PipelineStage):
         extra_cols = [c for c in self.config["extra_cols"] if c]
 
         # Regular columns.
-        cols = ["ra", "dec", "weight", "comoving_distance"]
+        cols = ["ra", "dec", "weight", "comoving_distance", "z"]
 
         # Object we use to make the separate lens bins catalog
         cat_output = self.open_output(self.get_binned_lens_name(), parallel=True)
@@ -683,6 +683,7 @@ class TXLensCatalogSplitter(PipelineStage):
             d = np.zeros(len(a))
             d[z > 0] = pyccl.comoving_radial_distance(cosmo, a[z > 0])
             data["comoving_distance"] = d
+            data["z"] = z
             yield s, e, data
 
 
