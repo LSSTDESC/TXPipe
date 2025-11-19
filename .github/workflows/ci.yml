@@ -67,15 +67,13 @@ jobs:
         cache-name: cache-conda-environment
       with:
         path: ./conda
-        key: ${{ matrix.os }}-conda-${{ hashFiles('bin/install.sh','bin/environment*.yml' ) }}-pandoc
+        key: ${{ matrix.os }}-conda-${{ hashFiles('bin/install.sh','bin/environment*.yml' ) }}
         fail-on-cache-miss: false
 
     - name: Run installer
       if: steps.cache-conda.outputs.cache-hit != 'true'
       run: |
         ./bin/install.sh
-        source ./conda/bin/activate
-        mamba install pandoc
 
   Unit_Tests:
     runs-on: ${{ matrix.os }}
@@ -228,18 +226,3 @@ jobs:
       run: |
         # always run
         cat data/example/logs_${{ matrix.pipeline }}/*
-
-    - name: Create output report
-      if: matrix.os == 'macos-14'
-      run: |
-          source ./conda/bin/activate
-          eval "$(/usr/libexec/path_helper)"
-          python bin/make_output_report.py data/example/outputs_${{ matrix.pipeline }} ${{ matrix.pipeline }}-report.md
-          pandoc ${{ matrix.pipeline }}-report.md -o ${{ matrix.pipeline }}-report.pdf
-
-    - name: Upload output report
-      if: matrix.os == 'macos-14'
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ matrix.pipeline }}-report
-        path: ${{ matrix.pipeline }}-report.pdf
