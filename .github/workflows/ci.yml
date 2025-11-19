@@ -67,13 +67,15 @@ jobs:
         cache-name: cache-conda-environment
       with:
         path: ./conda
-        key: ${{ matrix.os }}-conda-${{ hashFiles('bin/install.sh','bin/environment*.yml' ) }}
+        key: ${{ matrix.os }}-conda-${{ hashFiles('bin/install.sh','bin/environment*.yml' ) }}-pandoc
         fail-on-cache-miss: false
 
     - name: Run installer
       if: steps.cache-conda.outputs.cache-hit != 'true'
       run: |
         ./bin/install.sh
+        source ./conda/bin/activate
+        mamba install pandoc
 
   Unit_Tests:
     runs-on: ${{ matrix.os }}
