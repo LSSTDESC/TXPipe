@@ -863,6 +863,8 @@ class TXTwoPointFourier(PipelineStage):
 
 class TXTwoPointFourierCatalog(TXTwoPointFourier):
     """
+    Make Fourier space 3x2pt measurements directly from catalogues using NaMaster
+    
     This subclass of TXTwoPointFourier computes the angular power spectra
     directly from the catalogs using the catalog-based pseudo-Cl formalism,
     instead of requiring that maps of the relevant fields be created in advance.
