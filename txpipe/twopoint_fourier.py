@@ -530,40 +530,32 @@ class TXTwoPointFourier(PipelineStage):
             if self.rank == 0:
                 print("Loaded mask")
 
-        cl_guess = nmt.compute_coupled_cell(field_i, field_j) / np.mean(mask * mask)
-
+        # we are going to subtract the noise afterwards
+        pcl = nmt.compute_coupled_cell(field_i, field_j)
+        c = workspace.decouple_cell(pcl)
         if self.config["analytic_noise"]:
-            # we are going to subtract the noise afterwards
-            c = nmt.compute_full_master(
-                field_i,
-                field_j,
-                ell_bins,
-                cl_guess=cl_guess,
-                workspace=workspace,
-            )
-            pcl = nmt.compute_coupled_cell(field_i, field_j)
-            c = workspace.decouple_cell(pcl)
             # noise to subtract (already decoupled)
-            n_ell, n_ell_coupled = self.compute_noise_analytic(i, j, k, maps, f_sky, workspace, mask)
-            if n_ell is not None:
-                c = c - n_ell
-
-            # Writing out the noise for later cross-checks
+            n_ell, n_ell_coupled = self.compute_noise_analytic(
+                i, j, k, maps, f_sky, workspace, mask
+            )
         else:
             # Get the coupled noise C_ell values to give to the master algorithm
-            n_ell, n_ell_coupled = self.compute_noise(i, j, k, ell_bins, maps, workspace)
-            c = nmt.compute_full_master(
-                field_i,
-                field_j,
-                ell_bins,
-                cl_noise=n_ell_coupled,
-                cl_guess=cl_guess,
-                workspace=workspace,
+            n_ell, n_ell_coupled = self.compute_noise(
+                i, j, k, ell_bins, maps, workspace
             )
-
         if n_ell is None:
             n_ell_coupled = np.zeros((c.shape[0], 3 * self.config["nside"]))
             n_ell = np.zeros_like(c)
+        c = c - n_ell
+
+        # Deprojection bias (computable for map-based fields only)
+        if field_i.lite or field_j.lite:
+            cb = np.zeros_like(c)
+        else:
+            cl_guess = nmt.compute_coupled_cell(field_i, field_j) / np.mean(mask * mask)
+            pclb = nmt.deprojection_bias(field_i, field_j, cl_guess)
+            cb = workspace.decouple_cell(pclb)
+        c = c - cb
 
         def window_pixel(ell, nside):
             r_theta = 1 / (np.sqrt(3.0) * nside)
