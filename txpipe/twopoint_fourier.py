@@ -70,7 +70,8 @@ class TXTwoPointFourier(PipelineStage):
         ("source_noise_maps", LensingNoiseMaps),
         ("lens_noise_maps", ClusteringNoiseMaps),
     ]
-    outputs = [("twopoint_data_fourier", SACCFile)]
+    output_main = "twopoint_data_fourier"
+    outputs = [(output_main, SACCFile)]
 
     config_options = {
         "mask_threshold": StageParameter(float, 0.0, msg="Threshold for masking pixels"),
@@ -854,7 +855,7 @@ class TXTwoPointFourier(PipelineStage):
         S.metadata["binning/n_ell"] = self.config["n_ell"]
 
         # Get output name (will be different if subclass used)
-        output = self.outputs[0][0]
+        output = self.output_main
         # And we're all done!
         output_filename = self.get_output(output)
         S.save_fits(output_filename, overwrite=True)
@@ -884,7 +885,9 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
         ("source_maps", MapsFile),
         ("lens_maps", MapsFile),
     ]
-    outputs = [("twopoint_data_fourier_cat", SACCFile)]
+    output_main = "twopoint_data_fourier_cat"
+    outputs = [(output_main, SACCFile)]
+
     config_options_cat = {  # Config specific to catalog-based C_ells
         "use_randoms_clustering": StageParameter(
             bool, False, msg="Whether to use randoms instead of a map-based mask for clustering"
