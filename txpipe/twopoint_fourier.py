@@ -1014,6 +1014,7 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
                 # MCM depends on positions and weights of data AND of randoms;
                 # final hash ensures there is no chance of reusing an existing workspace
                 # if a future run uses a mask instead of randoms
+                # TODO: find faster alternative
                 self.hash_metadata[f"mask_lens_{i}"] = (
                     array_hash(positions)
                     ^ array_hash(weight)
