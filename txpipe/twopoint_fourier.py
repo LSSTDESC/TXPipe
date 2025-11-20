@@ -967,6 +967,8 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
         if kind == "shear":
             if self.rank == 0:
                 print("Loading shear catalog for bin", i)
+            # TODO: If memory issues do occur, they will probably occur here.
+            # Need to reduce memory usage.
             with self.open_input("binned_shear_catalog") as f:
                 group = f[f"shear/bin_{i}"]
                 weight = group["weight"][:]
@@ -977,19 +979,23 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
                     shear = [g1, g2]
                 else:
                     shear = None
+
             field = nmt.NmtFieldCatalog(positions, weight, shear, lmax=lmax, lmax_mask=lmax, spin=2, lonlat=True)
             # MCM depends on positions and weights of sources
             self.hash_metadata[f"mask_source_{i}"] = array_hash(positions) ^ array_hash(weight)
+
         else:
             # Retrieve templates (in map form, if loaded at all)
             templates = maps["systmaps"]
 
             if self.rank == 0:
                 print("Loading lens catalog for bin", i)
+
             with self.open_input("binned_lens_catalog") as f:
                 group = f[f"lens/bin_{i}"]
                 positions = np.array([group["ra"][:], group["dec"][:]])
                 weight = group["weight"][:]
+
             # Load randoms for this bin if using them
             if self.config["use_randoms_clustering"]:
                 with self.open_input("binned_random_catalog") as f:
@@ -1022,11 +1028,13 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
                 mask_gc = maps["mask_lens"]
                 # MCM depends only on the mask
                 self.hash_metadata[f"mask_lens_{i}"] = array_hash(mask_gc) ^ hash("mask")
+
             # Set lmax_deproj to None if not provided explicitly (will only matter if deprojecting)
             if self.config["ell_max_deproj"] < 0:
                 lmax_deproj = None
             else:
                 lmax_deproj = self.config["ell_max_deproj"]
+
             field = nmt.NmtFieldCatalogClustering(
                 positions,
                 weight,
