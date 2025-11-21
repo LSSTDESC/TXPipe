@@ -1,5 +1,4 @@
-#Do a matching of the metadetect catalogs
-import parallel_statstics
+from parallel_statistics import ParallelMean
 import h5py
 import os
 
@@ -24,7 +23,7 @@ variants = [
 ]
 
 stats = {
-    v: parallel_statstics.ParallelMean(nparam) for v in variants
+    v: ParallelMean(nparam) for v in variants
 }
 
 results = {}
@@ -39,18 +38,21 @@ with h5py.File(filename) as f:
         stat = stats[v]
         s = 0
         e = 0
-        ntot = f[f"metadetect/{v}/ra"].shape[0]
+        ntot = f[f"{v}/ra"].shape[0]
         while e < ntot:
             s = e
             e = min(s + chunk_size, ntot)
-            print(f"Processing {v} {s}:{e} / {ntot}")
+            # print(f"Processing {v} {s}:{e} / {ntot}")
             data = {p: f[f"{v}/{p}"][s:e] for p in params}
+            flag = [f"{v}/mdet_flags"][s:e]
+            sel = flag == 0
             for i, p in enumerate(params):
-                stat.add_data(i, data[p])
+                stat.add_data(i, data[p][sel])
         _, mu = stat.collect()
         print(f"Variant {v}:")
         for i, p in enumerate(params):
             print(f"  {p}: {mu[i]}")
+        print("")
         results[v] = mu
 
 print("")
