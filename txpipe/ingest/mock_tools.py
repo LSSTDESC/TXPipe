@@ -56,7 +56,7 @@ unit_responses = {
 
 
 
-def make_noisy_lsst_photometry(data, random_state, year=1, **config):
+def add_lsst_like_noise(data, random_state, year=1, **config):
     from photerr import LsstErrorModel
     import pandas as pd
 
@@ -75,20 +75,26 @@ def make_noisy_lsst_photometry(data, random_state, year=1, **config):
     noisy_data = model(df, random_state=random_state)
 
     # Keep all the input columns as expected.
-    output = data.copy()
+
     for b in bands:
-        output[f"mag_{b}"] = np.array(noisy_data[b].values)
-        output[f"mag_err_{b}"] = np.array(noisy_data[f"{b}_err"].values)
+        mag = np.array(noisy_data[b].values)
+        mag_err = np.array(noisy_data[f"{b}_err"].values)
+        flux = mag_ab_to_nanojansky(mag)
+        flux_err = mag_ab_err_to_nanojansky_err(mag, mag_err)
+        snr = flux / flux_err
+        data[f"mag_{b}"] = mag
+        data[f"mag_err_{b}"] = mag_err
+        data[f"snr_{b}"] = snr
+        data[f"s2n_{b}"] = snr
 
-    return output
 
 
 
-def make_metadetect_catalog(data, response_type, delta_gamma, bands, snr_cut=5, T_ratio_cut=0.5):
+def make_metadetect_catalog(data, response_type, delta_gamma, bands, rng, snr_cut=5, T_ratio_cut=0.5):
     output = {}
 
     # These parameters have response factors defined for them.
-    params = ["g1", "g2", "s2n", "T"]
+    params = ["g1", "g2", "T"]
 
     # For these parameters we do not apply any response correction,
     # they have the same value in the metadetect variants.
@@ -111,7 +117,7 @@ def make_metadetect_catalog(data, response_type, delta_gamma, bands, snr_cut=5, 
     if responses is None:
         for old_name, new_name in params + non_response_params:
             output[new_name] = data[old_name]
-        psf_T, psf_e1, psf_e2 = make_mock_psf(output["00/ra"].size)
+        psf_T, psf_e1, psf_e2 = make_mock_psf(output["00/ra"].size, rng)
         output["psf_T"] = psf_T
         output["psf_g1"] = psf_e1
         output["psf_g2"] = psf_e2
@@ -146,10 +152,10 @@ def make_metadetect_catalog(data, response_type, delta_gamma, bands, snr_cut=5, 
         flux_err = mag_ab_err_to_nanojansky_err(mag, mag_err)
 
         s2n = flux / flux_err
-        s2n_1p = s2n + responses["gauss_s2n", 1] * dg2
-        s2n_1m = s2n - responses["gauss_s2n", 1] * dg2
-        s2n_2p = s2n + responses["gauss_s2n", 2] * dg2
-        s2n_2m = s2n - responses["gauss_s2n", 2] * dg2
+        s2n_1p = s2n + responses["s2n", 1] * dg2
+        s2n_1m = s2n - responses["s2n", 1] * dg2
+        s2n_2p = s2n + responses["s2n", 2] * dg2
+        s2n_2m = s2n - responses["s2n", 2] * dg2
 
         s2n_total += s2n ** 2
         s2n_total_1p += s2n_1p ** 2
@@ -161,11 +167,15 @@ def make_metadetect_catalog(data, response_type, delta_gamma, bands, snr_cut=5, 
         flux_1m = flux - responses[(f"flux_{b}", 1)] * dg2
         flux_2p = flux + responses[(f"flux_{b}", 2)] * dg2
         flux_2m = flux - responses[(f"flux_{b}", 2)] * dg2
-        output[f"00/mag_{b}"] = nanojansky_to_mag_ab(flux)
-        output[f"1p/mag_{b}"] = nanojansky_to_mag_ab(flux_1p)
-        output[f"1m/mag_{b}"] = nanojansky_to_mag_ab(flux_1m)
-        output[f"2p/mag_{b}"] = nanojansky_to_mag_ab(flux_2p)
-        output[f"2m/mag_{b}"] = nanojansky_to_mag_ab(flux_2m)
+        # there are some zero fluxes for non-detections. We silence the warning
+        with np.errstate(divide = 'ignore'):
+            output[f"00/mag_{b}"] = nanojansky_to_mag_ab(flux)
+            output[f"1p/mag_{b}"] = nanojansky_to_mag_ab(flux_1p)
+            output[f"1m/mag_{b}"] = nanojansky_to_mag_ab(flux_1m)
+            output[f"2p/mag_{b}"] = nanojansky_to_mag_ab(flux_2p)
+            output[f"2m/mag_{b}"] = nanojansky_to_mag_ab(flux_2m)
+
+            
 
     output["00/s2n"] = np.sqrt(s2n_total)
     output["1p/s2n"] = np.sqrt(s2n_total_1p)
@@ -174,7 +184,7 @@ def make_metadetect_catalog(data, response_type, delta_gamma, bands, snr_cut=5, 
     output["2m/s2n"] = np.sqrt(s2n_total_2m)
 
     # Make fake PSF choices. Give the same PSF to each variant for simplicity.
-    psf_T, psf_e1, psf_e2 = make_mock_psf(output["00/ra"].size)
+    psf_T, psf_e1, psf_e2 = make_mock_psf(output["00/ra"].size, rng)
     for variant in ["00", "1p", "1m", "2p", "2m"]:
         output[f"{variant}/psf_T"] = psf_T
         output[f"{variant}/psf_g1"] = psf_e1
@@ -199,10 +209,10 @@ def compute_cuts(T, psf_T, snr, snr_cut=5, T_ratio_cut=0.5):
     mask = (snr > snr_cut) & (T_ratio > T_ratio_cut)
     return mask
 
-def make_mock_psf(n):
-    T = np.random.normal(dp1_psf_stats["T"][0], dp1_psf_stats["T"][1], n)
-    e1 = np.random.normal(dp1_psf_stats["e1"][0], dp1_psf_stats["e1"][1], n)
-    e2 = np.random.normal(dp1_psf_stats["e2"][0], dp1_psf_stats["e2"][1], n)
+def make_mock_psf(n, rng):
+    T = rng.normal(dp1_psf_stats["T"][0], dp1_psf_stats["T"][1], n)
+    e1 = rng.normal(dp1_psf_stats["e1"][0], dp1_psf_stats["e1"][1], n)
+    e2 = rng.normal(dp1_psf_stats["e2"][0], dp1_psf_stats["e2"][1], n)
     return T, e1, e2
 
 

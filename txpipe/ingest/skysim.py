@@ -2,7 +2,7 @@ from tracemalloc import start
 from ..base_stage import PipelineStage
 from ..data_types import ShearCatalog, PhotometryCatalog
 from ceci.config import StageParameter
-from .mock_tools import make_noisy_lsst_photometry, make_metadetect_catalog
+from .mock_tools import add_lsst_like_noise, make_metadetect_catalog
 import numpy as np
 import glob
 
@@ -85,7 +85,7 @@ class ShearTableWriter:
             writer.__exit__(exc_type, exc_value, traceback)
         self.file.close()
 
-    def write(self, variant, data):
+    def write(self, data):
         for variant in self.writers:
             tag = variant + "/"
             data_variant = {key.removeprefix(tag): value for key, value in data.items() if key.startswith(tag)}
@@ -105,6 +105,7 @@ class TXIngestRomanRubin(PipelineStage):
     """
     name = "TXIngestRomanRubin"
     inputs = []
+    parallel = False
     outputs = [
         ("shear_catalog", ShearCatalog),
         ("photometry_catalog", PhotometryCatalog),
@@ -113,9 +114,10 @@ class TXIngestRomanRubin(PipelineStage):
         "xgal_dir_name": StageParameter(str, default="/global/cfs/cdirs/lsst/shared/xgal/roman-rubin/roman_rubin_2023_v1.1.3", msg="Directory name for skysim xgal files"),
         "delta_gamma": StageParameter(float, default=0.02, msg="Delta gamma value for metadetect response calculations"),
         "year": StageParameter(int, default=1, msg="Number of years of LSST observations to simulate photometric noise for"),
-        "response_type": StageParameter(str, default="des", msg="Type of response to apply for metadetect"),
+        "response_type": StageParameter(str, default="unit", msg="Type of response to apply for metadetect"),
         "snr_cut": StageParameter(float, default=5.0, msg="SNR cut for metadetect catalog"),
         "T_ratio_cut": StageParameter(float, default=0.5, msg="T/PSF_T cut for metadetect catalog"),
+        "random_seed": StageParameter(int, default=0, msg="Random seed"),
     }
 
 
@@ -146,25 +148,28 @@ class TXIngestRomanRubin(PipelineStage):
 
         snr_cut = self.config["snr_cut"]
         T_ratio_cut = self.config["T_ratio_cut"]
+        rng = np.random.default_rng(self.config['random_seed'])
         
         with ShearTableWriter(shear_filename, initial_size=size) as shear_writer, \
             TableWriter(photo_group, initial_size=size) as photo_writer:
-
-            for filename in files:
+            nfile = len(files)
+            for j, filename in enumerate(files):
+                print(f"Processing file {j+1}/{nfile}: {filename}")
                 with h5py.File(filename, "r") as f:
+                    nkey = len(f.keys()) - 1
 
                     # The keys here are mostly healpix pixel indices.
-                    for key in f.keys():
+                    for i, key in enumerate(f.keys()):
                         if key == "metaData":
                             continue
-
+                        print(f"Processing healpix pixel {i+1}/{nkey}: {key}")
                         group = f[key]
-                        data = self.extract_roman_rubin_truth(group, bands)
-                        photo_data = make_noisy_lsst_photometry(data, bands, year=year)
-                        shear_data = make_metadetect_catalog(data, response_type, delta_gamma, shear_bands, snr_cut=snr_cut, T_ratio_cut=T_ratio_cut)
+                        data = self.extract_roman_rubin_truth_info(group, bands)
+                        add_lsst_like_noise(data, rng, year=year)
+                        shear_data = make_metadetect_catalog(data, response_type, delta_gamma, shear_bands, rng, snr_cut=snr_cut, T_ratio_cut=T_ratio_cut)
 
                         shear_writer.write(shear_data)
-                        photo_writer.write(photo_data)
+                        photo_writer.write(data)
         
         photo_file.close()
 
@@ -182,6 +187,7 @@ class TXIngestRomanRubin(PipelineStage):
         output["g2"] = data["shear2"]
         output["e1"] = data["totalEllipticity1"]
         output["e2"] = data["totalEllipticity2"]
+        output["id"] = data["galaxy_id"]
         for b in bands:
             output[f"mag_{b}"] = data[f'LSST_obs_{b}']
 

@@ -5,7 +5,11 @@ REF_FLUX = 1e23 * 10 ** (48.6 / -2.5)
 
 # follow https://pipelines.lsst.io/v/DM-22499/cpp-api/file/_photo_calib_8h.html
 def nanojansky_to_mag_ab(flux):
-    return -2.5 * np.log10(flux * 1e-9 / REF_FLUX)
+    zero = flux == 0
+    out = np.empty_like(flux)
+    out[zero] = np.inf
+    out[~zero] = -2.5 * np.log10(flux[~zero] * 1e-9 / REF_FLUX)
+    return out
 
 
 def mag_ab_to_nanojansky(mag):
@@ -17,7 +21,8 @@ def nanojansky_err_to_mag_ab(flux, flux_err):
 
 def mag_ab_err_to_nanojansky_err(mag, mag_err):
     flux = mag_ab_to_nanojansky(mag)
-    flux_err = flux * np.log(10) / 2.5 * mag_err
+    with np.errstate(invalid='ignore'):
+        flux_err = flux * np.log(10) / 2.5 * mag_err
     return flux_err
 
 def moments_to_shear(Ixx, Iyy, Ixy):
