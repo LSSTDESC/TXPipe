@@ -162,8 +162,13 @@ class TXIngestRomanRubin(PipelineStage):
                     for i, key in enumerate(f.keys()):
                         if key == "metaData":
                             continue
-                        print(f"Processing healpix pixel {i+1}/{nkey}: {key}")
+
                         group = f[key]
+
+                        if "ra" not in group.keys():
+                            print(f"    No data - skipping healpix pixel {i+1}/{nkey}: {key} ")
+                            continue
+                        print(f"    Processing healpix pixel {i+1}/{nkey}: {key}")
                         data = self.extract_roman_rubin_truth_info(group, bands)
                         add_lsst_like_noise(data, rng, year=year)
                         shear_data = make_metadetect_catalog(data, response_type, delta_gamma, shear_bands, rng, snr_cut=snr_cut, T_ratio_cut=T_ratio_cut)
