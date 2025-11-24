@@ -15,6 +15,10 @@ def mag_ab_to_nanojansky(mag):
 def nanojansky_err_to_mag_ab(flux, flux_err):
     return 2.5 / np.log(10) * (flux_err / flux)
 
+def mag_ab_err_to_nanojansky_err(mag, mag_err):
+    flux = mag_ab_to_nanojansky(mag)
+    flux_err = flux * np.log(10) / 2.5 * mag_err
+    return flux_err
 
 def moments_to_shear(Ixx, Iyy, Ixy):
     b = Ixx + Iyy + 2 * np.sqrt(Ixx * Iyy - Ixy**2)
