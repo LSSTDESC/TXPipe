@@ -17,8 +17,8 @@ dependencies:
   - jupyter=1.1.*
   - matplotlib=3.10.*
   - mockmpi=0.8.*
-  - mpi4py=4.0.*-
-  - mpich=4.3.0=external_*-
+  - mpi4py=4.0.*
+  - mpich=4.3.*=external_*
   - namaster=2.5.*
   - numpy=2.3.*
   - pandas=2.3.*
@@ -40,7 +40,6 @@ dependencies:
   - nbconvert
   - ipykernel
   - lsstdesc-gcr-catalogs
-  - guppy3
   - lsstdesc-dc2-dm-data
   - psycopg2
   - pyarrow
