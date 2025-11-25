@@ -115,7 +115,7 @@ class TXIngestRomanRubin(PipelineStage):
         "delta_gamma": StageParameter(float, default=0.02, msg="Delta gamma value for metadetect response calculations"),
         "year": StageParameter(int, default=1, msg="Number of years of LSST observations to simulate photometric noise for"),
         "response_type": StageParameter(str, default="unit", msg="Type of response to apply for metadetect"),
-        "snr_cut": StageParameter(float, default=5.0, msg="SNR cut for metadetect catalog"),
+        "snr_cut": StageParameter(float, default=5.0, msg="SNR cut for overall detection"),
         "T_ratio_cut": StageParameter(float, default=0.5, msg="T/PSF_T cut for metadetect catalog"),
         "random_seed": StageParameter(int, default=0, msg="Random seed"),
     }
@@ -169,44 +169,56 @@ class TXIngestRomanRubin(PipelineStage):
                             print(f"    No data - skipping healpix pixel {i+1}/{nkey}: {key} ")
                             continue
                         print(f"    Processing healpix pixel {i+1}/{nkey}: {key}")
-                        data = self.extract_roman_rubin_truth_info(group, bands)
+                        data = extract_roman_rubin_truth_info(group, bands)
                         add_lsst_like_noise(data, rng, year=year)
                         shear_data = make_metadetect_catalog(data, response_type, delta_gamma, shear_bands, rng, snr_cut=snr_cut, T_ratio_cut=T_ratio_cut)
-
+                        photo_data = make_photo_cuts(data, snr_cut)
                         shear_writer.write(shear_data)
-                        photo_writer.write(data)
+                        photo_writer.write(photo_data)
         
         photo_file.close()
 
 
+def make_photo_cuts(data, bands, snr_cut):
+    # check if object is detected in any band
+    detected = np.zeros_like(data["id"], dtype=bool)
+    for b in bands:
+        snr = data[f"snr_{b}"]
+        detected |= (snr >= snr_cut)
 
-    def extract_roman_rubin_truth_info(self, group, bands):
-        params = [f"LSST_obs_{b}" for b in bands]
-        params += ["redshift", "ra", "dec", "galaxy_id", "shear1", "shear2", "totalEllipticity1", "totalEllipticity2", "diskHalfLightRadiusArcsec", "spheroidHalfLightRadiusArcsec", "bulge_frac"]
-        data = {p: group[p][:] for p in params}
-        output = {}
-        output["ra"] = data["ra"]
-        output["dec"] = data["dec"]
-        output["redshift_true"] = data["redshift"]
-        output["g1"] = data["shear1"]
-        output["g2"] = data["shear2"]
-        output["e1"] = data["totalEllipticity1"]
-        output["e2"] = data["totalEllipticity2"]
-        output["id"] = data["galaxy_id"]
-        for b in bands:
-            output[f"mag_{b}"] = data[f'LSST_obs_{b}']
+    output = {}
+    for key, value in data.items():
+        output[key] = value[detected]
+    return output
 
-        # Compute the overall (bulge + disc) half-light radius.
-        # This copies the GCRCatalogs approach, which
-        # I'm noy sure is quite right.
-        hlr_disc = data["diskHalfLightRadiusArcsec"]
-        hlr_bulge = data["spheroidHalfLightRadiusArcsec"]
-        f = data["bulge_frac"]
-        hlr = (hlr_disc * (1 - f) + hlr_bulge * f)
 
-        # Convert half-light radius to T
-        output["T"] = half_light_radius_to_trace(hlr)
-        return output
+def extract_roman_rubin_truth_info(group, bands):
+    params = [f"LSST_obs_{b}" for b in bands]
+    params += ["redshift", "ra", "dec", "galaxy_id", "shear1", "shear2", "totalEllipticity1", "totalEllipticity2", "diskHalfLightRadiusArcsec", "spheroidHalfLightRadiusArcsec", "bulge_frac"]
+    data = {p: group[p][:] for p in params}
+    output = {}
+    output["ra"] = data["ra"]
+    output["dec"] = data["dec"]
+    output["redshift_true"] = data["redshift"]
+    output["g1"] = data["shear1"]
+    output["g2"] = data["shear2"]
+    output["e1"] = data["totalEllipticity1"]
+    output["e2"] = data["totalEllipticity2"]
+    output["id"] = data["galaxy_id"]
+    for b in bands:
+        output[f"mag_{b}"] = data[f'LSST_obs_{b}']
+
+    # Compute the overall (bulge + disc) half-light radius.
+    # This copies the GCRCatalogs approach, which
+    # I'm noy sure is quite right.
+    hlr_disc = data["diskHalfLightRadiusArcsec"]
+    hlr_bulge = data["spheroidHalfLightRadiusArcsec"]
+    f = data["bulge_frac"]
+    hlr = (hlr_disc * (1 - f) + hlr_bulge * f)
+
+    # Convert half-light radius to T
+    output["T"] = half_light_radius_to_trace(hlr)
+    return output
     
 
 def half_light_radius_to_trace(hlr):
