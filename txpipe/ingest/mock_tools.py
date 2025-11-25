@@ -225,3 +225,113 @@ def generate_mock_metacal_mag_responses(bands, nobj):
     np.fill_diagonal(covmat, sigma2)
     mag_responses = np.random.multivariate_normal(mu, covmat, nobj).T
     return mag_responses
+
+
+class TableWriter:
+    def __init__(self, group, initial_size=1_000_000):
+        import h5py
+        self.group = group
+        self.created_datasets = False
+        self.initial_size = initial_size
+        self.keys = []
+        self.current_size = {}
+        self.start = 0
+
+    def do_size_check(self, data):
+        sz = None
+        for key, value in data.items():
+            if sz is None:
+                sz = len(value)
+            elif sz != len(value):
+                raise ValueError("All arrays to write must have the same length")
+        return sz
+    
+    def __enter__(self):
+        return self
+    
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.resize(self.start)
+
+    def create_datasets(self, data):
+        size = max(self.initial_size, len(data[next(iter(data))]))
+        shape = (size,)
+        for key, value in data.items():
+            maxshape = (None,)
+            self.group.create_dataset(key, shape, maxshape=maxshape, dtype=value.dtype)
+        self.current_size = size
+        self.created_datasets = True
+        self.keys = list(data.keys())
+
+    def resize(self, new_size):
+        for key in self.keys:
+            self.group[key].resize((new_size,))
+        self.current_size = new_size
+
+    def write(self, data):
+        sz = self.do_size_check(data)
+        
+        if not self.created_datasets:
+            self.create_datasets(data)
+
+        end = self.start + sz
+
+        if end > self.current_size:
+            new_size = max(self.current_size * 2, end)
+            self.resize(new_size)
+
+        for key in self.keys:
+            value = data[key]
+            self.group[key][self.start:end] = value
+        self.start = end
+
+
+class ShearTableWriter:
+    def __init__(self, filename, initial_size=1_000_000):
+        import h5py
+        self.file = h5py.File(filename, "w")
+        self.group = self.file.create_group("shear")
+        self.writers = {}
+        for variant in ["00", "1p", "1m", "2p", "2m"]:
+            group = self.file.create_group(f"shear/{variant}")
+            self.writers[variant] = TableWriter(group, initial_size=initial_size)
+    
+    def __enter__(self):
+        for writer in self.writers.values():
+            writer.__enter__()
+        return self
+    
+    def __exit__(self, exc_type, exc_value, traceback):
+        for writer in self.writers.values():
+            writer.__exit__(exc_type, exc_value, traceback)
+        self.file.close()
+
+    def write(self, data):
+        for variant in self.writers:
+            tag = variant + "/"
+            data_variant = {key.removeprefix(tag): value for key, value in data.items() if key.startswith(tag)}
+            self.writers[variant].write(data_variant)
+
+
+
+
+
+def make_photo_cuts(data, bands, snr_cut):
+    # check if object is detected in any band
+    detected = np.zeros_like(data["id"], dtype=bool)
+    for b in bands:
+        snr = data[f"snr_{b}"]
+        detected |= (snr >= snr_cut)
+
+    output = {}
+    for key, value in data.items():
+        output[key] = value[detected]
+    return output
+
+
+
+
+def half_light_radius_to_trace(hlr):
+    """Convert half-light radius to trace T of the Gaussian matrix"""
+    size_sigma = hlr / np.sqrt(2 * np.log(2))
+    size_T = 2 * size_sigma**2
+    return size_T
