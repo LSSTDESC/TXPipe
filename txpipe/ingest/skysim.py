@@ -112,6 +112,7 @@ class TXIngestRomanRubin(PipelineStage):
     ]
     config_options = {
         "xgal_dir_name": StageParameter(str, default="/global/cfs/cdirs/lsst/shared/xgal/roman-rubin/roman_rubin_2023_v1.1.3", msg="Directory name for skysim xgal files"),
+        "file_pattern": StageParameter(str, default="roman_rubin_2023_*.hdf5", msg="Pattern for file name"),
         "delta_gamma": StageParameter(float, default=0.02, msg="Delta gamma value for metadetect response calculations"),
         "year": StageParameter(int, default=1, msg="Number of years of LSST observations to simulate photometric noise for"),
         "response_type": StageParameter(str, default="unit", msg="Type of response to apply for metadetect"),
@@ -124,8 +125,7 @@ class TXIngestRomanRubin(PipelineStage):
     def run(self):
         import h5py
 
-
-        file_format = "roman_rubin_2023_*.hdf5"
+        file_format = self.config["file_pattern"]
         files = glob.glob(f"{self.config.xgal_dir_name}/{file_format}")
 
         # This is fixed for Roman-Rubin sims to the usual LSST bands.
@@ -172,11 +172,22 @@ class TXIngestRomanRubin(PipelineStage):
                         data = extract_roman_rubin_truth_info(group, bands)
                         add_lsst_like_noise(data, rng, year=year)
                         shear_data = make_metadetect_catalog(data, response_type, delta_gamma, shear_bands, rng, snr_cut=snr_cut, T_ratio_cut=T_ratio_cut)
-                        photo_data = make_photo_cuts(data, snr_cut)
+                        photo_data = make_photo_cuts(data, bands, snr_cut)
                         shear_writer.write(shear_data)
                         photo_writer.write(photo_data)
         
         photo_file.close()
+
+
+class TXIngestSkySim(TXIngestRomanRubin):
+    """Ingest SkySim 5000"""
+
+
+    name = "TXIngestSkySim"
+    config_options = TXIngestRomanRubin.config_options | {
+        "xgal_dir_name": StageParameter(str, default="/global/cfs/cdirs/lsst/shared/xgal/skysim/skysim_v3.1.0", msg="Directory name for skysim xgal files"),
+        "file_pattern": StageParameter(str, default="skysim_z_*.hdf5", msg="Pattern for file name"),
+        }
 
 
 def make_photo_cuts(data, bands, snr_cut):
