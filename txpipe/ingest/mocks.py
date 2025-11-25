@@ -206,6 +206,8 @@ class TXIngestSkySim(TXIngestExtraGalactic):
         size_hlr = data["size_true"]
         output["T"] = half_light_radius_to_trace(size_hlr)
 
+        return output
+
 
 class TXIngestCosmoDC2(TXIngestSkySim):
     """Ingest CosmoDC2 data for TXPipe processing.
