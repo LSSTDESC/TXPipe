@@ -205,16 +205,17 @@ def make_photo_cuts(data, bands, snr_cut):
 
 def extract_roman_rubin_truth_info(group, bands):
     params = [f"LSST_obs_{b}" for b in bands]
-    params += ["redshift", "ra", "dec", "galaxy_id", "shear1", "shear2", "totalEllipticity1", "totalEllipticity2", "diskHalfLightRadiusArcsec", "spheroidHalfLightRadiusArcsec", "bulge_frac"]
+    params += ["redshift", "ra", "dec", "galaxy_id", "shear1", "shear2",  "diskHalfLightRadiusArcsec", "spheroidHalfLightRadiusArcsec", "bulge_frac"]
+    if "totalEllipticity1" in group:
+        params += ["totalEllipticity1", "totalEllipticity2"]
+    else:
+        params += ["spheroidEllipticity1", "spheroidEllipticity2", "diskEllipticity1", "diskEllipticity2"]
     data = {p: group[p][:] for p in params}
     output = {}
     output["ra"] = data["ra"]
     output["dec"] = data["dec"]
     output["redshift_true"] = data["redshift"]
-    output["g1"] = data["shear1"]
-    output["g2"] = data["shear2"]
-    output["e1"] = data["totalEllipticity1"]
-    output["e2"] = data["totalEllipticity2"]
+        
     output["id"] = data["galaxy_id"]
     for b in bands:
         output[f"mag_{b}"] = data[f'LSST_obs_{b}']
@@ -226,6 +227,24 @@ def extract_roman_rubin_truth_info(group, bands):
     hlr_bulge = data["spheroidHalfLightRadiusArcsec"]
     f = data["bulge_frac"]
     hlr = (hlr_disc * (1 - f) + hlr_bulge * f)
+
+    if "totalEllipticity1" in data:
+        e1 = data["totalEllipticity1"]
+        e2 = data["totalEllipticity2"]
+    else:
+        e1 = data["spheroidEllipticity1"] * data["bulge_frac"] + data["diskEllipticity1"] * (1 - data["bulge_frac"])
+        e2 = data["spheroidEllipticity2"] * data["bulge_frac"] + data["diskEllipticity2"] * (1 - data["bulge_frac"])
+
+    g = data["shear1"] + 1j * data["shear2"]
+    e = e1 + 1j * e2
+    # Apply shear to get observed ellipticity
+    denom = 1 + np.conj(g) * e
+    e_obs = (e + g) / denom
+    output["g1"] = np.real(e_obs)
+    output["g2"] = np.imag(e_obs)
+    output["true_g1"] = data["shear1"]
+    output["true_g2"] = data["shear2"]
+
 
     # Convert half-light radius to T
     output["T"] = half_light_radius_to_trace(hlr)
