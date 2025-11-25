@@ -180,14 +180,103 @@ class TXIngestRomanRubin(PipelineStage):
 
 
 class TXIngestSkySim(TXIngestRomanRubin):
-    """Ingest SkySim 5000"""
-
-
+    """Ingest skysim simulation data for TXPipe processing.
+    analysis stages.
+    """
     name = "TXIngestSkySim"
-    config_options = TXIngestRomanRubin.config_options | {
-        "xgal_dir_name": StageParameter(str, default="/global/cfs/cdirs/lsst/shared/xgal/skysim/skysim_v3.1.0", msg="Directory name for skysim xgal files"),
-        "file_pattern": StageParameter(str, default="skysim_z_*.hdf5", msg="Pattern for file name"),
-        }
+    config_options = {
+        "cat_name": StageParameter(str, default="skysim5000_v1.2", msg="Name of the GCR catalog to use"),
+        "delta_gamma": StageParameter(float, default=0.02, msg="Delta gamma value for metadetect response calculations"),
+        "year": StageParameter(int, default=1, msg="Number of years of LSST observations"),
+        "response_type": StageParameter(str, default="unit", msg="Type of response to apply for metadetect"),
+        "snr_cut": StageParameter(float, default=5.0, msg="SNR cut for overall detection"),
+        "T_ratio_cut": StageParameter(float, default=0.5, msg="T/PSF_T cut for metadetect catalog"),
+        "random_seed": StageParameter(int, default=0, msg="Random seed"),
+        "extra_cols": StageParameter(str, default="", msg="Extra columns to ingest from the catalog"),
+    }
+
+    def run(self):
+        import GCRCatalogs
+        
+        cat = GCRCatalogs.load_catalog(self.config["cat_name"])
+
+        shear_filename = self.get_output("shear_catalog")
+        photo_file = self.open_output("photometry_catalog")
+        photo_group = photo_file.create_group("photometry")
+
+        snr_cut = self.config["snr_cut"]
+        T_ratio_cut = self.config["T_ratio_cut"]
+        rng = np.random.default_rng(self.config['random_seed'])
+        size = self.config.get("initial_size", 10_000_000)
+        
+        with ShearTableWriter(shear_filename, initial_size=size) as shear_writer, \
+            TableWriter(photo_group, initial_size=size) as photo_writer:
+            for data in self.data_iterator(cat):
+                add_lsst_like_noise(data, rng, year=self.config["year"])
+                shear_data = make_metadetect_catalog(data, self.config["response_type"], self.config["delta_gamma"], "griz", rng, snr_cut=snr_cut, T_ratio_cut=T_ratio_cut)
+                photo_data = make_photo_cuts(data, "ugrizy", snr_cut)
+                shear_writer.write(shear_data)
+                photo_writer.write(photo_data)
+
+
+    def data_iterator(self, gc):
+        # Columns we need from the cosmo simulation
+        cols = [
+            "ra",
+            "dec",
+            "mag_true_u_lsst",
+            "mag_true_g_lsst",
+            "mag_true_r_lsst",
+            "mag_true_i_lsst",
+            "mag_true_z_lsst",
+            "mag_true_y_lsst",
+            "ellipticity_1_true",
+            "ellipticity_2_true",
+            "shear_1",
+            "shear_2",
+            "size_true",
+            "galaxy_id",
+            "redshift_true",
+        ]
+        # Add any extra requestd columns
+        cols += self.config["extra_cols"].split()
+
+        it = gc.get_quantities(cols, return_iterator=True)
+        nfile = len(gc._file_list) if hasattr(gc, "_file_list") else 0
+
+        for i, data in enumerate(it):
+            if nfile:
+                j = i + 1
+                print(f"Loading chunk {j}/{nfile}")
+            yield self.process_data(data)
+
+    def process_data(self, data):
+        output = {}
+        # Basic info
+        output["ra"] = data["ra"]
+        output["dec"] = data["dec"]
+        output["redshift_true"] = data["redshift_true"]
+        output["id"] = data["galaxy_id"]
+
+        # Magnitudes
+        for b in "ugrizy":
+            output[f"mag_{b}"] = data[f"mag_true_{b}_lsst"]
+
+        # Shear and ellipticity info
+        g = data["shear_1"] + 1j * data["shear_2"]
+        e = data["ellipticity_1_true"] + 1j * data["ellipticity_2_true"]
+
+        # Apply shear to get observed ellipticity
+        denom = 1 + np.conj(g) * e
+        e_obs = (e + g) / denom
+        output["g1"] = np.real(e_obs)
+        output["g2"] = np.imag(e_obs)
+        output["true_g1"] = data["shear_1"]
+        output["true_g2"] = data["shear_2"]
+
+        size_hlr = data["size_true"]
+        output["T"] = half_light_radius_to_trace(size_hlr)
+
 
 
 def make_photo_cuts(data, bands, snr_cut):
