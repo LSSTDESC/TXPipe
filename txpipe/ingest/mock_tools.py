@@ -26,13 +26,12 @@ desy6_responses = {
 }
 
 
-# These are means and std devs in the i band from running this notebook:
-# https://github.com/LSSTDESC/A360_DP1/blob/main/ACO360_PSF_properties_RSP.ipynb
-dp1_psf_stats = {
+mock_psf_stats = {
     # trace size in arcsec^2
-    "T": (0.424, 0.025),  
-    "e1": (-0.065, 0.0325),
-    "e2": (-0.00584, 0.02798), 
+    # corresponds to FWHM 0.75 arcsec
+    "T": (0.20287899012501048, 0.025),  
+    "e1": (0.0, 0.03),
+    "e2": (0.0, 0.03), 
 }
 
 unit_responses = {
@@ -195,7 +194,7 @@ def make_metadetect_catalog(data, response_type, delta_gamma, bands, rng, snr_cu
         T = output[f"{variant}/T"]
         psf_T = output[f"{variant}/psf_T"]
         snr = output[f"{variant}/s2n"]
-        mask = compute_cuts(T, psf_T, snr)
+        mask = compute_cuts(T, psf_T, snr, snr_cut=snr_cut, T_ratio_cut=T_ratio_cut)
         for key in output:
             if key.startswith(f"{variant}/"):
                 output[key] = output[key][mask]
@@ -203,16 +202,16 @@ def make_metadetect_catalog(data, response_type, delta_gamma, bands, rng, snr_cu
     return output
 
 
-def compute_cuts(T, psf_T, snr, snr_cut=5, T_ratio_cut=0.5):
+def compute_cuts(T, psf_T, snr, snr_cut=5, T_ratio_cut=0.5),:
     """Apply basic cuts to a metadetect catalog dictionary."""
     T_ratio = T / psf_T
     mask = (snr > snr_cut) & (T_ratio > T_ratio_cut)
     return mask
 
 def make_mock_psf(n, rng):
-    T = rng.normal(dp1_psf_stats["T"][0], dp1_psf_stats["T"][1], n)
-    e1 = rng.normal(dp1_psf_stats["e1"][0], dp1_psf_stats["e1"][1], n)
-    e2 = rng.normal(dp1_psf_stats["e2"][0], dp1_psf_stats["e2"][1], n)
+    T = rng.normal(mock_psf_stats["T"][0], mock_psf_stats["T"][1], n)
+    e1 = rng.normal(mock_psf_stats["e1"][0], mock_psf_stats["e1"][1], n)
+    e2 = rng.normal(mock_psf_stats["e2"][0], mock_psf_stats["e2"][1], n)
     return T, e1, e2
 
 
