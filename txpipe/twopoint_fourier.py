@@ -146,9 +146,9 @@ class TXTwoPointFourier(PipelineStage):
         # Binning scheme, currently chosen from the geometry.
         ell_bins = choose_ell_bins(**config)
 
-        # Fill hash metadata in make_workspaces (and in get_fields if using
-        # TXTwoPointFourierCatalog subclass)
+        # Initiate and populate hash_metadata for workspaces
         self.hash_metadata = {}
+        self.populate_hash_metadata(maps, ell_bins)
         workspace_cache = self.make_workspaces(maps, calcs, ell_bins)
 
         # If we are rank zero print out some info
@@ -351,6 +351,22 @@ class TXTwoPointFourier(PipelineStage):
             # needed for NaMaster:
             s_maps = np.array(s_maps)
         return s_maps, nside
+
+    def populate_hash_metadata(self, maps, ell_bins):
+        # Make a hash for the ell binning
+        self.hash_metadata["ell_hash"] = array_hash(ell_bins.get_effective_ells())
+        # For map-based case, do the same for the weight maps
+        # (for catalog-based case, these hashes are dynamically computed in
+        # get_field)
+        if "lw" in maps:
+            lensing_weights = maps["lw"]
+            for i, lw in enumerate(lensing_weights):
+                self.hash_metadata[f"mask_source_{i}"] = array_hash(lw)
+        if "dw" in maps:
+            dw = maps["dw"]
+            # Use same mask for all lens bins
+            for i in range(maps["nbin_lens"]):
+                self.hash_metadata[f"mask_lens_{i}"] = array_hash(dw)
     
     def make_workspaces(self, maps, calcs, ell_bins):
         import pymaster as nmt
@@ -362,66 +378,29 @@ class TXTwoPointFourier(PipelineStage):
 
         # load the cache
         cache = WorkspaceCache(self.config["cache_dir"], low_mem=self.config["low_mem"])
-
-        nbin_source = len(maps["g"])
-        nbin_lens = len(maps["d"])
-
-        # empty workspaces
-        zero = np.zeros_like(maps["dw"])
-
-        lensing_weights = maps["lw"]
-        density_weight = maps["dw"]
-        lensing_fields = maps["lf"]
-        density_fields = maps["df"]
-
-        ell_hash = array_hash(ell_bins.get_effective_ells())
-        hashes = {id(x): array_hash(x) for x in lensing_weights}
-        hashes[id(density_weight)] = array_hash(density_weight)
-
-        self.hash_metadata["ell_hash"] = ell_hash
-        self.hash_metadata["mask_lens"] = hashes[id(density_weight)]
-
-        for i, w in enumerate(lensing_weights):
-            self.hash_metadata[f"mask_source_{i}"] = hashes[id(w)]
-
-        # It's an oddity of NaMaster that we
-        # need to supply a field object to the workspace even though the
-        # coupling matrix only depends on the mask and ell binning.
-        # So here we re-use the fields we've made for the actual
-        # analysis, but to save the coupling matrices while being sure
-        # we're using the right ones we derive a key based on the
-        # mask and ell centers.
-
-        # Each lensing field has its own mask
-        lensing_fields = [(lw, lf) for lw, lf in zip(lensing_weights, lensing_fields)]
-
-        # The density fields share a mask, so just use the field
-        # object for the first one.
-        try:
-            density_field = (density_weight, density_fields[0])
-        # if no density_maps provided, density_fields is an empty list
-        except IndexError:
-            density_field = (density_weight, None)
-
-        spaces = {}
-
+        # Get hash metadata and fields
+        ell_hash = self.hash_metadata["ell_hash"]
         for i, j, k in calcs:
             if k == SHEAR_SHEAR:
-                w1, f1 = lensing_fields[i]
-                w2, f2 = lensing_fields[j]
+                f1 = self.get_field(maps, i, "shear")
+                f2 = self.get_field(maps, j, "shear")
+                h1 = self.hash_metadata[f"mask_source_{i}"]
+                h2 = self.hash_metadata[f"mask_source_{j}"]
             elif k == SHEAR_POS:
-                w1, f1 = lensing_fields[i]
-                w2, f2 = density_field
+                f1 = self.get_field(maps, i, "shear")
+                f2 = self.get_field(maps, j, "pos")
+                h1 = self.hash_metadata[f"mask_source_{i}"]
+                h2 = self.hash_metadata[f"mask_lens_{j}"]
             else:
-                w1, f1 = density_field
-                w2, f2 = density_field
+                f1 = self.get_field(maps, i, "pos")
+                f2 = self.get_field(maps, j, "pos")
+                h1 = self.hash_metadata[f"mask_lens_{i}"]
+                h2 = self.hash_metadata[f"mask_lens_{j}"]
 
             # First we derive a hash which will change whenever either
             # the mask changes or the ell binning.
             # We combine the hashes of those three objects together
             # using xor (python  ^ operator), which seems to be standard.
-            h1 = hashes[id(w1)]
-            h2 = hashes[id(w2)]
             key = h1 ^ ell_hash
             # ... except that if we are using the same field twice then
             # x ^ x = 0, which causes problems (all the auto-bins would
@@ -435,8 +414,7 @@ class TXTwoPointFourier(PipelineStage):
             # If not, compute it.  We will save it later
             if space is None:
                 print(f"Rank {self.rank} computing coupling matrix {i}, {j}, {k}")
-                space = nmt.NmtWorkspace()
-                space.compute_coupling_matrix(f1, f2, ell_bins, is_teb=False)
+                space = nmt.NmtWorkspace.from_fields(f1, f2, ell_bins)
             else:
                 print(f"Rank {self.rank} getting coupling matrix {i}, {j}, {k} from cache.")
             # This is a bit awkward - we attach the key to the
@@ -954,7 +932,7 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
         # Have to return Nones as placeholders to be consistent with TXTwoPointFourier
         return None, maps, None
 
-    def get_field(self, maps, i, kind, get_shears=True):
+    def get_field(self, maps, i, kind, get_shears=False):
         # In this subclass we load the catalog field objects dynamically,
         # because they are much larger than the map objects, or can be
         # at full LSST scale
@@ -1051,67 +1029,6 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
             )
         return field
 
-    def make_workspaces(self, maps, calcs, ell_bins):
-        import pymaster as nmt
-        from .utils.nmt_utils import WorkspaceCache
-
-        # Make the field object
-        if self.rank == 0:
-            print("Preparing workspaces")
-
-        # load the cache
-        cache = WorkspaceCache(self.config["cache_dir"], low_mem=self.config["low_mem"])
-        ell_hash = array_hash(ell_bins.get_effective_ells())
-        self.hash_metadata["ell_hash"] = ell_hash
-
-        for i, j, k in calcs:
-            if k == SHEAR_SHEAR:
-                f1 = self.get_field(maps, i, "shear", get_shears=False)
-                f2 = self.get_field(maps, j, "shear", get_shears=False)
-                h1 = self.hash_metadata[f"mask_source_{i}"]
-                h2 = self.hash_metadata[f"mask_source_{j}"]
-            elif k == SHEAR_POS:
-                f1 = self.get_field(maps, i, "shear", get_shears=False)
-                f2 = self.get_field(maps, j, "density", get_shears=False)
-                h1 = self.hash_metadata[f"mask_source_{i}"]
-                h2 = self.hash_metadata[f"mask_lens_{j}"]
-            else:
-                f1 = self.get_field(maps, i, "density", get_shears=False)
-                f2 = self.get_field(maps, j, "density", get_shears=False)
-                h1 = self.hash_metadata[f"mask_lens_{i}"]
-                h2 = self.hash_metadata[f"mask_lens_{j}"]
-
-            # First we derive a hash which will change whenever either
-            # the mask changes or the ell binning.
-            # We combine the hashes of those three objects together
-            # using xor (python  ^ operator), which seems to be standard.
-            key = h1 ^ ell_hash
-            # ... except that if we are using the same field twice then
-            # x ^ x = 0, which causes problems (all the auto-bins would
-            # have the same key).  So we only combine the hashes if the
-            # fields are different.
-            if h2 != h1:
-                key ^= h2
-
-            space = cache.get(i, j, k, key=key)
-
-            # If not, compute it.  We will save it later
-            if space is None:
-                print(f"Rank {self.rank} computing coupling matrix {i}, {j}, {k}")
-                space = nmt.NmtWorkspace.from_fields(f1, f2, ell_bins)
-            else:
-                print(f"Rank {self.rank} getting coupling matrix {i}, {j}, {k} from cache.")
-            # This is a bit awkward - we attach the key to the
-            # object to avoid more book-keeping.  This is used inside
-            # the workspace cache
-            space.txpipe_key = key
-
-            # We now automatically cache everything, non-optionally,
-            # but to save memory we don't keep them all loaded
-            cache.put(i, j, k, space)
-
-        return cache
-
     def compute_power_spectra(self, pixel_scheme, i, j, k, maps, workspace_cache, ell_bins, cl_theory, f_sky):
         # Compute power spectra
         # TODO: now all possible auto- and cross-correlation are computed.
@@ -1135,18 +1052,18 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
         sys.stdout.flush()
 
         if k == SHEAR_SHEAR:
-            field_i = self.get_field(maps, i, "shear")
-            field_j = self.get_field(maps, j, "shear")
+            field_i = self.get_field(maps, i, "shear", get_shears=True)
+            field_j = self.get_field(maps, j, "shear", get_shears=True)
             results_to_use = [(0, CEE), (1, CEB), (2, CBE), (3, CBB)]
 
         elif k == POS_POS:
-            field_i = self.get_field(maps, i, "pos")
-            field_j = self.get_field(maps, j, "pos")
+            field_i = self.get_field(maps, i, "pos", get_shears=True)
+            field_j = self.get_field(maps, j, "pos", get_shears=True)
             results_to_use = [(0, Cdd)]
 
         elif k == SHEAR_POS:
-            field_i = self.get_field(maps, i, "shear")
-            field_j = self.get_field(maps, j, "pos")
+            field_i = self.get_field(maps, i, "shear", get_shears=True)
+            field_j = self.get_field(maps, j, "pos", get_shears=True)
             results_to_use = [(0, CdE), (1, CdB)]
 
         workspace = workspace_cache.get(i, j, k)
