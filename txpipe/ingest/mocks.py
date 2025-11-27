@@ -19,7 +19,8 @@ class TXIngestExtraGalactic(PipelineStage):
         "delta_gamma": StageParameter(float, default=0.02, msg="Delta gamma value for metadetect response calculations"),
         "year": StageParameter(int, default=1, msg="Number of years of LSST observations to simulate photometric noise for"),
         "response_type": StageParameter(str, default="unit", msg="Type of response to apply for metadetect"),
-        "snr_cut": StageParameter(float, default=5.0, msg="SNR cut for overall detection"),
+        "shear_snr_cut": StageParameter(float, default=4.0, msg="SNR cut for shear, total over shear bands"),
+        "phot_snr_cut": StageParameter(float, default=5.0, msg="SNR cut to be in the photometry catalog, any band"),
         "T_ratio_cut": StageParameter(float, default=0.5, msg="T/PSF_T cut for metadetect catalog"),
         "random_seed": StageParameter(int, default=0, msg="Random seed"),
         "bands": StageParameter(str, default="ugrizy", msg="Bands to ingest photometry for"),
@@ -31,8 +32,9 @@ class TXIngestExtraGalactic(PipelineStage):
         photo_file = self.open_output("photometry_catalog")
         photo_group = photo_file.create_group("photometry")
 
-        snr_cut = self.config["snr_cut"]
-        T_ratio_cut = self.config["T_ratio_cut"]
+        shear_snr_cut = self.config["shear_snr_cut"]
+        phot_snr_cut = self.config["phot_snr_cut"]
+
         rng = np.random.default_rng(self.config['random_seed'])
         size = self.config.get("initial_size", 10_000_000)
         
@@ -40,8 +42,8 @@ class TXIngestExtraGalactic(PipelineStage):
             TableWriter(photo_group, initial_size=size) as photo_writer:
             for data in self.data_iterator():
                 add_lsst_like_noise(data, rng, year=self.config["year"])
-                shear_data = make_metadetect_catalog(data, self.config["response_type"], self.config["delta_gamma"], self.config["shear_bands"], rng, snr_cut=snr_cut, T_ratio_cut=T_ratio_cut)
-                photo_data = make_photo_cuts(data, self.config["bands"], snr_cut)
+                shear_data = make_metadetect_catalog(data, self.config["response_type"], self.config["delta_gamma"], self.config["shear_bands"], rng, snr_cut=shear_snr_cut)
+                photo_data = make_photo_cuts(data, self.config["bands"], phot_snr_cut)
                 shear_writer.write(shear_data)
                 photo_writer.write(photo_data)
 

@@ -89,7 +89,7 @@ def add_lsst_like_noise(data, random_state, year=1, **config):
 
 
 
-def make_metadetect_catalog(data, response_type, delta_gamma, bands, rng, snr_cut=5, T_ratio_cut=0.5):
+def make_metadetect_catalog(data, response_type, delta_gamma, bands, rng, snr_cut=4):
     output = {}
 
     # These parameters have response factors defined for them.
@@ -194,19 +194,13 @@ def make_metadetect_catalog(data, response_type, delta_gamma, bands, rng, snr_cu
         T = output[f"{variant}/T"]
         psf_T = output[f"{variant}/psf_T"]
         snr = output[f"{variant}/s2n"]
-        mask = compute_cuts(T, psf_T, snr, snr_cut=snr_cut, T_ratio_cut=T_ratio_cut)
+        mask = snr > snr_cut
         for key in output:
             if key.startswith(f"{variant}/"):
                 output[key] = output[key][mask]
 
     return output
 
-
-def compute_cuts(T, psf_T, snr, snr_cut=5, T_ratio_cut=0.5):
-    """Apply basic cuts to a metadetect catalog dictionary."""
-    T_ratio = T / psf_T
-    mask = (snr > snr_cut) & (T_ratio > T_ratio_cut)
-    return mask
 
 def make_mock_psf(n, rng):
     T = rng.normal(mock_psf_stats["T"][0], mock_psf_stats["T"][1], n)
