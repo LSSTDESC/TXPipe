@@ -202,7 +202,7 @@ def make_metadetect_catalog(data, response_type, delta_gamma, bands, rng, snr_cu
     return output
 
 
-def compute_cuts(T, psf_T, snr, snr_cut=5, T_ratio_cut=0.5),:
+def compute_cuts(T, psf_T, snr, snr_cut=5, T_ratio_cut=0.5):
     """Apply basic cuts to a metadetect catalog dictionary."""
     T_ratio = T / psf_T
     mask = (snr > snr_cut) & (T_ratio > T_ratio_cut)
