@@ -18,7 +18,7 @@ class TXIngestExtraGalactic(PipelineStage):
     config_options = {
         "delta_gamma": StageParameter(float, default=0.02, msg="Delta gamma value for metadetect response calculations"),
         "year": StageParameter(int, default=1, msg="Number of years of LSST observations to simulate photometric noise for"),
-        "response_type": StageParameter(str, default="unit", msg="Type of response to apply for metadetect"),
+        "response_type": StageParameter(str, default="desy6", msg="Type of response to apply for metadetect"),
         "shear_snr_cut": StageParameter(float, default=4.0, msg="SNR cut for shear, total over shear bands"),
         "phot_snr_cut": StageParameter(float, default=5.0, msg="SNR cut to be in the photometry catalog, any band"),
         "T_ratio_cut": StageParameter(float, default=0.5, msg="T/PSF_T cut for metadetect catalog"),
