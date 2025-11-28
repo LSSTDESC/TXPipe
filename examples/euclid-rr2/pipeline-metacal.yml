@@ -1,5 +1,5 @@
 stages:
-    - name: TXIngestEuclidRR2
+    - name: TXIngestEuclidRR2Binned
     - name: TXJackknifeCenters
     - name: TXTwoPoint
       threads_per_process: 8
@@ -11,14 +11,19 @@ stages:
     - name: TXSourceMaps
     - name: TXMapPlots
     - name: TXRealGaussianCovariance
-    # - name: TXTwoPointFourier
-    #   threads_per_process: 8
+    - name: TXFourierGaussianCovariance
+    - name: TXPhotozPlot
+      aliases:
+        photoz_stack: shear_photoz_stack
+        nz_plot: source_nz_plot
+    - name: TXTwoPointFourier
+      threads_per_process: 8
     # - name: TXTwoPointTheoryFourier
     # - name: TXTwoPointPlotsFourier
 
 
 # Where to put outputs
-output_dir: data/euclid-rr2/outputs
+output_dir: data/euclid-rr2/outputs-{{ rr2_version }}
 
 # How to run the pipeline: mini, parsl, or cwl
 launcher:
@@ -45,10 +50,12 @@ config: examples/euclid-rr2/config.yml
 
 inputs:
     # These input files are downloaded from CosmoHub
-    euclid_rr2_parquet: {{ data_dir }}/rr2.parquet
-    euclid_rr2_shear_photoz_stack: {{ data_dir }}/Reg2_SHE_tombins_unitweights_nz_SOMbin_C2020z.fits
+    euclid_rr2_parquet: {{ data_dir }}/euclid_rr2_r1_v{{ rr2_version }}.parquet
+    euclid_rr2_shear_photoz_stack: {{ data_dir }}/RR2_v2_Nz_WL_C2020_sel_pv.fits
     euclid_rr2_randoms: {{ data_dir }}/random_tombin_14_07_2025.tar.gz
     euclid_rr2_masks: {{ data_dir }}/visibility_tombinid_14_07_2025.tar.gz
+    cosmos2020_photometry: {{ data_dir }}/COSMOS2020_CLASSIC_R1_v2.2_p3.fits
+    cosmos2020_redshift: {{ data_dir }}/COSMOS2020_CLASSIC_R1_v2.2_LEPHARE_PZ_p3.fits
     fiducial_cosmology: data/fiducial_cosmology.yml
     # We skip all lens-related files for now, but will introduce them later
     binned_lens_catalog: none
@@ -66,6 +73,6 @@ inputs:
 # if interrupted
 resume: true
 # where to put output logs for individual stages
-log_dir: data/euclid-rr2/logs
+log_dir: data/euclid-rr2/logs-{{ rr2_version }}
 # where to put an overall parsl pipeline log
-pipeline_log: data/euclid-rr2/logs/pipeline_log.txt
+pipeline_log: data/euclid-rr2/logs-{{ rr2_version }}/pipeline_log.txt

@@ -159,16 +159,21 @@ class TXIngestEuclidRR2(PipelineStage):
         d1 = data[f"she_{kind}_weight"] > 0
         d2 = data["vis_det"] == 1
         d3 = data["eff_cov_flag"] > 0
+        d4 = self.declination_cut(data[f"she_{kind}_dec"])
         d12 = d1 & d2
         d123 = d12 & d3
+        d1234 = d123 & d4
         n1 = d1.sum()
         n2 = d2.sum()
         n3 = d3.sum()
+        n4 = d4.sum()
         n12 = d12.sum()
         n123 = d123.sum()
+        n1234 = d1234.sum()
         print(f"Shear weight cut selects {n1/n:.1%} of data")
         print(f"Vis det cut selects {n2/n:.1%} of data or {n12/n1:.1%} of data after previous cuts, leading to total selected fraction {n12/n:.1%}")
         print(f"Eff cov cut selects {n3/n:.1%} of data or {n123/n12:.1%} of data after previous cuts, leading to total selected fraction {n123/n:.1%}")
+        print(f"Declination cut selects {n4/n:.1%} of data or {n1234/n123:.1%} of data after previous cuts, leading to total selected fraction {n1234/n:.1%}")
         return d123
 
 
@@ -187,12 +192,17 @@ class TXIngestEuclidRR2(PipelineStage):
             f"she_{kind}_m12": "m12",
             f"she_{kind}_m21": "m21",
             f"she_{kind}_m22": "m22",
-            f"she_{kind}_psf_r2": "psf_T_mean",   
+            f"she_{kind}_r2": "T",
+            f"she_{kind}_sn": "s2n",
+            f"she_{kind}_psf_r2": "psf_T",   
         }
 
         out = {}
         for in_name, out_name in renames.items():
             out[out_name] = batch[in_name]
+
+
+        out["flags"] = np.ones(len(batch), dtype=np.int8)
 
         # Copy all the non-renamed ones to the output
         for col in batch.colnames:
@@ -210,6 +220,17 @@ class TXIngestEuclidRR2(PipelineStage):
         return out
 
 
+    def declination_cut(self, dec):
+        patches = self.config['patches']
+        if patches == "south":
+            sel = dec < -40
+        elif patches == "north":
+            sel = dec >= -40
+        elif patches == "both":
+            sel = slice(None)
+        else:
+            raise ValueError("patches config option must be 'south', 'north', or 'both'")
+        return sel
 
 
 
@@ -231,8 +252,8 @@ class TXIngestEuclidRR2Binned(TXIngestEuclidRR2):
     ]
     outputs = [
         ("binned_shear_catalog", HDFFile),
-        ("shear_photoz_stack", QPNOfZFile),
         ("binned_random_catalog", HDFFile),
+        ("shear_photoz_stack", QPNOfZFile),
         ("random_cats", HDFFile),
         ("tracer_metadata", HDFFile),
         ("mask", MapsFile),
@@ -252,6 +273,11 @@ class TXIngestEuclidRR2Binned(TXIngestEuclidRR2):
             str,
             default="lensmc",
             msg="Which shear data set to use from the catalog, lensmc or metacal",
+        ),
+        "patches": StageParameter(
+            str,
+            default="south",
+            msg="Whether to use the 'south', 'north', or 'both' patches of RR2",
         )
     }
 
@@ -268,7 +294,6 @@ class TXIngestEuclidRR2Binned(TXIngestEuclidRR2):
         self.ingest_shear(area_sq_deg)
 
 
-
     def ingest_binned_random_catalog(self):
         import fitsio
         # only the ra and dec are actually referenced for this
@@ -276,6 +301,7 @@ class TXIngestEuclidRR2Binned(TXIngestEuclidRR2):
         # fiducial distance column too
         input_gzip_file = self.get_input("euclid_rr2_randoms")
         nbin = self.config["nbin"]
+        patches = self.config["patches"]
 
         # unzip the file to a temporary directory
         with tempfile.TemporaryDirectory() as tmpdirname:
@@ -297,6 +323,11 @@ class TXIngestEuclidRR2Binned(TXIngestEuclidRR2):
                     with fitsio.FITS(input_file) as f:
                         ra = f[1].read_column("RIGHT_ASCENSION")
                         dec = f[1].read_column("DECLINATION")
+                    
+                    sel = self.declination_cut(dec)
+                    ra = ra[sel]
+                    dec = dec[sel]
+
                     print(f"Read {len(ra)} from random bin {i}")
                     # Write to output file - using 0-based bin numbering
                     group = binned_output.create_group(f"bin_{i-1}")
@@ -514,6 +545,7 @@ class TXIngestEuclidRR2Binned(TXIngestEuclidRR2):
         f = nf / n0
         print(f"Tomo cut for bin {tomo_bin} selects {n1/n:.1%} of data, or {f:.1%} of data selected by previous cuts, for total selected fraction {nf/n:.1%}")
         print("")
+        
         return sel
 
     def ingest_mask(self):
@@ -532,6 +564,9 @@ class TXIngestEuclidRR2Binned(TXIngestEuclidRR2):
                 mask = healpy.read_map(f"{tmpdirname}/visibility_tombinid_{i}.fits")
                 npix = len(mask)
                 nside = healpy.npix2nside(npix)
+                _, dec = healpy.pix2ang(nside, np.arange(npix), lonlat=True)
+                cut = self.declination_cut(dec)
+                mask[~cut] = 0
                 pix = np.where(mask > 0)[0]
                 values = mask[pix]
                 masks.append((pix, values))
@@ -564,5 +599,117 @@ class TXIngestEuclidRR2Binned(TXIngestEuclidRR2):
         
         return area_sq_deg
 
+class TXIngestCosmos2020(PipelineStage):
+    """
+    Ingest the COSMOS2020 photometry and PZ catalog as a "spectroscopic" catalog,
+    which seems to be the Euclid plan.
+    """
+    name = "TXIngestCosmos2020"
+    inputs = [
+        ("cosmos2020_photometry", FitsFile),
+        ("cosmos2020_redshift", FitsFile),
+
+    ]
+    outputs = [
+        ("spectroscopic_catalog", HDFFile),
+    ]
+
+    config_options = {
+        "chunk_rows": StageParameter(
+            int,
+            default=100_000,
+            msg="Number of rows to process in each chunk",
+        ),
+        "redshift_selection": StageParameter(
+            str,
+            default="mode",
+            msg="Which statistic to use from the redshift PDF, mean or mode",
+        ),
+    }
+
+    def run(self):
+        from .cosmos2020 import get_total_flux_cosmos2020
+        from astropy.io import fits
+        chunk_rows = self.config["chunk_rows"]
+
+        # approximate the filters. We are only using this for
+        # tomography for now so high accuracy is not needed.
+        bands = [
+            'CFHT_u', 'HSC_g', 'HSC_r', 'HSC_i', 'HSC_z', 'HSC_y',
+            'UVISTA_Y', 'UVISTA_J', "UVISTA_H"         
+        ]
+
+        photo_filename = self.get_input("cosmos2020_photometry")
+        photo_file = fits.open(photo_filename, memmap=True)
+
+        # FITSIO seems really slow at reading image data so we
+        # use astropy here. No idea why.  Maybe it's memory-mapping
+        # by default or something. Anyway, this works much faster
+        # on my laptop.
+        redshift_filename = self.get_input("cosmos2020_redshift")
+        redshift_file = fits.open(redshift_filename, memmap=True)
+
+        # The photometry data is a table but the redshfit is an image
+        # because FITS is stupid and astronomers are bad people.
+        photo_ext = photo_file[1]
+        redshift_ext = redshift_file[0]
+        # Why is nrows not a public attribute? Who knows?
+        length = photo_ext._nrows
+        nread = 0 
+        z = redshift_ext.data[0, 1:]
+
+        output_file = self.open_output("spectroscopic_catalog")
+        output_group = output_file.create_group("photometry")
+        output_group.create_dataset("redshift", shape=(length,))
+
+        for band in bands:
+            band = band.split("_")[-1]
+            output_group.create_dataset(band, shape=(length,))
+            output_group.create_dataset("mag_err_" + band, shape=(length,))
+
+        while nread < length:
+            start = nread
+            end = min(nread + chunk_rows, length)
+            nread = end
+            print(f"Processing rows {start} - {end} / {length}")
+
+            photo_data = photo_ext.data[start:end]
+            # There's a +1 here because the first row of the image
+            # is the redshift data.
+            redshift_pdf = redshift_ext.data[start + 1 : end + 1, 1:]
+
+            # I think this should probably work on the record
+            # array loaded from 
+            data = get_total_flux_cosmos2020(photo_data, bands)
+
+            if self.config["redshift_selection"] == "mode":
+                index = redshift_pdf.argmax(axis=1)
+                data["redshift"] = z[index]
+            elif self.config["redshift_selection"] == "mean":
+                data["redshift"] = (redshift_pdf * z).sum(axis=1) / redshift_pdf.sum(axis=1)
+            else:
+                raise ValueError("Only mode redshift selection is supported")
+            
+            # Save output chunk
+            for col, values in data.items():
+                output_group[col][start:end] = values
+
+
+        # Add some column aliases
+        # g_ext_decam_unif, r_ext_decam_unif, i_ext_decam_unif, z_ext_decam_unif, y_unif, j_unif, h_unif, vis_unif
+        output_group["g_ext_decam_unif"] = output_group["g"]
+        output_group["r_ext_decam_unif"] = output_group["r"]
+        output_group["i_ext_decam_unif"] = output_group["i"]
+        output_group["z_ext_decam_unif"] = output_group["z"]
+        output_group["Y_unif"] = output_group["Y"]
+        output_group["J_unif"] = output_group["J"]
+        output_group["H_unif"] = output_group["H"]
+
+        output_file.close()
+        photo_file.close()
+        redshift_file.close()
+
+
 if __name__ == "__main__":
     PipelineStage.main()
+

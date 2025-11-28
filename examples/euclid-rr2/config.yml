@@ -1,5 +1,20 @@
-TXSourceMaps:
+global:
+    # Real space settings - global so they go to
+    # both the measurement and covariance stages
+    min_sep: 2.5
+    max_sep: 250
+    nbins: 10
+    # Fourier space settings - ditto
     nside: 4096
+    ell_min: 50
+    ell_max: 3000
+    n_ell: 20
+    ell_spacing: log
+
+
+
+TXIngestEuclidRR2Binned:
+    shear: metacal
 
 TXTwoPoint:
     bin_slop: 0.01
@@ -7,31 +22,47 @@ TXTwoPoint:
     do_shear_shear: true
     do_shear_pos: false
     flip_g2: false
-    min_sep: 2.5
-    max_sep: 250
-    nbins: 10
     verbose: 0
     var_method: jackknife
+    # for testing just do the one bin
+    # source_bins: [0]
+    # lens_bins: []
 
-TXRealGaussianCovariance:
-    min_sep: 2.5
-    max_sep: 300.
-    nbins: 12
+TXSourceMaps:
+    block_size: 100000
 
+TXSourceTomography:
+    bands: [g_ext_decam_unif, r_ext_decam_unif, i_ext_decam_unif, z_ext_decam_unif, Y_unif, J_unif, H_unif]
+    source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
+
+
+TXSourceSelectorMetacal:
+    bands: [g_ext_decam_unif, r_ext_decam_unif, i_ext_decam_unif, z_ext_decam_unif, Y_unif, J_unif, H_unif]
+    T_cut: 0.5
+    s2n_cut: 10.0
+    max_rows: 1000
+    delta_gamma: 0.02
+    source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
+    shear_prefix: ''
+
+
+# TXRealGaussianCovariance:
+#     pickled_wigner_transform: cache/wigner_transform_real.pkl
+
+# TXFourierGaussianCovariance:
+#     pickled_wigner_transform: cache/wigner_transform_fourier.pkl
 
 TXJackknifeCenters:
     npatch: 200
 
 TXTwoPointTheoryReal:
-    smooth: 5
+    smooth: 2
 
+TXPhotozPlot:
+    smooth: 2
 
 TXTwoPointFourier:
-    # low_mem: true
-    ell_min: 50
-    ell_max: 3000
-    n_ell: 20
-    ell_spacing: log
+    low_mem: true
     analytic_noise: true
     do_shear_shear: true
     do_shear_pos: false
