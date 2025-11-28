@@ -500,7 +500,7 @@ class PickleFile(DataFile):
     def read(self):
         if self.mode != "r":
             raise UnsupportedOperation(
-                "Cannot read from pickle file opened in " f"write-only ({self.mode})"
+                "Cannot read from pickle file opened in write-only ({self.mode})"
             )
         return pickle.load(self.file)
 
