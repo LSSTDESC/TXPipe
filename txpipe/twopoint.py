@@ -303,6 +303,7 @@ class TXTwoPoint(PipelineStage):
                         (tracer1, tracer2),
                         xip[i],
                         theta=theta[i],
+                        theta_unit=self.config["sep_units"],
                         error=xiperr[i],
                         npair=npair[i],
                         weight=weight[i],
@@ -313,6 +314,7 @@ class TXTwoPoint(PipelineStage):
                         (tracer1, tracer2),
                         xim[i],
                         theta=theta[i],
+                        theta_unit=self.config["sep_units"],
                         error=ximerr[i],
                         npair=npair[i],
                         weight=weight[i],
@@ -339,6 +341,7 @@ class TXTwoPoint(PipelineStage):
                         (tracer1, tracer2),
                         xi[i],
                         theta=theta[i],
+                        theta_unit=self.config["sep_units"],
                         error=err[i],
                         weight=weight[i],
                     )
@@ -396,6 +399,7 @@ class TXTwoPoint(PipelineStage):
                         (tracer1, tracer2),
                         xi_x[i],
                         theta=theta[i],
+                        theta_unit=self.config["sep_units"],
                         error=err[i],
                         weight=weight[i],
                     )
