@@ -44,6 +44,8 @@ stages:
     aliases:
         input: final_specz_catalog
         output: spectroscopic_catalog
+  - name: TXSourceTomography
+    threads_per_process: 8
   - name: TXSourceSelectorMetadetect
     nprocess: 32
   - name: TXShearCalibration

@@ -75,7 +75,11 @@ TXSimpleMask:
     depth_cut: 23.0
     bright_object_max: 10.0
 
-
+TXSourceTomography:
+    bands: riz #used for selection
+    random_seed: 123213
+    source_zbin_edges: [0.19285902, 0.40831394, 0.65503818, 0.94499109, 1.2947086, 1.72779632, 2.27855242, 3.]  # 7 bins
+    # source_zbin_edges: [0.25588604, 0.55455363, 0.91863365, 1.38232001, 2.] # 4 bins
 
 TXSourceSelectorMetadetect:
     input_pz: false
@@ -84,10 +88,10 @@ TXSourceSelectorMetadetect:
     s2n_cut: 10.0
     max_rows: 1000
     delta_gamma: 0.02
-    source_zbin_edges: [0.19285902, 0.40831394, 0.65503818, 0.94499109, 1.2947086, 1.72779632, 2.27855242, 3.]  # 7 bins
-    # source_zbin_edges: [0.25588604, 0.55455363, 0.91863365, 1.38232001, 2.] # 4 bins
     true_z: false
     shear_prefix: ''
+    source_zbin_edges: [0.19285902, 0.40831394, 0.65503818, 0.94499109, 1.2947086, 1.72779632, 2.27855242, 3.]  # 7 bins
+    # source_zbin_edges: [0.25588604, 0.55455363, 0.91863365, 1.38232001, 2.] # 4 bins
 
 
 TXRandomCat:
