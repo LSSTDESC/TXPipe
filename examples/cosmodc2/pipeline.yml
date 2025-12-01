@@ -22,13 +22,25 @@ stages:
     aliases:
         output: ideal_specz_catalog
         model: flow
-  - name: GridSelection
+  - name: LSSTErrorModel
     aliases:
         input: ideal_specz_catalog
-        output: specz_catalog_pq
+        output: noisy_specz_catalog
+  - name: InvRedshiftIncompleteness
+    aliases:
+        input: noisy_specz_catalog
+        output: incomplete_specz_catalog
+  - name: LineConfusion
+    aliases:
+        input: incomplete_specz_catalog
+        output: confused_specz_catalog
+  - name: QuantityCut
+    aliases:
+        input: confused_specz_catalog
+        output: final_specz_catalog
   - name: TXParqetToHDF
     aliases:
-        input: specz_catalog_pq
+        input: final_specz_catalog
         output: spectroscopic_catalog
   - name: TXSourceSelectorMetacal
     nprocess: 32
@@ -158,9 +170,7 @@ inputs:
     # See README for paths to download these files
     shear_catalog: data/cosmodc2/inputs/shear_catalog.hdf5
     photometry_catalog: /global/cfs/cdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/photometry_catalog.hdf5
-    photoz_trained_model: /global/cfs/cdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/cosmoDC2_trees_i25.3.npy
     fiducial_cosmology: data/fiducial_cosmology.yml
-    calibration_table: /global/cfs/cdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/sample_cosmodc2_w10year_errors.dat
     none: none
     flow: data/example/inputs/example_flow.pkl
 
