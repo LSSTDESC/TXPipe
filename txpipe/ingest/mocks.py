@@ -41,11 +41,17 @@ class TXIngestExtraGalactic(PipelineStage):
         with ShearTableWriter(shear_filename, initial_size=size) as shear_writer, \
             TableWriter(photo_group, initial_size=size) as photo_writer:
             for data in self.data_iterator():
+                self.add_additional_columns(data)
                 add_lsst_like_noise(data, rng, year=self.config["year"])
                 shear_data = make_metadetect_catalog(data, self.config["response_type"], self.config["delta_gamma"], self.config["shear_bands"], rng, snr_cut=shear_snr_cut)
                 photo_data = make_photo_cuts(data, self.config["bands"], phot_snr_cut)
                 shear_writer.write(shear_data)
                 photo_writer.write(photo_data)
+
+    def add_additional_columns(self, data):
+        if "extendedness" not in data:
+            # Extra-galactic objects are all extended, no stars are included
+            data["extendedness"] = np.ones_like(data["ra"], dtype=np.int8)
 
     def data_iterator(self):
         raise NotImplementedError("data_iterator must be implemented in subclass")
