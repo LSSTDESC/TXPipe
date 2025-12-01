@@ -8,7 +8,9 @@ site:
 
 modules: >
     txpipe
-    rail.creation.degraders.grid_selection
+    rail.creation.degraders.photometric_errors
+    rail.creation.degraders.quantityCut
+    rail.creation.degraders.spectroscopic_degraders
     rail.creation.engines.flowEngine
     rail.estimation.algos.nz_dir
     rail.estimation.algos.bpz_lite
@@ -42,7 +44,7 @@ stages:
     aliases:
         input: final_specz_catalog
         output: spectroscopic_catalog
-  - name: TXSourceSelectorMetacal
+  - name: TXSourceSelectorMetadetect
     nprocess: 32
   - name: TXShearCalibration
     nprocess: 32
@@ -168,8 +170,8 @@ config: examples/cosmodc2/config.yml
 
 inputs:
     # See README for paths to download these files
-    shear_catalog: data/cosmodc2/inputs/shear_catalog.hdf5
-    photometry_catalog: /global/cfs/cdirs/lsst/groups/WL/users/zuntz/data/cosmoDC2-1.1.4_oneyear_unit_response/photometry_catalog.hdf5
+    shear_catalog: cosmodc2/shear_catalog.hdf5
+    photometry_catalog: cosmodc2/photometry_catalog.hdf5
     fiducial_cosmology: data/fiducial_cosmology.yml
     none: none
     flow: data/example/inputs/example_flow.pkl
