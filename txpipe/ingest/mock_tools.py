@@ -174,6 +174,12 @@ def make_metadetect_catalog(data, response_type, delta_gamma, bands, rng, snr_cu
             output[f"2p/mag_{b}"] = nanojansky_to_mag_ab(flux_2p)
             output[f"2m/mag_{b}"] = nanojansky_to_mag_ab(flux_2m)
 
+            output[f"00/mag_err_{b}"] = nanojansky_err_to_mag_ab(flux, flux_err)
+            output[f"1p/mag_err_{b}"] = nanojansky_err_to_mag_ab(flux_1p, flux_err)
+            output[f"1m/mag_err_{b}"] = nanojansky_err_to_mag_ab(flux_1m, flux_err)
+            output[f"2p/mag_err_{b}"] = nanojansky_err_to_mag_ab(flux_2p, flux_err)
+            output[f"2m/mag_err_{b}"] = nanojansky_err_to_mag_ab(flux_2m, flux_err)
+
             
 
     output["00/s2n"] = np.sqrt(s2n_total)
@@ -182,8 +188,8 @@ def make_metadetect_catalog(data, response_type, delta_gamma, bands, rng, snr_cu
     output["2p/s2n"] = np.sqrt(s2n_total_2p)
     output["2m/s2n"] = np.sqrt(s2n_total_2m)
 
-    # Make fake PSF choices. Give the same PSF to each variant for simplicity.
-    psf_T, psf_e1, psf_e2 = make_mock_psf(output["00/ra"].size, rng)
+
+
     for variant in ["00", "1p", "1m", "2p", "2m"]:
         output[f"{variant}/psf_T"] = psf_T
         output[f"{variant}/psf_g1"] = psf_e1
@@ -191,13 +197,15 @@ def make_metadetect_catalog(data, response_type, delta_gamma, bands, rng, snr_cu
 
     # Now we do the cuts on each variant separately
     for variant in ["00", "1p", "1m", "2p", "2m"]:
-        T = output[f"{variant}/T"]
-        psf_T = output[f"{variant}/psf_T"]
         snr = output[f"{variant}/s2n"]
         mask = snr > snr_cut
+        # T cut is done later
         for key in output:
             if key.startswith(f"{variant}/"):
                 output[key] = output[key][mask]
+        n = output[f"{variant}/ra"].size
+        output[f"{variant}/weight"] = np.ones(n, dtype=np.float32)
+        output[f"{variant}/flags"] = np.zeros(n, dtype=np.int32)
 
     return output
 

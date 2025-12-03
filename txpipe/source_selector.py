@@ -476,11 +476,10 @@ class TXSourceSelectorBase(PipelineStage):
         verbose = self.config["verbose"]
         variant = data.suffix
 
-        shear_prefix = self.config["shear_prefix"]
-        s2n  = data[f"{shear_prefix}s2n{variant}"]
-        T    = data[f"{shear_prefix}T{variant}"]
-        Tpsf = data[f"{shear_prefix}psf_T_mean"]
-        flag = data[f"{shear_prefix}flags{variant}"]
+        s2n  = data[f"s2n{variant}"]
+        T    = data[f"T{variant}"]
+        Tpsf = data[f"psf_T"]
+        flag = data[f"flags{variant}"]
 
         # Apply our cuts.  We keep track of the number of objects
         # reject by each cut in case it's important.
@@ -553,7 +552,7 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
         shear_cols = metacal_variants(
             "mcal_T", "mcal_s2n", "mcal_g1", "mcal_g2", "mcal_flags", "weight"
         )
-        shear_cols += ["ra", "dec", "mcal_psf_T_mean"]
+        shear_cols += ["ra", "dec", "psf_T"]
         shear_cols += band_variants(
             bands, "mcal_mag", "mcal_mag_err", shear_catalog_type="metacal"
         )
@@ -697,7 +696,7 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
 
         # Core quantities we need
         shear_cols = metadetect_variants(
-            "T", "s2n", "g1", "g2", "ra", "dec", "mcal_psf_T_mean", "weight", "flags"
+            "T", "s2n", "g1", "g2", "ra", "dec", "psf_T", "weight", "flags"
         )
 
         # Magnitudes and errors
@@ -712,9 +711,6 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         elif self.config["true_z"]:
             shear_cols += ["00/redshift_true"]
             renames["00/redshift_true"] = "redshift_true"
-
-        for prefix in ["00", "1p", "1m", "2p", "2m"]:
-            renames[f"{prefix}/mcal_psf_T_mean"] = f"{prefix}/psf_T_mean"
 
         # This is a parent ceci.PipelineStage method.
         # It returns an iterator we loop through

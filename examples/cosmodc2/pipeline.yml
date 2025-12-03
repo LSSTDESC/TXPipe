@@ -172,8 +172,8 @@ config: examples/cosmodc2/config.yml
 
 inputs:
     # See README for paths to download these files
-    shear_catalog: cosmodc2/shear_catalog.hdf5
-    photometry_catalog: cosmodc2/photometry_catalog.hdf5
+    shear_catalog: data/cosmodc2/inputs/shear_catalog.hdf5
+    photometry_catalog: data/cosmodc2/inputs/photometry_catalog.hdf5
     fiducial_cosmology: data/fiducial_cosmology.yml
     none: none
     flow: data/example/inputs/example_flow.pkl
