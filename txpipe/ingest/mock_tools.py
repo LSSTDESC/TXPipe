@@ -106,20 +106,9 @@ def make_metadetect_catalog(data, response_type, delta_gamma, bands, rng, snr_cu
         responses = desy6_responses
     elif response_type == "unit":
         responses = unit_responses
-    elif response_type == "none":
-        responses = None
     else:
         raise ValueError(f"Unknown response type {response_type}")
     
-    # If there is no response then we are not doing metacal at all.
-    # In that case we just want to 
-    if responses is None:
-        for old_name, new_name in params + non_response_params:
-            output[new_name] = data[old_name]
-        psf_T, psf_e1, psf_e2 = make_mock_psf(output["00/ra"].size, rng)
-        output["psf_T"] = psf_T
-        output["psf_g1"] = psf_e1
-        output["psf_g2"] = psf_e2
 
 
     for param in params:
@@ -189,6 +178,7 @@ def make_metadetect_catalog(data, response_type, delta_gamma, bands, rng, snr_cu
     output["2m/s2n"] = np.sqrt(s2n_total_2m)
 
 
+    psf_T, psf_e1, psf_e2 = make_mock_psf(output["00/ra"].size, rng)
 
     for variant in ["00", "1p", "1m", "2p", "2m"]:
         output[f"{variant}/psf_T"] = psf_T
