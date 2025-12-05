@@ -5,7 +5,7 @@ set -e
 ENV_PATH=./conda
 
 module load python
-module load mpich/4.3.0
+module load cray-mpich
 
 mamba env  create --yes -f bin/environment-perlmutter.yml -p ${ENV_PATH} python=3.10
 mamba activate ./conda
@@ -19,6 +19,17 @@ pip install .
 cd ..
 rm -rf ${FIRECROWN_DIR}
 
+# Now we remove the installed mpi4py version and replace it with our own.
+# We also remove libfabric which is installed as a dependency of mpich
+# despite us asking for the external version
+mamba remove --force mpi4py libfabric libfabric1
+
+# Re-install mpi4py. The first env var allows using flexible versions of MPICH so seemed
+# a good idea.
+MPI4PY_BUILD_MPIABI=1 MPICC="mpicc -shared" pip install  --no-cache-dir --no-binary=mpi4py mpi4py
+
+
+
 # Files in the etc/conda/activate.d directory in a conda environment
 # are sourced when the environment is activated.
 # So we can put other environment variables and modules loads in there
@@ -28,7 +39,7 @@ rm -rf ${FIRECROWN_DIR}
 # tries to use. The HDF5_USE_FILE_LOCKING variable is set to FALSE because
 # the lustre filesystem does not support file locking.
 cat >  ./conda/etc/conda/activate.d/activate-txpipe.sh <<EOF
-    module load mpich/4.3.0
+    module load cray-mpich
     export MPI4PY_RC_RECV_MPROBE='False'
     export HDF5_USE_FILE_LOCKING=FALSE
 EOF

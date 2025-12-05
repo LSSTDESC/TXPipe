@@ -17,7 +17,7 @@ dependencies:
   - jupyter=1.1.*
   - matplotlib=3.10.*
   - mockmpi=0.8.*
-  - mpi4py=4.0.*
+  - mpi4py=4.1.*
   - mpich=4.3.*=external_*
   - namaster=2.5.*
   - numpy=2.3.*
@@ -47,17 +47,17 @@ dependencies:
   - pip:
     - ceci==2.3.*
     - git+https://github.com/jlvdb/hyperbolic@b88b107a291fa16c2006cf971ce610248d58e94c
-    - dask-mpi>=2022.4.0
-    - git+https://github.com/LSSTDESC/CLMM.git@1.14.1
+    - dask-mpi==2022.4.0
+    - git+https://github.com/LSSTDESC/CLMM.git@1.14.6
     - parallel-statistics==0.13
     - sacc[all]==2.1.*
-    - jax==0.6.0
-    - jaxlib==0.6.0
+    - jax==0.7.2
+    - jaxlib==0.7.2
     - glass==2023.7
     - git+https://github.com/beckermr/hybrideb@a3198ea5bc8175542b058e5c1289d910f05fd99d
     - pz-rail[algos] @ git+https://github.com/LSSTDESC/RAIL@v1.1.2
-    # Numpy has to be here to make sure that pypi doesn't
-    # try to install a different version
+    # Numpy has to be here to make sure that pypi doesn't
+    # try to install a different version
     - numpy==2.3.*
-    # NERSC-specific
+    # NERSC-specific
     - git+https://github.com/LSSTDESC/dataregistry.git
