@@ -18,3 +18,9 @@ def moments_to_shear(Ixx, Iyy, Ixy):
     e1 = (Ixx - Iyy) / b
     e2 = 2 * Ixy / b
     return e1, e2
+
+
+def half_light_radius_to_trace(hlr):
+    sigma = hlr / np.sqrt(2 * np.log(2))
+    T = 2 * sigma**2
+    return T

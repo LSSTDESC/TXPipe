@@ -1,5 +1,6 @@
 stages:
-    - name: TXIngestEuclidRR2Binned
+    - name: TXIngestEuclidRR2Binned{{ shear_type.capitalize() }}
+      classname: TXIngestEuclidRR2Binned
     - name: TXJackknifeCenters
     - name: TXTwoPoint
       threads_per_process: 8
@@ -18,12 +19,12 @@ stages:
         nz_plot: source_nz_plot
     - name: TXTwoPointFourier
       threads_per_process: 8
-    # - name: TXTwoPointTheoryFourier
-    # - name: TXTwoPointPlotsFourier
+    - name: TXTwoPointTheoryFourier
+    - name: TXTwoPointPlotsFourier
 
 
 # Where to put outputs
-output_dir: data/euclid-rr2/outputs-{{ rr2_version }}
+output_dir: data/euclid-rr2/outputs-{{ rr2_version }}-{{ shear_type }}
 
 # How to run the pipeline: mini, parsl, or cwl
 launcher:

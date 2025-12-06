@@ -1,6 +1,7 @@
 from txpipe import PipelineStage
 from ceci.config import StageParameter
 from txpipe.data_types import HDFFile, ParquetFile, FitsFile, QPNOfZFile, DataFile, MapsFile, ShearCatalog
+from ..utils.conversion import half_light_radius_to_trace
 import numpy as np
 import tempfile
 import tarfile
@@ -54,6 +55,7 @@ class TXIngestEuclidRR2(PipelineStage):
 
     def run(self):
         self.ingest_shear()
+        
 
     def ingest_shear(self):
         import pyarrow.parquet as pq
@@ -75,7 +77,6 @@ class TXIngestEuclidRR2(PipelineStage):
         input_file, iterator = self.iterate_shear(bands)
 
         with self.open_output("shear_catalog") as full_output_file:
-
             full_output_group = full_output_file.create_group("shear")
             
             start = 0
@@ -192,14 +193,27 @@ class TXIngestEuclidRR2(PipelineStage):
             f"she_{kind}_m12": "m12",
             f"she_{kind}_m21": "m21",
             f"she_{kind}_m22": "m22",
-            f"she_{kind}_r2": "T",
-            f"she_{kind}_sn": "s2n",
             f"she_{kind}_psf_r2": "psf_T",   
         }
-
+        colnames = set(batch.colnames)
         out = {}
         for in_name, out_name in renames.items():
             out[out_name] = batch[in_name]
+
+        if f"she_{kind}_r2" in colnames:
+            out["T"] = batch[f"she_{kind}_r2"]
+        elif f"she_{kind}_hlr" in colnames:
+            out["T"] = half_light_radius_to_trace(batch[f"she_{kind}_hlr"])
+        else:
+            raise ValueError("No r2 or hlr column found for shear catalog")
+
+        if f"she_{kind}_s2n" in colnames:
+            out["s2n"] = batch[f"she_{kind}_s2n"]
+        elif f"she_{kind}_snr" in colnames:
+            out["s2n"] = batch[f"she_{kind}_snr"]
+        else:
+            raise ValueError("No s2n or snr column found for shear catalog")
+
 
 
         out["flags"] = np.ones(len(batch), dtype=np.int8)
@@ -259,10 +273,15 @@ class TXIngestEuclidRR2Binned(TXIngestEuclidRR2):
         ("mask", MapsFile),
     ]
     config_options = {
-        "nbin": StageParameter(
+        "nbin_source": StageParameter(
             int,
             default=6,
-            msg="Number of tomographic bins - fixed in RR2 pre-selection",
+            msg="Number of source tomographic bins - fixed in RR2 pre-selection",
+        ),
+        "nbin_lens": StageParameter(
+            int,
+            default=6,
+            msg="Number of lens tomographic bins - also fixed in RR2 pre-selection",
         ),
         "z_spacing": StageParameter(
             float,
@@ -300,8 +319,7 @@ class TXIngestEuclidRR2Binned(TXIngestEuclidRR2):
         # for the main workflow, although there is a redshift and
         # fiducial distance column too
         input_gzip_file = self.get_input("euclid_rr2_randoms")
-        nbin = self.config["nbin"]
-        patches = self.config["patches"]
+        nbin = self.config["nbin_lens"]
 
         # unzip the file to a temporary directory
         with tempfile.TemporaryDirectory() as tmpdirname:
@@ -365,7 +383,7 @@ class TXIngestEuclidRR2Binned(TXIngestEuclidRR2):
 
         # The nbin here should match the nbin in the configuration
         nbin = len(data)
-        assert nbin == self.config["nbin"]
+        assert nbin == self.config["nbin_source"]
 
         # Space for the output pdfs etc.
         nsample = len(data[0]['N_Z'])
@@ -400,10 +418,10 @@ class TXIngestEuclidRR2Binned(TXIngestEuclidRR2):
         with self.open_output("shear_photoz_stack", "w") as f:
             f.write_ensemble(q)
 
+
     def ingest_shear(self, area_sq_deg):
         import pyarrow.parquet as pq
         from txpipe.utils.splitters import DynamicSplitter
-        from txpipe.utils.calibration_tools import MockCalculator
         from parallel_statistics import ParallelMeanVariance, ParallelSum
 
 
@@ -418,7 +436,7 @@ class TXIngestEuclidRR2Binned(TXIngestEuclidRR2):
             "z_ext_decam_unif",
         ]
 
-        nbin = self.config["nbin"]
+        nbin = self.config["nbin_source"]
 
         input_file, iterator = self.iterate_shear(bands)
 
@@ -441,9 +459,13 @@ class TXIngestEuclidRR2Binned(TXIngestEuclidRR2):
         weight2_stats = ParallelSum(nbin)
         counts = np.zeros(nbin, dtype=int)
 
-        with self.open_output("binned_shear_catalog") as output_file:
+        with (self.open_output("binned_shear_catalog") as output_file,
+              self.open_output("binned_lens_catalog_unweighted") as lens_file):
             output_group = output_file.create_group("shear")
             output_group.attrs["nbin_source"] = nbin
+
+            lens_group = lens_file.create_group("lens")
+            lens_group.attrs["nbin_lens"] = nbin
             
             start = 0
             end = 0
@@ -498,6 +520,44 @@ class TXIngestEuclidRR2Binned(TXIngestEuclidRR2):
         input_file.close()
 
         self.save_metadata(g1_stats, g2_stats, weight_stats, weight2_stats, counts, area_sq_deg)
+
+    def iterate_lens(self, bands):
+
+        input_file = self.open_input("euclid_rr2_parquet")
+
+        # The band names in LSST are all single letters, but I don't
+        # think we assume that anywhere so here we keep the full names.
+        # We will rename things later.
+        cols += ['object_id', 'ra', 'dec', 'pos_tom_bin_id']
+
+        # Everything is stored as fluxes in microJanskys in this file.
+        for b in bands:
+            cols.append("flux_" + b)
+            cols.append("fluxerr_" + b)
+
+        return input_file, input_file.iter_batches(columns=cols)
+
+
+    def ingest_lens(self):
+        import pyarrow.parquet as pq
+        from txpipe.utils.splitters import DynamicSplitter
+        bands = [
+            "vis_unif",
+            "y_unif",
+            "j_unif",
+            "h_unif",
+            "g_ext_decam_unif",
+            "r_ext_decam_unif",
+            "i_ext_decam_unif",
+            "z_ext_decam_unif",
+        ]
+
+        nbin = self.config["nbin_source"]
+
+        input_file, iterator = self.iterate_lens(bands)
+
+
+        
 
     def save_metadata(self, g1_stats, g2_stats, weight_stats, weight2_stats, counts, area_sq_deg):
         _, g1_means, g1_vars = g1_stats.collect()

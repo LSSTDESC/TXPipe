@@ -13,14 +13,22 @@ global:
 
 
 
-TXIngestEuclidRR2Binned:
+TXIngestEuclidRR2BinnedMetacal:
+    name: TXIngestEuclidRR2BinnedMetacal
     shear: metacal
+
+TXIngestEuclidRR2BinnedLensmc:
+    name: TXIngestEuclidRR2BinnedLensmc
+    shear: lensmc
+
 
 TXTwoPoint:
     bin_slop: 0.01
     do_pos_pos: false
     do_shear_shear: true
     do_shear_pos: false
+    # NaMaster and TreeCorr have different conventions for g2
+    # We want to flip for Fourier space, but not for real space.
     flip_g2: false
     verbose: 0
     var_method: jackknife
@@ -49,8 +57,8 @@ TXSourceSelectorMetacal:
 # TXRealGaussianCovariance:
 #     pickled_wigner_transform: cache/wigner_transform_real.pkl
 
-# TXFourierGaussianCovariance:
-#     pickled_wigner_transform: cache/wigner_transform_fourier.pkl
+TXFourierGaussianCovariance:
+    pickled_wigner_transform: cache/wigner_transform_fourier.pkl
 
 TXJackknifeCenters:
     npatch: 200
@@ -68,3 +76,6 @@ TXTwoPointFourier:
     do_shear_pos: false
     do_pos_pos: false
     compute_theory: false
+    # NaMaster and TreeCorr have different conventions for g2
+    # We want to flip for Fourier space, but not for real space.
+    flip_g2: true
