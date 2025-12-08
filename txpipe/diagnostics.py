@@ -42,8 +42,8 @@ class TXDiagnosticQuantiles(PipelineStage):
         ("shear_catalog_quantiles", HDFFile),
     ]
     config_options = {
-        "shear_prefix": StageParameter(str, "mcal_", msg="Prefix for shear columns in the catalog."),
-        "psf_prefix": StageParameter(str, "mcal_psf_", msg="Prefix for PSF columns in the catalog."),
+        "shear_prefix": StageParameter(str, "", msg="Prefix for shear columns in the catalog."),
+        "psf_prefix": StageParameter(str, "", msg="Prefix for PSF columns in the catalog."),
         "nbins": StageParameter(int, 20, msg="Number of quantile bins to compute."),
         "chunk_rows": StageParameter(int, 0, msg="Number of rows to process in each chunk (0 means auto)."),
         "bands": StageParameter(str, "riz", msg="Bands to use for diagnostics."),
@@ -223,9 +223,9 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 "g1",
                 "g2",
                 "T",
-                "mcal_psf_g1",
-                "mcal_psf_g2",
-                "mcal_psf_T_mean",
+                "psf_g1",
+                "psf_g2",
+                "psf_T",
                 "s2n",
                 "weight",
             )
@@ -237,7 +237,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 "psf_g2",
                 "g1",
                 "g2",
-                "psf_T_mean",
+                "psf_T",
                 "s2n",
                 "T",
                 "weight",
