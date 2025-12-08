@@ -113,7 +113,11 @@ def apply_classifier(classifier, features, bands, shear_catalog_type, shear_data
         data = np.array(data).T
 
         # Run the random forest on this data chunk
-        pz_data[f"{prefix}zbin{suffix}"] = classifier.predict(data)
+        if data.size == 0:
+            bins = np.array([], dtype="i")
+        else:
+            bins = classifier.predict(data)
+        pz_data[f"{prefix}zbin{suffix}"] = bins
         if shear_catalog_type == "metacal":
             pz_data[f"zbin{suffix}"] = pz_data[f"{prefix}zbin{suffix}"]
     return pz_data

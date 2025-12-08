@@ -58,7 +58,8 @@ stages:
 
   - name: PZEstimatorLens
     classname: BPZliteEstimator
-    nprocess: 32
+    nprocess: 256
+    nodes: 2
     aliases:
         model: lens_photoz_model
         input: photometry_catalog
