@@ -5,7 +5,7 @@ dependencies:
   - camb=1.6.*
   - cmake=4.1.*
   - cosmosis=3.24.*
-  - dask=2025.11.*
+  - dask=2024.5.*
   - dm-tree=0.1.*
   - firecrown=1.7.*
   - fitsio=1.3.*
@@ -26,7 +26,7 @@ dependencies:
   - psutil=7.1.*
   - pyccl=3.2.*
   - pygraphviz=1.14.*
-  - python=3.13.*
+  - python=3.12.*
   - qp-prob=1.0.*
   - scikit-learn=1.7.*
   - scipy=1.16.*
@@ -39,7 +39,7 @@ dependencies:
   - pip:
     - ceci==2.3.*
     - git+https://github.com/jlvdb/hyperbolic@b88b107a291fa16c2006cf971ce610248d58e94c
-    - dask-mpi>=2022.4.0
+    - dask-mpi==2022.4.0
     - git+https://github.com/LSSTDESC/CLMM.git@1.14.6
     - parallel-statistics==0.13
     - sacc[all]==2.1.*
