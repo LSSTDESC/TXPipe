@@ -28,6 +28,11 @@ class DensityCorrelation:
         self.ndens_err = None
         self.covmat = None
 
+        #place to save histogram of SP pixels (more bins than 1D trends and always equal spacing)
+        self.s_fine_grid = np.array([])
+        self.npix_fine_grid = np.array([])
+        self.map_index_fine_grid = np.array([])
+
         self.ndens_models = {}
         self.chi2 = {}
 
@@ -49,6 +54,7 @@ class DensityCorrelation:
         weight=None,
         sys_name=None,
         use_precompute=False,
+        do_grid_hist=True, 
     ):
         """
         Add a 1d density correlation
@@ -75,6 +81,8 @@ class DensityCorrelation:
         use_precompute: bool
             If True will use pre-computed boolean arrays and pixel number counts for this SP map
             If False will compute the density in bins using numpy histogram
+        do_grid_hist: bool
+            if True, will also compute a histogram of the SP map values (on a fine grid, equal spaced bins)
         """
         if sys_name is not None:
             self.mapnames[map_index] = str(sys_name)
@@ -114,6 +122,13 @@ class DensityCorrelation:
 
             # sumof sys value * frac in sys bin (to make mean)
             sumsys_sys, _ = np.histogram(sys_vals, bins=edges, weights=sys_vals * frac)
+        
+        if do_grid_hist:
+            s_fine_grid_edges = np.linspace(edges.min(), edges.max(), 3*len(edges))
+            npix_fine_grid, _ = np.histogram(sys_vals, bins=s_fine_grid_edges, weights=frac)
+            self.s_fine_grid = np.append(self.s_fine_grid, (s_fine_grid_edges[1:]+s_fine_grid_edges[:-1])/2. )
+            self.npix_fine_grid = np.append(self.npix_fine_grid, npix_fine_grid)
+            self.map_index_fine_grid = np.append(self.map_index_fine_grid, np.ones(len(s_fine_grid_edges) - 1) * map_index)
 
         # do we want to include any excluded outliers in this normalization?
         norm = np.ones(len(edges) - 1) * 1.0 / (np.sum(nobj_sys) / np.sum(npix_sys))
@@ -217,8 +232,38 @@ class DensityCorrelation:
         return np.array([line[select_map] for line in self.covmat[select_map]])
 
     def plot1d_singlemap(
-        self, filepath, map_index, label=None, extra_density_correlations=None, extra_density_labels=None
+        self, filepath, map_index, label=None, extra_density_correlations=None, extra_density_labels=None, plot_hist=False, 
     ):
+        """
+        Plot the 1D galaxy density correlation for a single systematic map.
+
+        This method plots the normalized galaxy number density as a function of the
+        mean value of a specified systematic map.
+
+        Parameters
+        ----------
+        filepath : str
+            Path where the output figure will be saved.
+        map_index : int
+            Index identifying the systematic map to plot.
+        label : str, optional
+            Label used for the legend entry of the primary density correlation (this object)
+        extra_density_correlations : list, optional
+            List of additional density-correlation objects. These are plotted 
+            for the same `map_index` for comparison.
+        extra_density_labels : list of str, optional
+            Labels corresponding to each entry in `extra_density_correlations`.
+            Must have the same length if provided.
+        plot_hist : bool, optional
+            if True will also plot a histogram of the number of pixels in each SP bin in the background
+
+        Notes
+        -----
+        - If the systematic maps were normalized, they are rescaled to physical
+        units using the stored mean and standard deviation before plotting.
+        - If density uncertainties are available, they are shown as error bars
+        (for the primary data) or shaded regions (for extra correlations).
+        """
         import matplotlib.pyplot as plt
         import textwrap
 
@@ -234,6 +279,16 @@ class DensityCorrelation:
             sys_width = self.sys_meta["std"][int(map_index)]
             sys_mean = self.sys_meta["mean"][int(map_index)]
             smean = smean * sys_width + sys_mean
+
+        if plot_hist:
+            select_map_fine_grid = self.map_index_fine_grid == map_index
+            s_grid = self.s_fine_grid[select_map_fine_grid]
+            if self.sys_meta["normed"]:
+                s_grid = s_grid * sys_width + sys_mean
+            npix_grid = self.npix_fine_grid[select_map_fine_grid]
+            ax2 = ax.twinx()
+            ax2.set_yticklabels([])
+            ax2.fill_between(s_grid, np.zeros(len(s_grid)), npix_grid, color='k', alpha=0.1)
 
         if self.ndens_err is None:
             ax.plot(smean, ndens, ".", color="b")
