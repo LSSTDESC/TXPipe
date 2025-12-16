@@ -700,9 +700,9 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
 
     def load_tracer(self, tomobin):
         """
-        Load the N(z) and convert to sacc tracers (lenses only)
-        We need this to compute the theory guess
-        for the SV term
+        Load the N(z) (lenses only)
+        We need this to compute the theory estimate
+        in the SV term in the 1d covariance
         """
         with self.open_input("lens_photoz_stack", wrapper=True) as f_lens:
             z, nz = f_lens.get_bin_n_of_z(tomobin)
