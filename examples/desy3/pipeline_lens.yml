@@ -31,6 +31,7 @@ stages:
         model: lens_photoz_model
         photoz_stack: lens_photoz_stack
         photoz_realizations: lens_photoz_realizations
+  - name: TXLSSDensityNullTests
   - name: TXLSSWeightsLinBinned
 
   #plots

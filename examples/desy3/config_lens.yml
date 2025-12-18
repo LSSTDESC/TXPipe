@@ -104,8 +104,8 @@ TXLensCatalogSplitter:
     name: TXLensCatalogSplitter
     redshift_column: DNF_Z
 
-TXLSSWeightsLinBinned:
-    name: TXLSSWeightsLinBinned
+TXLSSDensityNullTests:
+    name: TXLSSDensityNullTests
     supreme_path_root: /global/cfs/cdirs/lsst/groups/WL/users/jelvinpo/data/desy3/survey_properties/y3_subset/
     nbin: 10 
     outlier_fraction: 0.05
@@ -114,6 +114,15 @@ TXLSSWeightsLinBinned:
     simple_cov: True  # if True will use a diagonal shot noise only covariance for the 1d relations
     diag_blocks_only: True  # If True, will compute only the diagonal blocks of the 1D covariance matrix (no correlation between SP maps)
     b0: [1.5, 1.8, 1.8, 1.9, 2.3, 2.3]
+    nside_coverage: 32
+
+TXLSSWeightsLinBinned:
+    name: TXLSSWeightsLinBinned
+    supreme_path_root: /global/cfs/cdirs/lsst/groups/WL/users/jelvinpo/data/desy3/survey_properties/y3_subset/
+    nbin: 10 
+    outlier_fraction: 0.05
+    pvalue_threshold: 0.05  # max p-value for maps to be included in the corrected (a very simple form of regularization)
+    equal_area_bins: True  # if you are using binned 1d correlations, should the bins have equal area (set False for equal spacing)
     allow_weighted_input: False
     nside_coverage: 32
 
