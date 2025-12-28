@@ -1,0 +1,26 @@
+global:
+    chunk_rows: 100000
+    pixelization: healpix
+    nside: 64
+    sparse: true
+
+
+TXSourceSelectorSimple:
+    input_pz: false
+    true_z: true
+    bands: riz
+    T_cut: 0.5
+    s2n_cut: 10.0
+    max_rows: 1000
+    delta_gamma: 0.02
+    source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
+    shear_prefix: ''
+    verbose: true
+
+TXMockTruthPZ:
+    mock_sigma_z: 0.001
+
+
+CLClusterShearCatalogs:
+    redshift_cut_criterion: zmode
+    redshift_weight_criterion: zmode

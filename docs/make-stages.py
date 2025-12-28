@@ -3,6 +3,7 @@ sys.path.append('..')
 import txpipe
 import yaml
 import collections
+import ceci
 
 sections = yaml.safe_load("""
 Ingestion:
@@ -17,11 +18,17 @@ Ingestion:
         - TXExposureInfo
         - TXIngestStars
         - TXMetacalGCRInput
+        - TXIngestDataPreview02
+        - TXSimpleMock
+        - TXMockTruthPZ
+        - TXLogNormalGlass
 
 Photo-z:
     blurb: |
         These stages deal with photo-z PDF training and estimation
     stages:
+        - TXPhotozStack
+        - TXTruePhotozStack
         - PZRailTrainSource
         - PZRailTrainLens
         - PZRailTrainLensFromSource
@@ -38,6 +45,7 @@ Selection:
         bins.
     stages:
         - TXSourceSelector
+        - TXSourceSelectorSimple
         - TXSourceSelectorMetacal
         - TXSourceSelectorMetadetect
         - TXSourceSelectorLensfit
@@ -46,6 +54,7 @@ Selection:
         - TXTruthLensSelector
         - TXMeanLensSelector
         - TXModeLensSelector
+        - TXRandomForestLensSelector
 
 
 Calibration and Splitting:
@@ -57,7 +66,18 @@ Calibration and Splitting:
         - TXStarCatalogSplitter
         - TXLensCatalogSplitter
         - TXExternalLensCatalogSplitter
-
+        - TXTruthLensCatalogSplitter
+        - TXTruthLensCatalogSplitterWeighted
+        
+Weights:
+    blurb: |
+        These stages deal with weighting the lens sample
+    stages:
+        - TXLSSWeights
+        - TXLSSWeightsLinBinned
+        - TXLSSWeightsLinPix
+        - TXLSSWeightsUnit
+    
 
 Maps:
     blurb: |
@@ -76,6 +96,8 @@ Maps:
         - TXConvergenceMaps
         - TXMapCorrelations
         - TXSimpleMask
+        - TXSimpleMaskSource
+        - TXSimpleMaskFrac
         - TXAuxiliarySourceMaps
         - TXAuxiliaryLensMaps
         - TXUniformDepthMap
@@ -88,6 +110,8 @@ Ensemble Photo-z:
         - TXPhotozLensStack
         - TXSourceTrueNumberDensity
         - TXLensTrueNumberDensity
+        - PZRailSummarize
+        
 
 
 Two-Point:
@@ -95,11 +119,16 @@ Two-Point:
         These stages deal with measuring or predicting two-point statistics.
     stages:
         - TXJackknifeCenters
+        - TXJackknifeCentersSource
         - TXTwoPointFourier
         - TXTwoPoint
         - TXRandomCat
+        - TXSubsampleRandoms
         - TXTwoPointTheoryReal
         - TXTwoPointTheoryFourier
+        - TXTwoPointPixel
+        - TXTwoPointPixelExtCross
+        - TXTwoPointRLens
 
 
 Covariance:
@@ -129,6 +158,8 @@ Plots:
         - TXTwoPointPlotsFourier
         - TXConvergenceMapPlots
         - TXMapPlots
+        - PZRealizationsPlot
+        - TXTwoPointPlotsTheory
         - TXPhotozPlot
 
 
@@ -136,17 +167,36 @@ Diagnostics:
     blurb: |
         These stages compute and/or plot diagnostics of catalogs or other data
     stages:
+        - TXDiagnosticQuantiles
+        - TXSourceDiagnosticPlots
+        - TXLensDiagnosticPlots
+        - TXPSFDiagnostics
+        - TXPSFMomentCorr
+        - TXRoweStatistics
+        - TXTauStatistics
+        - TXGalaxyStarShear
+        - TXGalaxyStarDensity
+        - TXBrighterFatterPlot
         - TXGammaTFieldCenters
         - TXGammaTStars
         - TXGammaTRandoms
         - TXApertureMass
-        - TXSourceDiagnosticPlots
-        - TXLensDiagnosticPlots
-        - TXPSFDiagnostics
-        - TXRoweStatistics
-        - TXGalaxyStarShear
-        - TXGalaxyStarDensity
-        - TXBrighterFatterPlot
+        - TXFocalPlanePlot
+
+Source Injection:
+    blurb: |
+        These stages ingest and use synthetic source injection information
+    stages:
+        - TXIngestSSIGCR
+        - TXMatchSSI
+        - TXIngestSSIMatched
+        - TXIngestSSIMatchedDESBalrog
+        - TXSSIMagnification
+        - TXAuxiliarySSIMaps
+        - TXMapPlotsSSI
+        - TXIngestSSI
+        - TXIngestSSIDESBalrog
+        - TXIngestSSIDetectionDESBalrog
 
 
 Extensions:
@@ -154,6 +204,9 @@ Extensions:
         These stages are written for TXPipe extension projects.
     stages:
         - TXSelfCalibrationIA
+        - CLClusterBinningRedshiftRichness
+        - CLClusterShearCatalogs
+        - CLClusterEnsembleProfiles
 
 New and Miscellaneous:
     blurb: |
@@ -161,6 +214,7 @@ New and Miscellaneous:
         assigned to one.
     stages:
         - TXTracerMetadata
+        - TXParqetToHDF
 
 """)
 
@@ -192,16 +246,55 @@ def get_name(cls):
 
 qual_names = collections.defaultdict(list)
 
+def describe_config(cls):
+    lines = ["            <UL>"]
+    for name, val in cls.config_options.items():
+        if isinstance(val, ceci.config.StageParameter):
+            if val.required:
+                req = True
+            if val.dtype is None:
+                dt = "any"
+            else:
+                dt = val.dtype.__name__
+                default = val.default
+            help = val._help
+        else:
+            help = ""
+            if isinstance(val, type):
+                dt = val.__name__
+                req = True
+            else:
+                dt = type(val).__name__
+                req = False
+                default = val
+        if req:
+            lines.append(f"            <LI><strong>{name}</strong>: ({dt}) Required. {help}</LI>")
+        else:
+            lines.append(f"            <LI><strong>{name}</strong>: ({dt}) Default={default}. {help}</LI>")
+    lines.append("            </UL>")
+    return "\n".join(lines)
+
+
+def describe_inputs_or_outputs(d):
+    if not d:
+        return "None"
+    out = ["\n"]
+    for tag, ftype in d:
+        out.append(f"    - {tag}: {ftype.__name__}")
+    return "\n".join(out)
+
+
+
 for class_name, (cls, path) in txpipe.PipelineStage.pipeline_stages.items():
     if class_name == "BaseStageDoNotRunDirectly":
         continue
     if class_name not in stages:
-        print("Warning - update the section list for ", c)
+        print("Warning - update the section list for ", class_name)
 
     qual_name = get_name(cls)
     section = stages.get(class_name, "New and Miscellaneous")
     doc = get_doc_line(cls)
-    qual_names[section].append((qual_name, doc))
+    qual_names[section].append((qual_name, doc, cls))
 
 
 for name, section_data in sections.items():
@@ -211,16 +304,46 @@ for name, section_data in sections.items():
         f.write(section_data["blurb"] + "\n")
         files[name] = f
 
-        for qual_name, doc in qual_names[name]:
+        for qual_name, doc, _ in qual_names[name]:
             f.write(f"* :py:class:`~{qual_name}` - {doc}\n\n")
         f.write("\n")
 
-        for qual_name, _ in qual_names[name]:
+        for qual_name, _, cls in qual_names[name]:
+            if cls.dask_parallel:
+                par_text = "Yes - Dask"
+            elif cls.parallel:
+                par_text = "Yes - MPI"
+            else:
+                par_text = "No - Serial"
+
+            config_text = describe_config(cls)
+
+            inputs_text = describe_inputs_or_outputs(cls.inputs)
+            outputs_text = describe_inputs_or_outputs(cls.outputs)
+
+
+
             f.write(f"""
-.. autoclass:: {qual_name}
-   :members:
+.. autotxclass:: {qual_name}
+    :members:
+    :exclude-members: run
+
+    Inputs: {inputs_text}
+
+    Outputs: {outputs_text}
+    
+    Parallel: {par_text}
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+{config_text}
+
 
 """)
+
 
 
 with open ("src/stages.rst", "w") as f:
@@ -234,7 +357,7 @@ TXPipe Stage Listing
    :caption: Contents:
 
 """)
-
+    f.write("   stages/base\n")
     for s, sd in sections.items():
         f.write("   stages/" + s + "\n")
     f.write("\n")

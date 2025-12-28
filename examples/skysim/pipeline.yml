@@ -10,7 +10,6 @@ modules: txpipe
 
 python_paths:
   - submodules/WLMassMap/python/desc/
-  - submodules/FlexZPipe
 
 stages:
   - name: TXRandomCat

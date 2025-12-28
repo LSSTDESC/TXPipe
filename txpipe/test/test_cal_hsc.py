@@ -18,7 +18,6 @@ def select_all_where(data):
 
 
 def core_hsc(comm):
-
     nproc = 1 if comm is None else comm.size
 
     N = 10

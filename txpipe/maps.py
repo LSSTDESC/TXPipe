@@ -1,10 +1,9 @@
 from .base_stage import PipelineStage
-from .data_types import TomographyCatalog, MapsFile, HDFFile, ShearCatalog
+from .data_types import TomographyCatalog, MapsFile, HDFFile
+from ceci.config import StageParameter
 import numpy as np
-from .utils import unique_list, choose_pixelization, rename_iterated
-from .utils.calibration_tools import read_shear_catalog_type
-from .utils.calibrators import Calibrator
-from .mapping import ShearMapper, LensMapper, FlagMapper
+from .utils import unique_list, choose_pixelization, import_dask
+from .mapping import make_dask_shear_maps, make_dask_lens_maps
 
 
 SHEAR_SHEAR = 0
@@ -18,15 +17,23 @@ NON_TOMO_BIN = 999999
 # TODO: consider dropping support for gnomonic maps.
 # Also consider adding support for pixell
 map_config_options = {
-    "chunk_rows": 100000,  # The number of rows to read in each chunk of data at a time
-    "pixelization": "healpix",  # The pixelization scheme to use, currently just healpix
-    "nside": 0,  # The Healpix resolution parameter for the generated maps. Only req'd if using healpix
-    "sparse": True,  # Whether to generate sparse maps - faster and less memory for small sky areas,
-    "ra_cent": np.nan,  # These parameters are only required if pixelization==tan
-    "dec_cent": np.nan,
-    "npix_x": -1,
-    "npix_y": -1,
-    "pixel_size": np.nan,  # Pixel size of pixelization scheme
+    "chunk_rows": StageParameter(int, 100000, msg="The number of rows to read in each chunk of data at a time"),
+    "pixelization": StageParameter(str, "healpix", msg="The pixelization scheme to use, currently just healpix"),
+    "nside": StageParameter(
+        int, 0, msg="The Healpix resolution parameter for the generated maps. Only required if using healpix"
+    ),
+    "sparse": StageParameter(
+        bool, True, msg="Whether to generate sparse maps - faster and less memory for small sky areas"
+    ),
+    "ra_cent": StageParameter(
+        float, np.nan, msg="Central RA for gnomonic projection (only required if pixelization==tan)"
+    ),
+    "dec_cent": StageParameter(
+        float, np.nan, msg="Central Dec for gnomonic projection (only required if pixelization==tan)"
+    ),
+    "npix_x": StageParameter(int, -1, msg="Number of pixels in x direction for gnomonic projection"),
+    "npix_y": StageParameter(int, -1, msg="Number of pixels in y direction for gnomonic projection"),
+    "pixel_size": StageParameter(float, np.nan, msg="Pixel size of pixelization scheme"),
 }
 
 
@@ -39,7 +46,7 @@ class TXBaseMaps(PipelineStage):
     - select pixelization
     - prepare some mapper objects
     - iterate through selected columns
-        - update each mapper with each chunk
+    - update each mapper with each chunk
     - finalize the mappers
     - save the maps
     """
@@ -113,28 +120,25 @@ class TXBaseMaps(PipelineStage):
         """
         # Find and open all output files
         tags = unique_list([outfile for outfile, _ in maps.keys()])
-        output_files = {
-            tag: self.open_output(tag, wrapper=True)
-            for tag in tags
-            if tag.endswith("maps")
-        }
+        output_files = {tag: self.open_output(tag, wrapper=True) for tag in tags if tag.endswith("maps")}
 
         # add a maps section to each
         for output_file in output_files.values():
             output_file.file.create_group("maps")
-            
-            #this is a bit of a hack, but if you have set an alias 
-            #it can't be added as an attr to the hdf5 file
-            #this saves everythinkg but aliases
+
+            # this is a bit of a hack, but if you have set an alias
+            # it can't be added as an attr to the hdf5 file
+            # this saves everythinkg but aliases
             from ceci.config import StageConfig
+
             config_no_alias = {}
             for k in self.config.keys():
-                if k == 'aliases':
+                if k == "aliases":
                     continue
                 config_no_alias[k] = self.config[k]
             config_no_alias = StageConfig(**config_no_alias)
 
-            #output_file.file["maps"].attrs.update(self.config)
+            # output_file.file["maps"].attrs.update(self.config)
             output_file.file["maps"].attrs.update(config_no_alias)
 
         # same the relevant maps in each
@@ -142,14 +146,14 @@ class TXBaseMaps(PipelineStage):
             output_files[tag].write_map(map_name, pix, map_data, self.pixel_metadata)
 
 
-
 class TXSourceMaps(PipelineStage):
     """Generate source maps directly from binned, calibrated shear catalogs.
 
     This implementation uses DASK, which offers a numpy-like syntax and
     hides the complicated parallelization details.
-    
+
     """
+
     name = "TXSourceMaps"
     dask_parallel = True
 
@@ -162,13 +166,12 @@ class TXSourceMaps(PipelineStage):
     ]
 
     config_options = {
-        "block_size": 0,
-        **map_config_options
+        "block_size": StageParameter(int, 0, msg="Block size for dask processing (0 means auto)"),
+        **map_config_options,
     }
 
     def run(self):
-        import dask
-        import dask.array as da
+        dask, da = import_dask()
         import healpy
 
         # Configuration options
@@ -182,7 +185,7 @@ class TXSourceMaps(PipelineStage):
         # We have to keep this open throughout the process, because
         # dask will internally load chunks of the input hdf5 data.
         f = self.open_input("binned_shear_catalog")
-        nbin = f['shear'].attrs['nbin_source']
+        nbin = f["shear"].attrs["nbin_source"]
 
         # The "all" bin is the non-tomographic case.
         bins = list(range(nbin)) + ["all"]
@@ -191,60 +194,19 @@ class TXSourceMaps(PipelineStage):
         for i in bins:
             # These don't actually load all the data - everything is lazy
             ra = da.from_array(f[f"shear/bin_{i}/ra"], block_size)
+            block_size = ra.chunksize
             dec = da.from_array(f[f"shear/bin_{i}/dec"], block_size)
             g1 = da.from_array(f[f"shear/bin_{i}/g1"], block_size)
             g2 = da.from_array(f[f"shear/bin_{i}/g2"], block_size)
             weight = da.from_array(f[f"shear/bin_{i}/weight"], block_size)
 
-            # This seems to work directly, but we should check performance
-            pix = pixel_scheme.ang2pix(ra, dec)
+            count_map, g1_map, g2_map, weight_map, esq_map, var1_map, var2_map = make_dask_shear_maps(
+                ra, dec, g1, g2, weight, pixel_scheme
+            )
 
-            # count map is just the number of galaxies per pixel
-            count_map = da.bincount(pix, minlength=npix)
-
-            # For the other map we use bincount with weights - these are the
-            # various maps by pixel. bincount gives the number of objects in each
-            # vaue of the first argument, weighted by the weights keyword, so effectively
-            # it gives us
-            # p_i = sum_{j} x[j] * delta_{pix[j], i}
-            # which is out map
-            weight_map = da.bincount(pix, weights=weight, minlength=npix)
-            g1_map = da.bincount(pix, weights=weight * g1, minlength=npix)
-            g2_map = da.bincount(pix, weights=weight * g2, minlength=npix)
-            esq_map = da.bincount(pix, weights=weight**2 * 0.5 * (g1**2 + g2**2), minlength=npix)
-
-            # normalize by weights to get the mean map value in each pixel
-            g1_map /= weight_map
-            g2_map /= weight_map
-
-            # Generate a catalog-like vector of the means so we can
-            # subtract from the full catalog.  Not sure if this ever actually gets
-            # created, or if dask just keeps a conceptual reference to it.
-            g1_mean = g1_map[pix]
-            g2_mean = g2_map[pix]
-
-            # Also generate variance maps
-            var1_map = da.bincount(pix, weights=weight * (g1 - g1_mean)**2, minlength=npix)
-            var2_map = da.bincount(pix, weights=weight * (g2 - g2_mean)**2, minlength=npix)
-
-            # we want the variance on the mean, so we divide by both the weight
-            # (to go from the sum to the variance) and then by the count (to get the
-            # variance on the mean). Have verified that this is the same as using
-            # var() on the original arrays.
-            var1_map /= (weight_map * count_map)
-            var2_map /= (weight_map * count_map)
-            
             # slight change in output name
             if i == "all":
                 i = "2D"
-
-            # replace nans with UNSEEN.  The NaNs can occur if there are no objects
-            # in a pixel, so the value is undefined.
-            g1_map[da.isnan(g1_map)] = healpy.UNSEEN
-            g2_map[da.isnan(g2_map)] = healpy.UNSEEN
-            var1_map[da.isnan(var1_map)] = healpy.UNSEEN
-            var2_map[da.isnan(var2_map)] = healpy.UNSEEN
-            esq_map[da.isnan(esq_map)] = healpy.UNSEEN
 
             # Save all the stuff we want here.
             output[f"count_{i}"] = count_map
@@ -255,8 +217,8 @@ class TXSourceMaps(PipelineStage):
             output[f"var_e_{i}"] = esq_map
             output[f"var_g1_{i}"] = var1_map
             output[f"var_g2_{i}"] = var2_map
-        
-        # mask is where a pixel is hit in any of the tomo bins
+
+        # mask is where a pixel is hit in any of the tomo bins
         mask = da.zeros(npix, dtype=bool)
         for i in bins:
             if i == "all":
@@ -267,36 +229,33 @@ class TXSourceMaps(PipelineStage):
 
         # Everything above is lazy - this forces the computation.
         # It works out an efficient (we hope) way of doing everything in parallel
-        output, = dask.compute(output)
+        (output,) = dask.compute(output)
         f.close()
 
         # collate metadata
-        metadata = {
-            key: self.config[key]
-            for key in map_config_options
-        }
-        metadata['nbin'] = nbin
-        metadata['nbin_source'] = nbin
+        metadata = {key: self.config[key] for key in map_config_options}
+        metadata["nbin"] = nbin
+        metadata["nbin_source"] = nbin
+        metadata.update(pixel_scheme.metadata)
 
         pix = np.where(output["mask"])[0]
 
         # write the output maps
         with self.open_output("source_maps", wrapper=True) as out:
             for i in bins:
-                # again rename "all" to "2D"
+                # again rename "all" to "2D"
                 if i == "all":
                     i = "2D"
 
-                # We save the pixels in the mask - i.g. any pixel that is hit in any
+                # We save the pixels in the mask - i.g. any pixel that is hit in any
                 # tomographic bin is included. Some will be UNSEEN.
                 for key in "g1", "g2", "count", "var_e", "var_g1", "var_g2", "lensing_weight":
                     out.write_map(f"{key}_{i}", pix, output[f"{key}_{i}"][pix], metadata)
 
-            out.file['maps'].attrs.update(metadata)
+            out.file["maps"].attrs.update(metadata)
 
 
-
-class TXLensMaps(TXBaseMaps):
+class TXLensMaps(PipelineStage):
     """
     Make tomographic lens number count maps
 
@@ -306,69 +265,78 @@ class TXLensMaps(TXBaseMaps):
     """
 
     name = "TXLensMaps"
+    dask_parallel = True
 
     inputs = [
         ("photometry_catalog", HDFFile),
         ("lens_tomography_catalog", TomographyCatalog),
     ]
-
     outputs = [
         ("lens_maps", MapsFile),
     ]
 
-    config_options = {**map_config_options}
+    config_options = {
+        "block_size": StageParameter(int, 0, msg="Block size for dask processing (0 means auto)"),
+        **map_config_options,
+    }
 
-    def prepare_mappers(self, pixel_scheme):
-        # read nbin_lens and save
-        with self.open_input("lens_tomography_catalog") as f:
-            nbin_lens = f["tomography"].attrs["nbin"]
+    def ra_dec_inputs(self):
+        return "photometry_catalog", "photometry"
+
+    def run(self):
+        import healpy
+
+        _, da = import_dask()
+
+        # The subclass reads the ra and dec of the lenses
+        # from a different input file, so we allow that here
+        # using this method which is overwrites
+        cat_name, cat_group = self.ra_dec_inputs()
+
+        # open our two input files. They will be read lazily
+        tomo_cat = self.open_input("lens_tomography_catalog", wrapper=True)
+        photo_cat = self.open_input(cat_name, wrapper=True)
+
+        nbin_lens = tomo_cat.read_nbin()
         self.config["nbin_lens"] = nbin_lens
 
-        # create lone mapper
-        lens_bins = list(range(nbin_lens))
-        source_bins = []
-        mapper = LensMapper(
-            pixel_scheme,
-            lens_bins,
-            sparse=self.config["sparse"],
-        )
-        return [mapper]
+        # Other config info.
+        pixel_scheme = choose_pixelization(**self.config)
+        block_size = self.config["block_size"]
+        if block_size == 0:
+            block_size = "auto"
 
-    def data_iterator(self):
-        # see TXSourceMaps abov for info on this
-        return self.combined_iterators(
-            self.config["chunk_rows"],
-            # first file
-            "photometry_catalog",
-            "photometry",
-            ["ra", "dec"],
-            # next file
-            "lens_tomography_catalog",
-            "tomography",
-            ["bin", "lens_weight"],
-        )
+        # Lazily open input data sets
+        ra = da.from_array(photo_cat.file[f"{cat_group}/ra"], block_size)
+        block_size = ra.chunksize
+        dec = da.from_array(photo_cat.file[f"{cat_group}/dec"], block_size)
+        weight = da.from_array(tomo_cat.file["tomography/lens_weight"], block_size)
+        tomo_bin = da.from_array(tomo_cat.file["tomography/bin"], block_size)
 
-    def accumulate_maps(self, pixel_scheme, data, mappers):
-        # no need to rename cols here since just ra, dec, lens_bin
-        mapper = mappers[0]
-        mapper.add_data(data)
-
-    def finalize_mappers(self, pixel_scheme, mappers):
-        # Again just the one mapper
-        mapper = mappers[0]
-        # Ignored return values are empty dicts for shear
-        pix, ngal, weighted_ngal = mapper.finalize(self.comm)
+        # bins to generate maps for
+        bins = list(range(nbin_lens)) + ["2D"]
         maps = {}
 
-        if self.rank != 0:
-            return maps
+        # Generate the maps with dask. This is lazy until we do da.compute
+        for b in bins:
+            pix, count_map, weight_map = make_dask_lens_maps(ra, dec, weight, tomo_bin, b, pixel_scheme)
+            maps[f"ngal_{b}"] = (pix, count_map[pix])
+            maps[f"weighted_ngal_{b}"] = (pix, weight_map[pix])
 
-        for b in mapper.bins:
-            # keys are the output tag and the map name
-            maps["lens_maps", f"ngal_{b}"] = (pix, ngal[b])
-            maps["lens_maps", f"weighted_ngal_{b}"] = (pix, weighted_ngal[b])
+        # Actually run everything
+        (maps,) = da.compute(maps)
 
-        return maps
+        # collate metadata
+        metadata = {key: self.config[key] for key in map_config_options}
+        metadata["nbin"] = nbin_lens
+        metadata["nbin_lens"] = nbin_lens
+        metadata.update(pixel_scheme.metadata)
+
+        # Save all the maps
+        with self.open_output("lens_maps", wrapper=True) as out:
+            for name, (pix, m) in maps.items():
+                out.write_map(name, pix, m, metadata)
+            out.file["maps"].attrs.update(metadata)
 
 
 class TXExternalLensMaps(TXLensMaps):
@@ -386,22 +354,8 @@ class TXExternalLensMaps(TXLensMaps):
         ("lens_tomography_catalog", TomographyCatalog),
     ]
 
-    config_options = {**map_config_options}
-
-    def data_iterator(self):
-        # See TXSourceMaps for an explanation of thsis
-        return self.combined_iterators(
-            self.config["chunk_rows"],
-            # first file
-            "lens_catalog",
-            "lens",
-            ["ra", "dec"],
-            # next file
-            "lens_tomography_catalog",
-            "tomography",
-            ["bin", "lens_weight"],
-            # another section in the same file
-        )
+    def ra_dec_inputs(self):
+        return "lens_catalog", "lens"
 
 
 class TXDensityMaps(PipelineStage):
@@ -424,9 +378,7 @@ class TXDensityMaps(PipelineStage):
     outputs = [
         ("density_maps", MapsFile),
     ]
-    config_options = {
-        "mask_threshold": 0.0
-    }
+    config_options = {"mask_threshold": StageParameter(float, 0.0, msg="Threshold for masking pixels")}
 
     def run(self):
         import healpy
@@ -434,18 +386,16 @@ class TXDensityMaps(PipelineStage):
         # Read the mask and set all pixels below the threshold to 0
         with self.open_input("mask", wrapper=True) as f:
             mask = f.read_mask(thresh=self.config["mask_threshold"])
-        
-        #identify unmasked pixels
-        pix_keep = mask > 0.
+
+        # identify unmasked pixels
+        pix_keep = mask > 0.0
         pix = np.where(pix_keep)[0]
 
         # Read the count maps
         with self.open_input("lens_maps", wrapper=True) as f:
             meta = dict(f.file["maps"].attrs)
             nbin_lens = meta["nbin_lens"]
-            ngal_maps = [
-                f.read_map(f"weighted_ngal_{b}").flatten() for b in range(nbin_lens)
-            ]
+            ngal_maps = [f.read_map(f"weighted_ngal_{b}").flatten() for b in range(nbin_lens)]
 
         # Convert count maps into density maps
         density_maps = []
@@ -453,7 +403,7 @@ class TXDensityMaps(PipelineStage):
             ng[np.isnan(ng)] = 0.0
             ng[ng == healpy.UNSEEN] = 0
             delta_map = np.zeros(mask.shape, dtype=np.float64)
-            #calculate mean of ng and mean of mask
+            # calculate mean of ng and mean of mask
             mu_n = np.mean(ng[pix_keep])
             mu_w = np.mean(mask[pix_keep])
             delta_map[pix_keep] = (ng[pix_keep] / (mask[pix_keep] * mu_n / mu_w)) - 1

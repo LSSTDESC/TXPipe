@@ -10,7 +10,3 @@ Mapping Utilities
 .. automodule:: txpipe.utils.pixel_schemes
    :members:
 
-
-
-.. automodule:: txpipe.utils.pixel_schemes
-   :members:

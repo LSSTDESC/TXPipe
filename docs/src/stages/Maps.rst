@@ -6,7 +6,7 @@ plotting.
 
 * :py:class:`~txpipe.maps.TXBaseMaps` - A base class for mapping stages
 
-* :py:class:`~txpipe.maps.TXSourceMaps` - Make tomographic shear maps
+* :py:class:`~txpipe.maps.TXSourceMaps` - Generate source maps directly from binned, calibrated shear catalogs.
 
 * :py:class:`~txpipe.maps.TXLensMaps` - Make tomographic lens number count maps
 
@@ -22,7 +22,7 @@ plotting.
 
 * :py:class:`~txpipe.noise_maps.TXNoiseMapsJax` - Generate noise realisations of lens and source maps using JAX
 
-* :py:class:`~txpipe.auxiliary_maps.TXAuxiliarySourceMaps` - Generate auxiliary maps from the source catalog
+* :py:class:`~txpipe.auxiliary_maps.TXAuxiliarySourceMaps` - Stage TXAuxiliarySourceMaps
 
 * :py:class:`~txpipe.auxiliary_maps.TXAuxiliaryLensMaps` - Generate auxiliary maps from the lens catalog
 
@@ -30,68 +30,507 @@ plotting.
 
 * :py:class:`~txpipe.masks.TXSimpleMask` - Make a simple binary mask using a depth cut and bright object cut
 
+* :py:class:`~txpipe.masks.TXSimpleMaskSource` - 
+
+* :py:class:`~txpipe.masks.TXSimpleMaskFrac` - Make a simple mask using a depth cut and bright object cut
+
 * :py:class:`~txpipe.convergence.TXConvergenceMaps` - Make a convergence map from a source map using Kaiser-Squires
 
 * :py:class:`~txpipe.map_correlations.TXMapCorrelations` - Plot shear, density, and convergence correlations with survey property maps
 
 
 
-.. autoclass:: txpipe.maps.TXBaseMaps
-   :members:
+.. autotxclass:: txpipe.maps.TXBaseMaps
+    :members:
+    :exclude-members: run
+
+    Inputs: None
+
+    Outputs: None
+    
+    Parallel: Yes - MPI
 
 
-.. autoclass:: txpipe.maps.TXSourceMaps
-   :members:
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            </UL>
 
 
-.. autoclass:: txpipe.maps.TXLensMaps
-   :members:
+
+.. autotxclass:: txpipe.maps.TXSourceMaps
+    :members:
+    :exclude-members: run
+
+    Inputs: 
+
+    - binned_shear_catalog: HDFFile
+
+    Outputs: 
+
+    - source_maps: MapsFile
+    
+    Parallel: Yes - Dask
 
 
-.. autoclass:: txpipe.maps.TXExternalLensMaps
-   :members:
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>block_size</strong>: (int) Default=0. </LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=100000. </LI>
+            <LI><strong>pixelization</strong>: (str) Default=healpix. </LI>
+            <LI><strong>nside</strong>: (int) Default=0. </LI>
+            <LI><strong>sparse</strong>: (bool) Default=True. </LI>
+            <LI><strong>ra_cent</strong>: (float) Default=nan. </LI>
+            <LI><strong>dec_cent</strong>: (float) Default=nan. </LI>
+            <LI><strong>npix_x</strong>: (int) Default=-1. </LI>
+            <LI><strong>npix_y</strong>: (int) Default=-1. </LI>
+            <LI><strong>pixel_size</strong>: (float) Default=nan. </LI>
+            </UL>
 
 
-.. autoclass:: txpipe.maps.TXDensityMaps
-   :members:
+
+.. autotxclass:: txpipe.maps.TXLensMaps
+    :members:
+    :exclude-members: run
+
+    Inputs: 
+
+    - photometry_catalog: HDFFile
+    - lens_tomography_catalog: TomographyCatalog
+
+    Outputs: 
+
+    - lens_maps: MapsFile
+    
+    Parallel: Yes - Dask
 
 
-.. autoclass:: txpipe.noise_maps.TXSourceNoiseMaps
-   :members:
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>block_size</strong>: (int) Default=0. </LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=100000. </LI>
+            <LI><strong>pixelization</strong>: (str) Default=healpix. </LI>
+            <LI><strong>nside</strong>: (int) Default=0. </LI>
+            <LI><strong>sparse</strong>: (bool) Default=True. </LI>
+            <LI><strong>ra_cent</strong>: (float) Default=nan. </LI>
+            <LI><strong>dec_cent</strong>: (float) Default=nan. </LI>
+            <LI><strong>npix_x</strong>: (int) Default=-1. </LI>
+            <LI><strong>npix_y</strong>: (int) Default=-1. </LI>
+            <LI><strong>pixel_size</strong>: (float) Default=nan. </LI>
+            </UL>
 
 
-.. autoclass:: txpipe.noise_maps.TXLensNoiseMaps
-   :members:
+
+.. autotxclass:: txpipe.maps.TXExternalLensMaps
+    :members:
+    :exclude-members: run
+
+    Inputs: 
+
+    - lens_catalog: HDFFile
+    - lens_tomography_catalog: TomographyCatalog
+
+    Outputs: 
+
+    - lens_maps: MapsFile
+    
+    Parallel: Yes - Dask
 
 
-.. autoclass:: txpipe.noise_maps.TXExternalLensNoiseMaps
-   :members:
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>block_size</strong>: (int) Default=0. </LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=100000. </LI>
+            <LI><strong>pixelization</strong>: (str) Default=healpix. </LI>
+            <LI><strong>nside</strong>: (int) Default=0. </LI>
+            <LI><strong>sparse</strong>: (bool) Default=True. </LI>
+            <LI><strong>ra_cent</strong>: (float) Default=nan. </LI>
+            <LI><strong>dec_cent</strong>: (float) Default=nan. </LI>
+            <LI><strong>npix_x</strong>: (int) Default=-1. </LI>
+            <LI><strong>npix_y</strong>: (int) Default=-1. </LI>
+            <LI><strong>pixel_size</strong>: (float) Default=nan. </LI>
+            </UL>
 
 
-.. autoclass:: txpipe.noise_maps.TXNoiseMapsJax
-   :members:
+
+.. autotxclass:: txpipe.maps.TXDensityMaps
+    :members:
+    :exclude-members: run
+
+    Inputs: 
+
+    - lens_maps: MapsFile
+    - mask: MapsFile
+
+    Outputs: 
+
+    - density_maps: MapsFile
+    
+    Parallel: No - Serial
 
 
-.. autoclass:: txpipe.auxiliary_maps.TXAuxiliarySourceMaps
-   :members:
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>mask_threshold</strong>: (float) Default=0.0. </LI>
+            </UL>
 
 
-.. autoclass:: txpipe.auxiliary_maps.TXAuxiliaryLensMaps
-   :members:
+
+.. autotxclass:: txpipe.noise_maps.TXSourceNoiseMaps
+    :members:
+    :exclude-members: run
+
+    Inputs: 
+
+    - shear_catalog: ShearCatalog
+    - shear_tomography_catalog: TomographyCatalog
+    - mask: MapsFile
+
+    Outputs: 
+
+    - source_noise_maps: LensingNoiseMaps
+    
+    Parallel: Yes - MPI
 
 
-.. autoclass:: txpipe.auxiliary_maps.TXUniformDepthMap
-   :members:
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>chunk_rows</strong>: (int) Default=100000. </LI>
+            <LI><strong>lensing_realizations</strong>: (int) Default=30. </LI>
+            <LI><strong>true_shear</strong>: (bool) Default=False. </LI>
+            </UL>
 
 
-.. autoclass:: txpipe.masks.TXSimpleMask
-   :members:
+
+.. autotxclass:: txpipe.noise_maps.TXLensNoiseMaps
+    :members:
+    :exclude-members: run
+
+    Inputs: 
+
+    - lens_tomography_catalog: TomographyCatalog
+    - photometry_catalog: HDFFile
+    - mask: MapsFile
+
+    Outputs: 
+
+    - lens_noise_maps: ClusteringNoiseMaps
+    
+    Parallel: Yes - MPI
 
 
-.. autoclass:: txpipe.convergence.TXConvergenceMaps
-   :members:
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>chunk_rows</strong>: (int) Default=100000. </LI>
+            <LI><strong>clustering_realizations</strong>: (int) Default=1. </LI>
+            <LI><strong>mask_in_weights</strong>: (bool) Default=False. </LI>
+            </UL>
 
 
-.. autoclass:: txpipe.map_correlations.TXMapCorrelations
-   :members:
+
+.. autotxclass:: txpipe.noise_maps.TXExternalLensNoiseMaps
+    :members:
+    :exclude-members: run
+
+    Inputs: 
+
+    - lens_tomography_catalog: TomographyCatalog
+    - lens_catalog: HDFFile
+    - mask: MapsFile
+
+    Outputs: 
+
+    - lens_noise_maps: ClusteringNoiseMaps
+    
+    Parallel: Yes - MPI
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>chunk_rows</strong>: (int) Default=100000. </LI>
+            <LI><strong>clustering_realizations</strong>: (int) Default=1. </LI>
+            <LI><strong>mask_in_weights</strong>: (bool) Default=False. </LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.noise_maps.TXNoiseMapsJax
+    :members:
+    :exclude-members: run
+
+    Inputs: 
+
+    - shear_catalog: ShearCatalog
+    - lens_tomography_catalog: TomographyCatalog
+    - shear_tomography_catalog: TomographyCatalog
+    - mask: MapsFile
+    - lens_maps: MapsFile
+
+    Outputs: 
+
+    - source_noise_maps: LensingNoiseMaps
+    - lens_noise_maps: ClusteringNoiseMaps
+    
+    Parallel: Yes - MPI
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>chunk_rows</strong>: (int) Default=4000000. </LI>
+            <LI><strong>lensing_realizations</strong>: (int) Default=30. </LI>
+            <LI><strong>clustering_realizations</strong>: (int) Default=1. </LI>
+            <LI><strong>seed</strong>: (int) Default=0. </LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.auxiliary_maps.TXAuxiliarySourceMaps
+    :members:
+    :exclude-members: run
+
+    Inputs: 
+
+    - shear_catalog: ShearCatalog
+    - shear_tomography_catalog: HDFFile
+    - source_maps: MapsFile
+
+    Outputs: 
+
+    - aux_source_maps: MapsFile
+    
+    Parallel: Yes - Dask
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>block_size</strong>: (int) Default=0. </LI>
+            <LI><strong>flag_exponent_max</strong>: (int) Default=8. </LI>
+            <LI><strong>psf_prefix</strong>: (str) Default=psf_. </LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=100000. </LI>
+            <LI><strong>pixelization</strong>: (str) Default=healpix. </LI>
+            <LI><strong>nside</strong>: (int) Default=0. </LI>
+            <LI><strong>sparse</strong>: (bool) Default=True. </LI>
+            <LI><strong>ra_cent</strong>: (float) Default=nan. </LI>
+            <LI><strong>dec_cent</strong>: (float) Default=nan. </LI>
+            <LI><strong>npix_x</strong>: (int) Default=-1. </LI>
+            <LI><strong>npix_y</strong>: (int) Default=-1. </LI>
+            <LI><strong>pixel_size</strong>: (float) Default=nan. </LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.auxiliary_maps.TXAuxiliaryLensMaps
+    :members:
+    :exclude-members: run
+
+    Inputs: 
+
+    - photometry_catalog: HDFFile
+
+    Outputs: 
+
+    - aux_lens_maps: MapsFile
+    
+    Parallel: Yes - Dask
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>block_size</strong>: (int) Default=0. </LI>
+            <LI><strong>bright_obj_threshold</strong>: (float) Default=22.0. </LI>
+            <LI><strong>depth_band</strong>: (str) Default=i. </LI>
+            <LI><strong>snr_threshold</strong>: (float) Default=10.0. </LI>
+            <LI><strong>snr_delta</strong>: (float) Default=1.0. </LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.auxiliary_maps.TXUniformDepthMap
+    :members:
+    :exclude-members: run
+
+    Inputs: 
+
+    - mask: MapsFile
+
+    Outputs: 
+
+    - aux_lens_maps: MapsFile
+    
+    Parallel: No - Serial
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>depth</strong>: (float) Default=25.0. </LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.masks.TXSimpleMask
+    :members:
+    :exclude-members: run
+
+    Inputs: 
+
+    - aux_lens_maps: MapsFile
+
+    Outputs: 
+
+    - mask: MapsFile
+    
+    Parallel: No - Serial
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>depth_cut</strong>: (float) Default=23.5. </LI>
+            <LI><strong>bright_object_max</strong>: (float) Default=10.0. </LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.masks.TXSimpleMaskSource
+    :members:
+    :exclude-members: run
+
+    Inputs: 
+
+    - source_maps: MapsFile
+
+    Outputs: 
+
+    - mask: MapsFile
+    
+    Parallel: No - Serial
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.masks.TXSimpleMaskFrac
+    :members:
+    :exclude-members: run
+
+    Inputs: 
+
+    - aux_lens_maps: MapsFile
+
+    Outputs: 
+
+    - mask: MapsFile
+    
+    Parallel: No - Serial
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>depth_cut</strong>: (float) Default=23.5. </LI>
+            <LI><strong>bright_object_max</strong>: (float) Default=10.0. </LI>
+            <LI><strong>supreme_map_file</strong>: (str) Required. </LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.convergence.TXConvergenceMaps
+    :members:
+    :exclude-members: run
+
+    Inputs: 
+
+    - source_maps: MapsFile
+
+    Outputs: 
+
+    - convergence_maps: MapsFile
+    
+    Parallel: No - Serial
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>lmax</strong>: (int) Default=0. </LI>
+            <LI><strong>smoothing_sigma</strong>: (float) Default=10.0. </LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.map_correlations.TXMapCorrelations
+    :members:
+    :exclude-members: run
+
+    Inputs: 
+
+    - lens_maps: MapsFile
+    - convergence_maps: MapsFile
+    - source_maps: MapsFile
+    - mask: MapsFile
+
+    Outputs: 
+
+    - map_systematic_correlations: FileCollection
+    
+    Parallel: No - Serial
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>supreme_path_root</strong>: (str) Default=/global/cscratch1/sd/erykoff/dc2_dr6/supreme/supreme_dc2_dr6d_v2. </LI>
+            <LI><strong>nbin</strong>: (int) Default=20. </LI>
+            <LI><strong>outlier_fraction</strong>: (float) Default=0.05. </LI>
+            </UL>
+
 

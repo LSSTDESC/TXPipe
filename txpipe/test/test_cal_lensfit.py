@@ -18,7 +18,6 @@ def select_all_where(data):
 
 
 def core_lensfit(comm):
-
     nproc = 1 if comm is None else comm.size
 
     N = 10
@@ -48,12 +47,11 @@ def core_lensfit(comm):
         C2_N_true = csum.sum() / wsum.sum()
         C2_S_true = csum.sum() / wsum.sum()
 
-
     C_N_true = np.array([C1_N_true, C2_N_true])  # mean of g1, g2
     C_S_true = np.array([C1_S_true, C2_S_true])  # mean of g1, g2
 
     data = {
-        "dec":dec,
+        "dec": dec,
         "g1": g1,
         "g2": g2,
         "m": m,
@@ -154,14 +152,14 @@ def test_lensfit_array():
     C_N = np.array([0.11, 0.22])
     C_S = np.array([0.11, 0.22])
 
-    cal = LensfitCalibrator(K, C_N,C_S)
+    cal = LensfitCalibrator(K, C_N, C_S)
     dec = np.random.normal(-5, 4, size=10)
     g1 = np.random.normal(size=10)
     g2 = np.random.normal(size=10)
     g1_obs = (g1) * (1 + K[0]) + C_N[0]
     g2_obs = (g2) * (1 + K[0]) + C_N[1]
     g_obs = [g1_obs, g2_obs]
-    g1_, g2_ = cal.apply(dec,g_obs[0], g_obs[1])
+    g1_, g2_ = cal.apply(dec, g_obs[0], g_obs[1])
 
     assert np.allclose(g1_, g1)
     assert np.allclose(g2_, g2)
@@ -173,7 +171,7 @@ def test_null():
     # null calibrator
     K = 1.0
     C_N = [0.0, 0.0]
-    C_S= [0.0, 0.0]
+    C_S = [0.0, 0.0]
     dec = -3
     g1 = 0.2
     g2 = -0.3

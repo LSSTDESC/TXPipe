@@ -91,26 +91,25 @@ The ``site`` parameter requires an option ``name``. This can currently be set to
 
 #. ``local`` for personal and other machines
 
-#. ``cori`` for NERSC's cori machine in batch mode (i.e. when submitting with sbatch)
+#. ``nersc`` for NERSC machines in batch mode (i.e. when submitting with sbatch)
 
-#. ``cori-interactive`` for NERSC's cori machine in interactive mode
+#. ``nersc-interactive`` for NERSC machines in interactive mode
 
 
 All the sites can also accept the options ``image`` and ``volume``. Setting ``image`` makes ceci run TXPipe using docker (or shifter at NERSC), which is a bit like a virtual machine, and lets us share environments easily. See https://www.docker.com/ for installation instructions. In particular, the image ``joezuntz/txpipe`` contains a full TXPipe environment.  The ``volume`` option sets directories to be available under docker, in the form ``/path/on/your/machine:/path/on/virtual/machine``.
 
-The ``cori`` site can also accept these options, with the defaults shown:
+The ``nersc`` site can also accept these options, with the defaults shown:
 
 .. code-block:: yaml
 
     mpi_command: srun -un
-    cpu_type: haswell
     queue: debug
     max_jobs: 2
     account: m1727
     walltime: 00:30:00
 
 
-The ``local`` and ``cori-interactive`` sites can accept the option ``max_threads`` to limit the number of cores used.
+The ``local`` and ``nersc-interactive`` sites can accept the option ``max_threads`` to limit the number of cores used.
 
 
 Launcher information

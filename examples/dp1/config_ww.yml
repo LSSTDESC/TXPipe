@@ -1,0 +1,169 @@
+global:
+    chunk_rows: 1000000
+    pixelization: healpix
+    nside: 2048
+    sparse: true
+
+
+BPZliteInformer:
+    zmin: 0.0
+    zmax: 3.0
+    nzbins: 301
+    columns_file: ./data/bpz_ugrizy.columns
+    data_path: ./data/example/rail-bpz-inputs
+    spectra_file: CWWSB4.list
+    prior_band: i
+    ref_band: i
+    # Not sure about this
+    prior_file: hdfn_gen
+    p_min: 0.005
+    gauss_kernel: 0.0
+    mag_err_min: 0.005
+    inform_options: {save_train: false, load_model: false, modelfile: BPZpriormodel.out}
+    madau_reddening: no
+    bands: riz
+    zp_errors: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+    hdf5_groupname: photometry
+
+
+
+
+BPZliteEstimator:
+    zmin: 0.0
+    zmax: 3.0
+    dz: 0.01
+    nzbins: 301
+    data_path: ./data/example/rail-bpz-inputs
+    band_names: [mag_u, mag_g, mag_r, mag_i, mag_z, mag_y]
+    bands: [mag_u, mag_g, mag_r, mag_i, mag_z, mag_y]
+    band_err_names: [mag_err_u, mag_err_g, mag_err_r, mag_err_i, mag_err_z, mag_err_y]
+    err_bands: [mag_err_u, mag_err_g, mag_err_r, mag_err_i, mag_err_z, mag_err_y]
+    hdf5_groupname: photometry
+    nondetect_val: .inf
+    unobserved_val: .nan
+    columns_file: ./data/bpz_ugrizy.columns
+    spectra_file: CWWSB4.list
+    prior_band: mag_i
+    ref_band: mag_i
+    prior_file: hdfn_gen
+    p_min: 0.005
+    gauss_kernel: 0.0
+    zp_errors: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+    mag_err_min: 0.005
+    madau_reddening: false
+    mag_limits:
+        mag_u: 27.79
+        mag_g: 29.04
+        mag_r: 29.06
+        mag_i: 28.62
+        mag_z: 27.98
+        mag_y: 27.05
+
+
+
+TXSourceSelectorSimple:
+    input_pz: false
+    true_z: false
+    bands: ugrizy
+    T_cut: 0.5
+    s2n_cut: 10.0
+    source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
+    shear_prefix: ''
+    spec_mag_column_format: "{band}_cModelMag"
+    spec_redshift_column: redshift
+
+
+TXRandomForestLensSelector:
+    verbose: true
+    bands: ugrizy
+    lens_zbin_edges: [0.1, 1.2]
+    random_seed: 12344
+    mag_i_limit: 24.1
+    selection_type: maglim
+    spec_mag_column_format: "{band}_cModelMag"
+    spec_redshift_column: redshift
+
+TXPhotozSourceStack:
+    classname: TXPhotozStack
+    name: TXPhotozSourceStack
+
+TXPhotozLensStack:
+    classname: TXPhotozStack
+    name: TXPhotozLensStack
+
+TXPhotozPlotSource:
+    name: TXPhotozPlotSource
+
+TXPhotozPlotLens:
+    name: TXPhotozPlotLens
+
+TXTwoPoint:
+    do_shear_shear: false
+    do_shear_pos: false
+    do_pos_pos: true
+    nbins: 10
+    verbose: 1
+    subtract_mean_shear: true
+    max_sep: 100.
+
+
+IngestEDFS:
+    name: IngestEDFS
+    select_field: EDFS
+
+IngestECDFS:
+    name: IngestECDFS
+    select_field: ECDFS
+
+IngestLGLF:
+    name: IngestLGLF
+    select_field: LGLF
+
+TXIngestDataPreview1:
+    name: TXIngestDataPreview1
+    cosmology_tracts_only: true
+
+TXRandomCat:
+    density: 10 # gals per sq arcmin
+
+TXTwoPointFourier:
+    flip_g2: true
+    ell_min: 200
+    ell_max: 2200
+    n_ell: 5
+    cache_dir: ./cache/workspaces
+    do_shear_shear: false
+    do_shear_pos: false
+    do_pos_pos: true
+    compute_theory: false
+
+TXLSSDensityNullTests:
+    supreme_path_root: data/dp1/inputs/survey_property_maps/
+    nbin: 10
+    outlier_fraction: 0.05
+    equal_area_bins: True     # If you are using binned 1d correlations, should the bins have equal area (set False for equal spacing)
+    fill_missing_pix: True    # if any pixels in the mask dont have an SP value, fill with the mean SP (use with caution)
+    simple_cov: False         # If True will use a diagonal shot noise only covariance for the 1d relations
+    diag_blocks_only: False   # If True, will compute only the diagonal blocks of the 1D covariance matrix (no correlation between SP maps)
+    b0: [1.0,]
+
+TXLSSWeightsLinPix:
+    pvalue_threshold: 0.05  # max p-value for maps to be corrected
+    regression_class: "LinearRegression"
+    #the config options below must match TXLSSDensityNullTests (TODO: automate this)
+    supreme_path_root: data/dp1/inputs/survey_property_maps/
+    nbin: 10
+    outlier_fraction: 0.05
+    equal_area_bins: True
+    fill_missing_pix: True
+
+TXSimpleMaskFrac:
+    supreme_map_files: [
+        data/dp1/inputs/survey_property_maps/deepCoadd_exposure_time_consolidated_map_sum_u.hs,
+        data/dp1/inputs/survey_property_maps/deepCoadd_exposure_time_consolidated_map_sum_g.hs,
+        data/dp1/inputs/survey_property_maps/deepCoadd_exposure_time_consolidated_map_sum_r.hs,
+        data/dp1/inputs/survey_property_maps/deepCoadd_exposure_time_consolidated_map_sum_i.hs,
+        data/dp1/inputs/survey_property_maps/deepCoadd_exposure_time_consolidated_map_sum_z.hs,
+        data/dp1/inputs/survey_property_maps/deepCoadd_exposure_time_consolidated_map_sum_y.hs,
+    ]
+    frac_cut: 0.1

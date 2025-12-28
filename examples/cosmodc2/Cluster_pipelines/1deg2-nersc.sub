@@ -6,5 +6,6 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=32
 
-source $CFS/lsst/groups/WL/users/zuntz/setup-txpipe
-tx ceci examples/cosmodc2/Cluster_pipelines/pipeline-1deg2-CL-nersc.yml
+module load python
+conda activate ./conda
+ceci examples/cosmodc2/Cluster_pipelines/pipeline-1deg2-CL-nersc.yml

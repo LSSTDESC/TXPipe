@@ -5,6 +5,7 @@ import numpy as np
 import tempfile
 import os
 
+
 def load_complete_file(f):
     """
     Read all the information in an HDF5 file or group into
@@ -25,6 +26,7 @@ def load_complete_file(f):
         Nested dictionary with all file content.
     """
     output = {}
+
     # This function is applied recursively
     def visit(name, value):
         paths = name.split("/")
@@ -35,7 +37,7 @@ def load_complete_file(f):
             out[paths[-1]] = {}
             d = dict(value.attrs)
             if d:
-                out[paths[-1]]['attrs'] = d
+                out[paths[-1]]["attrs"] = d
         else:
             out[paths[-1]] = value[:]
 
@@ -43,15 +45,12 @@ def load_complete_file(f):
     return output
 
 
-
-
-
 def repack(filename):
     """
     In-place HDF5 repack operation on file.
     """
     with tempfile.TemporaryDirectory() as tmpdir:
-        tmp_name = os.path.join(tmpdir, filename)
+        tmp_name = os.path.join(tmpdir, os.path.basename(filename))
         subprocess.check_call(f"h5repack {filename} {tmp_name}", shell=True)
         shutil.move(tmp_name, filename)
 
@@ -114,9 +113,7 @@ class BatchWriter:
         self.offset = offset
         self.max_size = max_size
         self.cols = list(col_dtypes.keys())
-        self.data = {
-            name: np.empty(max_size, dtype=dtype) for name, dtype in col_dtypes.items()
-        }
+        self.data = {name: np.empty(max_size, dtype=dtype) for name, dtype in col_dtypes.items()}
 
     def write(self, **data):
         n = None
@@ -165,7 +162,6 @@ class BatchWriter:
 
     def finish(self):
         self._write()
-
 
 
 def h5py_shorten(group, name, n):

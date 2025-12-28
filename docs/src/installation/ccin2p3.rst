@@ -1,5 +1,7 @@
+:orphan:
+
 CC-IN2P3 Installation
-==========================
+=====================
 
 You can get a conda environment on the CC-IN2P3 machine with the instructions below.
 

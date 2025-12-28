@@ -7,10 +7,12 @@ TXPipe Stage Listing
    :maxdepth: 1
    :caption: Contents:
 
+   stages/base
    stages/Ingestion
    stages/Photo-z
    stages/Selection
    stages/Calibration and Splitting
+   stages/Weights
    stages/Maps
    stages/Ensemble Photo-z
    stages/Two-Point
@@ -18,6 +20,7 @@ TXPipe Stage Listing
    stages/Blinding
    stages/Plots
    stages/Diagnostics
+   stages/Source Injection
    stages/Extensions
    stages/New and Miscellaneous
 

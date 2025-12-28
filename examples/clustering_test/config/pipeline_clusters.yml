@@ -1,0 +1,22 @@
+config: examples/clustering_test/config/config_clusters.yml
+inputs:
+  cluster_data_catalog: examples/clustering_test/catalogs/data_tomographic.hdf5
+  cluster_random_catalog: examples/clustering_test/catalogs/random_tomographic.hdf5
+  fiducial_cosmology: examples/clustering_test/config/fiducial_cosmology.yml
+launcher:
+  interval: 1.0
+  name: mini
+log_dir: examples/clustering_test/
+modules: txpipe rail.creation.degraders.grid_selection rail.creation.engines.flowEngine
+  rail.estimation.algos.nz_dir rail.estimation.algos.bpz_lite
+output_dir: examples/clustering_test/outputs/test/
+pipeline_log: examples/clustering_test/log.txt
+python_paths:
+- submodules/WLMassMap/python/desc/
+resume: true
+site:
+  max_threads: 2
+  name: local
+stages:
+- name: TXTwoPointCluster
+  outputs: test_out_name
