@@ -5,7 +5,7 @@ dependencies:
   - camb=1.6.*
   - cmake=4.1.*
   - cosmosis=3.24.*
-  - dask=2025.11.*
+  - dask=2024.5.*
   - dm-tree=0.1.9
   # Firecrown is here in the regular env file, but not perlmutter, where we have to hack later 
   - fitsio=1.3.*
