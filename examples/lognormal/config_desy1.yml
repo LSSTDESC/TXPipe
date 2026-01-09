@@ -1,0 +1,43 @@
+# Values in this section are accessible to all the different stages.
+# They can be overridden by individual stages though.
+global:
+    # This is read by many stages that read complete
+    # catalog data, and tells them how many rows to read
+    # at once
+    chunk_rows: 100000
+    # These mapping options are also read by a range of stages
+    pixelization: healpix
+    nside: 512 #if you load an external map this should match the nside of that mask
+    sparse: True  # Generate sparse maps - faster if using small areas
+
+TXLogNormalGlass:
+    num_dens: [0.0134, 0.0344, 0.0511, 0.0303, 0.0089]
+    bias: [1.4, 1.6, 1.6, 1.93, 1.98]
+    zmin: 0.
+    zmax: 1.1
+    dx: 100
+    contaminate: False
+    random_seed: 1
+    #cl_optional_file: txpipe_utils/examples/lognormal/output/glass_cl.hdf5
+
+TXLSSWeightsLinPix:
+    supreme_path_root: /Users/jackelvinpoole/DESC/TXPipe/txpipe_utils/examples/desy1_weights/data/spmaps/
+    outlier_fraction: 0.01  # Will remove this fraction of the maps is most extreme regions when computing 1d trends
+    nbin: 10                # number of bins per SP map to compute 1d trends
+    pvalue_threshold: 0.05  # max p-value for maps to be corrected (0 is no maps, 1 is all maps)
+    simple_cov: False       # If True will use diagonal shot noise covariance
+    diag_blocks_only: False
+    regression_class: LinearRegression
+    b0: [1.4, 1.6, 1.6, 1.93, 1.98]
+
+TXTwoPointPixel:
+    bin_slop: 0.1
+    do_pos_pos: True
+    do_shear_shear: False
+    do_shear_pos: False
+    min_sep: 10.0
+    max_sep: 300.0
+    nbins: 10
+    sep_units: "arcmin"
+    var_method: "shot"
+

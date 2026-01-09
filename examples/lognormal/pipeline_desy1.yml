@@ -1,0 +1,62 @@
+
+# Stages to run
+stages:
+    - name: TXLogNormalGlass                    # generate Lognormal lens smaple
+    - name: TXTruthLensCatalogSplitter          # Split the lens sample tomographically
+    
+    #- name: TXLSSWeightsLinPix   # compute LSS weights
+    - name: TXLSSWeightsUnit
+    
+    - name: TXJackknifeCenters   # Split the area into jackknife regions
+    - name: TXTracerMetadata     # collate metadata
+    - name: TXLensMaps             # make source lens and n_gal maps
+    - name: TXDensityMaps
+    - name: TXTwoPointPixel
+
+# modules and packages to import that have pipeline
+# stages defined in them
+modules: txpipe 
+
+# Where to put outputs
+output_dir: examples/lognormal/output_desy1
+
+# How to run the pipeline: mini, parsl, or cwl
+site:
+    name: cori-batch
+    image: ghcr.io/lsstdesc/txpipe
+    max_threads: 1
+    
+# Where to run the pipeline: cori-interactive, cori-batch, or local
+site:
+    name: local
+
+# configuration settings
+config: examples/lognormal/config_desy1.yml
+
+inputs:
+    mask: /global/cfs/cdirs/lsst/groups/WL/users/jelvinpo/txpipe-weights/des-y1/mask_desy1_512.h5
+    lens_photoz_stack: /global/cfs/cdirs/lsst/groups/WL/users/jelvinpo/txpipe-weights/des-y1/lens_photoz_stack_qp_zerr.hdf5
+    fiducial_cosmology: data/fiducial_cosmology.yml
+    flow: data/example/inputs/example_flow.pkl
+
+    input_lss_weight_maps: none
+    #input_lss_weight_maps: none #for uncontaminated mocks
+
+    random_cats: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/randoms_desy1_RM.hdf5
+    binned_random_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/binned_randoms_desy1_RM.hdf5
+    binned_random_catalog_sub: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/binned_randoms_desy1_RM.hdf5
+
+    #empty inputs needed for twopoint stages
+    shear_catalog: none
+    shear_tomography_catalog: none
+    binned_shear_catalog: none
+    shear_photoz_stack: none
+    source_maps: none
+
+# if supported by the launcher, restart the pipeline where it left off
+# if interrupted
+resume: False
+# where to put output logs for individual stages
+log_dir: examples/lognormal/output_desy1/logs/
+# where to put an overall parsl pipeline log
+pipeline_log: examples/lognormal/output_desy1/log.txt
