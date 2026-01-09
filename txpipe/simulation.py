@@ -413,8 +413,9 @@ class TXLogNormalGlass(PipelineStage):
         group = tomo_output.create_group("tomography")
         group.create_dataset("bin", (self.est_max_n,), maxshape=self.est_max_n, dtype="i")
         group.create_dataset("lens_weight", (self.est_max_n,), maxshape=self.est_max_n, dtype="f")
-        group.create_dataset("counts", (self.nbin_lens,), dtype="i")
-        group.create_dataset("counts_2d", (1,), dtype="i")
+        group_counts = tomo_output.create_group("counts")
+        group_counts.create_dataset("counts", (self.nbin_lens,), dtype="i")
+        group_counts.create_dataset("counts_2d", (1,), dtype="i")
         self.tomo_output = tomo_output
 
         density_shell_output = self.open_output("density_shells")
@@ -475,8 +476,9 @@ class TXLogNormalGlass(PipelineStage):
         group["lens_weight"].resize((total_count,))
         counts = np.bincount(group["bin"][:])
         assert total_count == np.sum(counts)
-        group["counts"][:] = counts
-        group["counts_2d"][:] = np.array([total_count])
+        group_counts = self.tomo_output["counts"]
+        group_counts["counts"][:] = counts
+        group_counts["counts_2d"][:] = np.array([total_count])
         group.attrs["nbin"] = self.nbin_lens
 
         # close everything
