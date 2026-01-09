@@ -39,5 +39,5 @@ TXTwoPointPixel:
     max_sep: 300.0
     nbins: 10
     sep_units: "arcmin"
-    var_method: "shot"
+    var_method: "jackknife"
 
