@@ -162,6 +162,7 @@ class TXLSSDensityBase(TXMapCorrelations):
             mask = map_file.read_map("mask")
             mask_map_info = map_file.read_map_info("mask")
             mask_nest = mask_map_info["nest"]
+            #NOTE: even if the input mask has ring ordering, healsparse maps can only have nest so this object will be nest
             mask = hsp.HealSparseMap(
                 nside_coverage=self.config["nside_coverage"],
                 healpix_map=(mask == hp.UNSEEN).astype("int"),
@@ -401,6 +402,7 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
 
         pixel_scheme = choose_pixelization(**self.config)
         self.pixel_metadata = pixel_scheme.metadata
+        self.pixel_metadata["nest"] = True #This stage uses healsparse maps which always use nested ordering
 
         # check the metadata nside matches the mask (might not be true if you use an external mask)
         with self.open_input("mask", wrapper=True) as map_file:
@@ -765,6 +767,8 @@ class TXLSSWeights(TXLSSDensityBase):
 
         pixel_scheme = choose_pixelization(**self.config)
         self.pixel_metadata = pixel_scheme.metadata
+        self.pixel_metadata["nest"] = True #This stage uses healsparse maps which always use nested ordering
+
 
         # check the metadata nside matches the mask (might not be true of you use an external mask)
         with self.open_input("mask", wrapper=True) as map_file:
