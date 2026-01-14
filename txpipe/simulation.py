@@ -435,9 +435,20 @@ class TXLogNormalGlass(PipelineStage):
         """
         write a single density shell to output
         """
+        import healpy as hp
         if self.config["output_density_shell_maps"]:
             group = self.density_shell_output["density_shell_maps"]
-            group[f"shell{ishell}"][:] = delta_i
+            if self.config["density_shell_nest"]:
+                #convert output shell maps to nest ordering
+                nside = hp.get_nside(delta_i)
+                npix = hp.nside2npix(hp.get_nside(delta_i))
+                pix_ring = np.arange(npix)
+                pix_nest = hp.ring2nest(nside, pix_ring)
+                delta_i_nest = np.empty_like(delta_i)
+                delta_i_nest[pix_nest] = delta_i[pix_ring]
+                group[f"shell{ishell}"][:] = delta_i_nest
+            else:
+                group[f"shell{ishell}"][:] = delta_i
 
         group = self.density_shell_output["num_dens_shell"]
         group["num_dens_shell"][:, ishell] = ngal_in_shell
