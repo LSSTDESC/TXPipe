@@ -368,14 +368,14 @@ class TXLogNormalGlass(PipelineStage):
                 gal_lon[gal_lon < 0] += 360  # keeps 0 < ra < 360
 
                 if self.config["contaminate"]:
-                    obj_pixel = hp.ang2pix(
+                    obj_pixel_nest = hp.ang2pix(
                         self.mask_map_info["nside"],
                         gal_lon,
                         gal_lat,
                         lonlat=True,
                         nest=True,
                     )
-                    obj_weight = self.get_obj_weight(ibin, obj_pixel)
+                    obj_weight = self.get_obj_weight(ibin, obj_pixel_nest)
                     prob_accept = (1.0 / obj_weight) / max_inv_w[ibin]
                     obj_accept_contaminated = np.random.rand(len(gal_lon)) < prob_accept
                     gal_lon = gal_lon[obj_accept_contaminated]
@@ -511,13 +511,19 @@ class TXLogNormalGlass(PipelineStage):
             assert f["maps"].attrs["nside"] == self.mask_map_info["nside"]
         return max_inv_w
 
-    def get_obj_weight(self, tomobin, obj_pix):
+    def get_obj_weight(self, tomobin, obj_pix_nest):
         """
         Returns the weight for each object in a given tomographic bin
         """
+        import healpy as hp
         with self.open_input("input_lss_weight_maps", wrapper=True) as f:
             wmap = f.read_map(f"weight_map_bin_{tomobin}")
-        return wmap[obj_pix]
+            input_weight_map_is_nest = f.file[f"maps/weight_map_bin_{tomobin}"].attrs["nest"]
+            nside = self.mask_map_info["nside"]
+        if input_weight_map_is_nest:
+            return wmap[obj_pix_nest]
+        else:
+            return wmap[hp.nest2ring(nside, obj_pix_nest)]
 
 
 def camb_tophat_weight(z):
