@@ -65,6 +65,7 @@ class TXLogNormalGlass(PipelineStage):
         "ell_binned_max": StageParameter(float, 5.0e5, msg="Maximum ell for binned C(l) output"),
         "ell_binned_nbins": StageParameter(int, 100, msg="Number of ell bins for binned C(l) output"),
         "output_density_shell_maps": StageParameter(bool, False, msg="Whether to output density maps for each shell"),
+        "density_shell_nest":  StageParameter(bool, False, msg="Whether output density maps be in nest ordering"),
     }
 
     def run(self):
@@ -421,6 +422,7 @@ class TXLogNormalGlass(PipelineStage):
         density_shell_output = self.open_output("density_shells")
         if self.config["output_density_shell_maps"]:
             group = density_shell_output.create_group("density_shell_maps")
+            group.attrs["nest"] = self.config["density_shell_nest"]
             fullsky_npix = hp.nside2npix(self.nside)
             for ishell in range(self.nshells):
                 group.create_dataset(f"shell{ishell}", (fullsky_npix,), dtype="f")
