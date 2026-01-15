@@ -188,7 +188,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
             shear_cols = [
                 f"{psf_prefix}g1",
                 f"{psf_prefix}g2",
-                f"{psf_prefix}T_mean",
+                f"{psf_prefix}T",
                 "mcal_g1",
                 "mcal_g1_1p",
                 "mcal_g1_2p",
@@ -254,12 +254,14 @@ class TXSourceDiagnosticPlots(PipelineStage):
             "tomography",
             shear_tomo_cols,
             *more_iters,
+            longest=True,
         )
 
         # Now loop through each chunk of input data, one at a time.
         # Each time we get a new segment of data, which goes to all the plotters
         for start, end, data in it:
             print(f"Read data {start} - {end}")
+                
             # This causes each data = yield statement in each plotter to
             # be given this data chunk as the variable data.
 
@@ -392,10 +394,10 @@ class TXSourceDiagnosticPlots(PipelineStage):
         psf_prefix = self.config["psf_prefix"]
         delta_gamma = self.config["delta_gamma"]
 
-        psf_T_edges = self.get_bin_edges("psf_T_mean")
+        psf_T_edges = self.get_bin_edges("psf_T")
 
         binnedShear = MeanShearInBins(
-            f"{psf_prefix}T_mean",
+            f"{psf_prefix}T",
             psf_T_edges,
             delta_gamma,
             cut_source_bin=True,
