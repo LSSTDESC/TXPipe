@@ -43,6 +43,7 @@ cat >  ./conda/etc/conda/activate.d/activate-txpipe.sh <<EOF
     export MPI4PY_RC_RECV_MPROBE='False'
     export HDF5_USE_FILE_LOCKING=FALSE
     export LD_LIBRARY_PATH=${MPICH_DIR}/lib-abi-mpich:${LD_LIBRARY_PATH}
+    export MPICH_GPU_SUPPORT_ENABLED=0
 EOF
 
 echo ""
