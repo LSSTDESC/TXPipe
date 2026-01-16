@@ -7,6 +7,7 @@ from .data_types import (
     FileCollection,
     FiducialCosmology,
     TomographyCatalog,
+    QPNOfZFile,
 )
 import numpy as np
 import glob
@@ -358,7 +359,7 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
             TomographyCatalog,
         ),  # this file is used by the stage to compute density correlations
         ("mask", MapsFile),
-        ("lens_photoz_stack", HDFFile),  # Photoz stack (need if using theory curve in covariance)
+        ("lens_photoz_stack", QPNOfZFile),  # Photoz stack (need if using theory curve in covariance)
         (
             "fiducial_cosmology",
             FiducialCosmology,
@@ -699,11 +700,11 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
 
     def load_tracer(self, tomobin):
         """
-        Load the N(z) and convert to sacc tracers (lenses only)
-        We need this to compute the theory guess
-        for the SV term
+        Load the N(z) (lenses only)
+        We need this to compute the theory estimate
+        in the SV term in the 1d covariance
         """
-        with self.open_input("lens_photoz_stack") as f_lens:
+        with self.open_input("lens_photoz_stack", wrapper=True) as f_lens:
             z, nz = f_lens.get_bin_n_of_z(tomobin)
         return z, nz
 
