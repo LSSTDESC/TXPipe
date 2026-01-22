@@ -9,8 +9,9 @@ from .data_types import (
     LensingNoiseMaps,
     ClusteringNoiseMaps,
     PNGFile,
-    QPNOfZFile
+    QPNOfZFile,
 )
+from ceci.config import StageParameter
 import numpy as np
 import collections
 from .utils import choose_pixelization, array_hash
@@ -69,28 +70,35 @@ class TXTwoPointFourier(PipelineStage):
         ("source_noise_maps", LensingNoiseMaps),
         ("lens_noise_maps", ClusteringNoiseMaps),
     ]
-    outputs = [("twopoint_data_fourier", SACCFile)]
+    output_main = "twopoint_data_fourier"
+    outputs = [(output_main, SACCFile)]
 
     config_options = {
-        "mask_threshold": 0.0,
-        "flip_g1": False,
-        "flip_g2": False,
-        "cache_dir": "./cache/twopoint_fourier",
-        "low_mem": False,
-        "deproject_syst_clustering": False,
-        "systmaps_clustering_dir": "",
-        "ell_min": 100,
-        "ell_max": 1500,
-        "n_ell": 20,
-        "ell_spacing": "log",
-        "true_shear": False,
-        "analytic_noise": False,
-        "gaussian_sims_factor": [1.],
-        "b0": 1.0,
-        "do_shear_shear": True,
-        "do_shear_pos": True,
-        "do_pos_pos": True,
-        "compute_theory": True,
+        "mask_threshold": StageParameter(float, 0.0, msg="Threshold for masking pixels"),
+        "flip_g1": StageParameter(bool, False, msg="Whether to flip the sign of g1"),
+        "flip_g2": StageParameter(bool, False, msg="Whether to flip the sign of g2"),
+        "cache_dir": StageParameter(str, "./cache/twopoint_fourier", msg="Directory for caching intermediate results"),
+        "low_mem": StageParameter(bool, False, msg="Whether to use low memory mode"),
+        "deproject_syst_clustering": StageParameter(
+            bool, False, msg="Whether to deproject systematic modes from clustering"
+        ),
+        "systmaps_clustering_dir": StageParameter(str, "", msg="Directory containing systematic maps for clustering"),
+        "ell_min": StageParameter(int, 100, msg="Minimum ell value for power spectra"),
+        "ell_max": StageParameter(int, 1500, msg="Maximum ell value for power spectra"),
+        "n_ell": StageParameter(int, 20, msg="Number of ell bins"),
+        "ell_spacing": StageParameter(str, "log", msg="Spacing of ell bins (log or linear)"),
+        "true_shear": StageParameter(bool, False, msg="Whether to use true shear values"),
+        "analytic_noise": StageParameter(bool, False, msg="Whether to use analytic noise estimates"),
+        "gaussian_sims_factor": StageParameter(
+            list,
+            default=[1.0],
+            msg="Factor by which to decrease lens density to account for increased density contrast.",
+        ),
+        "b0": StageParameter(float, 1.0, msg="Galaxy bias parameter"),
+        "do_shear_shear": StageParameter(bool, True, msg="Whether to compute shear-shear power spectra"),
+        "do_shear_pos": StageParameter(bool, True, msg="Whether to compute shear-position power spectra"),
+        "do_pos_pos": StageParameter(bool, True, msg="Whether to compute position-position power spectra"),
+        "compute_theory": StageParameter(bool, True, msg="Whether to compute theory predictions"),
     }
 
     def run(self):
@@ -98,6 +106,7 @@ class TXTwoPointFourier(PipelineStage):
         import healpy
         import sacc
         import pyccl
+        from .utils.nmt_utils import choose_ell_bins
 
         config = self.config
         if self.comm:
@@ -110,13 +119,13 @@ class TXTwoPointFourier(PipelineStage):
         if self.rank == 0:
             print("Loaded maps.")
 
-        nbin_source = len(maps["g"])
-        nbin_lens = len(maps["d"])
+        nbin_source = maps["nbin_source"]
+        nbin_lens = maps["nbin_lens"]
 
-        # Do this at the beggining since its fast and sometimes crashes.
-        # It is best to avoid loosing running time later.
+        # Do this at the beginning since its fast and sometimes crashes.
+        # It is best to avoid losing running time later.
         # Load the n(z) values, which are both saved in the output
-        # file alongside the spectra, and then used to calcualate the
+        # file alongside the spectra, and then used to calculate the
         # fiducial theory C_ell, which is used in the deprojection calculation
         tracer_sacc = self.load_tracers(nbin_source, nbin_lens)
 
@@ -125,12 +134,7 @@ class TXTwoPointFourier(PipelineStage):
                 cosmo = f.to_ccl()
 
             theory_ell = np.unique(np.geomspace(self.config["ell_min"], self.config["ell_max"], 100).astype(int))
-            theory_sacc = theory_3x2pt(cosmo,
-                                    tracer_sacc,
-                                    bias=self.config["b0"],
-                                    smooth=True,
-                                    ell_values=theory_ell
-            )
+            theory_sacc = theory_3x2pt(cosmo, tracer_sacc, bias=self.config["b0"], smooth=True, ell_values=theory_ell)
         else:
             theory_sacc = sacc.Sacc()
 
@@ -140,10 +144,11 @@ class TXTwoPointFourier(PipelineStage):
         calcs = self.select_calculations(nbin_source, nbin_lens)
 
         # Binning scheme, currently chosen from the geometry.
-        # TODO: set ell binning from config
-        ell_bins = self.choose_ell_bins(pixel_scheme, f_sky)
+        ell_bins = choose_ell_bins(**config)
 
-        self.hash_metadata = None  # Filled in make_workspaces
+        # Initiate and populate hash_metadata for workspaces
+        self.hash_metadata = {}
+        self.populate_hash_metadata(maps, ell_bins)
         workspace_cache = self.make_workspaces(maps, calcs, ell_bins)
 
         # If we are rank zero print out some info
@@ -162,9 +167,7 @@ class TXTwoPointFourier(PipelineStage):
         # It's not the most optimal way of doing it
         # as it's not dynamic, just a round-robin assignment.
         for i, j, k in calcs:
-            self.compute_power_spectra(
-                pixel_scheme, i, j, k, maps, workspace_cache, ell_bins, theory_sacc, f_sky
-            )
+            self.compute_power_spectra(pixel_scheme, i, j, k, maps, workspace_cache, ell_bins, theory_sacc, f_sky)
 
         if self.rank == 0:
             print(f"Collecting results together")
@@ -189,7 +192,7 @@ class TXTwoPointFourier(PipelineStage):
             mask = f.read_mask(thresh=self.config["mask_threshold"])
             if self.rank == 0:
                 print("Loaded mask")
-        
+
         # Using a flat mask as the clustering weight for now, since I need to know
         # how to turn the depth map into a weight
         clustering_weight = mask
@@ -200,15 +203,13 @@ class TXTwoPointFourier(PipelineStage):
                 nbin_source = f.file["maps"].attrs["nbin_source"]
                 g1_maps = [f.read_map(f"g1_{b}") for b in range(nbin_source)]
                 g2_maps = [f.read_map(f"g2_{b}") for b in range(nbin_source)]
-                lensing_weights = [
-                    f.read_map(f"lensing_weight_{b}") for b in range(nbin_source)
-                ]
+                lensing_weights = [f.read_map(f"lensing_weight_{b}") for b in range(nbin_source)]
                 if self.rank == 0:
                     print(f"Loaded 2 x {nbin_source} shear maps")
                     print(f"Loaded {nbin_source} lensing weight maps")
         else:
             g1_maps, g2_maps, lensing_weights = [], [], []
-
+            nbin_source = 0
 
         if self.config["do_shear_pos"] or self.config["do_pos_pos"]:
             # And finally the density maps
@@ -218,6 +219,7 @@ class TXTwoPointFourier(PipelineStage):
                 print(f"Loaded {nbin_lens} overdensity maps")
         else:
             d_maps = []
+            nbin_lens = 0
 
         # Choose pixelization and read mask and systematics maps
         pixel_scheme = choose_pixelization(**info)
@@ -230,7 +232,7 @@ class TXTwoPointFourier(PipelineStage):
             print(f"Nside = {pixel_scheme.nside}")
 
         # Mask any pixels which have the healpix bad value
-        for (g1, g2, lw) in zip(g1_maps, g2_maps, lensing_weights):
+        for g1, g2, lw in zip(g1_maps, g2_maps, lensing_weights):
             lw[g1 == healpy.UNSEEN] = 0
             lw[g2 == healpy.UNSEEN] = 0
             lw[lw == healpy.UNSEEN] = 0
@@ -251,60 +253,12 @@ class TXTwoPointFourier(PipelineStage):
         # Load HEALPix systematics maps
         deproject_syst_clustering = self.config["deproject_syst_clustering"]
         if deproject_syst_clustering:
-            print("Deprojecting systematics maps for number counts")
-            n_systmaps = 0
-            s_maps = []
-            systmaps_clustering_dir = self.config["systmaps_clustering_dir"]
-            systmaps_path = pathlib.Path(systmaps_clustering_dir)
-            for systmap in systmaps_path.iterdir():
-                try:
-                    if systmap.is_file():
-                        if pathlib.Path(systmap).suffix != ".fits":
-                            print(
-                                "Warning: Problem reading systematics map file",
-                                systmap,
-                                "Not a HEALPix .fits file.",
-                            )
-                            warnings.warn(
-                                "Systematics map file must be a HEALPix .fits file."
-                            )
-                            print("Ignoring", systmap)
-                        else:
-                            systmap_file = str(systmap)
-                            self.config[
-                                f"clustering_deproject_{n_systmaps}"
-                            ] = systmap_file  # for provenance
-                            print(
-                                "Reading clustering systematics map file:", systmap_file
-                            )
-                            syst_map = healpy.read_map(systmap_file, verbose=False)
-
-                            # normalize map for Namaster
-                            # calculate the mean, accounting for case where mask isn't binary
-                            unmasked = clustering_weight > 0.
-                            mean = (syst_map[unmasked] * clustering_weight[unmasked]).sum() / clustering_weight[unmasked].sum()
-                            print("Syst map: mean value = ", mean)
-                            #subtract the mean rather than normalise by it, as some systematics will have ~0 mean
-                            #(other pixels can stay as hp.UNSEEN since they are masked anyway)
-                            syst_map[unmasked] -= mean
-
-                            s_maps.append(syst_map)
-                            n_systmaps += 1
-                except:
-                    print("Warning: Problem with systematics map file", systmap)
-                    print("Ignoring", systmap)
-
-            print("Number of systematics maps read: ", n_systmaps)
-            if n_systmaps == 0:
-                print("No systematics maps found. Skipping deprojection.")
-                deproject_syst_clustering = False
-            else:
-                print("Using systematics maps for galaxy number counts.")
-                # We assume all systematics maps have the same nside
-                nside = healpy.pixelfunc.get_nside(syst_map)
+            s_maps, nside = self.read_systematics_maps(clustering_weight)
+            if s_maps is not None:
+                # reshape systmaps array (needed for NaMaster):
                 npix = healpy.nside2npix(nside)
-                # needed for NaMaster:
-                s_maps_nc = np.array(s_maps).reshape([n_systmaps, 1, npix])
+                n_systmaps = len(s_maps)
+                s_maps = np.array(s_maps).reshape([n_systmaps, 1, npix])
 
         else:
             print("Not using systematics maps for deprojection in NaMaster")
@@ -315,13 +269,10 @@ class TXTwoPointFourier(PipelineStage):
         if self.config["do_shear_pos"] or self.config["do_pos_pos"]:
             if deproject_syst_clustering:
                 density_fields = [
-                    (nmt.NmtField(clustering_weight, [d], templates=s_maps_nc, n_iter=0, lmax=lmax1))
-                    for d in d_maps
+                    (nmt.NmtField(clustering_weight, [d], templates=s_maps, n_iter=0, lmax=lmax1)) for d in d_maps
                 ]
             else:
-                density_fields = [
-                    (nmt.NmtField(clustering_weight, [d], n_iter=0, lmax=lmax1)) for d in d_maps
-                ]
+                density_fields = [(nmt.NmtField(clustering_weight, [d], n_iter=0, lmax=lmax1)) for d in d_maps]
         else:
             density_fields = []
 
@@ -341,11 +292,82 @@ class TXTwoPointFourier(PipelineStage):
             "d": d_maps,
             "lf": lensing_fields,
             "df": density_fields,
+            "nbin_source": nbin_source,
+            "nbin_lens": nbin_lens,
         }
 
         return pixel_scheme, maps, f_sky
+    
+    def read_systematics_maps(self, mask_gc):
+        import healpy as hp
 
+        print("Deprojecting systematics maps for number counts")
+        n_systmaps = 0
+        s_maps = []
+        systmaps_clustering_dir = self.config["systmaps_clustering_dir"]
+        systmaps_path = pathlib.Path(systmaps_clustering_dir)
+        for systmap in systmaps_path.iterdir():
+            try:
+                if systmap.is_file():
+                    if pathlib.Path(systmap).suffix != ".fits":
+                        print(
+                            "Warning: Problem reading systematics map file",
+                            systmap,
+                            "Not a HEALPix .fits file.",
+                        )
+                        warnings.warn("Systematics map file must be a HEALPix .fits file.")
+                        print("Ignoring", systmap)
+                    else:
+                        systmap_file = str(systmap)
+                        self.config[f"clustering_deproject_{n_systmaps}"] = systmap_file  # for provenance
+                        print("Reading clustering systematics map file:", systmap_file)
+                        syst_map = hp.read_map(systmap_file, verbose=False)
 
+                        # normalize map for Namaster
+                        # calculate the mean, accounting for case where mask isn't binary
+                        unmasked = mask_gc > 0.0
+                        mean = (syst_map[unmasked] * mask_gc[unmasked]).sum() / mask_gc[unmasked].sum()
+                        print("Syst map: mean value = ", mean)
+                        # subtract the mean rather than normalise by it, as some systematics will have ~0 mean
+                        # (other pixels can stay as hp.UNSEEN since they are masked anyway)
+                        syst_map[unmasked] -= mean
+
+                        s_maps.append(syst_map)
+                        n_systmaps += 1
+            except:
+                print("Warning: Problem with systematics map file", systmap)
+                print("Ignoring", systmap)
+
+        print("Number of systematics maps read: ", n_systmaps)
+        if n_systmaps == 0:
+            print("No systematics maps found. Skipping deprojection.")
+            s_maps = None
+            nside = None
+            self.config["deproject_syst_clustering"] = False
+        else:
+            print("Using systematics maps for galaxy number counts.")
+            # We assume all systematics maps have the same nside
+            nside = hp.pixelfunc.get_nside(syst_map)
+            # needed for NaMaster:
+            s_maps = np.array(s_maps)
+        return s_maps, nside
+
+    def populate_hash_metadata(self, maps, ell_bins):
+        # Make a hash for the ell binning
+        self.hash_metadata["ell_hash"] = array_hash(ell_bins.get_effective_ells())
+        # For map-based case, do the same for the weight maps
+        # (for catalog-based case, these hashes are dynamically computed in
+        # get_field)
+        if "lw" in maps:
+            lensing_weights = maps["lw"]
+            for i, lw in enumerate(lensing_weights):
+                self.hash_metadata[f"mask_source_{i}"] = array_hash(lw)
+        if "dw" in maps:
+            dw = maps["dw"]
+            # Use same mask for all lens bins
+            for i in range(maps["nbin_lens"]):
+                self.hash_metadata[f"mask_lens_{i}"] = array_hash(dw)
+    
     def make_workspaces(self, maps, calcs, ell_bins):
         import pymaster as nmt
         from .utils.nmt_utils import WorkspaceCache
@@ -356,69 +378,29 @@ class TXTwoPointFourier(PipelineStage):
 
         # load the cache
         cache = WorkspaceCache(self.config["cache_dir"], low_mem=self.config["low_mem"])
-
-        nbin_source = len(maps["g"])
-        nbin_lens = len(maps["d"])
-
-        # empty workspaces
-        zero = np.zeros_like(maps["dw"])
-
-        lensing_weights = maps["lw"]
-        density_weight = maps["dw"]
-        lensing_fields = maps["lf"]
-        density_fields = maps["df"]
-
-        ell_hash = array_hash(ell_bins.get_effective_ells())
-        hashes = {id(x): array_hash(x) for x in lensing_weights}
-        hashes[id(density_weight)] = array_hash(density_weight)
-
-        self.hash_metadata = {
-            "ell_hash": ell_hash,
-            "mask_lens": hashes[id(density_weight)],
-        }
-
-        for i, w in enumerate(lensing_weights):
-            self.hash_metadata[f"mask_source_{i}"] = hashes[id(w)]
-
-        # It's an oddity of NaMaster that we
-        # need to supply a field object to the workspace even though the
-        # coupling matrix only depends on the mask and ell binning.
-        # So here we re-use the fields we've made for the actual
-        # analysis, but to save the coupling matrices while being sure
-        # we're using the right ones we derive a key based on the
-        # mask and ell centers.
-
-        # Each lensing field has its own mask
-        lensing_fields = [(lw, lf) for lw, lf in zip(lensing_weights, lensing_fields)]
-
-        # The density fields share a mask, so just use the field
-        # object for the first one.
-        try:
-            density_field = (density_weight, density_fields[0])
-        #if no density_maps provided, density_fields is an empty list
-        except IndexError:
-            density_field = (density_weight, None)
-
-        spaces = {}
-
-        for (i, j, k) in calcs:
+        # Get hash metadata and fields
+        ell_hash = self.hash_metadata["ell_hash"]
+        for i, j, k in calcs:
             if k == SHEAR_SHEAR:
-                w1, f1 = lensing_fields[i]
-                w2, f2 = lensing_fields[j]
+                f1 = self.get_field(maps, i, "shear")
+                f2 = self.get_field(maps, j, "shear")
+                h1 = self.hash_metadata[f"mask_source_{i}"]
+                h2 = self.hash_metadata[f"mask_source_{j}"]
             elif k == SHEAR_POS:
-                w1, f1 = lensing_fields[i]
-                w2, f2 = density_field
+                f1 = self.get_field(maps, i, "shear")
+                f2 = self.get_field(maps, j, "pos")
+                h1 = self.hash_metadata[f"mask_source_{i}"]
+                h2 = self.hash_metadata[f"mask_lens_{j}"]
             else:
-                w1, f1 = density_field
-                w2, f2 = density_field
-
+                f1 = self.get_field(maps, i, "pos")
+                f2 = self.get_field(maps, j, "pos")
+                h1 = self.hash_metadata[f"mask_lens_{i}"]
+                h2 = self.hash_metadata[f"mask_lens_{j}"]
 
             # First we derive a hash which will change whenever either
             # the mask changes or the ell binning.
             # We combine the hashes of those three objects together
             # using xor (python  ^ operator), which seems to be standard.
-            h1 = hashes[id(w1)]
-            h2 = hashes[id(w2)]
             key = h1 ^ ell_hash
             # ... except that if we are using the same field twice then
             # x ^ x = 0, which causes problems (all the auto-bins would
@@ -431,26 +413,20 @@ class TXTwoPointFourier(PipelineStage):
             space = cache.get(i, j, k, key=key)
             # If not, compute it.  We will save it later
             if space is None:
-                print(f"Rank {self.rank} computing coupling matrix " f"{i}, {j}, {k}")
-                space = nmt.NmtWorkspace()
-                space.compute_coupling_matrix(f1, f2, ell_bins, is_teb=False)
+                print(f"Rank {self.rank} computing coupling matrix {i}, {j}, {k}")
+                space = nmt.NmtWorkspace.from_fields(f1, f2, ell_bins)
             else:
-                print(
-                    f"Rank {self.rank} getting coupling matrix "
-                    f"{i}, {j}, {k} from cache."
-                )
+                print(f"Rank {self.rank} getting coupling matrix {i}, {j}, {k} from cache.")
             # This is a bit awkward - we attach the key to the
             # object to avoid more book-keeping.  This is used inside
             # the workspace cache
             space.txpipe_key = key
-
 
             # We now automatically cache everything, non-optionally,
             # but to save memory we don't keep them all loaded
             cache.put(i, j, k, space)
 
         return cache
-
 
     def collect_results(self):
         if self.comm is None:
@@ -464,34 +440,6 @@ class TXTwoPointFourier(PipelineStage):
 
     def setup_results(self):
         self.results = []
-
-    def choose_ell_bins(self, pixel_scheme, f_sky):
-        from .utils.nmt_utils import MyNmtBin
-
-        # commented code below is not needed anymore
-        """
-        # This is just approximate.  It will be very wrong
-        # in cases with non-square patches.
-        area = f_sky * 4 * np.pi
-        width = np.sqrt(area) #radians
-        nlb = self.config['bandwidth']
-
-        # user can specify the bandwidth, or we can just use
-        # the maximum sensible value of Delta ell.
-        nlb = nlb if nlb>0 else max(1,int(2 * np.pi / width))
-        """
-
-        # The subclass of NmtBin that we use here just adds some
-        # helper methods compared to the default NaMaster one.
-        # Can feed these back upstream if useful.
-
-        # Creating the ell binning from the edges using this Namaster constructor.
-        ell_min = self.config["ell_min"]
-        ell_max = self.config["ell_max"]
-        n_ell = self.config["n_ell"]
-        ell_spacing = self.config["ell_spacing"]
-        ell_bins = MyNmtBin.from_binning_info(ell_min, ell_max, n_ell, ell_spacing)
-        return ell_bins
 
     def select_calculations(self, nbins_source, nbins_lens):
         # Build up a big list of all the calculations we want to
@@ -526,9 +474,7 @@ class TXTwoPointFourier(PipelineStage):
 
         return calcs
 
-    def compute_power_spectra(
-        self, pixel_scheme, i, j, k, maps, workspace_cache, ell_bins, cl_theory, f_sky
-    ):
+    def compute_power_spectra(self, pixel_scheme, i, j, k, maps, workspace_cache, ell_bins, cl_theory, f_sky):
         # Compute power spectra
         # TODO: now all possible auto- and cross-correlation are computed.
         #      This should be tunable.
@@ -547,41 +493,22 @@ class TXTwoPointFourier(PipelineStage):
         Cdd = sacc.standard_types.galaxy_density_cl
 
         type_name = NAMES[k]
-        print(
-            f"Process {self.rank} calculating {type_name} spectrum for bin pair {i},{j}"
-        )
+        print(f"Process {self.rank} calculating {type_name} spectrum for bin pair {i},{j}")
         sys.stdout.flush()
 
         if k == SHEAR_SHEAR:
-            field_i = maps["lf"][i]
-            field_j = maps["lf"][j]
-            results_to_use = [
-                (
-                    0,
-                    CEE,
-                ),
-                (
-                    1,
-                    CEB,
-                ),
-                (
-                    2,
-                    CBE,
-                ),
-                (
-                    3,
-                    CBB,
-                ),
-            ]
+            field_i = self.get_field(maps, i, "shear")
+            field_j = self.get_field(maps, j, "shear")
+            results_to_use = [(0, CEE), (1, CEB), (2, CBE), (3, CBB)]
 
         elif k == POS_POS:
-            field_i = maps["df"][i]
-            field_j = maps["df"][j]
+            field_i = self.get_field(maps, i, "pos")
+            field_j = self.get_field(maps, j, "pos")
             results_to_use = [(0, Cdd)]
 
         elif k == SHEAR_POS:
-            field_i = maps["lf"][i]
-            field_j = maps["df"][j]
+            field_i = self.get_field(maps, i, "shear")
+            field_j = self.get_field(maps, j, "pos")
             results_to_use = [(0, CdE), (1, CdB)]
 
         workspace = workspace_cache.get(i, j, k)
@@ -592,42 +519,32 @@ class TXTwoPointFourier(PipelineStage):
             if self.rank == 0:
                 print("Loaded mask")
 
-        cl_guess = nmt.compute_coupled_cell(field_i, field_j) / np.mean(mask * mask)
-
+        # we are going to subtract the noise afterwards
+        pcl = nmt.compute_coupled_cell(field_i, field_j)
+        c = workspace.decouple_cell(pcl)
         if self.config["analytic_noise"]:
-            # we are going to subtract the noise afterwards
-            c = nmt.compute_full_master(
-                field_i,
-                field_j,
-                ell_bins,
-                cl_guess=cl_guess,
-                workspace=workspace,
-            )
             # noise to subtract (already decoupled)
             n_ell, n_ell_coupled = self.compute_noise_analytic(
                 i, j, k, maps, f_sky, workspace, mask
             )
-            if n_ell is not None:
-                c = c - n_ell
-                
-            # Writing out the noise for later cross-checks
         else:
             # Get the coupled noise C_ell values to give to the master algorithm
             n_ell, n_ell_coupled = self.compute_noise(
                 i, j, k, ell_bins, maps, workspace
             )
-            c = nmt.compute_full_master(
-                field_i,
-                field_j,
-                ell_bins,
-                cl_noise=n_ell_coupled,
-                cl_guess=cl_guess,
-                workspace=workspace,
-            )
-
         if n_ell is None:
             n_ell_coupled = np.zeros((c.shape[0], 3 * self.config["nside"]))
             n_ell = np.zeros_like(c)
+        c = c - n_ell
+
+        # Deprojection bias (computable for map-based fields only)
+        if field_i.lite or field_j.lite:
+            cb = np.zeros_like(c)
+        else:
+            cl_guess = nmt.compute_coupled_cell(field_i, field_j) / np.mean(mask * mask)
+            pclb = nmt.deprojection_bias(field_i, field_j, cl_guess)
+            cb = workspace.decouple_cell(pclb)
+        c = c - cb
 
         def window_pixel(ell, nside):
             r_theta = 1 / (np.sqrt(3.0) * nside)
@@ -642,7 +559,7 @@ class TXTwoPointFourier(PipelineStage):
 
         # Current treatment of the beam is incorrect so commented out for now.
         # Issue has been opened on GitHub (#344)
-        c_beam = c# / window_pixel(ls, pixel_scheme.nside) ** 2
+        c_beam = c  # / window_pixel(ls, pixel_scheme.nside) ** 2
         print("c_beam, k, i, j", c_beam, k, i, j)
 
         # this has shape n_cls, n_bpws, n_cls, lmax+1
@@ -664,8 +581,18 @@ class TXTwoPointFourier(PipelineStage):
                 )
             )
 
-    def compute_noise(self, i, j, k, ell_bins, maps, workspace):
+    def get_field(self, maps, i, kind):
+        # In this class this is very simple, just retrieving a map from
+        # the dictionary. But we want to avoid loading the full catalogs
+        # for all of the tomographic bins at once in the sub-class that
+        # uses them, so we make this a method that it can override to load
+        # them dynamically.
+        if kind == "shear":
+            return maps["lf"][i]
+        else:
+            return maps["df"][i]
 
+    def compute_noise(self, i, j, k, ell_bins, maps, workspace):
         if self.config["true_shear"] and k == SHEAR_SHEAR:
             # if using true shear (i.e. no shape noise) we do not need to add any noise for the shear-shear case
             return None
@@ -706,7 +633,7 @@ class TXTwoPointFourier(PipelineStage):
                 w[realization[0] == healpy.UNSEEN] = 0
 
             # Analyze it with namaster
-            field = nmt.NmtField(w, realization, n_iter=0, lmax=self.config["ell_max"]-1)
+            field = nmt.NmtField(w, realization, n_iter=0, lmax=self.config["ell_max"] - 1)
             cl_coupled = nmt.compute_coupled_cell(field, field)
 
             # Accumulate
@@ -728,17 +655,18 @@ class TXTwoPointFourier(PipelineStage):
 
         if (i != j) or (k == SHEAR_POS):
             return None, None
+
         # This bit only works with healpix maps but it's checked beforehand so that's fine
         if k == SHEAR_SHEAR:
             with self.open_input("source_maps", wrapper=True) as f:
                 var_map = f.read_map(f"var_e_{i}")
-            print('i, j', i, j)
+            print("i, j", i, j)
             var_map[var_map == hp.UNSEEN] = 0.0
             nside = hp.get_nside(var_map)
             pxarea = hp.nside2pixarea(nside)
             n_ls = np.mean(var_map) * pxarea
-            #pdb.set_trace()
-            print('np.mean(var_map) * pxarea',i,j,k, n_ls)
+            # pdb.set_trace()
+            print("np.mean(var_map) * pxarea", i, j, k, n_ls)
             n_ell_coupled = np.zeros((4, 3 * nside))
             # Note that N_ell = 0 for ell = 1, 2 for shear
             n_ell_coupled[0, 2:] = n_ls
@@ -751,15 +679,14 @@ class TXTwoPointFourier(PipelineStage):
             lens_map[lens_map == hp.UNSEEN] = 0.0
             nside = hp.get_nside(lens_map)
             pxarea = hp.nside2pixarea(nside)
-            #compute the mean galaxy counts (in pixels above the mask threshold)
-            above_thresh = mask > 0.
+            # compute the mean galaxy counts (in pixels above the mask threshold)
+            above_thresh = mask > 0.0
             mu_N = np.sum(lens_map[above_thresh]) / np.sum(mask[above_thresh])
-            #coupled N_ells:
+            # coupled N_ells:
             n_ls = pxarea * np.mean(mask) / mu_N
             n_ell_coupled = n_ls * np.ones((1, 3 * nside))
 
         n_ell = workspace.decouple_cell(n_ell_coupled)
-        
 
         return n_ell, n_ell_coupled
 
@@ -824,18 +751,13 @@ class TXTwoPointFourier(PipelineStage):
         Cdd = sacc.standard_types.galaxy_density_cl
 
         S = tracer_sacc.copy()
-    
+
         # We have saved the results in a big list.  Each entry contains a single
         # bin pair and spectrum type, but many data points at different angles.
         # Here we pull them all out to add to sacc
         for d in self.results:
-            tracer1 = (
-                f"source_{d.i}"
-                if d.corr_type in [CEE, CEB, CBE, CBB, CdE, CdB]
-                else f"lens_{d.i}"
-            )
+            tracer1 = f"source_{d.i}" if d.corr_type in [CEE, CEB, CBE, CBB, CdE, CdB] else f"lens_{d.i}"
             tracer2 = f"source_{d.j}" if d.corr_type in [CEE, CEB, CBE, CBB] else f"lens_{d.j}"
-
 
             n = len(d.l)
             # The full set of ell values (unbinned), used to store the
@@ -843,12 +765,13 @@ class TXTwoPointFourier(PipelineStage):
             ell_full = np.arange(d.win.shape[1])
             win = BandpowerWindow(ell_full, d.win.T)
 
+            if self.config["gaussian_sims_factor"] != [1.0] and "lens" in tracer2:
+                print(
+                    "ATTENTION: We are multiplying the measurement and the noise saved in the sacc file by the gaussian sims factor."
+                )
 
-            if self.config["gaussian_sims_factor"] != [1.] and "lens" in tracer2:
-                print("ATTENTION: We are multiplying the measurement and the noise saved in the sacc file by the gaussian sims factor.")
-                
-                value = d.value*self.config["gaussian_sims_factor"][int(tracer2[-1])]
-                noise = d.noise*self.config["gaussian_sims_factor"][int(tracer2[-1])]
+                value = d.value * self.config["gaussian_sims_factor"][int(tracer2[-1])]
+                noise = d.noise * self.config["gaussian_sims_factor"][int(tracer2[-1])]
 
                 if "lens" in tracer1:
                     value *= self.config["gaussian_sims_factor"][int(tracer1[-1])]
@@ -876,7 +799,6 @@ class TXTwoPointFourier(PipelineStage):
             # the coupled noise is constant
             tr = S.tracers[tracer1]
             if (tracer1 == tracer2) and ("n_ell_coupled" not in tr.metadata):
-
                 if self.config["analytic_noise"] is False:
                     # If computed through simulations, it might be better to
                     # take the mean since, for now, only a float can be passed
@@ -886,15 +808,15 @@ class TXTwoPointFourier(PipelineStage):
                     # Save the last element because the first one is zero for
                     # shear
                     tr.metadata["n_ell_coupled"] = d.noise_coupled[-1]
-                    
 
-                if self.config["gaussian_sims_factor"] != [1.] and "lens" in tracer1:  
-                    print (tracer1)
-                    print("ATTENTION: We are multiplying the coupled noise saved in the sacc file by the gaussian sims factor.")
+                if self.config["gaussian_sims_factor"] != [1.0] and "lens" in tracer1:
+                    print(tracer1)
+                    print(
+                        "ATTENTION: We are multiplying the coupled noise saved in the sacc file by the gaussian sims factor."
+                    )
                     print("Original noise:", d.noise_coupled)
-                    tr.metadata["n_ell_coupled"] *= self.config["gaussian_sims_factor"][int(tracer1[-1])]**2
+                    tr.metadata["n_ell_coupled"] *= self.config["gaussian_sims_factor"][int(tracer1[-1])] ** 2
 
-                        
         # Save provenance information
         provenance = self.gather_provenance()
         provenance.update(SACCFile.generate_provenance())
@@ -920,9 +842,269 @@ class TXTwoPointFourier(PipelineStage):
         S.metadata["binning/ell_spacing"] = self.config["ell_spacing"]
         S.metadata["binning/n_ell"] = self.config["n_ell"]
 
+        # Get output name (will be different if subclass used)
+        output = self.output_main
         # And we're all done!
-        output_filename = self.get_output("twopoint_data_fourier")
+        output_filename = self.get_output(output)
         S.save_fits(output_filename, overwrite=True)
+
+
+class TXTwoPointFourierCatalog(TXTwoPointFourier):
+    """
+    Make Fourier space 3x2pt measurements directly from catalogues using NaMaster
+
+    This subclass of TXTwoPointFourier computes the angular power spectra
+    directly from the catalogs using the catalog-based pseudo-Cl formalism,
+    instead of requiring that maps of the relevant fields be created in advance.
+    Template deprojection can still be used to mitigate systematic effects if
+    the systematics templates are provided as input. The mask for galaxy clustering
+    fields can either be provided directly (in map form), or one can instead
+    provide a catalog of randoms.
+    """
+
+    name = "TXTwoPointFourierCatalog"
+    inputs = [
+        ("binned_shear_catalog", HDFFile),
+        ("binned_lens_catalog", HDFFile),
+        ("binned_random_catalog", HDFFile),
+        ("tracer_metadata", HDFFile),
+        ("shear_photoz_stack", QPNOfZFile),  # Photoz stack
+        ("lens_photoz_stack", QPNOfZFile),  # Photoz stack
+        ("mask", MapsFile),
+        ("fiducial_cosmology", FiducialCosmology),
+        ("source_maps", MapsFile),
+        ("lens_maps", MapsFile),
+    ]
+    output_main = "twopoint_data_fourier_cat"
+    outputs = [(output_main, SACCFile)]
+
+    config_options_cat = {  # Config specific to catalog-based C_ells
+        "use_randoms_clustering": StageParameter(
+            bool, False, msg="Whether to use randoms instead of a map-based mask for clustering"
+        ),
+        "calc_noise_dp_bias": StageParameter(
+            bool, False, msg="Whether to analytically compute bias in the shot noise component induced by deprojection."
+        ),
+        "ell_max_deproj": StageParameter(int, -1, "Maximum multipole to use for mode deprojection."),
+    }
+    config_options = TXTwoPointFourier.config_options | config_options_cat
+
+    def load_maps(self):
+        # In this subclass this function is just used for loading the mask (if provided)
+        # and the clustering systematics templates (if deprojecting).
+        import pymaster as nmt
+        import healpy as hp
+
+        with self.open_input("binned_lens_catalog", wrapper=True) as f:
+            nbin_lens = f.file["lens"].attrs["nbin_lens"]
+        with self.open_input("binned_shear_catalog", wrapper=True) as f:
+            nbin_source = f.file["shear"].attrs["nbin_source"]
+
+        # We will obtain nside from somewhere if needed, but for now set to None
+        nside = None
+        # Load mask for galaxy clustering
+        if self.config["deproject_syst_clustering"] or not self.config["use_randoms_clustering"]:
+            with self.open_input("mask", wrapper=True) as f:
+                info = f.read_map_info("mask")
+                mask_gc = f.read_mask(thresh=self.config["mask_threshold"])
+                if self.rank == 0:
+                    print("Loaded mask")
+        else:
+            mask_gc = None
+
+        # Load HEALPix systematics maps if required
+        if self.config["deproject_syst_clustering"]:
+            s_maps, nside = self.read_systematics_maps(mask_gc)
+
+        else:
+            print("Not using systematics maps for deprojection in NaMaster")
+            s_maps = None
+
+        maps = {
+            "mask_lens": mask_gc,
+            "nbin_source": nbin_source,
+            "nbin_lens": nbin_lens,
+            "systmaps": s_maps,
+            "nside": nside,
+        }
+        print(maps)
+
+        # Have to return Nones as placeholders to be consistent with TXTwoPointFourier
+        return None, maps, None
+
+    def get_field(self, maps, i, kind, get_shears=False):
+        # In this subclass we load the catalog field objects dynamically,
+        # because they are much larger than the map objects, or can be
+        # at full LSST scale
+        import pymaster as nmt
+        import healpy as hp
+
+        # If I don't do the -1 here I get an error in namaster
+        lmax = self.config["ell_max"] - 1
+
+        if kind == "shear":
+            if self.rank == 0:
+                print("Loading shear catalog for bin", i)
+            # TODO: If memory issues do occur, they will probably occur here.
+            # Need to reduce memory usage.
+            with self.open_input("binned_shear_catalog") as f:
+                group = f[f"shear/bin_{i}"]
+                weight = group["weight"][:]
+                positions = np.array([group["ra"][:], group["dec"][:]])
+                if get_shears:
+                    g1 = group["g1"][:] * (-1) ** self.config["flip_g1"]
+                    g2 = group["g2"][:] * (-1) ** self.config["flip_g2"]
+                    shear = [g1, g2]
+                else:
+                    shear = None
+
+            field = nmt.NmtFieldCatalog(positions, weight, shear, lmax=lmax, lmax_mask=lmax, spin=2, lonlat=True)
+            # MCM depends on positions and weights of sources
+            self.hash_metadata[f"mask_source_{i}"] = array_hash(positions) ^ array_hash(weight)
+
+        else:
+            # Retrieve templates (in map form, if loaded at all)
+            templates = maps["systmaps"]
+
+            if self.rank == 0:
+                print("Loading lens catalog for bin", i)
+
+            with self.open_input("binned_lens_catalog") as f:
+                group = f[f"lens/bin_{i}"]
+                positions = np.array([group["ra"][:], group["dec"][:]])
+                weight = group["weight"][:]
+
+            # Load randoms for this bin if using them
+            if self.config["use_randoms_clustering"]:
+                with self.open_input("binned_random_catalog") as f:
+                    group = f[f"randoms/bin_{i}"]
+                    pos_rand = np.array([group["ra"][:], group["dec"][:]])
+                    if "weight" in group.keys():
+                        weight_rand = group["weight"][:]
+                    else:
+                        weight_rand = np.ones_like(pos_rand[0])
+                if self.config["deproject_syst_clustering"]:
+                    # Get values of each template at position of each random
+                    ipix_rand = hp.ang2pix(maps["nside"], *pos_rand, lonlat=True)
+                    templates = maps["systmaps"][:, ipix_rand]
+                # No need for mask - set to None
+                mask_gc = None
+                # MCM depends on positions and weights of data AND of randoms;
+                # final hash ensures there is no chance of reusing an existing workspace
+                # if a future run uses a mask instead of randoms
+                # TODO: find faster alternative
+                self.hash_metadata[f"mask_lens_{i}"] = (
+                    array_hash(positions)
+                    ^ array_hash(weight)
+                    ^ array_hash(pos_rand)
+                    ^ array_hash(weight_rand)
+                    ^ hash("randoms")
+                )
+            else:
+                pos_rand = None
+                weight_rand = None
+                # In this case we do need the mask - retrieve from maps
+                mask_gc = maps["mask_lens"]
+                # MCM depends only on the mask
+                self.hash_metadata[f"mask_lens_{i}"] = array_hash(mask_gc) ^ hash("mask")
+
+            # Set lmax_deproj to None if not provided explicitly (will only matter if deprojecting)
+            if self.config["ell_max_deproj"] < 0:
+                lmax_deproj = None
+            else:
+                lmax_deproj = self.config["ell_max_deproj"]
+
+            field = nmt.NmtFieldCatalogClustering(
+                positions,
+                weight,
+                positions_rand=pos_rand,
+                weights_rand=weight_rand,
+                lmax=lmax,
+                mask=mask_gc,
+                lmax_mask=lmax,
+                templates=templates,
+                lmax_deproj=lmax_deproj,
+                lonlat=True,
+                calculate_noise_dp_bias=self.config["calc_noise_dp_bias"],
+            )
+        return field
+
+    def compute_power_spectra(self, pixel_scheme, i, j, k, maps, workspace_cache, ell_bins, cl_theory, f_sky):
+        # Compute power spectra
+        # TODO: now all possible auto- and cross-correlation are computed.
+        #      This should be tunable.
+
+        # k refers to the type of measurement we are making
+        import sacc
+        import pymaster as nmt
+        import healpy
+
+        CEE = sacc.standard_types.galaxy_shear_cl_ee
+        CEB = sacc.standard_types.galaxy_shear_cl_eb
+        CBE = sacc.standard_types.galaxy_shear_cl_be
+        CBB = sacc.standard_types.galaxy_shear_cl_bb
+        CdE = sacc.standard_types.galaxy_shearDensity_cl_e
+        CdB = sacc.standard_types.galaxy_shearDensity_cl_b
+        Cdd = sacc.standard_types.galaxy_density_cl
+
+        type_name = NAMES[k]
+        print(f"Process {self.rank} calculating {type_name} spectrum for bin pair {i},{j}")
+        sys.stdout.flush()
+
+        if k == SHEAR_SHEAR:
+            field_i = self.get_field(maps, i, "shear", get_shears=True)
+            field_j = self.get_field(maps, j, "shear", get_shears=True)
+            results_to_use = [(0, CEE), (1, CEB), (2, CBE), (3, CBB)]
+
+        elif k == POS_POS:
+            field_i = self.get_field(maps, i, "pos", get_shears=True)
+            field_j = self.get_field(maps, j, "pos", get_shears=True)
+            results_to_use = [(0, Cdd)]
+
+        elif k == SHEAR_POS:
+            field_i = self.get_field(maps, i, "shear", get_shears=True)
+            field_j = self.get_field(maps, j, "pos", get_shears=True)
+            results_to_use = [(0, CdE), (1, CdB)]
+
+        workspace = workspace_cache.get(i, j, k)
+
+        # Cannot use compute_full_master here as deproj. bias not implemented for cat-based C_ells
+        pcl = nmt.compute_coupled_cell(field_i, field_j)
+        # Noise is automatically computed analytically and subtracted for cat-based C_ells,
+        # but noise deprojection bias needs subtracting manually
+        noise_db = 0
+        if i == j and k == POS_POS:
+            n_ell_coupled = field_i.Nf * np.ones((len(results_to_use), self.config["ell_max"]))
+            if self.config["calc_noise_dp_bias"] and self.config["deproject_syst_clustering"]:
+                noise_db = field_i.get_noise_deprojection_bias()
+        else:
+            n_ell_coupled = np.zeros((len(results_to_use), self.config["ell_max"]))
+        n_ell = workspace.decouple_cell(n_ell_coupled)
+        c = workspace.decouple_cell(pcl - noise_db)
+
+        # The binning information - effective (mid) ell values and
+        # the window information
+        ls = ell_bins.get_effective_ells()
+        print("c_beam, k, i, j", c, k, i, j)
+
+        # this has shape n_cls, n_bpws, n_cls, lmax+1
+        bandpowers = workspace.get_bandpower_windows()
+
+        # Save all the results, skipping things we don't want like EB modes
+        for index, name in results_to_use:
+            win = bandpowers[index, :, index, :]
+            self.results.append(
+                Measurement(
+                    name,
+                    ls,
+                    c[index],
+                    n_ell[index],
+                    n_ell_coupled[index],
+                    win,
+                    i,
+                    j,
+                )
+            )
 
 
 if __name__ == "__main__":

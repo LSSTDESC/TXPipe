@@ -54,15 +54,17 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             bin_min = self.config["r_min"]
             bin_max = self.config["r_max"]
         self.distance_bins = clmm.dataops.make_bins(bin_min, bin_max, nbins=self.config["nbins"], method="evenlog10width")
-
+        print (self.distance_bins) 
+        
         self.cluster_shears_cat, self.coordinate_system, self.profile_type = self.load_cluster_shear_catalog() 
+
+        print (self.coordinate_system) 
+
         
         with self.open_input("fiducial_cosmology", wrapper=True) as f:
             ccl_cosmo = f.to_ccl()
             self.clmm_cosmo = clmm.cosmology.ccl.CCLCosmology()
             self.clmm_cosmo.set_be_cosmo(ccl_cosmo)
-            
-        
                  
         # load cluster catalog as an astropy table
         #clusters = self.load_cluster_catalog()
@@ -73,28 +75,49 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
 
                     
 
-    def load_cluster_shear_catalog(self) :
+    def load_cluster_shear_catalog(self, indices = None) :
         from astropy.table import Table
 
-        with self.open_input("cluster_shear_catalogs") as f:
-            meta_coord_sys = f['provenance'].attrs['config/coordinate_system'] 
-            g = f["index/"]
-            cluster_index = g['cluster_index'][:]
-            cluster_id = g['cluster_id'][:]
-            tangential_comp = g['tangential_comp'][:]
-            cross_comp = g['cross_comp'][:]
-            source_index = g['source_index'][:]
-            weight = g['weight'][:]
-            distance_arcmin = g['distance_arcmin'][:]
-            profile_type = g.attrs["profile_type"]
+        # Read catalog group data only
+        if indices == None:
+            with self.open_input("cluster_shear_catalogs") as f:
+                meta_coord_sys = f['provenance'].attrs['config/coordinate_system']
+                g = f["catalog/"]
+                cluster_id = g['cluster_id'][:]
+                cluster_sample_start = g['cluster_sample_start'][:]
+                cluster_sample_count = g['cluster_sample_count'][:]
+                cluster_theta_max_arcmin = g['cluster_theta_max_arcmin'][:]
+                profile_type = g.attrs["profile_type"]
+            tab = Table({"cluster_id": cluster_id,
+                         "cluster_sample_count": cluster_sample_count, "cluster_sample_start": cluster_sample_start,
+                         "cluster_theta_max_arcmin": cluster_theta_max_arcmin})
 
-        
+            return tab, meta_coord_sys, profile_type
+
+        # Read index group data corresponding to a specific cluster_id
+        #     indices are defined base on parameter stored in catalog/cluster_sample_start and _count for the given cluster id
+        with self.open_input("cluster_shear_catalogs") as f:
+            ifirst,icount = indices
+            ilast = ifirst+icount
+            meta_coord_sys = f['provenance'].attrs['config/coordinate_system']
+            cat_g = f["catalog/"]
+            profile_type = cat_g.attrs["profile_type"]
+            g = f["index/"]
+            cluster_index = g['cluster_index'][ifirst:ilast]
+            cluster_id = g['cluster_id'][ifirst:ilast]
+            tangential_comp = g['tangential_comp'][ifirst:ilast]
+            cross_comp = g['cross_comp'][ifirst:ilast]
+            source_index = g['source_index'][ifirst:ilast]
+            weight = g['weight'][ifirst:ilast]
+            distance_arcmin = g['distance_arcmin'][ifirst:ilast]
+
+
         tab = Table({"cluster_index": cluster_index, "cluster_id" : cluster_id, "tangential_comp_clmm": tangential_comp,
                       "cross_comp_clmm": cross_comp, "source_index": source_index,
                       "weight_clmm": weight, "distance_arcmin": distance_arcmin})
-    
                   
         return tab, meta_coord_sys, profile_type
+
 
 
 
@@ -110,6 +133,9 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         # Loop through clusters and calculate the profiles
         ncluster = len(cluster_list)
         print('Ncluster', ncluster)
+
+        # Extract cluster list from cluster_shears_cat
+        cluster_shear_list = self.cluster_shears_cat["cluster_id"].tolist()
         
         for cluster_index in range(ncluster) :
 
@@ -121,12 +147,15 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             dec_cl = cluster_list[cluster_index]["dec"]
             id_cl = cluster_list[cluster_index]["id"]
 
+            # Read cluster shear catalog data corresponding to the current cluster_id (i.e. id_cl)
+            cluster_cat_index = cluster_shear_list.index(id_cl)
+            cluster_cat_indices = ( int(self.cluster_shears_cat["cluster_sample_start"][cluster_cat_index]),
+                                    int(self.cluster_shears_cat["cluster_sample_count"][cluster_cat_index]))
+            #print("-> cluster id ",id_cl,"  ",cluster_cat_index," ",cluster_cat_indices,"  ",cluster_cat_indices[0]+cluster_cat_indices[1])
             
-            mask = (self.cluster_shears_cat['cluster_id'] == id_cl)
-            bg_cat = self.cluster_shears_cat[mask]
+            bg_cat, _ = self.load_cluster_shear_catalog(cluster_cat_indices)
                
             print('For cluster', id_cl, 'at z=',z_cl,'with n_source = ',len(bg_cat["source_index"]) , 'theta_max is', np.max(bg_cat["distance_arcmin"]), ' arcmin =', clmm.utils.convert_units(np.max(bg_cat["distance_arcmin"]), 'arcmin', 'Mpc', z_cl, self.clmm_cosmo), 'Mpc')
-            
             
             # To use CLMM, need to have galaxy table in clmm.GCData type
             galcat = clmm.GCData(bg_cat, meta={"coordinate_system": self.coordinate_system, "profile_type": self.profile_type})
@@ -141,6 +170,8 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             cat_max_distance = (clmm.utils.convert_units(np.max(bg_cat["distance_arcmin"]), "arcmin", "Mpc", z_cl, self.clmm_cosmo) if shear_units == "mpc" else np.max(bg_cat["distance_arcmin"]))
             if cat_max_distance < self.distance_bins[-1]:
                 print ("!!! maximum distance of source smaller than distance_bins")
+
+            del bg_cat
 
             # Compute radial profile for the current cluster
             gc_object.make_radial_profile(
@@ -203,5 +234,3 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
                 
             
         return binned_cluster_stack
-
- 

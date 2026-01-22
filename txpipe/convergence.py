@@ -1,6 +1,7 @@
 import numpy as np
 from .base_stage import PipelineStage
 from .data_types import MapsFile, PNGFile
+from ceci.config import StageParameter
 
 
 class TXConvergenceMaps(PipelineStage):
@@ -9,6 +10,7 @@ class TXConvergenceMaps(PipelineStage):
 
     This uses the wlmassmap library, which is included as a submodule in TXPipe.
     """
+
     name = "TXConvergenceMaps"
     parallel = False
     inputs = [
@@ -20,8 +22,8 @@ class TXConvergenceMaps(PipelineStage):
     ]
 
     config_options = {
-        "lmax": 0,
-        "smoothing_sigma": 10.0,  # smoothing scale in arcmin
+        "lmax": StageParameter(int, 0, msg="Maximum multipole for convergence map (0 means 2*nside)."),
+        "smoothing_sigma": StageParameter(float, 10.0, msg="Smoothing scale in arcmin."),
     }
 
     def run(self):
@@ -101,10 +103,9 @@ class TXConvergenceMapPlots(PipelineStage):
     ]
 
     config_options = {
-        # can also set this parameter as:
-        # "moll" for Mollweide
-        # "orth" for Orthogonal
-        "projection": "cart",
+        "projection": StageParameter(
+            str, "cart", msg="Projection type for convergence map plots (e.g., cart, moll, orth)."
+        ),
     }
 
     def run(self):
@@ -118,9 +119,7 @@ class TXConvergenceMapPlots(PipelineStage):
         nbin_source = m.file["maps"].attrs["nbin_source"]
 
         # Open a PNG output file, specifying output size
-        fig = self.open_output(
-            "convergence_map", wrapper=True, figsize=(5 * nbin_source, 5)
-        )
+        fig = self.open_output("convergence_map", wrapper=True, figsize=(5 * nbin_source, 5))
 
         # 2 x nbin for kappa_E and kappa_B
         _, axes = plt.subplots(2, nbin_source, num=fig.file.number)

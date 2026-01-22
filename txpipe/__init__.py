@@ -2,6 +2,7 @@
 Pipeline modules for the 3x2pt (TX) project.
 
 """
+
 # Make sure any stages you want to use in a pipeline
 # are imported here.
 from .base_stage import PipelineStage
@@ -39,11 +40,10 @@ from .spatial_diagnostics import TXFocalPlanePlot
 from .lssweights import TXLSSWeights
 from .simulation import TXLogNormalGlass
 from .magnification import TXSSIMagnification
-from .extensions.twopoint_cluster import TXTwoPointCluster
-
-# Here are the stages that mostly will be used for other projects
-# such as the self-calibration of Intrinsic alignment.
-from .extensions.twopoint_scia import TXSelfCalibrationIA
-from .extensions.cluster_counts import CLClusterShearCatalogs, CLClusterBinningRedshiftRichness
-from .extensions.hos.fsb import HOSFSB
 from .covariance_nmt import TXFourierNamasterCovariance, TXRealNamasterCovariance
+
+# We no longer import all the extensions automatically here to avoid
+# some dependency problems when running under the LSST environment on NERSC.
+# You can still import them explicitly in your pipeline scripts by doing:
+# import txpipe.extensions
+# or you can add txpipe.extensions to the "modules" section in the a pipeline YML file.

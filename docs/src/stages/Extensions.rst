@@ -153,11 +153,11 @@ These stages are written for TXPipe extension projects.
             <LI><strong>do_pos_pos</strong>: (bool) Default=False. </LI>
             <LI><strong>do_shear_shear</strong>: (bool) Default=False. </LI>
             <LI><strong>var_method</strong>: (str) Default=jackknife. </LI>
-            <LI><strong>3Dcoords</strong>: (bool) Default=True. </LI>
+            <LI><strong>add_fiducial_distance</strong>: (bool) Default=True. </LI>
             <LI><strong>metric</strong>: (str) Default=Rperp. </LI>
             <LI><strong>use_true_shear</strong>: (bool) Default=False. </LI>
             <LI><strong>subtract_mean_shear</strong>: (bool) Default=False. </LI>
-            <LI><strong>redshift_shearcatalog</strong>: (bool) Default=False. </LI>
+            <LI><strong>copy_redshift</strong>: (bool) Default=False. </LI>
             <LI><strong>chunk_rows</strong>: (int) Default=100000. </LI>
             <LI><strong>use_subsampled_randoms</strong>: (bool) Default=False. </LI>
             </UL>

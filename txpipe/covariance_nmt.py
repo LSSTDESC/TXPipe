@@ -5,6 +5,7 @@ import warnings
 import os
 import pickle
 import sys
+from ceci.config import StageParameter
 
 # require TJPCov to be in PYTHONPATH
 d2r = np.pi / 180
@@ -19,6 +20,7 @@ class TXFourierNamasterCovariance(PipelineStage):
     This functionality duplicates that of TXFourierTJPCovariance, and we should
     rationalize.
     """
+
     name = "TXFourierNamasterCovariance"
     do_xi = False
 
@@ -34,10 +36,10 @@ class TXFourierNamasterCovariance(PipelineStage):
     ]
 
     config_options = {
-        "pickled_wigner_transform": "",
-        "use_true_shear": False,
-        "scratch_dir": "temp",
-        "nside": 1024,
+        "pickled_wigner_transform": StageParameter(str, "", msg="Path to pickled Wigner transform file."),
+        "use_true_shear": StageParameter(bool, False, msg="Whether to use true shear values."),
+        "scratch_dir": StageParameter(str, "temp", msg="Directory for temporary files."),
+        "nside": StageParameter(int, 1024, msg="HEALPix nside parameter."),
     }
 
     def run(self):
@@ -132,9 +134,7 @@ class TXFourierNamasterCovariance(PipelineStage):
         meta["theta"] = np.logspace(np.log10(1 / 60), np.log10(300.0 / 60), 3000)
 
         if rank == 0:
-            diclist, covsize = self.make_mpi_dict(
-                cosmo, meta, two_point_data=two_point_data
-            )
+            diclist, covsize = self.make_mpi_dict(cosmo, meta, two_point_data=two_point_data)
         else:
             diclist = None
             covsize = None
@@ -180,13 +180,18 @@ class TXFourierNamasterCovariance(PipelineStage):
         print("Length after cuts = ", len(two_point_data))
         two_point_data.to_canonical_order()
 
-        any_source = any(d.data_type in [sacc.standard_types.galaxy_shear_cl_ee, sacc.standard_types.galaxy_shearDensity_cl_e] for d in two_point_data.data)
-        any_lens = any(d.data_type in [sacc.standard_types.galaxy_shearDensity_cl_e, sacc.standard_types.galaxy_density_cl] for d in two_point_data.data)
+        any_source = any(
+            d.data_type in [sacc.standard_types.galaxy_shear_cl_ee, sacc.standard_types.galaxy_shearDensity_cl_e]
+            for d in two_point_data.data
+        )
+        any_lens = any(
+            d.data_type in [sacc.standard_types.galaxy_shearDensity_cl_e, sacc.standard_types.galaxy_density_cl]
+            for d in two_point_data.data
+        )
 
         return two_point_data, any_source, any_lens
 
     def read_number_statistics(self, any_source, any_lens):
-
         # Read the bits of the metadata that we need
         with self.open_input("tracer_metadata") as input_data:
             # area in sq deg
@@ -203,10 +208,9 @@ class TXFourierNamasterCovariance(PipelineStage):
 
             if any_lens:
                 N_lens = input_data["tracers/lens_counts"][:]
-                
+
         if area_unit != "deg^2":
             raise ValueError("Units of area have changed")
-
 
         # area in steradians and sky fraction
         area = area_deg2 * np.radians(1) ** 2
@@ -219,7 +223,6 @@ class TXFourierNamasterCovariance(PipelineStage):
             "f_sky": f_sky,
         }
 
-
         # General bits
         print(f"area =  {area_deg2:.1f} deg^2")
         print(f"f_sky:  {f_sky}")
@@ -230,7 +233,7 @@ class TXFourierNamasterCovariance(PipelineStage):
             n_lens_arcmin = N_lens / area_arcmin2
             print(f"N_lens: {N_lens} (totals)")
             print(f"lens density: {n_lens} / steradian")
-            print(f"            = {np.around(n_lens_arcmin,2)} / arcmin")
+            print(f"            = {np.around(n_lens_arcmin, 2)} / arcmin")
             meta["n_lens"] = n_lens
 
         # Source-related bits
@@ -239,11 +242,9 @@ class TXFourierNamasterCovariance(PipelineStage):
             n_eff_arcmin = N_eff / area_arcmin2
             print(f"N_eff:  {N_eff} (totals)")
             print(f"n_eff:  {n_eff} / steradian")
-            print(f"     =  {np.around(n_eff_arcmin,2)} / sq arcmin")
+            print(f"     =  {np.around(n_eff_arcmin, 2)} / sq arcmin")
             meta["sigma_e"] = sigma_e
             meta["n_eff"] = n_eff
-
-
 
         return meta
 
@@ -272,9 +273,7 @@ class TXFourierNamasterCovariance(PipelineStage):
             s1 = spins[0]
             s2 = spins[1]
             self.w = nmt.NmtWorkspace()
-            self.w.compute_coupling_matrix(
-                getattr(self, f"f{s1}"), getattr(self, f"f{s2}"), self.b
-            )
+            self.w.compute_coupling_matrix(getattr(self, f"f{s1}"), getattr(self, f"f{s2}"), self.b)
             self.w.write_to(f"{self.scratch_dir}/w{s1}{s2}.fits")
 
     def read_w(self):
@@ -353,7 +352,6 @@ class TXFourierNamasterCovariance(PipelineStage):
         tracer_noise = {}
 
         for tracer in two_point_data.tracers:
-
             # Pull out the integer corresponding to the tracer index
             tracer_dat = two_point_data.get_tracer(tracer)
             nbin = int(two_point_data.tracers[tracer].name.split("_")[1])
@@ -366,9 +364,7 @@ class TXFourierNamasterCovariance(PipelineStage):
             if "source" in tracer or "src" in tracer:
                 sigma_e = meta["sigma_e"][nbin]
                 n_eff = meta["n_eff"][nbin]
-                ccl_tracers[tracer] = ccl.WeakLensingTracer(
-                    cosmo, dndz=(z, nz)
-                )  # CCL automatically normalizes dNdz
+                ccl_tracers[tracer] = ccl.WeakLensingTracer(cosmo, dndz=(z, nz))  # CCL automatically normalizes dNdz
                 tracer_noise[tracer] = sigma_e**2 / n_eff
 
             # or if it is a lens bin then generaete the corresponding
@@ -377,9 +373,7 @@ class TXFourierNamasterCovariance(PipelineStage):
                 b = 1.0 * np.ones(len(z))  # place holder
                 n_gal = meta["n_lens"][nbin]
                 tracer_noise[tracer] = 1 / n_gal
-                ccl_tracers[tracer] = ccl.NumberCountsTracer(
-                    cosmo, has_rsd=False, dndz=(z, nz), bias=(z, b)
-                )
+                ccl_tracers[tracer] = ccl.NumberCountsTracer(cosmo, has_rsd=False, dndz=(z, nz), bias=(z, b))
 
         return ccl_tracers, tracer_noise
 
@@ -471,18 +465,10 @@ class TXFourierNamasterCovariance(PipelineStage):
         # The shape noise C_ell values.
         # These are zero for cross bins and as computed earlier for auto bins
         SN = {}
-        SN[13] = (
-            tracer_Noise[tracer_comb1[0]] if tracer_comb1[0] == tracer_comb2[0] else 0
-        )
-        SN[24] = (
-            tracer_Noise[tracer_comb1[1]] if tracer_comb1[1] == tracer_comb2[1] else 0
-        )
-        SN[14] = (
-            tracer_Noise[tracer_comb1[0]] if tracer_comb1[0] == tracer_comb2[1] else 0
-        )
-        SN[23] = (
-            tracer_Noise[tracer_comb1[1]] if tracer_comb1[1] == tracer_comb2[0] else 0
-        )
+        SN[13] = tracer_Noise[tracer_comb1[0]] if tracer_comb1[0] == tracer_comb2[0] else 0
+        SN[24] = tracer_Noise[tracer_comb1[1]] if tracer_comb1[1] == tracer_comb2[1] else 0
+        SN[14] = tracer_Noise[tracer_comb1[0]] if tracer_comb1[0] == tracer_comb2[1] else 0
+        SN[23] = tracer_Noise[tracer_comb1[1]] if tracer_comb1[1] == tracer_comb2[0] else 0
 
         # The tjp part of the covariance
 
@@ -495,20 +481,12 @@ class TXFourierNamasterCovariance(PipelineStage):
         # Initial covariance of C_ell components
         cov_tjp = {}
 
-        cov_tjp[1324] = (
-            np.outer(cl_tjp[13] + SN[13], cl_tjp[24] + SN[24]) * coupling_mat[1324]
-        )
-        cov_tjp[1423] = (
-            np.outer(cl_tjp[14] + SN[14], cl_tjp[23] + SN[23]) * coupling_mat[1423]
-        )
+        cov_tjp[1324] = np.outer(cl_tjp[13] + SN[13], cl_tjp[24] + SN[24]) * coupling_mat[1324]
+        cov_tjp[1423] = np.outer(cl_tjp[14] + SN[14], cl_tjp[23] + SN[23]) * coupling_mat[1423]
 
         # for shear-shear components we also add a B-mode contribution
-        first_is_shear_shear = ("source" in tracer_comb1[0]) and (
-            "source" in tracer_comb1[1]
-        )
-        second_is_shear_shear = ("source" in tracer_comb2[0]) and (
-            "source" in tracer_comb2[1]
-        )
+        first_is_shear_shear = ("source" in tracer_comb1[0]) and ("source" in tracer_comb1[1])
+        second_is_shear_shear = ("source" in tracer_comb2[0]) and ("source" in tracer_comb2[1])
 
         if self.do_xi and (first_is_shear_shear or second_is_shear_shear):
             # this adds the B-mode shape noise contribution.
@@ -520,16 +498,8 @@ class TXFourierNamasterCovariance(PipelineStage):
                 Bmode_F = -1
             # below the we multiply zero to maintain the shape of the Cl array, these are effectively
             # B-modes
-            cov_tjp[1324] += (
-                np.outer(cl_tjp[13] * 0 + SN[13], cl_tjp[24] * 0 + SN[24])
-                * coupling_mat[1324]
-                * Bmode_F
-            )
-            cov_tjp[1423] += (
-                np.outer(cl_tjp[14] * 0 + SN[14], cl_tjp[23] * 0 + SN[23])
-                * coupling_mat[1423]
-                * Bmode_F
-            )
+            cov_tjp[1324] += np.outer(cl_tjp[13] * 0 + SN[13], cl_tjp[24] * 0 + SN[24]) * coupling_mat[1324] * Bmode_F
+            cov_tjp[1423] += np.outer(cl_tjp[14] * 0 + SN[14], cl_tjp[23] * 0 + SN[23]) * coupling_mat[1423] * Bmode_F
 
         cov_tjp["final"] = cov_tjp[1423] + cov_tjp[1324]
 
@@ -543,9 +513,7 @@ class TXFourierNamasterCovariance(PipelineStage):
 
         nmt_input = self.get_nmt_input(tracer_comb1, tracer_comb2, cl_nmt, SN)
 
-        nmt_input_bmode = self.get_nmt_input_bmode(
-            tracer_comb1, tracer_comb2, cl_nmt, SN
-        )
+        nmt_input_bmode = self.get_nmt_input_bmode(tracer_comb1, tracer_comb2, cl_nmt, SN)
 
         nmt_cov = nmt.gaussian_covariance(
             cw,
@@ -563,12 +531,8 @@ class TXFourierNamasterCovariance(PipelineStage):
         ).reshape(shape)[:, 0, :, 0]
 
         # for shear-shear components we also add a B-mode contribution
-        first_is_shear_shear = ("source" in tracer_comb1[0]) and (
-            "source" in tracer_comb1[1]
-        )
-        second_is_shear_shear = ("source" in tracer_comb2[0]) and (
-            "source" in tracer_comb2[1]
-        )
+        first_is_shear_shear = ("source" in tracer_comb1[0]) and ("source" in tracer_comb1[1])
+        second_is_shear_shear = ("source" in tracer_comb2[0]) and ("source" in tracer_comb2[1])
 
         if self.do_xi and (first_is_shear_shear or second_is_shear_shear):
             Bmode_F = 1
@@ -668,12 +632,7 @@ class TXFourierNamasterCovariance(PipelineStage):
             s1_s2_2 = s1_s2_2["plus"]
         w1spin = str(abs(s1_s2_1[0])) + str(abs(s1_s2_1[1]))
         w2spin = str(abs(s1_s2_2[0])) + str(abs(s1_s2_2[1]))
-        nmtspin = (
-            str(abs(s1_s2_1[0]))
-            + str(abs(s1_s2_1[1]))
-            + str(abs(s1_s2_2[0]))
-            + str(abs(s1_s2_2[1]))
-        )
+        nmtspin = str(abs(s1_s2_1[0])) + str(abs(s1_s2_1[1])) + str(abs(s1_s2_2[0])) + str(abs(s1_s2_2[1]))
         return w1spin, w2spin, nmtspin
 
     def get_nmt_shape(self, tracer_comb1, tracer_comb2, meta):
@@ -691,7 +650,6 @@ class TXFourierNamasterCovariance(PipelineStage):
         return [nell, dim2, nell, dim4]
 
     def get_nmt_input(self, tracer_comb1, tracer_comb2, cl_nmt, SN):
-
         s1_s2_1 = self.get_spins(tracer_comb1)
         s1_s2_2 = self.get_spins(tracer_comb2)
         if isinstance(s1_s2_1, dict):
@@ -729,7 +687,6 @@ class TXFourierNamasterCovariance(PipelineStage):
         return nmt_input
 
     def get_nmt_input_bmode(self, tracer_comb1, tracer_comb2, cl_nmt, SN):
-
         s1_s2_1 = self.get_spins(tracer_comb1)
         s1_s2_2 = self.get_spins(tracer_comb2)
         if isinstance(s1_s2_1, dict):
@@ -863,9 +820,7 @@ class TXFourierNamasterCovariance(PipelineStage):
 
             for j in range(i, N2pt):
                 tracer_comb2 = tracer_combs[j]
-                print(
-                    f"Computing {tracer_comb1} x {tracer_comb2}: chunk ({i},{j}) of ({N2pt},{N2pt})"
-                )
+                print(f"Computing {tracer_comb1} x {tracer_comb2}: chunk ({i},{j}) of ({N2pt},{N2pt})")
 
                 count_xi_pm2 = 1 if j in range(xim_start, xim_end) else 0
 
@@ -874,7 +829,6 @@ class TXFourierNamasterCovariance(PipelineStage):
                     and ("source" in tracer_comb1[0] and "source" in tracer_comb1[1])
                     or ("source" in tracer_comb2[0] and "source" in tracer_comb2[1])
                 ):
-
                     dic = {
                         "ij": (i, j),
                         "tracer_comb1": tracer_comb1,
@@ -904,9 +858,7 @@ class TXFourierNamasterCovariance(PipelineStage):
     def compute_covariance(self, cosmo, meta, two_point_data, diclist):
         from tjpcov.wigner_transform import bin_cov
 
-        ccl_tracers, tracer_Noise = self.get_tracer_info(
-            cosmo, meta, two_point_data=two_point_data
-        )
+        ccl_tracers, tracer_Noise = self.get_tracer_info(cosmo, meta, two_point_data=two_point_data)
         # we will loop over all these
         tracer_combs = two_point_data.get_tracer_combinations()
         N2pt = len(tracer_combs)
@@ -1016,6 +968,7 @@ class TXRealNamasterCovariance(TXFourierNamasterCovariance):
     We don't yet have another stage for this, but should rationalize
     when comparing to TJPCov.
     """
+
     name = "TXRealNamasterCovariance"
     do_xi = True
 
@@ -1031,10 +984,10 @@ class TXRealNamasterCovariance(TXFourierNamasterCovariance):
     ]
 
     config_options = {
-        "pickled_wigner_transform": "",
-        "use_true_shear": False,
-        "galaxy_bias": [0.0],
-        "scratch_dir": "temp",
+        "pickled_wigner_transform": StageParameter(str, "", msg="Path to pickled Wigner transform file."),
+        "use_true_shear": StageParameter(bool, False, msg="Whether to use true shear values."),
+        "galaxy_bias": StageParameter(list, [0.0], msg="Galaxy bias values."),
+        "scratch_dir": StageParameter(str, "temp", msg="Directory for temporary files."),
     }
 
     def run(self):
@@ -1069,8 +1022,19 @@ class TXRealNamasterCovariance(TXFourierNamasterCovariance):
 
         two_point_data.to_canonical_order()
 
-        any_source = any(d.data_type in [sacc.standard_types.galaxy_shearDensity_xi_t, sacc.standard_types.galaxy_shear_xi_plus, sacc.standard_types.galaxy_shear_xi_minus] for d in two_point_data.data)
-        any_lens = any(d.data_type in [sacc.standard_types.galaxy_density_xi, sacc.standard_types.galaxy_shearDensity_xi_t] for d in two_point_data.data)
+        any_source = any(
+            d.data_type
+            in [
+                sacc.standard_types.galaxy_shearDensity_xi_t,
+                sacc.standard_types.galaxy_shear_xi_plus,
+                sacc.standard_types.galaxy_shear_xi_minus,
+            ]
+            for d in two_point_data.data
+        )
+        any_lens = any(
+            d.data_type in [sacc.standard_types.galaxy_density_xi, sacc.standard_types.galaxy_shearDensity_xi_t]
+            for d in two_point_data.data
+        )
 
         return two_point_data, any_source, any_lens
 

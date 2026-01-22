@@ -1,11 +1,7 @@
 from ..base_stage import PipelineStage
 from ..data_types import ShearCatalog, HDFFile, TextFile, QPPDFFile
-from ..utils import (
-    band_variants,
-    metacal_variants,
-    metadetect_variants,
-    Timer
-)
+from ..utils import band_variants, metacal_variants, metadetect_variants, Timer
+from ceci.config import StageParameter
 import numpy as np
 
 
@@ -32,24 +28,27 @@ class TXCosmoDC2Mock(PipelineStage):
     ]
 
     config_options = {
-        "cat_name": "cosmoDC2",
-        "visits_per_band": 165,  # used in the noise simulation
-        "snr_limit": 4.0,  # used to decide what objects to cut out
-        "max_size": 99999999999999,  # for testing on smaller catalogs
-        "extra_cols": "",  # string-separated list of columns to include
-        "max_npix": 99999999999999,
-        "unit_response": False,
-        "cat_size": 0,
-        "flip_g2": True,  # this matches the metacal definition, and the treecorr/namaster one
-        "apply_mag_cut": False,  # used when comparing to descqa measurements
-        "Mag_r_limit": -19,  # used to decide what objects to cut out
-        "metadetect": True,  # Alternatively we will mock a  metacal catalog
-        "add_shape_noise": True,
-        "healpixels": [-1],
+        "cat_name": StageParameter(str, "cosmoDC2", msg="Name of the mock catalog to use."),
+        "visits_per_band": StageParameter(int, 165, msg="Number of visits per band for noise simulation."),
+        "snr_limit": StageParameter(float, 4.0, msg="S/N limit for object selection."),
+        "max_size": StageParameter(int, 99999999999999, msg="Maximum catalog size for testing."),
+        "extra_cols": StageParameter(str, "", msg="Extra columns to include (space-separated)."),
+        "max_npix": StageParameter(int, 99999999999999, msg="Maximum number of pixels."),
+        "unit_response": StageParameter(bool, False, msg="Whether to use unit response in simulation."),
+        "cat_size": StageParameter(int, 0, msg="Pre-computed catalog size, if known."),
+        "flip_g2": StageParameter(
+            bool, True, msg="Whether to flip g2 sign to match conventions. TreeCorr and NaMaster use flip_g2=True"
+        ),
+        "apply_mag_cut": StageParameter(bool, False, msg="Apply magnitude cut for descqa comparison."),
+        "Mag_r_limit": StageParameter(float, -19, msg="Magnitude r limit for object selection."),
+        "metadetect": StageParameter(
+            bool, True, msg="Whether to make a metadetect-style catalog (True) or metacal (False)."
+        ),
+        "add_shape_noise": StageParameter(bool, True, msg="Whether to add shape noise to simulation."),
+        "healpixels": StageParameter(list, [-1], msg="List of HEALPix pixels to use."),
     }
 
     def data_iterator(self, gc):
-
         # Columns we need from the cosmo simulation
         cols = [
             "mag_true_u_lsst",
@@ -81,7 +80,6 @@ class TXCosmoDC2Mock(PipelineStage):
             yield data
 
     def load_catalog(self):
-
         import GCRCatalogs
 
         cat_name = self.config["cat_name"]
@@ -90,12 +88,8 @@ class TXCosmoDC2Mock(PipelineStage):
         print(f"Loading from catalog {cat_name}")
 
         kw = {}
-        if self.config['healpixels'] != [-1]:
-            kw = {
-                "config_overwrite":{
-                    "healpix_pixels": self.config["healpixels"]
-                }
-            }
+        if self.config["healpixels"] != [-1]:
+            kw = {"config_overwrite": {"healpix_pixels": self.config["healpixels"]}}
 
         gc = GCRCatalogs.load_catalog(cat_name, **kw)
 
@@ -110,7 +104,6 @@ class TXCosmoDC2Mock(PipelineStage):
         return gc, N
 
     def run(self):
-
         gc, N = self.load_catalog()
 
         print(f"Rank {self.rank} loaded: length = {N}.")
@@ -119,9 +112,7 @@ class TXCosmoDC2Mock(PipelineStage):
         select_fraction = target_size / N
 
         if target_size != N:
-            print(
-                f"Will select approx {100*select_fraction:.2f}% of objects ({target_size})"
-            )
+            print(f"Will select approx {100 * select_fraction:.2f}% of objects ({target_size})")
 
         # Prepare output files
         metacal_file = self.open_output("shear_catalog", parallel=self.is_mpi())
@@ -145,7 +136,7 @@ class TXCosmoDC2Mock(PipelineStage):
             # This will be reduced later as we remove objects
             some_col = list(data.keys())[0]
             chunk_size = len(data[some_col])
-            print(f"Process {self.rank} read chunk {count} - {count+chunk_size} of {N}")
+            print(f"Process {self.rank} read chunk {count} - {count + chunk_size} of {N}")
             count += chunk_size
             # Select a random fraction of the catalog if we are cutting down
             # We can't just take the earliest galaxies because they are ordered
@@ -164,9 +155,7 @@ class TXCosmoDC2Mock(PipelineStage):
             # We have to do this after the photometry, so that we know if
             # the object is detected, but we can do it before making the mock
             # metacal info, saving us some time simulating un-needed objects
-            if (
-                self.config["snr_limit"] > 0
-            ):  # otherwise there is no need to run this function which is slow
+            if self.config["snr_limit"] > 0:  # otherwise there is no need to run this function which is slow
                 self.remove_undetected(data, mock_photometry)
 
             if self.config["apply_mag_cut"]:
@@ -243,7 +232,7 @@ class TXCosmoDC2Mock(PipelineStage):
             # than the largest self.rank value) is the total data length
             end = start + starting_points[-1]
             start = start + starting_points[self.rank]
-        print(f"- Rank {self.rank} writing output to {start}-{start+chunk_size}")
+        print(f"- Rank {self.rank} writing output to {start}-{start + chunk_size}")
         return start, end
 
     def setup_photometry_output(self, photo_file, target_size):
@@ -264,9 +253,7 @@ class TXCosmoDC2Mock(PipelineStage):
         # Extensible columns becase we don't know the size yet.
         # We will cut down the size at the end.
         for col in cols:
-            group.create_dataset(
-                col, (target_size,), maxshape=(target_size,), dtype="f8"
-            )
+            group.create_dataset(col, (target_size,), maxshape=(target_size,), dtype="f8")
 
         # The only non-float column for now
         group.create_dataset("id", (target_size,), maxshape=(target_size,), dtype="i8")
@@ -291,7 +278,7 @@ class TXCosmoDC2Mock(PipelineStage):
             "weight",
         ) + band_variants("riz", "mag", "mag_err", shear_catalog_type="metadetect")
 
-        # Store the truth values only for the primary catalog
+        # Store the truth values only for the primary catalog
         cols += ["00/true_g1", "00/true_g2", "00/redshift_true"]
 
         # Make group for all the photometry
@@ -301,16 +288,12 @@ class TXCosmoDC2Mock(PipelineStage):
         # Extensible columns becase we don't know the size yet.
         # We will cut down the size at the end.
         for col in cols:
-            group.create_dataset(
-                col, (target_size,), maxshape=(target_size,), dtype="f8"
-            )
+            group.create_dataset(col, (target_size,), maxshape=(target_size,), dtype="f8")
 
         # Integer columns
         int_cols = metadetect_variants("id", "flags")
         for col in int_cols:
-            group.create_dataset(
-                col, (target_size,), maxshape=(target_size,), dtype="i8"
-            )
+            group.create_dataset(col, (target_size,), maxshape=(target_size,), dtype="i8")
 
         return cols + int_cols
 
@@ -327,9 +310,7 @@ class TXCosmoDC2Mock(PipelineStage):
                 "mcal_psf_T_mean",
             ]
             + metacal_variants("mcal_g1", "mcal_g2", "mcal_T", "mcal_s2n", "mcal_T_err")
-            + band_variants(
-                "riz", "mcal_mag", "mcal_mag_err", shear_catalog_type="metacal"
-            )
+            + band_variants("riz", "mcal_mag", "mcal_mag_err", shear_catalog_type="metacal")
             + ["weight"]
         )
 
@@ -343,16 +324,12 @@ class TXCosmoDC2Mock(PipelineStage):
         # We will cut down the size at the end.
 
         for col in cols:
-            group.create_dataset(
-                col, (target_size,), maxshape=(target_size,), dtype="f8"
-            )
+            group.create_dataset(col, (target_size,), maxshape=(target_size,), dtype="f8")
 
         group.create_dataset("id", (target_size,), maxshape=(target_size,), dtype="i8")
 
         for col in metacal_variants("mcal_flags"):
-            group.create_dataset(
-                col, (target_size,), maxshape=(target_size,), dtype="i8"
-            )
+            group.create_dataset(col, (target_size,), maxshape=(target_size,), dtype="i8")
 
         return cols + ["id", "mcal_flags"]
 
@@ -440,9 +417,7 @@ class TXCosmoDC2Mock(PipelineStage):
         # The visit count affects the overall noise levels
         n_visit = self.config["visits_per_band"]
         # Do all the work in the function below
-        photo = make_mock_photometry(
-            n_visit, self.bands, data, self.config["unit_response"]
-        )
+        photo = make_mock_photometry(n_visit, self.bands, data, self.config["unit_response"])
 
         for col in self.config["extra_cols"].split():
             photo[col] = data[col]
@@ -471,18 +446,10 @@ class TXCosmoDC2Mock(PipelineStage):
         # Overall SNR for the three bands usually used for shape measurement
         # We use the true SNR not the estimated one, though these are pretty close
         snr = (photo["snr_r"] ** 2 + photo["snr_i"] ** 2 + photo["snr_z"] ** 2) ** 0.5
-        snr_1p = (
-            photo["snr_r_1p"] ** 2 + photo["snr_i_1p"] ** 2 + photo["snr_z_1p"] ** 2
-        ) ** 0.5
-        snr_1m = (
-            photo["snr_r_1m"] ** 2 + photo["snr_i_1m"] ** 2 + photo["snr_z_1m"] ** 2
-        ) ** 0.5
-        snr_2p = (
-            photo["snr_r_2p"] ** 2 + photo["snr_i_2p"] ** 2 + photo["snr_z_2p"] ** 2
-        ) ** 0.5
-        snr_2m = (
-            photo["snr_r_2m"] ** 2 + photo["snr_i_2m"] ** 2 + photo["snr_z_2m"] ** 2
-        ) ** 0.5
+        snr_1p = (photo["snr_r_1p"] ** 2 + photo["snr_i_1p"] ** 2 + photo["snr_z_1p"] ** 2) ** 0.5
+        snr_1m = (photo["snr_r_1m"] ** 2 + photo["snr_i_1m"] ** 2 + photo["snr_z_1m"] ** 2) ** 0.5
+        snr_2p = (photo["snr_r_2p"] ** 2 + photo["snr_i_2p"] ** 2 + photo["snr_z_2p"] ** 2) ** 0.5
+        snr_2m = (photo["snr_r_2m"] ** 2 + photo["snr_i_2m"] ** 2 + photo["snr_z_2m"] ** 2) ** 0.5
 
         if self.config["unit_response"]:
             assert np.allclose(snr, snr_1p)
@@ -519,9 +486,7 @@ class TXCosmoDC2Mock(PipelineStage):
             # Assume a 0.2 correlation between the size response
             # and the shear response.
             rho = 0.2
-            f = np.random.multivariate_normal(
-                [0.0, 0.0], [[1.0, rho], [rho, 1.0]], nobj
-            ).T
+            f = np.random.multivariate_normal([0.0, 0.0], [[1.0, rho], [rho, 1.0]], nobj).T
             R, R_size = f * R_std + R_mean
 
         # Convert magnitudes to fluxes according to the baseline
@@ -539,11 +504,9 @@ class TXCosmoDC2Mock(PipelineStage):
         if self.config["add_shape_noise"]:
             shape_noise = 0.26
         else:
-            shape_noise = 0.
-            
-        eps = np.random.normal(0, shape_noise, nobj) + 1.0j * np.random.normal(
-            0, shape_noise, nobj
-        )
+            shape_noise = 0.0
+
+        eps = np.random.normal(0, shape_noise, nobj) + 1.0j * np.random.normal(0, shape_noise, nobj)
         # True shears without shape noise
         g1 = data["shear_1"]
         g2 = data["shear_2"]
@@ -708,18 +671,10 @@ class TXCosmoDC2Mock(PipelineStage):
         # Overall SNR for the three bands usually used for shape measurement
         # We use the true SNR not the estimated one, though these are pretty close
         snr = (photo["snr_r"] ** 2 + photo["snr_i"] ** 2 + photo["snr_z"] ** 2) ** 0.5
-        snr_1p = (
-            photo["snr_r_1p"] ** 2 + photo["snr_i_1p"] ** 2 + photo["snr_z_1p"] ** 2
-        ) ** 0.5
-        snr_1m = (
-            photo["snr_r_1m"] ** 2 + photo["snr_i_1m"] ** 2 + photo["snr_z_1m"] ** 2
-        ) ** 0.5
-        snr_2p = (
-            photo["snr_r_2p"] ** 2 + photo["snr_i_2p"] ** 2 + photo["snr_z_2p"] ** 2
-        ) ** 0.5
-        snr_2m = (
-            photo["snr_r_2m"] ** 2 + photo["snr_i_2m"] ** 2 + photo["snr_z_2m"] ** 2
-        ) ** 0.5
+        snr_1p = (photo["snr_r_1p"] ** 2 + photo["snr_i_1p"] ** 2 + photo["snr_z_1p"] ** 2) ** 0.5
+        snr_1m = (photo["snr_r_1m"] ** 2 + photo["snr_i_1m"] ** 2 + photo["snr_z_1m"] ** 2) ** 0.5
+        snr_2p = (photo["snr_r_2p"] ** 2 + photo["snr_i_2p"] ** 2 + photo["snr_z_2p"] ** 2) ** 0.5
+        snr_2m = (photo["snr_r_2m"] ** 2 + photo["snr_i_2m"] ** 2 + photo["snr_z_2m"] ** 2) ** 0.5
 
         if self.config["unit_response"]:
             assert np.allclose(snr, snr_1p)
@@ -756,9 +711,7 @@ class TXCosmoDC2Mock(PipelineStage):
             # Assume a 0.2 correlation between the size response
             # and the shear response.
             rho = 0.2
-            f = np.random.multivariate_normal(
-                [0.0, 0.0], [[1.0, rho], [rho, 1.0]], nobj
-            ).T
+            f = np.random.multivariate_normal([0.0, 0.0], [[1.0, rho], [rho, 1.0]], nobj).T
             R, R_size = f * R_std + R_mean
 
         # Convert magnitudes to fluxes according to the baseline
@@ -776,11 +729,9 @@ class TXCosmoDC2Mock(PipelineStage):
         if self.config["add_shape_noise"]:
             shape_noise = 0.26
         else:
-            shape_noise = 0.
-            
-        eps = np.random.normal(0, shape_noise, nobj) + 1.0j * np.random.normal(
-            0, shape_noise, nobj
-        )
+            shape_noise = 0.0
+
+        eps = np.random.normal(0, shape_noise, nobj) + 1.0j * np.random.normal(0, shape_noise, nobj)
         # True shears without shape noise
         g1 = data["shear_1"]
         g2 = data["shear_2"]
@@ -939,11 +890,7 @@ class TXCosmoDC2Mock(PipelineStage):
         # the protoDC2 sims have an edge with zero shear.
         # Remove it.
         zero_shear_edge = (abs(data["shear_1"]) == 0) & (abs(data["shear_2"]) == 0)
-        print(
-            "Removing {} objects with identically zero shear in both terms".format(
-                zero_shear_edge.sum()
-            )
-        )
+        print("Removing {} objects with identically zero shear in both terms".format(zero_shear_edge.sum()))
 
         detected &= ~zero_shear_edge
 
@@ -980,14 +927,14 @@ class TXBuzzardMock(TXCosmoDC2Mock):
     ]
 
     config_options = {
-        "cat_name": "buzzard",
-        "visits_per_band": 165,  # used in the noise simulation
-        "snr_limit": 4.0,  # used to decide what objects to cut out
-        "max_size": 99999999999999,  # for testing on smaller catalogs
-        "extra_cols": "",  # string-separated list of columns to include
-        "max_npix": 99999999999999,
-        "unit_response": False,
-        "flip_g2": True,  # this matches the metacal definition, and the treecorr/namaster one
+        "cat_name": StageParameter(str, "buzzard", msg="Name of the mock catalog to use."),
+        "visits_per_band": StageParameter(int, 165, msg="Number of visits per band for noise simulation."),
+        "snr_limit": StageParameter(float, 4.0, msg="S/N limit for object selection."),
+        "max_size": StageParameter(int, 99999999999999, msg="Maximum catalog size for testing."),
+        "extra_cols": StageParameter(str, "", msg="Extra columns to include (space-separated)."),
+        "max_npix": StageParameter(int, 99999999999999, msg="Maximum number of pixels."),
+        "unit_response": StageParameter(bool, False, msg="Whether to use unit response in simulation."),
+        "flip_g2": StageParameter(bool, True, msg="Whether to flip g2 sign to match conventions."),
     }
 
 
@@ -1014,22 +961,23 @@ class TXGaussianSimsMock(TXCosmoDC2Mock):
     ]
 
     config_options = {
-        "cat_name": "GaussianSims",
-        "visits_per_band": 165,  # used in the noise simulation
-        "snr_limit": 0.0,  # we want to keep all input objects here
-        "max_size": 99999999999999,  # for testing on smaller catalogs
-        "extra_cols": "",  # string-separated list of columns to include
-        "max_npix": 99999999999999,
-        "unit_response": True,
-        "cat_size": 0,
-        "flip_g2": False,  # this matches the metacal definition, and the treecorr/namaster one
-        "apply_mag_cut": False,  # used when comparing to descqa measurements
-        "metadetect": True,  # Alternatively we will mock a  metacal catalog
-        "add_shape_noise": False, # the input cats already have shape noise included
+        "cat_name": StageParameter(str, "GaussianSims", msg="Name of the Gaussian simulation catalog."),
+        "visits_per_band": StageParameter(int, 165, msg="Number of visits per band for noise simulation."),
+        "snr_limit": StageParameter(float, 0.0, msg="S/N limit for object selection (0 for all)."),
+        "max_size": StageParameter(int, 99999999999999, msg="Maximum catalog size for testing."),
+        "extra_cols": StageParameter(str, "", msg="Extra columns to include (space-separated)."),
+        "max_npix": StageParameter(int, 99999999999999, msg="Maximum number of pixels."),
+        "unit_response": StageParameter(bool, True, msg="Whether to use unit response in simulation."),
+        "cat_size": StageParameter(int, 0, msg="Catalog size (0 for all)."),
+        "flip_g2": StageParameter(bool, False, msg="Whether to flip g2 sign to match conventions."),
+        "apply_mag_cut": StageParameter(bool, False, msg="Apply magnitude cut for descqa comparison."),
+        "metadetect": StageParameter(
+            bool, True, msg="Whether to make a metadetect-style catalog (True) or metacal (False)."
+        ),
+        "add_shape_noise": StageParameter(bool, False, msg="Whether to add shape noise to simulation."),
     }
 
     def data_iterator(self, cat):
-
         # all cols we need
         (
             ra,
@@ -1092,8 +1040,8 @@ class TXGaussianSimsMock(TXCosmoDC2Mock):
 
         print(f"Loading from catalog {cat_name}")
 
-        cat = np.load(cat_name, allow_pickle = True)
-    
+        cat = np.load(cat_name, allow_pickle=True)
+
         N = len(cat[0])
 
         return cat, N
@@ -1223,13 +1171,13 @@ class TXSimpleMock(PipelineStage):
     """
     Load an ascii astropy table and put it in shear catalog format.
     """
+
     name = "TXSimpleMock"
     parallel = False
     inputs = [("mock_shear_catalog", TextFile)]
     outputs = [("shear_catalog", ShearCatalog)]
-    config_options = {
-        "mock_size_snr": False,
-    }
+    config_options = {}
+
     def run(self):
         from astropy.table import Table
         import numpy as np
@@ -1240,10 +1188,10 @@ class TXSimpleMock(PipelineStage):
         n = len(input_data)
 
         data = {}
-        # required columns
+        # required columns
         for col in ["ra", "dec", "g1", "g2", "s2n", "T"]:
             data[col] = input_data[col]
-        
+
         # It's most likely we will have a redshift column.
         # Check for both that and "redshift_true"
         if "redshift" in input_data.colnames:
@@ -1251,7 +1199,7 @@ class TXSimpleMock(PipelineStage):
         elif "redshift_true" in input_data.colnames:
             data["redshift_true"] = input_data["redshift_true"]
 
-        # If there is an ID column then use it, but otherwise just use
+        # If there is an ID column then use it, but otherwise just use
         # sequential IDs
         if "id" in input_data.colnames:
             data["galaxy_id"] = input_data["id"]
@@ -1263,7 +1211,7 @@ class TXSimpleMock(PipelineStage):
             "T_err": 0.0,
             "psf_g1": 0.0,
             "psf_g2": 0.0,
-            "psf_T_mean": 0.202, # this corresponds to a FWHM of 0.75 arcsec
+            "psf_T_mean": 0.202,  # this corresponds to a FWHM of 0.75 arcsec
             "weight": 1.0,
             "flags": 0,
         }
@@ -1275,7 +1223,7 @@ class TXSimpleMock(PipelineStage):
                 data[key] = np.full(n, value)
 
         self.save_catalog(data)
-        
+
     def save_catalog(self, data):
         with self.open_output("shear_catalog") as f:
             g = f.create_group("shear")
@@ -1290,13 +1238,14 @@ class TXMockTruthPZ(PipelineStage):
     inputs = [("shear_catalog", ShearCatalog)]
     outputs = [("photoz_pdfs", QPPDFFile)]
     config_options = {
-        "mock_sigma_z": 0.001,
+        "mock_sigma_z": StageParameter(float, 0.001, msg="Sigma_z for mock photo-z PDF generation."),
     }
+
     def run(self):
         import qp
         import numpy as np
-        sigma_z = self.config["mock_sigma_z"]
 
+        sigma_z = self.config["mock_sigma_z"]
 
         # read the input truth redshifts
         with self.open_input("shear_catalog", wrapper=True) as f:
@@ -1308,15 +1257,13 @@ class TXMockTruthPZ(PipelineStage):
         pdfs = np.zeros((n, len(zgrid)))
 
         spread_z = sigma_z * (1 + redshifts)
-        # make a gaussian PDF for each object
+        # make a gaussian PDF for each object
         delta = zgrid[np.newaxis, :] - redshifts[:, np.newaxis]
-        pdfs = np.exp(-0.5 * (delta / spread_z[:, np.newaxis])**2) / np.sqrt(2 * np.pi) / spread_z[:, np.newaxis]
-        
+        pdfs = np.exp(-0.5 * (delta / spread_z[:, np.newaxis]) ** 2) / np.sqrt(2 * np.pi) / spread_z[:, np.newaxis]
+
         q = qp.Ensemble(qp.interp, data=dict(xvals=zgrid, yvals=pdfs))
         q.set_ancil(dict(zmode=redshifts, zmean=redshifts, zmedian=redshifts))
         q.write_to(self.get_output("photoz_pdfs"))
-
-
 
 
 def test():
@@ -1335,5 +1282,3 @@ def test():
     results = make_mock_photometry(n_visit, bands, data, True)
     pylab.hist(results["snr_r"], bins=50, histtype="step")
     pylab.savefig("snr_r.png")
-
-

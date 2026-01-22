@@ -117,9 +117,10 @@ stages:
   - name: TXApertureMass          # Compute aperture-mass statistics
     threads_per_process: 2
   - name: TXTwoPointFourier      # Compute power spectra C_ell
+  - name: TXTwoPointFourierCatalog
   - name: HOSFSB
     # Disabled since not yet synchronised with new Treecorr MPI
-    # - name: TXSelfCalibrationIA   # Self-calibration intrinsic alignments of galaxies
+  - name: TXTwoPointSCIA   # Self-calibration intrinsic alignments of galaxies
 
     # Disabling these as they takes too long for a quick test.
     # The latter two need NaMaster
@@ -133,6 +134,7 @@ stages:
 # stages defined in them
 modules: >
     txpipe
+    txpipe.extensions
     txpipe.extensions.hos.fsb
     rail.creation.degraders.grid_selection
     rail.creation.engines.flowEngine
@@ -168,14 +170,14 @@ inputs:
     # See README for paths to download these files
     shear_catalog: data/example/inputs/metadetect_shear_catalog.hdf5
     photometry_catalog: data/example/inputs/photometry_catalog.hdf5
-    calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
     exposures: data/example/inputs/exposures.hdf5
     star_catalog: data/example/inputs/star_catalog.hdf5
     # This file comes with the code
     fiducial_cosmology: data/fiducial_cosmology.yml
-    # For the self-calibration extension we are not using Random_cat_source for now
-    # So it is set to Null, so the yaml intepreter returns a None value to python. 
-    random_cats_source:
+    # For the self-calibration extension if we are not using random_catalog_source for now
+    # So it is set to Null, so the yaml intepreter returns a None value to python. OBS 
+    # the binned_random_catalog_source should also be set to Null in this case.
+    binned_random_catalog_source: None
     flow: data/example/inputs/example_flow.pkl
 
 # if supported by the launcher, restart the pipeline where it left off

@@ -7,8 +7,10 @@ from ..utils import (
     nanojansky_to_mag_ab,
     nanojansky_err_to_mag_ab,
 )
+from .base import TXIngestCatalogBase, TXIngestCatalogFits
 import numpy as np
 import warnings
+from ceci.config import StageParameter
 
 # translate between GCR and TXpipe column names
 column_names = {
@@ -16,126 +18,8 @@ column_names = {
     "coord_dec": "dec",
 }
 
-class TXIngestSSI(PipelineStage):
-    """
-    Base-Class for ingesting SSI catalogs
 
-    These can be GCR catalogs, or precursor surveys
-    """
-
-    name = "TXIngestSSI"
-
-    def create_photometry(self, input_name, output_name, column_names, dummy_columns):
-        """
-        Create and save photometry dataset from an input catalog.
-
-        This method sets up the output HDF5 file structure and processes photometry
-        data from the input catalog. It maps the input columns to the desired output
-        column names, creates datasets for photometric magnitudes and their errors,
-        and iterates over chunks of data to save them in the output file.
-
-        Parameters
-        ----------
-        input_name : str
-            name of (FITS) input
-
-        output_name : str
-            name of (HDF5) output
-
-        column_names : dict
-            A dictionary mapping the input column names to the desired output column names.
-            Keys are input column names, and values are the corresponding output names.
-
-        dummy_columns : dict
-            A dictionary of columns to be added to the output with fixed values.
-            Keys are the names of the dummy columns, and values are the constant values
-            to fill those columns.
-
-        """
-        # get some basic onfo about the input file
-        f = self.open_input(input_name)
-        n = f[1].get_nrows()
-        dtypes = f[1].get_rec_dtype()[0]
-        f.close()
-
-        chunk_rows = self.config["chunk_rows"]
-
-        # set up the output file columns 
-        output, g = self.setup_output(output_name, column_names, dtypes, n)
-
-        # iterate over the input file and save to the output columns
-        self.add_columns(g, input_name, column_names, chunk_rows, n)
-
-        # Set up any dummy columns with sentinal values
-        # that were not in the original files
-        for col_name in dummy_columns.keys():
-            g.create_dataset(col_name, data=np.full(n, dummy_columns[col_name]))
-
-        output.close()
-
-    def setup_output(self, output_name, column_names, dtypes, n):
-        """
-        Set up the output HDF5 file structure.
-
-        Parameters
-        ----------
-        output_name : str
-            The name of the output HDF5 file.
-
-        column_names : dict
-            dict of column names to include in the output file.
-
-        dtypes : dict
-            A dictionary mapping column names to their corresponding data types.
-
-        n : int
-            The total number of rows in the dataset.
-
-        Returns
-        -------
-        tuple
-            A tuple containing the open HDF5 output file object and the "photometry" group.
-        """
-        cols = list(column_names.keys())
-        output = self.open_output(output_name)
-        g = output.create_group("photometry")
-        for col in cols:
-            dtype = dtypes[col]
-            g.create_dataset(column_names[col], (n,), dtype=dtype)
-        
-        return output, g
-
-    def add_columns(self, g, input_name, column_names, chunk_rows, n):
-        """
-        Add data to the HDF5 output file in chunks.
-
-        This method reads chunks of data from the input file and writes them
-        to the corresponding datasets in the output file.
-
-        Parameters
-        ----------
-        g : h5py.Group
-            The HDF5 group where data will be written.
-
-        input_name : str
-            The name of the input file (e.g., a FITS file).
-
-        column_names : dict
-            Dict of column names to read from the input file.
-
-        chunk_rows : int
-            Number of rows to process in each chunk.
-
-        n : int
-            Total number of rows in the dataset.
-        """
-        cols = list(column_names.keys())
-        for s, e, data in self.iterate_fits(input_name, 1, cols, chunk_rows):
-            print(s, e, n)
-            for col in cols:
-                g[column_names[col]][s:e] = data[col]
-
-class TXIngestSSIGCR(TXIngestSSI):
+class TXIngestSSIGCR(TXIngestCatalogBase):
     """
     Ingest SSI catalogs using GCR
 
@@ -154,11 +38,15 @@ class TXIngestSSIGCR(TXIngestSSI):
     ]
 
     config_options = {
-        "injection_catalog_name": "",  # Catalog of objects manually injected
-        "ssi_photometry_catalog_name": "",  # Catalog of objects from real data with no injections
-        "ssi_uninjected_photometry_catalog_name": "",  # Catalog of objects from real data with no injections
-        "GCRcatalog_path": "",
-        "flux_name": "gaap3p0Flux",
+        "injection_catalog_name": StageParameter(str, "", msg="Catalog of objects manually injected."),
+        "ssi_photometry_catalog_name": StageParameter(
+            str, "", msg="Catalog of objects from real data with no injections."
+        ),
+        "ssi_uninjected_photometry_catalog_name": StageParameter(
+            str, "", msg="Catalog of objects from real data with no injections."
+        ),
+        "GCRcatalog_path": StageParameter(str, "", msg="Path to GCRCatalogs for SSI runs."),
+        "flux_name": StageParameter(str, "gaap3p0Flux", msg="Flux column name to use."),
     }
 
     def run(self):
@@ -213,15 +101,11 @@ class TXIngestSSIGCR(TXIngestSSI):
                         group[column_names[q]] = group[q]
 
                 except KeyError:  # skip quantities that are missing
-                    warnings.warn(
-                        f"quantity {q} was missing from the GCRCatalog object"
-                    )
+                    warnings.warn(f"quantity {q} was missing from the GCRCatalog object")
                     continue
 
                 except TypeError:
-                    warnings.warn(
-                        f"Quantity {q} coud not be saved as it has a data type not recognised by hdf5"
-                    )
+                    warnings.warn(f"Quantity {q} coud not be saved as it has a data type not recognised by hdf5")
 
             # convert fluxes to mags using txpipe/utils/conversion.py
             bands = "ugrizy"
@@ -229,15 +113,14 @@ class TXIngestSSIGCR(TXIngestSSI):
             for b in bands:
                 try:
                     mag = nanojansky_to_mag_ab(group[f"{b}_{flux_name}"][:])
-                    mag_err = nanojansky_err_to_mag_ab(
-                        group[f"{b}_{flux_name}"][:], group[f"{b}_{flux_name}Err"][:]
-                    )
+                    mag_err = nanojansky_err_to_mag_ab(group[f"{b}_{flux_name}"][:], group[f"{b}_{flux_name}Err"][:])
                     group.create_dataset(f"mag_{b}", data=mag)
                     group.create_dataset(f"mag_err_{b}", data=mag_err)
                 except KeyError:
                     warnings.warn(f"no flux {b}_{flux_name} in SSI GCR catalog")
 
             output_file.close()
+
 
 class TXMatchSSI(PipelineStage):
     """
@@ -261,9 +144,9 @@ class TXMatchSSI(PipelineStage):
     ]
 
     config_options = {
-        "chunk_rows": 100000,
-        "match_radius": 0.5,  # in arcseconds
-        "magnification": 0,  # magnification label
+        "chunk_rows": StageParameter(int, 100000, msg="Number of rows to process in each chunk."),
+        "match_radius": StageParameter(float, 0.5, msg="Matching radius in arcseconds."),
+        "magnification": StageParameter(int, 0, msg="Magnification label."),
     }
 
     def run(self):
@@ -312,9 +195,7 @@ class TXMatchSSI(PipelineStage):
 
         out_start = 0
         for ichunk, (in_start, in_end, data) in enumerate(
-            self.iterate_hdf(
-                "ssi_photometry_catalog", "photometry", ["ra", "dec"], batch_size
-            )
+            self.iterate_hdf("ssi_photometry_catalog", "photometry", ["ra", "dec"], batch_size)
         ):
             phot_coord = SkyCoord(
                 ra=data["ra"] * u.degree,
@@ -383,9 +264,7 @@ class TXMatchSSI(PipelineStage):
         """
         g = outfile[group]
         for name, col in phot_group.items():
-            g[name][start:end] = col[ichunk * batch_size : (ichunk + 1) * batch_size][
-                select_matches
-            ]
+            g[name][start:end] = col[ichunk * batch_size : (ichunk + 1) * batch_size][select_matches]
         for name, col in inj_group.items():
             g["inj_" + name][start:end] = col[idx][select_matches]
 
@@ -399,7 +278,8 @@ class TXMatchSSI(PipelineStage):
         outfile.close()
         return
 
-class TXIngestSSIDESBalrog(TXIngestSSI):
+
+class TXIngestSSIDESBalrog(TXIngestCatalogFits):
     """
     Base-stage for ingesting a DES SSI catalog AKA "Balrog"
     """
@@ -409,26 +289,28 @@ class TXIngestSSIDESBalrog(TXIngestSSI):
     def setup_output(self, output_name, column_names, dtypes, n):
         """
         For balrog, we need to include if statements to catch the 2D data entries
-        and possibly add an extendedness column
+        and add an extendedness column
         """
         cols = list(column_names.keys())
         output = self.open_output(output_name)
         g = output.create_group("photometry")
         for col in cols:
-            dtype = dtypes[col]
+            dtype = dtypes[column_names[col]]
 
-            if dtype.subdtype is not None: #this is a multi-dimentional column
-                assert dtype.subdtype[1]==(4,) #We are assuming this entry is a 2D array with 4 columns (corresponding to griz)
+            if dtype.subdtype is not None:  # this is a multi-dimentional column
+                assert dtype.subdtype[1] == (
+                    4,
+                )  # We are assuming this entry is a 2D array with 4 columns (corresponding to griz)
                 dtype = dtype.subdtype[0]
                 for b in "griz":
-                    g.create_dataset(column_names[col] + f"_{b}", (n,), dtype=dtype)
+                    g.create_dataset(col + f"_{b}", (n,), dtype=dtype)
             else:
-                g.create_dataset(column_names[col], (n,), dtype=dtype)
+                g.create_dataset(col, (n,), dtype=dtype)
 
             if col == "meas_EXTENDED_CLASS_SOF":
-                #also create an "extendedness" column
+                # also create an "extendedness" column
                 g.create_dataset("extendedness", (n,), dtype=dtype)
-        
+
         return output, g
 
     def add_columns(self, g, input_name, column_names, chunk_rows, n):
@@ -437,21 +319,22 @@ class TXIngestSSIDESBalrog(TXIngestSSI):
         and possibly add a extendedness column
         """
         cols = list(column_names.keys())
-        for s, e, data in self.iterate_fits(input_name, 1, cols, chunk_rows):
+        input_cols = np.unique(list(column_names.values()))
+        for s, e, data in self.iterate_fits(input_name, 1, input_cols, chunk_rows):
             print(s, e, n)
             for col in cols:
-                if len(data[col].shape) == 2:
-                    assert data[col].shape[1] == 4
+                if len(data[column_names[col]].shape) == 2:
+                    assert data[column_names[col]].shape[1] == 4
                     for iband, b in enumerate("griz"):
-                        g[column_names[col] + f"_{b}"][s:e] = data[col][:, iband]
+                        g[col + f"_{b}"][s:e] = data[column_names[col]][:, iband]
                 else:
-                    g[column_names[col]][s:e] = data[col]
-                
-                if col == "meas_EXTENDED_CLASS_SOF":
-                    # "meas_EXTENDED_CLASS_SOF" is (0 or 1) for star, (2 or 3) for galaxy
-                    # extendedness is 0 for star, 1 for galaxy
-                    extendedness = np.where((data[col] == 2) | (data[col] == 3), 1, 0) 
-                    g[column_names[col]][s:e] = extendedness
+                    g[col][s:e] = data[column_names[col]]
+
+                if col == "extendedness":
+                    # The DES classifier "meas_EXTENDED_CLASS_SOF" is (0 or 1) for star, (2 or 3) for galaxy
+                    # The current TXPipe classifier "extendedness" is 0 for star, 1 for galaxy
+                    extendedness = np.where((data[column_names[col]] == 2) | (data[column_names[col]] == 3), 1, 0)
+                    g[col][s:e] = extendedness
 
 
 class TXIngestSSIMatchedDESBalrog(TXIngestSSIDESBalrog):
@@ -478,32 +361,33 @@ class TXIngestSSIMatchedDESBalrog(TXIngestSSIDESBalrog):
         # we will only load a subset of columns to save space
         column_names = {
             "bal_id": "bal_id",  # Unique identifier for object (created during balrog process)
-            "true_bdf_mag_deredden": "inj_mag",  # Magnitude of the original deep field object, dereddened
-            "true_id": "inj_id",  # Original coadd_obj_id of deep field object
-            "meas_id": "id",  # Coadd_object_id of injection
-            "meas_ra": "ra",  # measured RA of the injection
-            "meas_dec": "dec",  # measured DEC of the injection
-            "meas_cm_mag_deredden": "mag",  # measured magnitude of the injection
-            "meas_cm_max_flux_s2n": "snr", # measured S2N of the injection
-            "meas_cm_T": "cm_T",  # measured size parameter T (x^2+y^2)
-            "meas_EXTENDED_CLASS_SOF": "EXTENDED_CLASS_SOF",  # Star galaxy classifier (0,1=star, 2,3=Galaxy)
-            "meas_FLAGS_GOLD_SOF_ONLY": "FLAGS_GOLD",  # Measured flags (short version)
+            "inj_mag": "true_bdf_mag_deredden",  # Magnitude of the original deep field object, dereddened
+            "inj_id": "true_id",  # Original coadd_obj_id of deep field object
+            "id": "meas_id",  # Coadd_object_id of injection
+            "ra": "meas_ra",  # measured RA of the injection
+            "dec": "meas_dec",  # measured DEC of the injection
+            "mag": "meas_cm_mag_deredden",  # measured magnitude of the injection
+            "snr": "meas_cm_max_flux_s2n",  # measured S2N of the injection
+            "cm_T": "meas_cm_T",  # measured size parameter T (x^2+y^2)
+            "EXTENDED_CLASS_SOF": "meas_EXTENDED_CLASS_SOF",  # Star galaxy classifier (0,1=star, 2,3=Galaxy)
+            "FLAGS_GOLD": "meas_FLAGS_GOLD_SOF_ONLY",  # Measured flags (short version)
         }
         dummy_columns = {
             "redshift_true": 10.0,
-            "meas_err_g":-99.,
-            "meas_err_r":-99.,
-            "meas_err_i":-99.,
-            "meas_err_z":-99.,
+            "mag_err_g": -99.0,
+            "mag_err_r": -99.0,
+            "mag_err_i": -99.0,
+            "mag_err_z": -99.0,
         }
 
-        self.create_photometry(
+        self.process_catalog(
             "balrog_matched_catalog",
             "matched_ssi_photometry_catalog",
             column_names,
             dummy_columns,
         )
-    
+
+
 class TXIngestSSIDetectionDESBalrog(TXIngestSSIDESBalrog):
     """
     Ingest an "SSI" "detection" catalog from DES (AKA Balrog)
@@ -530,16 +414,14 @@ class TXIngestSSIDetectionDESBalrog(TXIngestSSIDESBalrog):
         ## Extract the injection catalog
         column_names_inj = {
             "bal_id": "bal_id",  # Unique identifier for object (created during balrog process)
-            "true_ra": "ra",  # *injected* ra
-            "true_dec": "dec",  # *injected* dec
-            "true_bdf_mag_deredden": "inj_mag",  # true magnitude (de-reddened)
-            "meas_FLAGS_GOLD_SOF_ONLY": "flags",  # measured data flags
+            "ra": "true_ra",  # *injected* ra
+            "dec": "true_dec",  # *injected* dec
+            "inj_mag": "true_bdf_mag_deredden",  # true magnitude (de-reddened)
+            "flags": "meas_FLAGS_GOLD_SOF_ONLY",  # measured data flags
             "meas_EXTENDED_CLASS_SOF": "meas_EXTENDED_CLASS_SOF",  # star galaxy separator
         }
 
-        self.create_photometry(
-            "balrog_detection_catalog", "injection_catalog", column_names_inj, {}
-        )
+        self.process_catalog("balrog_detection_catalog", "injection_catalog", column_names_inj, {})
 
         # Extract the "detection" file
         # We will only load a subset of columns to save space
@@ -555,6 +437,4 @@ class TXIngestSSIDetectionDESBalrog(TXIngestSSIDESBalrog):
             "match_flag_2.0_asec": "match_flag_2.0_asec",
         }
 
-        self.create_photometry(
-            "balrog_detection_catalog", "ssi_detection_catalog", column_names_det, {}
-        )
+        self.process_catalog("balrog_detection_catalog", "ssi_detection_catalog", column_names_det, {})
