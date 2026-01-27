@@ -33,8 +33,6 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         "angle_arcmin_max" : 45.0, #in arcmin
         "nbins" : 5, # number of bins
         #type of profile
-        "delta_sigma_profile" : True,
-        "shear_profile" : False,
         "magnification_profile" : False,
         "units": "mpc" # options are mpc or arcmin
         #coordinate_system for shear
@@ -56,7 +54,7 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         self.distance_bins = clmm.dataops.make_bins(bin_min, bin_max, nbins=self.config["nbins"], method="evenlog10width")
         print (self.distance_bins) 
         
-        self.cluster_shears_cat, self.coordinate_system, self.profile_type = self.load_cluster_shear_catalog() 
+        self.cluster_shears_cat, self.coordinate_system, self.profile_type= self.load_cluster_shear_catalog() 
 
         print (self.coordinate_system) 
 
@@ -82,12 +80,13 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         if indices == None:
             with self.open_input("cluster_shear_catalogs") as f:
                 meta_coord_sys = f['provenance'].attrs['config/coordinate_system']
+                g_idx = f["index/"]
+                profile_type = g_idx.attrs.get("profile_type")
                 g = f["catalog/"]
                 cluster_id = g['cluster_id'][:]
                 cluster_sample_start = g['cluster_sample_start'][:]
                 cluster_sample_count = g['cluster_sample_count'][:]
                 cluster_theta_max_arcmin = g['cluster_theta_max_arcmin'][:]
-                profile_type = g.attrs["profile_type"]
             tab = Table({"cluster_id": cluster_id,
                          "cluster_sample_count": cluster_sample_count, "cluster_sample_start": cluster_sample_start,
                          "cluster_theta_max_arcmin": cluster_theta_max_arcmin})
@@ -100,9 +99,8 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             ifirst,icount = indices
             ilast = ifirst+icount
             meta_coord_sys = f['provenance'].attrs['config/coordinate_system']
-            cat_g = f["catalog/"]
-            profile_type = cat_g.attrs["profile_type"]
             g = f["index/"]
+            profile_type = g.attrs["profile_type"]
             cluster_index = g['cluster_index'][ifirst:ilast]
             cluster_id = g['cluster_id'][ifirst:ilast]
             tangential_comp = g['tangential_comp'][ifirst:ilast]
@@ -153,12 +151,12 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
                                     int(self.cluster_shears_cat["cluster_sample_count"][cluster_cat_index]))
             #print("-> cluster id ",id_cl,"  ",cluster_cat_index," ",cluster_cat_indices,"  ",cluster_cat_indices[0]+cluster_cat_indices[1])
             
-            bg_cat, _ = self.load_cluster_shear_catalog(cluster_cat_indices)
-               
+            bg_cat, _, self.profile_type = self.load_cluster_shear_catalog(cluster_cat_indices)
+            print(self.profile_type) 
             print('For cluster', id_cl, 'at z=',z_cl,'with n_source = ',len(bg_cat["source_index"]) , 'theta_max is', np.max(bg_cat["distance_arcmin"]), ' arcmin =', clmm.utils.convert_units(np.max(bg_cat["distance_arcmin"]), 'arcmin', 'Mpc', z_cl, self.clmm_cosmo), 'Mpc')
             
             # To use CLMM, need to have galaxy table in clmm.GCData type
-            galcat = clmm.GCData(bg_cat, meta={"coordinate_system": self.coordinate_system, "profile_type": self.profile_type})
+            galcat = clmm.GCData(bg_cat, meta={"coordinate_system": self.coordinate_system})
             print(galcat.meta)
             galcat['theta'] = galcat['distance_arcmin']*np.pi/(60*180) # CLMM galcat requires a column called "theta" in radians
             galcat['z'] = np.zeros(len(galcat)) # clmm needs a column named 'z' but all computation have been done 
@@ -221,7 +219,7 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             for key in k :
                 group = f["cluster_bin"][key]
                 clusters = self.load_cluster_list(group=group) #elf.get_cluster_indice( DOES THIS FUNCTION COMES FROM ?
-                
+                print(clusters)
                 if  len(clusters)>1:
                     cluster_stack = self.create_cluster_ensemble(clusters, cluster_ensemble_id=key)
                 else :
@@ -230,7 +228,7 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
                 
                 #dict(dset_out[i].attrs), dset_out[i]['redshift'][:].size) 
                 
-                binned_cluster_stack[key]={'cluster_bin_edges':dict(group.attrs), 'n_cl':len(clusters), 'clmm_cluster_ensemble':cluster_stack}
+                binned_cluster_stack[key]={'cluster_bin_edges':dict(group.attrs), 'n_cl':len(clusters), 'clmm_cluster_ensemble':cluster_stack, 'profile_type': self.profile_type}
                 
             
         return binned_cluster_stack

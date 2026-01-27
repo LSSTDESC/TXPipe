@@ -38,6 +38,9 @@ class CLClusterShearCatalogs(PipelineStage):
         "use_true_shear": False,
         "delta_sigma": False, # If True then we compute delta-sigma, otherwise we compute gamma
         "use_shape_noise": False,
+        "use_radius": True,
+        "max_angle": 30, # arcmin
+        
     }
 
     def run(self):
@@ -50,15 +53,19 @@ class CLClusterShearCatalogs(PipelineStage):
         # load cluster catalog as an astropy table
         clusters = self.load_cluster_catalog()
         ncluster = len(clusters)
-
+        if self.config["use_radius"]:
         # turn the physical scale max_radius to an angular scale at the redshift of each cluster
-        cluster_theta_max = self.compute_theta_max(clusters["redshift"])
+            cluster_theta_max = self.compute_theta_max(clusters["redshift"])
 
         # For the neighbour search, sklearn doesn't let us have
         # a different distance per cluster. So we use the maximum
         # distance over all the clusters and then filter down later.
-        max_theta_max = cluster_theta_max.max()
-        max_theta_max_arcmin = np.degrees(max_theta_max) * 60
+            max_theta_max = cluster_theta_max.max()
+            max_theta_max_arcmin = np.degrees(max_theta_max) * 60
+        else:
+            max_theta_max_arcmin = self.confi["max_angle"]
+            cluster_theta_max =  np.repeat(np.deg2rad(max_theta_max_arcmin / 60), ncluster)
+            max_theta_max = max_theta_max_arcmin
         if self.rank == 0:
             print(f"Max theta_max = {max_theta_max} radians = {max_theta_max_arcmin} arcmin")
 
@@ -99,11 +106,11 @@ class CLClusterShearCatalogs(PipelineStage):
 
                 if gal_index.size == 0:
                     continue
-
-                # Cut down to galaxies close enough to this cluster
-                dist_good = distance < cluster_theta_max[cluster_index]
-                gal_index = gal_index[dist_good]
-                distance = distance[dist_good]
+                if self.config["use_radius"]:
+                    # Cut down to galaxies close enough to this cluster
+                    dist_good = distance < cluster_theta_max[cluster_index]
+                    gal_index = gal_index[dist_good]
+                    distance = distance[dist_good]
 
                 if gal_index.size == 0:
                     continue
@@ -376,6 +383,7 @@ class CLClusterShearCatalogs(PipelineStage):
 
     def compute_sources_quantities(self, clmm_cosmo, data, index, z_cluster, ra_cluster, dec_cluster):
         import clmm
+        z_cluster = float(z_cluster)
         is_deltasigma = self.config["delta_sigma"]
         criterion = self.config["redshift_weight_criterion"]
         coordinate_system = self.config["coordinate_system"]
