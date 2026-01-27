@@ -42,8 +42,8 @@ class TXDiagnosticQuantiles(PipelineStage):
         ("shear_catalog_quantiles", HDFFile),
     ]
     config_options = {
-        "shear_prefix": StageParameter(str, "mcal_", msg="Prefix for shear columns in the catalog."),
-        "psf_prefix": StageParameter(str, "mcal_psf_", msg="Prefix for PSF columns in the catalog."),
+        "shear_prefix": StageParameter(str, "", msg="Prefix for shear columns in the catalog."),
+        "psf_prefix": StageParameter(str, "", msg="Prefix for PSF columns in the catalog."),
         "nbins": StageParameter(int, 20, msg="Number of quantile bins to compute."),
         "chunk_rows": StageParameter(int, 0, msg="Number of rows to process in each chunk (0 means auto)."),
         "bands": StageParameter(str, "riz", msg="Bands to use for diagnostics."),
@@ -53,23 +53,15 @@ class TXDiagnosticQuantiles(PipelineStage):
         _, da = import_dask()
 
         # Configuration parameters
-        psf_prefix = self.config["psf_prefix"]
-        shear_prefix = self.config["shear_prefix"]
         chunk_rows = self.config["chunk_rows"]
         nedge = self.config["nbins"] + 1
         if chunk_rows == 0:
             chunk_rows = "auto"
 
         # We canonicalise the names here
-        col_names = {
-            "psf_g1": f"{psf_prefix}g1",
-            "psf_T_mean": f"{psf_prefix}T_mean",
-            "s2n": f"{shear_prefix}s2n",
-            "T": f"{shear_prefix}T",
-        }
-
+        col_names = ["psf_g1", "psf_g2", "psf_T", "snr", "T"]
         for band in self.config["bands"]:
-            col_names[f"mag_{band}"] = f"{shear_prefix}mag_{band}"
+            col_names.append(f"mag_{band}")
 
         # We ask for quantiles at these points
         quantiles = np.linspace(0, 1, nedge, endpoint=True)
@@ -81,19 +73,21 @@ class TXDiagnosticQuantiles(PipelineStage):
             bins = da.from_array(g["tomography/bin"], chunks=chunk_rows)
             selected = bins >= 0
 
+            fg = f.get_primary_catalog_group()
+
             # We now build up the quantile values
             quantile_values = {}
-            for new_name, old_name in col_names.items():
+            for name in col_names.items():
                 # Create dask arrays of the columns. This loads them lazily,
                 # so no data is actually loaded here. Only when the "compute"
                 # method is called below does anything actually happen.
-                col = da.from_array(f[f"shear/{old_name}"], chunks=chunk_rows)
+                col = da.from_array(fg[name], chunks=chunk_rows)
 
                 # Ask dask to compute the percentiles of this column.
                 # Again, it will not actually do anything until the "compute"
                 # method is called below. When that happens, it will
                 # chunk up the data and calculate the percentiles in parallel.
-                quantile_values[new_name] = da.percentile(col[selected], percentiles)
+                quantile_values[name] = da.percentile(col[selected], percentiles)
 
             # Now ask dask to actually do the calculations
             (quantile_values,) = da.compute(quantile_values)
@@ -194,7 +188,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
             shear_cols = [
                 f"{psf_prefix}g1",
                 f"{psf_prefix}g2",
-                f"{psf_prefix}T_mean",
+                f"{psf_prefix}T",
                 "mcal_g1",
                 "mcal_g1_1p",
                 "mcal_g1_2p",
@@ -223,9 +217,9 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 "g1",
                 "g2",
                 "T",
-                "mcal_psf_g1",
-                "mcal_psf_g2",
-                "mcal_psf_T_mean",
+                "psf_g1",
+                "psf_g2",
+                "psf_T",
                 "s2n",
                 "weight",
             )
@@ -237,7 +231,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 "psf_g2",
                 "g1",
                 "g2",
-                "psf_T_mean",
+                "psf_T",
                 "s2n",
                 "T",
                 "weight",
@@ -260,12 +254,14 @@ class TXSourceDiagnosticPlots(PipelineStage):
             "tomography",
             shear_tomo_cols,
             *more_iters,
+            longest=True,
         )
 
         # Now loop through each chunk of input data, one at a time.
         # Each time we get a new segment of data, which goes to all the plotters
         for start, end, data in it:
             print(f"Read data {start} - {end}")
+                
             # This causes each data = yield statement in each plotter to
             # be given this data chunk as the variable data.
 
@@ -398,10 +394,10 @@ class TXSourceDiagnosticPlots(PipelineStage):
         psf_prefix = self.config["psf_prefix"]
         delta_gamma = self.config["delta_gamma"]
 
-        psf_T_edges = self.get_bin_edges("psf_T_mean")
+        psf_T_edges = self.get_bin_edges("psf_T")
 
         binnedShear = MeanShearInBins(
-            f"{psf_prefix}T_mean",
+            f"{psf_prefix}T",
             psf_T_edges,
             delta_gamma,
             cut_source_bin=True,

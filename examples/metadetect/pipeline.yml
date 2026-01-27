@@ -46,6 +46,8 @@ stages:
         model: source_direct_calibration_model
         photoz_stack: shear_photoz_stack
         photoz_realizations: source_photoz_realizations
+  - name: TXSourceTomography
+    threads_per_process: 8
   - name: TXSourceSelectorMetadetect    # select and split objects into source bins
   - name: NZDirInformerSource       # Prepare the DIR method inputs for the source sample
     classname: NZDirInformer
