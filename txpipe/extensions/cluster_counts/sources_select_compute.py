@@ -64,8 +64,8 @@ class CLClusterShearCatalogs(PipelineStage):
             max_theta_max_arcmin = np.degrees(max_theta_max) * 60
         else:
             max_theta_max_arcmin = self.config["max_angle"]
-            cluster_theta_max =  np.repeat(np.deg2rad(max_theta_max_arcmin / 60), ncluster)
-            max_theta_max = max_theta_max_arcmin
+            max_theta_max = np.deg2rad(max_theta_max_arcmin / 60)
+            cluster_theta_max = np.repeat(max_theta_max, ncluster)
         if self.rank == 0:
             print(f"Max theta_max = {max_theta_max} radians = {max_theta_max_arcmin} arcmin")
 
