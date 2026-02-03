@@ -202,10 +202,11 @@ class MapsFile(HDFFile):
         def visit(name, obj):
             if isinstance(obj, h5py.Group):
                 keys = obj.keys()
-                # we save maps with these two data sets,
-                # so if they are both there then this will
+                # legacy maps have datasets "pixel", "value"
+                # healsparse maps have dataset "cov_index_map"
+                # so if one of these is there then this will
                 # be a map
-                if "pixel" in keys and "value" in keys:
+                if ("pixel" in keys and "value" in keys) or ("cov_index_map" in keys):
                     maps.append(name)
 
         # Now actually run this
@@ -214,21 +215,39 @@ class MapsFile(HDFFile):
         # return the accumulated list
         return maps
 
-    def read_healpix(self, map_name, return_all=False):
+    def read_healpix(self, map_name):
+        is_legacy = self.check_is_legacy(map_name)
+
+        if is_legacy:
+            return self.read_healpix_legacy(map_name)
+        else:
+            return self.read_healsparse(self.path, map_name)
+    
+    def read_healsparse(self, map_name):
+        """
+        Read healsparse map from hdf5
+        """
+        import healsparse as hsp
+        return hsp.HealSparseMap.read(self.file, hdf5_group=f"maps/{map_name}")
+
+    def check_is_legacy(self, map_name):
+        """
+        Returns True if map was saved using an old TXPipe file format
+        i.e. is not a healsparse file
+        """
+        keys = self.file[f"maps/{map_name}"].keys()
+        return ("pixel" in keys) and ("value" in keys)
+
+    def read_healpix_legacy(self, map_name):
+        import healsparse as hsp
         import healpy
-        import numpy as np
 
         group = self.file[f"maps/{map_name}"]
         nside = group.attrs["nside"]
-        npix = healpy.nside2npix(nside)
-        m = np.repeat(healpy.UNSEEN, npix)
         pix = group["pixel"][:]
-        val = group["value"][:]
-        m[pix] = val
-        if return_all:
-            return m, pix, nside
-        else:
-            return m
+        m = hsp.HealSparseMap.make_empty(32, nside, dtype=type(group["value"][0]), sentinel=healpy.UNSEEN)
+        m.update_values_pix(pix, group["value"][:])
+        return m
 
     def read_map_info(self, map_name):
         group = self.file[f"maps/{map_name}"]
@@ -255,21 +274,32 @@ class MapsFile(HDFFile):
         mask[mask <= thresh] = 0
         return mask
 
-    def read_healsparse(self, map_name, return_all=True):
-        import healpy
-        import healsparse as hsp
-        import numpy as np
+    def write_map(self, map_name, hsp_map, metadata):
+        """
+        Save an output map to an HDF5 subgroup in healsparse format
 
-        group = self.file[f"maps/{map_name}"]
-        nside = group.attrs["nside"]
-        m = hsp.HealSparseMap.make_empty(32, nside, dtype=type(group["value"][0]), sentinel=healpy.UNSEEN)
-        m.update_values_pix(group["pixel"][:], group["value"][:])
-        if return_all:
-            return m, nside
-        else:
-            return m
+        Parameters
+        ----------
 
-    def write_map(self, map_name, pixel, value, metadata):
+        map_name: str
+            The name of this map, used as the name of a subgroup in the group where the data is stored.
+        pixel: array
+            Array of indices of observed pixels
+        value: array
+            Array of values of observed pixels
+        metadata: mapping
+            Dict or other mapping of metadata to store along with the map
+        """
+        if not "maps" in self.file:
+            self.file.create_group("maps")
+        
+        hsp_map.write(self.path, format='hdf5', clobber=True, group=map_name)
+
+        #also add any extra metadata 
+        subgroup = self.file[f"maps/{map_name}"]
+        subgroup.attrs.update(metadata)
+
+    def write_map_legacy(self, map_name, pixel, value, metadata):
         """
         Save an output map to an HDF5 subgroup.
 
@@ -278,9 +308,7 @@ class MapsFile(HDFFile):
         Parameters
         ----------
 
-        group: H5Group
-            The h5py Group object in which to store maps
-        name: str
+        map_name: str
             The name of this map, used as the name of a subgroup in the group where the data is stored.
         pixel: array
             Array of indices of observed pixels
@@ -301,18 +329,23 @@ class MapsFile(HDFFile):
             if not pixel.shape == value.shape:
                 raise pixerr
 
-        if not "maps" in self.file.keys():
-            self.file.create_group("maps")
         subgroup = self.file["maps"].create_group(map_name)
         subgroup.attrs.update(metadata)
         subgroup.create_dataset("pixel", data=pixel)
         subgroup.create_dataset("value", data=value)
 
     def plot_healpix(self, map_name, view="cart", rot180=False, **kwargs):
+        """
+        Plots healpix map using healpy tools
+        """
         import healpy
         import numpy as np
 
-        m, pix, nside = self.read_healpix(map_name, return_all=True)
+        hsp_map = self.read_healpix(map_name)
+        nside = hsp_map.nside_sparse
+        pix = hsp_map.valid_pixels
+        m = hsp_map.generate_healpix_map()
+        
         lon, lat = healpy.pix2ang(nside, pix, lonlat=True)
         if rot180:  # (optional) rotate 180 degrees in the lon direction
             lon += 180
@@ -341,7 +374,7 @@ class MapsFile(HDFFile):
         elif view == "moll":
             healpy.mollview(m, title=title, hold=True, **kwargs)
         else:
-            raise ValueError(f"Unknown Healpix view mode {mode}")
+            raise ValueError(f"Unknown Healpix view mode {view}")
 
     def read_gnomonic(self, map_name):
         import numpy as np
