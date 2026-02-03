@@ -24,11 +24,11 @@ class TXBaseMask(PipelineStage):
         and write to output.
         """
         mask, pixel_scheme, metadata = self.make_binary_mask()
-        pix, mask, metadata = self.finalize_mask(mask, pixel_scheme, metadata)
+        mask, metadata = self.finalize_mask(mask, pixel_scheme, metadata)
 
         with self.open_output("mask", wrapper=True) as f:
             f.file.create_group("maps")
-            f.write_map("mask", pix, mask, metadata)
+            f.write_map("mask", mask, metadata)
 
     def finalize_mask(self, mask, pixel_scheme, metadata):
         """
@@ -57,7 +57,7 @@ class TXBaseMask(PipelineStage):
         # Total survey area calculation. This is simplistic:
         # TODO: account for weights / hit fractions here, and allow
         # for different lens and shear survey areas
-        num_hit = mask.sum() * 1.0
+        num_hit = mask.n_valid * 1.0
         area = pixel_scheme.pixel_area(degrees=True) * num_hit
         f_sky = area / 41252.96125
         print(f"f_sky = {f_sky}")
@@ -65,17 +65,17 @@ class TXBaseMask(PipelineStage):
         metadata["area"] = area
         metadata["f_sky"] = f_sky
 
-        mask[np.isnan(mask)] = 0.0
-        mask[mask < 0] = 0
+        #Note: leaving these here in case we want to keep the gnomonic maps?
+        if pixel_scheme == "gnomonic":
+            mask[np.isnan(mask)] = 0.0
+            mask[mask < 0] = 0
+            
+            # The flatten required for gnomonic maps
+            mask = mask.flatten()
+            pix = np.where(mask)[0]
+            mask = mask[pix].astype(float)
 
-        # Pull out unmasked pixels and their values.
-        # The flatten only affects gnomonic maps; the
-        # healpix maps are already flat
-        mask = mask.flatten()
-        pix = np.where(mask)[0]
-        mask = mask[pix].astype(float)
-
-        return pix, mask, metadata
+        return mask, metadata
 
     def compute_fracdet_from_hsp(self, metadata):
         """
@@ -160,25 +160,36 @@ class TXSimpleMask(TXBaseMask):
         metadata : dict
             Metadata from input file.
         """
-        import healpy
+        import healsparse as hsp
+        from functools import reduce
+        from operator import and_
 
         with self.open_input("aux_lens_maps", wrapper=True) as f:
             metadata = dict(f.file["maps"].attrs)
             bright_obj = f.read_map("bright_objects/count")
             depth = f.read_map("depth/depth")
             pixel_scheme = choose_pixelization(**metadata)
-        hit = depth > healpy.UNSEEN
-        masks = [
-            ("depth", depth > self.config["depth_cut"]),
-            ("bright_obj", ~(bright_obj > self.config["bright_object_max"])),
-        ]
+        
+        #TODO: this can be chunked if we dont want to access all valid pixels at the same time
+        valid_pix = depth.valid_pixels
+        hit = hsp.HealSparseMap.make_empty(depth.nside_coverage, depth.nside_sparse, dtype=np.bool )
+        hit.update_values_pix(valid_pix, 1)
 
-        for name, m in masks:
-            frac = 1 - (m & hit).sum() / hit.sum()
+        masks = {
+            "depth": hsp.HealSparseMap.make_empty_like(hit),
+            "bright_obj": hsp.HealSparseMap.make_empty_like(hit),
+        }
+        masks["depth"].update_values_pix(valid_pix, depth[valid_pix] > self.config["depth_cut"])
+        masks["bright_obj"].update_values_pix(valid_pix, ~(bright_obj[valid_pix] > self.config["bright_object_max"]) )
+
+        for name, hsp_map in masks.items():
+            frac = 1 - (hsp_map & hit).n_valid/hit.n_valid
             print(f"Mask '{name}' removes fraction {frac:.3f} of hit pixels")
 
         # Overall mask
-        mask = np.logical_and.reduce([mask for _, mask in masks])
+        # Note healpsarse only knows about python _and, not numpy's logical_and
+        #mask = reduce(and_, [mask for _, mask in masks.items()])
+        mask = hsp.operations.and_intersection([mask for _, mask in masks.items()])
 
         return mask, pixel_scheme, metadata
 
@@ -249,9 +260,10 @@ class TXSimpleMaskFrac(TXSimpleMask):
         """
         Apply mask logic and replace selected pixels with fractional coverage values.
         """
+        import healsparse as hsp
 
         mask, pixel_scheme, metadata = self.make_binary_mask()
-        pix, mask, metadata = self.finalize_mask(mask, pixel_scheme, metadata)
+        mask, metadata = self.finalize_mask(mask, pixel_scheme, metadata)
 
         assert self.config["supreme_map_file"] == "none" or self.config["supreme_map_files"] == [], (
             "You have specified both map_file and map_files, pick one"
@@ -261,24 +273,17 @@ class TXSimpleMaskFrac(TXSimpleMask):
             fracdet = self.compute_fracdet_from_hsp(metadata)
         else:
             fracdet = self.compute_fracdet_from_hsp_list(metadata)
+        
+        #boolean mask of pixels with high fracdet
+        frac_cut_mask = hsp.HealSparseMap.make_empty_like(mask)
+        frac_cut_mask[fracdet.valid_pixels] = (fracdet[fracdet.valid_pixels] > self.config["frac_cut"])
 
-        # assign fracdec for all selected pixels
-        assert (mask == 1.0).all()
-        if metadata["nest"]:
-            mask = fracdet[pix]
-        else:
-            import healpy as hp
-
-            mask = fracdet[hp.ring2nest(metadata["nside"], pix)]
-
-        # cut pixels with low fracdet
-        select_frac_cut = mask > self.config["frac_cut"]
-        pix = pix[select_frac_cut]
-        mask = mask[select_frac_cut]
+        #find the intersection of the mask cuts and the fractional coverage map
+        frac_det_mask = hsp.operations.product_intersection([fracdet, mask, frac_cut_mask])
 
         with self.open_output("mask", wrapper=True) as f:
             f.file.create_group("maps")
-            f.write_map("mask", pix, mask, metadata)
+            f.write_map("mask", frac_det_mask, metadata)
 
 
 class TXCustomMask(TXSimpleMaskFrac):
@@ -306,7 +311,7 @@ class TXCustomMask(TXSimpleMaskFrac):
         """
 
         mask, pixel_scheme, metadata = self.make_binary_mask()
-        pix, mask, metadata = self.finalize_mask(mask, pixel_scheme, metadata)
+        mask, metadata = self.finalize_mask(mask, pixel_scheme, metadata)
 
         fracdet = self.get_fracdet()
 
@@ -319,11 +324,11 @@ class TXCustomMask(TXSimpleMaskFrac):
                 print("Nsides match, no degrading necessary")
             else:
                 print(f"Input Nside={metadata['nside']}, degrading to {self.config['nside']}")
-                pix, mask, metadata = self.degrade(pix, mask, metadata, self.config["nside"])
+                mask, metadata = self.degrade(mask, metadata, self.config["nside"])
 
         with self.open_output("mask", wrapper=True) as f:
             f.file.create_group("maps")
-            f.write_map("mask", pix, mask, metadata)
+            f.write_map("mask", mask, metadata)
 
     def make_binary_mask(self):
         """
@@ -389,7 +394,7 @@ class TXCustomMask(TXSimpleMaskFrac):
             fracdet = f.read_map(self.config["fracdet_name"])
         return fracdet
 
-    def degrade(self, pix, mask, metadata_in, nside_out):
+    def degrade(self, mask, metadata_in, nside_out):
         """
         Degrade a high-resolution fractional mask to lower resolution using healsparse
 
@@ -450,4 +455,4 @@ class TXCustomMask(TXSimpleMaskFrac):
         area_out = np.sum(mask_out) * hp.nside2pixarea(metadata_out["nside"], degrees=True)
         assert np.round(area_in, 3) == np.round(area_out, 3)
 
-        return pix_out, mask_out, metadata_out
+        return mask_out, metadata_out
