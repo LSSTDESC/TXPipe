@@ -203,10 +203,10 @@ class MapsFile(HDFFile):
             if isinstance(obj, h5py.Group):
                 keys = obj.keys()
                 # legacy maps have datasets "pixel", "value"
-                # healsparse maps have dataset "cov_index_map"
+                # healsparse maps have sub-group "healsparse"
                 # so if one of these is there then this will
                 # be a map
-                if ("pixel" in keys and "value" in keys) or ("cov_index_map" in keys):
+                if ("pixel" in keys and "value" in keys) or ("healsparse" in keys):
                     maps.append(name)
 
         # Now actually run this
@@ -221,14 +221,14 @@ class MapsFile(HDFFile):
         if is_legacy:
             return self.read_healpix_legacy(map_name)
         else:
-            return self.read_healsparse(self.path, map_name)
+            return self.read_healsparse(map_name)
     
     def read_healsparse(self, map_name):
         """
         Read healsparse map from hdf5
         """
         import healsparse as hsp
-        return hsp.HealSparseMap.read(self.file, hdf5_group=f"maps/{map_name}")
+        return hsp.HealSparseMap.read(self.path, hdf5_group=f"maps/{map_name}/healsparse")
 
     def check_is_legacy(self, map_name):
         """
@@ -296,9 +296,9 @@ class MapsFile(HDFFile):
         if not "maps" in self.file:
             self.file.create_group("maps")
         
-        hsp_map.write(self.path, format='hdf5', clobber=True, hdf5_group=f"maps/{map_name}")
+        hsp_map.write(self.path, format='hdf5', clobber=True, hdf5_group=f"maps/{map_name}/healsparse")
 
-        #also add any extra metadata 
+        #also add any extra metadata
         subgroup = self.file[f"maps/{map_name}"]
         subgroup.attrs.update(metadata)
 
