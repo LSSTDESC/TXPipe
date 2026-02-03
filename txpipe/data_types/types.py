@@ -337,7 +337,7 @@ class MapsFile(HDFFile):
         subgroup.create_dataset("pixel", data=pixel)
         subgroup.create_dataset("value", data=value)
 
-    def plot_healpix(self, map_name, view="cart", rot180=False, **kwargs):
+    def plot_healpix(self, map_name, view="cart", rot180=False, nside=None, **kwargs):
         """
         Plots healpix map using healpy tools
         """
@@ -345,9 +345,10 @@ class MapsFile(HDFFile):
         import numpy as np
 
         hsp_map = self.read_healpix(map_name)
-        nside = hsp_map.nside_sparse
+        if nside is None:
+            nside = hsp_map.nside_sparse
         pix = hsp_map.valid_pixels
-        m = hsp_map.generate_healpix_map()
+        m = hsp_map.generate_healpix_map(nside=nside)
         
         lon, lat = healpy.pix2ang(nside, pix, lonlat=True)
         if rot180:  # (optional) rotate 180 degrees in the lon direction
