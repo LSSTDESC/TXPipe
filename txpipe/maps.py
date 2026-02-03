@@ -118,6 +118,8 @@ class TXBaseMaps(PipelineStage):
         Subclasses can use this directly, by generating maps as described
         in finalize_mappers
         """
+        import healsparse as hsp
+        import healpy as hp
         # Find and open all output files
         tags = unique_list([outfile for outfile, _ in maps.keys()])
         output_files = {tag: self.open_output(tag, wrapper=True) for tag in tags if tag.endswith("maps")}
@@ -143,7 +145,16 @@ class TXBaseMaps(PipelineStage):
 
         # same the relevant maps in each
         for (tag, map_name), (pix, map_data) in maps.items():
-            output_files[tag].write_map(map_name, pix, map_data, self.pixel_metadata)
+            hsp_map = hsp.HealSparseMap.make_empty(
+                nside_coverage=32,
+                nside_sparse=self.pixel_metadata['nside'],
+                dtype=map_data.dtype)
+            if self.pixel_metadata['nest']:
+                hsp_pix = pix
+            else:
+                hsp_pix = hp.ring2nest(self.pixel_metadata['nside'], pix)
+            hsp_map.update_values_pix(hsp_pix, map_data)
+            output_files[tag].write_map(map_name, hsp_map, self.pixel_metadata)
 
 
 class TXSourceMaps(PipelineStage):
