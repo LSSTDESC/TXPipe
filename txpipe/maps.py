@@ -184,6 +184,7 @@ class TXSourceMaps(PipelineStage):
     def run(self):
         dask, da = import_dask()
         import healpy
+        import healsparse as hsp
 
         # Configuration options
         pixel_scheme = choose_pixelization(**self.config)
@@ -261,7 +262,16 @@ class TXSourceMaps(PipelineStage):
                 # We save the pixels in the mask - i.g. any pixel that is hit in any
                 # tomographic bin is included. Some will be UNSEEN.
                 for key in "g1", "g2", "count", "var_e", "var_g1", "var_g2", "lensing_weight":
-                    out.write_map(f"{key}_{i}", pix, output[f"{key}_{i}"][pix], metadata)
+                    hsp_map = hsp.HealSparseMap.make_empty(
+                        nside_coverage=32,
+                        nside_sparse=metadata['nside'],
+                        dtype=output[f"{key}_{i}"].dtype)
+                    if metadata['nest']:
+                        hsp_pix = pix
+                    else:
+                        hsp_pix = healpy.ring2nest(metadata['nside'], pix)
+                    hsp_map.update_values_pix(hsp_pix, output[f"{key}_{i}"][pix])
+                    out.write_map(f"{key}_{i}", hsp_map, metadata)
 
             out.file["maps"].attrs.update(metadata)
 
@@ -399,8 +409,7 @@ class TXDensityMaps(PipelineStage):
             mask = f.read_mask(thresh=self.config["mask_threshold"])
 
         # identify unmasked pixels
-        pix_keep = mask > 0.0
-        pix = np.where(pix_keep)[0]
+        pix = mask.valid_pixels
 
         # Read the count maps
         with self.open_input("lens_maps", wrapper=True) as f:
@@ -415,9 +424,9 @@ class TXDensityMaps(PipelineStage):
             ng[ng == healpy.UNSEEN] = 0
             delta_map = np.zeros(mask.shape, dtype=np.float64)
             # calculate mean of ng and mean of mask
-            mu_n = np.mean(ng[pix_keep])
-            mu_w = np.mean(mask[pix_keep])
-            delta_map[pix_keep] = (ng[pix_keep] / (mask[pix_keep] * mu_n / mu_w)) - 1
+            mu_n = np.mean(ng[pix])
+            mu_w = np.mean(mask[pix])
+            delta_map[pix] = (ng[pix] / (mask[pix] * mu_n / mu_w)) - 1
             density_maps.append(delta_map)
 
         # write output
