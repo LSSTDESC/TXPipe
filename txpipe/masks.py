@@ -37,8 +37,8 @@ class TXBaseMask(PipelineStage):
 
         Parameters
         ----------
-        mask : np.ndarray
-            Raw binary mask array.
+        mask : hsp.HealSparseMap
+            binary mask map.
         pixel_scheme : PixelScheme
             Pixelization scheme used for area calculations.
         metadata : dict
@@ -46,10 +46,8 @@ class TXBaseMask(PipelineStage):
 
         Returns
         -------
-        pix : np.ndarray
-            Indices of unmasked pixels.
-        mask : np.ndarray
-            Final mask values corresponding to `pix`.
+        mask : hsp.HealSparseMap or np.ndarray
+            Final mask 
         metadata : dict
             Updated metadata.
         """
@@ -88,7 +86,7 @@ class TXBaseMask(PipelineStage):
 
         Returns
         -------
-        fracdet : np.ndarray
+        fracdet : hsp.HealSparseMap
             Fractional detection array at the config nside.
         """
         import healsparse
@@ -106,7 +104,7 @@ class TXBaseMask(PipelineStage):
 
     def compute_fracdet_from_hsp_list(self, metadata):
         """
-        Computes detection fraction from a list of input healsparse map (higher resolution, binary)
+        Computes detection fraction from a list of input healsparse maps (higher resolution, binary)
 
         Returns a map of the fractional of valid pixels that are present in *all* the input maps
 
@@ -117,7 +115,7 @@ class TXBaseMask(PipelineStage):
 
         Returns
         -------
-        fracdet : np.ndarray
+        fracdet : hsp.HealSparseMap
             Fractional detection array at the config nside.
         """
         import healsparse
@@ -153,7 +151,7 @@ class TXSimpleMask(TXBaseMask):
 
         Returns
         -------
-        mask : np.ndarray
+        mask : hsp.HealSparseMap
             Boolean mask array.
         pixel_scheme : PixelScheme
             Pixelization object.
@@ -211,7 +209,7 @@ class TXSimpleMaskSource(TXBaseMask):
 
         Returns
         -------
-        mask : np.ndarray
+        mask : hsp.HealSparseMap
             Boolean mask array.
         pixel_scheme : PixelScheme
             Pixelization object.
@@ -309,6 +307,7 @@ class TXCustomMask(TXSimpleMaskFrac):
         """
         Apply custom mask logic, assign fracdet values, and optionally degrade resolution.
         """
+        import healsparse as hsp
 
         mask, pixel_scheme, metadata = self.make_binary_mask()
         mask, metadata = self.finalize_mask(mask, pixel_scheme, metadata)
@@ -316,19 +315,20 @@ class TXCustomMask(TXSimpleMaskFrac):
         fracdet = self.get_fracdet()
 
         # assign fracdec for all selected pixels
-        assert (mask == 1.0).all()
-        mask = fracdet[pix]
+        valid_pix = mask.valid_pixels
+        masked_frac_map = hsp.HealSparseMap.make_empty_like(fracdet)
+        masked_frac_map[valid_pix] = fracdet[valid_pix]
 
         if self.config["degrade"]:
             if self.config["nside"] == metadata["nside"]:
                 print("Nsides match, no degrading necessary")
             else:
                 print(f"Input Nside={metadata['nside']}, degrading to {self.config['nside']}")
-                mask, metadata = self.degrade(mask, metadata, self.config["nside"])
+                masked_frac_map, metadata = self.degrade(masked_frac_map, metadata, self.config["nside"])
 
         with self.open_output("mask", wrapper=True) as f:
             f.file.create_group("maps")
-            f.write_map("mask", mask, metadata)
+            f.write_map("mask", masked_frac_map, metadata)
 
     def make_binary_mask(self):
         """
@@ -336,7 +336,7 @@ class TXCustomMask(TXSimpleMaskFrac):
 
         Returns
         -------
-        mask : np.ndarray
+        mask : hsp.HealSparseMap
             Boolean mask array.
         pixel_scheme : PixelScheme
             Pixelization object.
@@ -344,40 +344,61 @@ class TXCustomMask(TXSimpleMaskFrac):
             Metadata from input.
         """
         import healpy
+        import healsparse as hsp
         import re
+        import operator
+
+        OP_MAP = {
+            ">": operator.gt,
+            ">=": operator.ge,
+            "<": operator.lt,
+            "<=": operator.le,
+            "==": operator.eq,
+            "!=": operator.ne,
+        }
 
         # get a list of quantities to be cut
         cuts = self.config["cuts"]
         compare_pattern = r"(==|!=|>=|<=|>|<)"
         names = np.unique([re.split(compare_pattern, cut_string)[0].strip() for cut_string in cuts])
 
-        # load the values into a dict
-        # We will assume these can all be held in memory, but note very high-res maps will not allow this
-        values = {}
-        with self.open_input("aux_lens_maps", wrapper=True) as f:
-            metadata = dict(f.file["maps"].attrs)
-            for name in names:
-                values[name] = f.read_map(name)
-            pixel_scheme = choose_pixelization(**metadata)
-
-        # evaluate the mask for each cut
         masks = []
-        for cut_string in cuts:
-            name = re.split(compare_pattern, cut_string)[0].strip()
-            cut_string_eval = cut_string.replace(name, f"values['{name}']")
-            print(cut_string_eval)
-            masks.append((name, eval(cut_string_eval)))
 
-        # hit is only used to print fraction of pixels removed from each cut
-        # Arbitrarily choose the first map specified
-        hit = values[names[0]] > healpy.UNSEEN
+        for icut, cut_string in enumerate(cuts):
+            print(cut_string)
+            map_name, operator_string, value = [s.strip() for s in re.split(compare_pattern, cut_string)]
+            operator = OP_MAP[operator_string]
 
-        for name, m in masks:
-            frac = 1 - (m & hit).sum() / hit.sum()
-            print(f"Mask '{name}' removes fraction {frac:.3f} of {names[0]} pixels")
+            #load map
+            with self.open_input("aux_lens_maps", wrapper=True) as f:
+                metadata = dict(f.file["maps"].attrs)
+                m = f.read_map(map_name)
+            pixel_scheme = choose_pixelization(**metadata)
+            valid_pix = m.valid_pixels
+
+            #set value dtype to match the map 
+            value = np.array(value, dtype=m.dtype).item()
+
+            #make hit map
+            # hit is only used to print fraction of pixels removed from each cut
+            # Arbitrarily choose the first map specified
+            if icut == 0:
+                hit_name = map_name
+                hit = hsp.HealSparseMap.make_empty(m.nside_coverage, m.nside_sparse, dtype=np.bool )
+                hit.update_values_pix(valid_pix, 1)
+
+            #make mask for this cut
+            mask = hsp.HealSparseMap.make_empty(m.nside_coverage, m.nside_sparse, dtype=np.bool )
+            mask.update_values_pix(valid_pix, operator(m[valid_pix], value) )
+
+            masks.append(mask)
+
+        for imask, m in enumerate(masks):
+            frac = 1 - (m & hit).n_valid/hit.n_valid
+            print(f"Cut '{cuts[imask]}' removes fraction {frac:.3f} of {hit.n_valid} {hit_name} pixels")
 
         # Overall mask
-        mask = np.logical_and.reduce([mask for _, mask in masks])
+        mask = hsp.operations.and_intersection(masks)
 
         return mask, pixel_scheme, metadata
 
@@ -387,7 +408,7 @@ class TXCustomMask(TXSimpleMaskFrac):
 
         Returns
         -------
-        fracdet : np.ndarray
+        fracdet : hsp.HealSparseMap
             Fracdet array.
         """
         with self.open_input("aux_lens_maps", wrapper=True) as f:
@@ -400,10 +421,8 @@ class TXCustomMask(TXSimpleMaskFrac):
 
         Parameters
         ----------
-        pix : np.ndarray
-            Input pixel indices.
-        mask : np.ndarray
-            Input mask values.
+        mask : hsp.HealSparseMap
+            Input healsparse mask (either bool or a fractional coverage map)
         metadata_in : dict
             Input metadata.
         nside_out : int
@@ -411,10 +430,8 @@ class TXCustomMask(TXSimpleMaskFrac):
 
         Returns
         -------
-        pix_out : np.ndarray
-            Output pixel indices at lower resolution.
-        mask_out : np.ndarray
-            Degraded mask values.
+        mask_out : hsp.HealSparseMap
+            Degraded mask.
         metadata_out : dict
             Updated metadata.
         """
@@ -422,37 +439,25 @@ class TXCustomMask(TXSimpleMaskFrac):
         import healpy as hp
         import copy
 
-        # convert our pixel, mask arrays into a healsparse map
-        nside_coverage = 32
-        map_hsp = hsp.HealSparseMap.make_empty(
-            nside_coverage, metadata_in["nside"], dtype=type(mask[0]), sentinel=hp.UNSEEN
-        )
-        if not metadata_in["nest"]:
-            pix = hp.ring2nest(metadata_in["nside"], pix)
-        map_hsp.update_values_pix(pixels=pix, values=mask)
-
         # do a "sum" degrade of the frac mask
-        map_degraded_sum = map_hsp.degrade(nside_out, reduction="sum")
+        map_degraded_sum = mask.degrade(nside_out, reduction="sum")
 
         # Divide the sum of the mask by the ratio of pixel areas
         degraded_pixels = np.unique(
             map_degraded_sum.valid_pixels
         )  # TODO: figure out why there are sometimes duplicates in valid_pixels
-        mask_out = map_degraded_sum[degraded_pixels] * (nside_out / metadata_in["nside"]) ** 2.0
-
-        select_nonzero = mask_out != 0.0
-        if not metadata_in["nest"]:
-            pix_out = hp.nest2ring(nside_out, degraded_pixels[select_nonzero])
-        else:
-            pix_out = degraded_pixels[select_nonzero]
-        mask_out = mask_out[select_nonzero]
+        mask_out = hsp.HealSparseMap.make_empty_like(map_degraded_sum)
+        mask_out.update_values_pix(
+            degraded_pixels, 
+            map_degraded_sum[degraded_pixels] * (nside_out / metadata_in["nside"]) ** 2.0
+            )
 
         metadata_out = copy.copy(metadata_in)
         metadata_out["nside"] = nside_out
 
         # sanity_check: make sure area in == area out
-        area_in = np.sum(mask) * hp.nside2pixarea(metadata_in["nside"], degrees=True)
-        area_out = np.sum(mask_out) * hp.nside2pixarea(metadata_out["nside"], degrees=True)
+        area_in = np.sum(mask[mask.valid_pixels]) * hp.nside2pixarea(metadata_in["nside"], degrees=True)
+        area_out = np.sum(mask_out[mask_out.valid_pixels]) * hp.nside2pixarea(metadata_out["nside"], degrees=True)
         assert np.round(area_in, 3) == np.round(area_out, 3)
 
         return mask_out, metadata_out
