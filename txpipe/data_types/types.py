@@ -244,8 +244,11 @@ class MapsFile(HDFFile):
 
         group = self.file[f"maps/{map_name}"]
         nside = group.attrs["nside"]
-        pix = group["pixel"][:]
-        m = hsp.HealSparseMap.make_empty(32, nside, dtype=type(group["value"][0]), sentinel=healpy.UNSEEN)
+        m = hsp.HealSparseMap.make_empty(32, nside, dtype=type(group["value"][0]))
+        if group.attrs['nest']:
+            pix = group["pixel"][:]
+        else:
+            pix = healpy.ring2nest(nside, group["pixel"][:])
         m.update_values_pix(pix, group["value"][:])
         return m
 
@@ -293,7 +296,7 @@ class MapsFile(HDFFile):
         if not "maps" in self.file:
             self.file.create_group("maps")
         
-        hsp_map.write(self.path, format='hdf5', clobber=True, group=map_name)
+        hsp_map.write(self.path, format='hdf5', clobber=True, hdf5_group=f"maps/{map_name}")
 
         #also add any extra metadata 
         subgroup = self.file[f"maps/{map_name}"]
