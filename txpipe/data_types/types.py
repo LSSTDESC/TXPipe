@@ -223,12 +223,14 @@ class MapsFile(HDFFile):
         else:
             return self.read_healsparse(map_name)
     
-    def read_healsparse(self, map_name):
+    def read_healsparse(self, map_name, **kwargs):
         """
         Read healsparse map from hdf5
+        
+        All keyword arguments are forwarded to HealSparseMap.read
         """
         import healsparse as hsp
-        return hsp.HealSparseMap.read(self.path, hdf5_group=f"maps/{map_name}/healsparse")
+        return hsp.HealSparseMap.read(self.path, hdf5_group=f"maps/{map_name}/healsparse", **kwargs)
 
     def check_is_legacy(self, map_name):
         """
@@ -274,7 +276,8 @@ class MapsFile(HDFFile):
         if mask_name is None:
             mask_name = "mask"
         mask = self.read_map(mask_name)
-        mask[mask <= thresh] = 0
+        pix_to_cut = mask.valid_pixels[mask[mask.valid_pixels]<=thresh]
+        mask.update_values_pix(pix_to_cut, mask.sentinel)
         return mask
 
     def write_map(self, map_name, hsp_map, metadata):
