@@ -279,7 +279,7 @@ class MapsFile(HDFFile):
 
     def write_map(self, map_name, hsp_map, metadata):
         """
-        Save an output map to an HDF5 subgroup in healsparse format
+        Save an output healsparse map to an HDF5 subgroup in healsparse format
 
         Parameters
         ----------
@@ -302,11 +302,11 @@ class MapsFile(HDFFile):
         subgroup = self.file[f"maps/{map_name}"]
         subgroup.attrs.update(metadata)
 
-    def write_map_legacy(self, map_name, pixel, value, metadata):
+    def write_map_pixval(self, map_name, pixel, value, metadata, nside_coverage=32):
         """
-        Save an output map to an HDF5 subgroup.
+        Save an array of pixel indicies and values to an HDF5 subgroup in healsparse format
 
-        The pixel numbering and the metadata are also saved.
+        The metadata is also saved.
 
         Parameters
         ----------
@@ -319,7 +319,12 @@ class MapsFile(HDFFile):
             Array of values of observed pixels
         metadata: mapping
             Dict or other mapping of metadata to store along with the map
+        nside_coverage: int
+            nside of the healsparse coverage map
         """
+        import healsparse as hsp
+        import healpy 
+
         if not "maps" in self.file:
             self.file.create_group("maps")
         if not "pixelization" in metadata:
@@ -334,8 +339,23 @@ class MapsFile(HDFFile):
 
         subgroup = self.file["maps"].create_group(map_name)
         subgroup.attrs.update(metadata)
-        subgroup.create_dataset("pixel", data=pixel)
-        subgroup.create_dataset("value", data=value)
+
+        #convert pixels and values into a healsparse map and save
+        hsp_map = hsp.HealSparseMap.make_empty(
+                    nside_coverage=nside_coverage,
+                    nside_sparse=metadata['nside'],
+                    dtype=value.dtype)
+        if metadata['nest']:
+            hsp_pix = pixel
+        else:
+            hsp_pix = healpy.ring2nest(metadata['nside'], pixel)
+        
+        if value.ndim == 2: 
+            raise NotImplementedError("Saving stacked 2d maps with healsparse not yet implemented")
+        else:
+            hsp_map.update_values_pix(hsp_pix, value)
+
+        hsp_map.write(self.path, format='hdf5', clobber=True, hdf5_group=f"maps/{map_name}/healsparse")
 
     def plot_healpix(self, map_name, view="cart", rot180=False, nside=None, **kwargs):
         """
