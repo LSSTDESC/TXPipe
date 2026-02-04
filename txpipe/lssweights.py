@@ -864,9 +864,8 @@ class TXLSSWeights(TXLSSDensityBase):
         map_output_file.file["maps"].attrs.update(self.config)
 
         for ibin, mean_density_map in enumerate(mean_density_map_list):
-            pix = mean_density_map.valid_pixels
-            map_data = 1.0 / mean_density_map[pix]
-            map_output_file.write_map(f"weight_map_bin_{ibin}", pix, map_data, self.pixel_metadata)
+            weight_map = mean_density_map ** -1
+            map_output_file.write_map(f"weight_map_bin_{ibin}", weight_map, self.pixel_metadata)
 
         #### save the binned lens samples
         # There is probably a better way to do this using the batch writer
@@ -1389,15 +1388,13 @@ class TXLSSWeightsUnit(TXLSSWeights):
 
         with self.open_input("mask", wrapper=True) as map_file:
             mask = map_file.read_map("mask")
-            nside = map_file.read_map_info("mask")["nside"]
-            nest = map_file.read_map_info("mask")["nest"]
+            metadata = map_file.read_map_info("mask")
+            nside = metadata["nside"]
 
         nside_coverage = self.config["nside_coverage"]
         nside_sparse = nside
 
-        validpixels = np.where(mask != hp.UNSEEN)[0]
-        if nest == False:
-            validpixels = hp.ring2nest(nside, validpixels)
+        validpixels = mask.valid_pixels
 
         mean_density_map = hsp.HealSparseMap.make_empty(
             nside_coverage, nside_sparse, dtype=np.float64, sentinel=hp.UNSEEN
