@@ -164,7 +164,6 @@ class TXMapCorrelations(PipelineStage):
         # Get the count in each bin in the
         # systematic parameter
         counts = np.bincount(bins)
-        print(counts)
 
         # and the mean of the systematic value
         # itself, and of the y and y^2 values
