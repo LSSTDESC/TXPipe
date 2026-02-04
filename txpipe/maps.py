@@ -385,6 +385,7 @@ class TXDensityMaps(PipelineStage):
 
     def run(self):
         import healpy
+        import healsparse as hsp
 
         # Read the mask and set all pixels below the threshold to 0
         with self.open_input("mask", wrapper=True) as f:
@@ -397,18 +398,15 @@ class TXDensityMaps(PipelineStage):
         with self.open_input("lens_maps", wrapper=True) as f:
             meta = dict(f.file["maps"].attrs)
             nbin_lens = meta["nbin_lens"]
-            ngal_maps = [f.read_map(f"weighted_ngal_{b}").flatten() for b in range(nbin_lens)]
+            ngal_maps = [f.read_map(f"weighted_ngal_{b}") for b in range(nbin_lens)]
 
         # Convert count maps into density maps
         density_maps = []
         for i, ng in enumerate(ngal_maps):
-            ng[np.isnan(ng)] = 0.0
-            ng[ng == healpy.UNSEEN] = 0
-            delta_map = np.zeros(mask.shape, dtype=np.float64)
             # calculate mean of ng and mean of mask
             mu_n = np.mean(ng[pix])
             mu_w = np.mean(mask[pix])
-            delta_map[pix] = (ng[pix] / (mask[pix] * mu_n / mu_w)) - 1
+            delta_map = (hsp.operations.divide_intersection([ng,mask]) / (mu_n / mu_w)) - 1
             density_maps.append(delta_map)
 
         # write output
@@ -418,4 +416,4 @@ class TXDensityMaps(PipelineStage):
             f.file["maps"].attrs.update(meta)
             # save each density map
             for i, rho in enumerate(density_maps):
-                f.write_map_pixval(f"delta_{i}", pix, rho[pix], meta)
+                f.write_map(f"delta_{i}", rho, meta)
