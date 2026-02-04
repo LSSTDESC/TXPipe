@@ -145,16 +145,7 @@ class TXBaseMaps(PipelineStage):
 
         # same the relevant maps in each
         for (tag, map_name), (pix, map_data) in maps.items():
-            hsp_map = hsp.HealSparseMap.make_empty(
-                nside_coverage=32,
-                nside_sparse=self.pixel_metadata['nside'],
-                dtype=map_data.dtype)
-            if self.pixel_metadata['nest']:
-                hsp_pix = pix
-            else:
-                hsp_pix = hp.ring2nest(self.pixel_metadata['nside'], pix)
-            hsp_map.update_values_pix(hsp_pix, map_data)
-            output_files[tag].write_map(map_name, hsp_map, self.pixel_metadata)
+            output_files[tag].write_map_pixval(map_name, pix, map_data, self.pixel_metadata)
 
 
 class TXSourceMaps(PipelineStage):
@@ -262,16 +253,7 @@ class TXSourceMaps(PipelineStage):
                 # We save the pixels in the mask - i.g. any pixel that is hit in any
                 # tomographic bin is included. Some will be UNSEEN.
                 for key in "g1", "g2", "count", "var_e", "var_g1", "var_g2", "lensing_weight":
-                    hsp_map = hsp.HealSparseMap.make_empty(
-                        nside_coverage=32,
-                        nside_sparse=metadata['nside'],
-                        dtype=output[f"{key}_{i}"].dtype)
-                    if metadata['nest']:
-                        hsp_pix = pix
-                    else:
-                        hsp_pix = healpy.ring2nest(metadata['nside'], pix)
-                    hsp_map.update_values_pix(hsp_pix, output[f"{key}_{i}"][pix])
-                    out.write_map(f"{key}_{i}", hsp_map, metadata)
+                    out.write_map_pixval(f"{key}_{i}", pix, output[f"{key}_{i}"][pix], metadata)
 
             out.file["maps"].attrs.update(metadata)
 
@@ -356,7 +338,7 @@ class TXLensMaps(PipelineStage):
         # Save all the maps
         with self.open_output("lens_maps", wrapper=True) as out:
             for name, (pix, m) in maps.items():
-                out.write_map(name, pix, m, metadata)
+                out.write_map_pixval(name, pix, m, metadata)
             out.file["maps"].attrs.update(metadata)
 
 
@@ -436,4 +418,4 @@ class TXDensityMaps(PipelineStage):
             f.file["maps"].attrs.update(meta)
             # save each density map
             for i, rho in enumerate(density_maps):
-                f.write_map(f"delta_{i}", pix, rho[pix], meta)
+                f.write_map_pixval(f"delta_{i}", pix, rho[pix], meta)
