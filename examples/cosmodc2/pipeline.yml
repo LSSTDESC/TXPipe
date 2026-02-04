@@ -3,7 +3,7 @@ launcher:
     interval: 3.0
 
 site:
-    name: nersc-interactive
+    name: local
 
 
 modules: >
@@ -47,9 +47,9 @@ stages:
   - name: TXSourceTomography
     threads_per_process: 8
   - name: TXSourceSelectorMetadetect
-    nprocess: 32
+    # nprocess: 32
   - name: TXShearCalibration
-    nprocess: 32
+    # nprocess: 32
   - name: PZPrepareEstimatorLens     # Prepare the p(z) estimator
     classname: BPZliteInformer
     aliases:
@@ -58,8 +58,8 @@ stages:
 
   - name: PZEstimatorLens
     classname: BPZliteEstimator
-    nprocess: 256
-    nodes: 2
+    # nprocess: 256
+    # nodes: 2
     aliases:
         model: lens_photoz_model
         input: photometry_catalog
@@ -98,10 +98,10 @@ stages:
 
 
   - name: TXRandomCat
-    nprocess: 16
+    # nprocess: 16
   - name: TXLSSWeightsUnit
   - name: TXRandomForestLensSelector
-    nprocess: 32
+    # nprocess: 32
   - name: TXPhotozPlotSource
     classname: TXPhotozPlot
     aliases:
@@ -113,59 +113,59 @@ stages:
         photoz_stack: lens_photoz_stack
         nz_plot: lens_nz
   - name: TXLensCatalogSplitter
-    nprocess: 32
+    # nprocess: 32
   - name: TXTwoPointFourier
-    nprocess: 8
-    nodes: 2
-    threads_per_process: 32
+    # nprocess: 8
+    # nodes: 2
+    # threads_per_process: 32
   - name: TXTwoPointTheoryFourier
   - name: TXTwoPointPlotsFourier
   - name: TXJackknifeCenters
   - name: TXSourceMaps
-    nprocess: 8
+    # nprocess: 8
   - name: TXLensMaps
-    nprocess: 8
+    # nprocess: 8
   - name: TXAuxiliarySourceMaps
-    nprocess: 8
+    # nprocess: 8
   - name: TXAuxiliaryLensMaps
-    nprocess: 8
+    # nprocess: 8
   - name: TXDensityMaps
   - name: TXSourceNoiseMaps
-    nprocess: 4
-    nodes: 1
-    threads_per_process: 1
+    # nprocess: 4
+    # nodes: 1
+    # threads_per_process: 1
   - name: TXLensNoiseMaps
-    nprocess: 4
-    nodes: 1
-    threads_per_process: 1
+    # nprocess: 4
+    # nodes: 1
+    # threads_per_process: 1
   - name: TXSimpleMask
   - name: TXMapPlots
   - name: TXTracerMetadata
   - name: TXNullBlinding
   - name: TXTwoPoint
-    threads_per_process: 32
-    nprocess: 8
-    nodes: 2
+    # threads_per_process: 32
+    # nprocess: 8
+    # nodes: 2
   - name: TXTwoPointPlotsTheory
   - name: TXDiagnosticQuantiles
-    nodes: 1
-    nprocess: 16
+    # nodes: 1
+    # nprocess: 16
   - name: TXLensDiagnosticPlots
-    nprocess: 16
-    nodes: 1
+    # nprocess: 16
+    # nodes: 1
   - name: TXSourceDiagnosticPlots
-    nprocess: 16
-    nodes: 1
+    # nprocess: 16
+    # nodes: 1
   - name: TXFourierGaussianCovariance
-    threads_per_process: 32
+    # threads_per_process: 32
   - name: TXTwoPointTheoryReal
   - name: TXRealGaussianCovariance
-    threads_per_process: 32
+    # threads_per_process: 32
   - name: TXConvergenceMaps
-    threads_per_process: 32
+    # threads_per_process: 32
   - name: TXConvergenceMapPlots
 
-output_dir: data/cosmodc2/outputs
+output_dir: data/cosmodc2/cutout-outputs
 config: examples/cosmodc2/config.yml
 
 # On NERSC, set this before running:
@@ -173,8 +173,8 @@ config: examples/cosmodc2/config.yml
 
 inputs:
     # See README for paths to download these files
-    shear_catalog: data/cosmodc2/inputs/shear_catalog.hdf5
-    photometry_catalog: data/cosmodc2/inputs/photometry_catalog.hdf5
+    shear_catalog: data/cosmodc2/cutout/example_shear_catalog.hdf5
+    photometry_catalog: data/cosmodc2/cutout/example_photometry_catalog.hdf5
     fiducial_cosmology: data/fiducial_cosmology.yml
     none: none
     flow: data/example/inputs/example_flow.pkl

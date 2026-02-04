@@ -192,6 +192,7 @@ class TXSourceMaps(PipelineStage):
         output = {}
 
         for i in bins:
+            bin_output = {}
             # These don't actually load all the data - everything is lazy
             ra = da.from_array(f[f"shear/bin_{i}/ra"], block_size)
             block_size = ra.chunksize
@@ -209,17 +210,22 @@ class TXSourceMaps(PipelineStage):
                 i = "2D"
 
             # Save all the stuff we want here.
-            output[f"count_{i}"] = count_map
-            output[f"g1_{i}"] = g1_map
-            output[f"g2_{i}"] = g2_map
-            output[f"lensing_weight_{i}"] = weight_map
-            output[f"count_{i}"] = count_map
-            output[f"var_e_{i}"] = esq_map
-            output[f"var_g1_{i}"] = var1_map
-            output[f"var_g2_{i}"] = var2_map
+            bin_output[f"count_{i}"] = count_map
+            bin_output[f"g1_{i}"] = g1_map
+            bin_output[f"g2_{i}"] = g2_map
+            bin_output[f"lensing_weight_{i}"] = weight_map
+            bin_output[f"count_{i}"] = count_map
+            bin_output[f"var_e_{i}"] = esq_map
+            bin_output[f"var_g1_{i}"] = var1_map
+            bin_output[f"var_g2_{i}"] = var2_map
+
+            bin_output, = dask.compute(bin_output)
+            output.update(bin_output)
+
+        f.close()
 
         # mask is where a pixel is hit in any of the tomo bins
-        mask = da.zeros(npix, dtype=bool)
+        mask = np.zeros(npix, dtype=bool)
         for i in bins:
             if i == "all":
                 i = "2D"
@@ -229,8 +235,6 @@ class TXSourceMaps(PipelineStage):
 
         # Everything above is lazy - this forces the computation.
         # It works out an efficient (we hope) way of doing everything in parallel
-        (output,) = dask.compute(output)
-        f.close()
 
         # collate metadata
         metadata = {key: self.config[key] for key in map_config_options}

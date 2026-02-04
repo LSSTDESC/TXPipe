@@ -2,9 +2,10 @@ global:
     pixelization: healpix
     chunk_rows: 1000000
     chunk_size: 200000
+    nside: 512
+    ell_max: 1536
 
 TXLSSWeightsUnit:
-    nside: 2048
     pixelization: healpix
 
 TXDiagnosticQuantiles:
@@ -44,22 +45,18 @@ TXLensTrueNumberDensity:
 
 TXLensMaps:
     pixelization: healpix
-    nside: 2048
     sparse: true
 
 TXSourceMaps:
-    nside: 2048
     sparse: true
     pixelization: healpix
     true_shear: false
 
 TXExternalLensMaps:
-    nside: 2048
     sparse: true
     pixelization: healpix
 
 TXExternalLensNoiseMaps:
-    nside: 2048
     pixelization: healpix
 
 TXAuxiliarySourceMaps:
@@ -68,7 +65,6 @@ TXAuxiliarySourceMaps:
 
 TXAuxiliaryLensMaps:
     sparse: true
-    nside: 2048
     pixelization: healpix
     bright_obj_threshold: 22.0
 
@@ -107,11 +103,11 @@ TXSourceDiagnosticPlots:
 
 TXFourierGaussianCovariance:
     galaxy_bias: [1.404, 1.458, 1.693, 1.922, 2.133] # Tinker bias values
-    cache_dir: ./cache_nmt/cosmodc2/nside2048/
+    cache_dir: ./cache_nmt/cosmodc2/nside512/
 
 TXFourierTJPCovariance:
     galaxy_bias: [1.404, 1.458, 1.693, 1.922, 2.133] # Tinker bias values
-    cache_dir: ./cache_nmt/cosmodc2/nside2048/
+    cache_dir: ./cache_nmt/cosmodc2/nside512/
     IA: 0.
 
 TXRealGaussianCovariance:
@@ -125,11 +121,9 @@ TXTwoPointFourier:
     flip_g1: true
     flip_g2: true
     apodization_size: 0.0
-    cache_dir: ./cache_nmt/cosmodc2/nside2048/
+    cache_dir: ./cache_nmt/cosmodc2/nside512/
     true_shear: false
     n_ell: 30
-    ell_max: 6144 # nside * 3 , since Namaster computes that anyway. 
-    nside: 2048
     analytic_noise: true
 
 TXTwoPoint:
