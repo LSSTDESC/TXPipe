@@ -4,6 +4,7 @@ generic types in base.py
 """
 
 from .base import HDFFile, DataFile, YamlFile
+from ..mapping import degrade_healsparse
 import yaml
 import numpy as np
 
@@ -309,7 +310,7 @@ class MapsFile(HDFFile):
         m = hsp_map.generate_healpix_map(nside=nside, reduction=reduction, key=key, nest=nest)
         return m
 
-    def read_mask(self, mask_name=None, thresh=0):
+    def read_mask(self, mask_name=None, thresh=0, degrade_nside=None):
         """
         Read the mask and return as a healsparse map
 
@@ -320,12 +321,16 @@ class MapsFile(HDFFile):
             The name of this mask, if None wil load the default "mask"
         thresh: float (optional)
             minimum fractional coverage of a pixel (at native nside)
+        degrade_nside: int
+            if required, degrade the mask to this nside
         """
         if mask_name is None:
             mask_name = "mask"
         mask = self.read_map(mask_name)
         pix_to_cut = mask.valid_pixels[mask[mask.valid_pixels]<=thresh]
         mask.update_values_pix(pix_to_cut, mask.sentinel)
+        if degrade_nside != mask.nside_sparse:
+            mask = degrade_healsparse(mask, reduction="mask")
         return mask
     
     def read_mask_healpix(self, mask_name=None, thresh=0., degrade_nside=None):
@@ -343,24 +348,7 @@ class MapsFile(HDFFile):
             degrade the mask to this nside before converting to healpix array 
         """
         import healsparse as hsp
-        mask = self.read_mask(mask_name=mask_name, thresh=thresh)
-
-        if (degrade_nside is not None) and (degrade_nside != mask.nside_sparse):
-            #degrade the mask before converting to healpix array
-            if np.issubdtype(mask.dtype, np.integer):
-                mask_out = mask.fracdet_map(degrade_nside)
-            elif np.issubdtype(mask.dtype, np.floating):
-                map_degraded_sum = mask.degrade(degrade_nside, reduction="sum")
-                degraded_pixels = np.unique(map_degraded_sum.valid_pixels)
-                mask_out = hsp.HealSparseMap.make_empty_like(map_degraded_sum)
-                mask_out.update_values_pix(
-                    degraded_pixels, 
-                    map_degraded_sum[degraded_pixels] * (degrade_nside / mask.nside_sparse) ** 2.0
-                    )
-            else:
-                raise RuntimeError(f'Mask dtype is {mask.dtype}, expected float-like or int-like')
-        else:
-            mask_out = mask     
+        mask_out = self.read_mask(mask_name=mask_name, thresh=thresh, degrade_nside=degrade_nside)
         return mask_out.generate_healpix_map()
 
     def write_map(self, map_name, hsp_map, metadata):
@@ -443,7 +431,7 @@ class MapsFile(HDFFile):
 
         hsp_map.write(self.path, format='hdf5', clobber=True, hdf5_group=f"maps/{map_name}/healsparse")
 
-    def plot_healpix(self, map_name, view="cart", rot180=False, nside=None, reduction='mean', key=None, **kwargs):
+    def plot_healpix(self, map_name, view="cart", rot180=False, nside=None, reduction='mean', key=None, weight_map=None, **kwargs):
         """
         Plots healpix map using healpy tools
 
@@ -477,7 +465,11 @@ class MapsFile(HDFFile):
         if nside is None:
             nside = hsp_map.nside_sparse
         pix = hsp_map.valid_pixels
-        m = hsp_map.generate_healpix_map(nside=nside, reduction=reduction, key=key)
+        if reduction in ["weightedmean", "mask"]: #custom degrading reductions
+            degraded_map = degrade_healsparse(hsp_map, nside, reduction, weight_map)
+            m = degraded_map.generate_healpix_map()
+        else:
+            m = hsp_map.generate_healpix_map(nside=nside, reduction=reduction, key=key)
         
         lon, lat = healpy.pix2ang(nside, pix, lonlat=True)
         if rot180:  # (optional) rotate 180 degrees in the lon direction

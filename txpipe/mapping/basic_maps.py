@@ -127,3 +127,60 @@ def make_dask_lens_maps(ra, dec, weight, tomo_bin, target_bin, pixel_scheme):
     weight_map[da.isnan(weight_map)] = healpy.UNSEEN
 
     return pix, count_map, weight_map
+
+def degrade_healsparse(hsp_map, degrade_nside, reduction, weight_map=None):
+    """
+    Degrade a HealSparseMap with a custom reduction method
+
+    There are some reduction methods that we need that are not included in
+    healsparse by default so we will implement them here
+
+    reduction=='weightedmean' will computed a weighted mean of the pixels
+    using weight_map as the weights. unfilled pixels are assumed to have a weight of 0
+
+    reduction=="mask" will degrade a fractional coverage mask
+    The resulting map is sum(x) * (Nside_new/Nside_old)^2
+    """
+    import healsparse as hsp
+    allowed_reductions = ['weightedmean', 'mask']
+    assert reduction in allowed_reductions
+
+    if reduction == "mask":
+        assert weight_map is None, "weight_map not used for fractional mask degrade"
+
+        #if the map is a binary mask, return the fracdet
+        if np.issubdtype(hsp_map.dtype, np.integer):
+            mask_out = hsp_map.fracdet_map(degrade_nside)
+        
+        # if the map is already a fractional coverage map, sum(frac)/N_tot_subpix
+        elif np.issubdtype(hsp_map.dtype, np.floating):
+            map_degraded_sum = hsp_map.degrade(degrade_nside, reduction="sum")
+
+            #only select unique pixels in the degraded map (I'm not sure why they sometimes duplicate)
+            degraded_pixels = np.unique(map_degraded_sum.valid_pixels) 
+
+            map_out = hsp.HealSparseMap.make_empty_like(map_degraded_sum)
+            map_out.update_values_pix(
+                degraded_pixels, 
+                map_degraded_sum[degraded_pixels] * (degrade_nside / hsp_map.nside_sparse) ** 2.0
+                )
+        else:
+            raise RuntimeError(f'Map dtype is {hsp_map.dtype}, expected float-like or int-like for mask reduction')
+    
+    elif reduction == "weightedmean":
+        assert weight_map is not None
+        assert hsp_map.nside_sparse == weight_map.nside_sparse
+
+        # If the map is an integer map, first convert to floats
+        if np.issubdtype(hsp_map.dtype, np.integer):
+            valid_pix = hsp_map.valid_pixels
+            m = hsp.HealSparseMap.make_empty(hsp_map.nside_coverage, hsp_map.nside_sparse, dtype=float)
+            m.update_values_pix(valid_pix, hsp_map[valid_pix].astype(float))
+        else:
+            m = hsp_map
+
+        xw = hsp.operations.product_intersection([weight_map, m])
+        sumxw = xw.degrade(degrade_nside, reduction="sum")
+        sumw = weight_map.degrade(degrade_nside, reduction="sum")
+        map_out = hsp.operations.divide_intersection([sumxw,sumw])
+    return map_out
