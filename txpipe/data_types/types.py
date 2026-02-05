@@ -262,6 +262,15 @@ class MapsFile(HDFFile):
         return info
 
     def read_map(self, map_name):
+        """
+        Read map and return as a healsparse map
+        
+        Parameters
+        ----------
+
+        map_name: `str`
+            The name of this map
+        """
         info = self.read_map_info(map_name)
         pixelization = info["pixelization"]
         if pixelization == "gnomonic":
@@ -272,13 +281,87 @@ class MapsFile(HDFFile):
             raise ValueError(f"Unknown map pixelization type {pixelization}")
         return m
 
+    def read_map_healpix(self, map_name, nside=None, reduction='mean', key=None, nest=True):
+        """
+        Read map and return as a healpix array
+        
+        Parameters
+        ----------
+
+        map_name: `str`
+            The name of this map
+        nside : `int` (healsparse argument)
+            Output nside resolution parameter (should be a multiple of 2). If
+            not specified the output resolution will be equal to the parent's
+            sparsemap nside_sparse
+        reduction : `str` (healsparse argument)
+            If a change in resolution is requested, this controls the method to
+            reduce the map computing the "mean", "median", "std", "max", "min",
+            "sum" or "prod" (product)  of the neighboring pixels to compute the
+            "degraded" map.
+        key : `str` (healsparse argument)
+            If the parent HealSparseMap contains recarrays, key selects the
+            field that will be transformed into a HEALPix map.
+        nest : `bool`, optional (healsparse argument)
+            Output healpix map should be in nest format?
+        """
+        hsp_map = self.read_map(map_name)
+        m = hsp_map.generate_healpix_map(nside=nside, reduction=reduction, key=key, nest=nest)
+        return m
+
     def read_mask(self, mask_name=None, thresh=0):
+        """
+        Read the mask and return as a healsparse map
+
+        Parameters
+        ----------
+
+        map_name: str or None  (optional)
+            The name of this mask, if None wil load the default "mask"
+        thresh: float (optional)
+            minimum fractional coverage of a pixel (at native nside)
+        """
         if mask_name is None:
             mask_name = "mask"
         mask = self.read_map(mask_name)
         pix_to_cut = mask.valid_pixels[mask[mask.valid_pixels]<=thresh]
         mask.update_values_pix(pix_to_cut, mask.sentinel)
         return mask
+    
+    def read_mask_healpix(self, mask_name=None, thresh=0., degrade_nside=None):
+        """
+        Read the mask and return as a healpix array
+
+        Parameters
+        ----------
+
+        map_name: str or None  (optional)
+            The name of this mask, if None wil load the default "mask"
+        thresh: float (optional)
+            minimum fractional coverage of a pixel (at native nside)
+        degrade_nside : int or None  (optional)
+            degrade the mask to this nside before converting to healpix array 
+        """
+        import healsparse as hsp
+        mask = self.read_mask(mask_name=mask_name, thresh=thresh)
+
+        if (degrade_nside is not None) and (degrade_nside != mask.nside_sparse):
+            #degrade the mask before converting to healpix array
+            if np.issubdtype(mask.dtype, np.integer):
+                mask_out = mask.fracdet_map(degrade_nside)
+            elif np.issubdtype(mask.dtype, np.floating):
+                map_degraded_sum = mask.degrade(degrade_nside, reduction="sum")
+                degraded_pixels = np.unique(map_degraded_sum.valid_pixels)
+                mask_out = hsp.HealSparseMap.make_empty_like(map_degraded_sum)
+                mask_out.update_values_pix(
+                    degraded_pixels, 
+                    map_degraded_sum[degraded_pixels] * (degrade_nside / mask.nside_sparse) ** 2.0
+                    )
+            else:
+                raise RuntimeError(f'Mask dtype is {mask.dtype}, expected float-like or int-like')
+        else:
+            mask_out = mask     
+        return mask_out.generate_healpix_map()
 
     def write_map(self, map_name, hsp_map, metadata):
         """
@@ -467,6 +550,12 @@ class LensingNoiseMaps(MapsFile):
 
         return g1, g2
 
+    def read_rotation_healpix(self, realization_index, bin_index):
+        g1,g2 = self.read_rotation(realization_index, bin_index)
+        g1_hp = g1.generate_healpix_map()
+        g2_hp = g2.generate_healpix_map()
+        return g1_hp, g2_hp
+
     def number_of_realizations(self):
         info = self.file["maps"].attrs
         lensing_realizations = info["lensing_realizations"]
@@ -480,6 +569,12 @@ class ClusteringNoiseMaps(MapsFile):
         rho1 = self.read_map(rho1_name)
         rho2 = self.read_map(rho2_name)
         return rho1, rho2
+
+    def read_density_split_healpix(self, realization_index, bin_index):
+        rho1,rho2 = self.read_density_split(realization_index, bin_index)
+        rho1_hp = rho1.generate_healpix_map()
+        rho2_hp = rho2.generate_healpix_map()
+        return rho1_hp, rho2_hp
 
     def number_of_realizations(self):
         info = self.file["maps"].attrs
