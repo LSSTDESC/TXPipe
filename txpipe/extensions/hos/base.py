@@ -39,7 +39,7 @@ class HOSStage(PipelineStage):
         """
         with self.open_input("mask", wrapper=True) as f:
             info = f.read_map_info("mask")
-            mask = f.read_map("mask")
+            mask = f.read_map_healpix("mask")
 
         pixel_scheme = choose_pixelization(**info)
         return mask, pixel_scheme
@@ -64,7 +64,7 @@ class HOSStage(PipelineStage):
         """
         with self.open_input("density_maps", wrapper=True) as f:
             nbin_lens = f.file["maps"].attrs["nbin_lens"]
-            density_maps = [f.read_map(f"delta_{b}") for b in range(nbin_lens)]
+            density_maps = [f.read_map_healpix(f"delta_{b}") for b in range(nbin_lens)]
             print(f"Loaded {nbin_lens} overdensity maps")
 
         if set_bad_pixels_to_zero:
@@ -92,8 +92,8 @@ class HOSStage(PipelineStage):
         """
         with self.open_input("convergence_maps", wrapper=True) as f:
             nbin_source = f.file["maps"].attrs["nbin_source"]
-            convergence_maps = [f.read_map(f"kappa_E_{b}") for b in range(nbin_source)]
-            convergence_maps.append(f.read_map("kappa_E_2D"))
+            convergence_maps = [f.read_map_healpix(f"kappa_E_{b}") for b in range(nbin_source)]
+            convergence_maps.append(f.read_map_healpix("kappa_E_2D"))
             print(f"Loaded {nbin_source} convergence maps")
         return convergence_maps, nbin_source        
 
