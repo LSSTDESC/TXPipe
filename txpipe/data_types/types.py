@@ -327,10 +327,14 @@ class MapsFile(HDFFile):
         if mask_name is None:
             mask_name = "mask"
         mask = self.read_map(mask_name)
+
+        #remove any pixels below the threshold
         pix_to_cut = mask.valid_pixels[mask[mask.valid_pixels]<=thresh]
         mask.update_values_pix(pix_to_cut, mask.sentinel)
-        if degrade_nside != mask.nside_sparse:
-            mask = degrade_healsparse(mask, reduction="mask")
+
+        #degrade if requested and nessesary
+        if (degrade_nside is not None) and (degrade_nside != mask.nside_sparse):
+            mask = degrade_healsparse(mask, reduction="mask", degrade_nside=degrade_nside)
         return mask
     
     def read_mask_healpix(self, mask_name=None, thresh=0., degrade_nside=None):
