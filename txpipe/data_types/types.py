@@ -443,9 +443,32 @@ class MapsFile(HDFFile):
 
         hsp_map.write(self.path, format='hdf5', clobber=True, hdf5_group=f"maps/{map_name}/healsparse")
 
-    def plot_healpix(self, map_name, view="cart", rot180=False, nside=None, **kwargs):
+    def plot_healpix(self, map_name, view="cart", rot180=False, nside=None, reduction='mean', key=None, **kwargs):
         """
         Plots healpix map using healpy tools
+
+        The map is read as a HealSparse map, optionally degraded 
+        to a target nside, converted to a Healpix array, and plotted with healpy
+
+        Parameters
+        ----------
+        map_name : str
+            Name of the map to read and plot.
+        view : {"cart", "moll"}, optional
+            Healpy view type: Cartesian ("cart") or Mollweide ("moll").
+        rot180 : bool, optional
+            If True, rotate the map by 180 degrees in longitude before plotting.
+        nside : int, optional
+            Target Healpix nside for visualization. Defaults to the sparse
+            nside of the input map.
+        reduction : str, optional
+            Reduction operation used when generating the Healpix map
+            from the HealSparse representation (e.g. "mean", "sum").
+        key : str, optional
+            Optional key used if healsparse map is a recarray
+        **kwargs
+            Additional keyword arguments passed directly to the underlying
+            healpy plotting function (e.g. ``min``, ``max``, ``cmap``).
         """
         import healpy
         import numpy as np
@@ -454,7 +477,7 @@ class MapsFile(HDFFile):
         if nside is None:
             nside = hsp_map.nside_sparse
         pix = hsp_map.valid_pixels
-        m = hsp_map.generate_healpix_map(nside=nside)
+        m = hsp_map.generate_healpix_map(nside=nside, reduction=reduction, key=key)
         
         lon, lat = healpy.pix2ang(nside, pix, lonlat=True)
         if rot180:  # (optional) rotate 180 degrees in the lon direction
