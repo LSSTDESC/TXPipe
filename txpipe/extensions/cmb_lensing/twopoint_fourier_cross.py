@@ -30,10 +30,10 @@ class TXCMBLensingCrossMonteCarloCorrection(PipelineStage):
 
     def load_masks(self):
         with self.open_input("cmb_lensing_map") as f:
-            kappa_cmb_mask = f.read_map("kappa_mask")
+            kappa_cmb_mask = f.read_map_healpix("kappa_mask")
 
         with self.open_input("mask", wrapper=True) as f:
-            galaxy_mask = f.read_mask(thresh=self.config["mask_threshold"])
+            galaxy_mask = f.read_mask_healpix(thresh=self.config["mask_threshold"])
 
         return kappa_cmb_mask, galaxy_mask
 
@@ -295,8 +295,8 @@ class TXTwoPointFourierCMBLensingCrossDensity(PipelineStage):
 
         # Load the CMB lensing map and mask
         with self.open_input("cmb_lensing_map", wrapper=True) as f:
-            kappa_cmb = f.read_map("kappa_cmb")
-            kappa_cmb_mask = f.read_map("kappa_mask")
+            kappa_cmb = f.read_map_healpix("kappa_cmb")
+            kappa_cmb_mask = f.read_map_healpix("kappa_mask")
 
         # Set unseen pixels in the mask to zero to correctly downweight them
         unseen_to_zero(kappa_cmb_mask)
@@ -309,12 +309,12 @@ class TXTwoPointFourierCMBLensingCrossDensity(PipelineStage):
         # Read the over-density maps
         with self.open_input("density_maps", wrapper=True) as f:
             nbin_lens = f.file["maps"].attrs["nbin_lens"]
-            d_maps = [f.read_map(f"delta_{b}") for b in range(nbin_lens)]
+            d_maps = [f.read_map_healpix(f"delta_{b}") for b in range(nbin_lens)]
 
         # Read the masks, one per density bin
         with self.open_input("density_masks", wrapper=True) as f:
             masks = [
-                f.read_mask(f"mask_{b}", thresh=self.config["mask_threshold"]) for b in range(nbin_lens)
+                f.read_mask_healpix(f"mask_{b}", thresh=self.config["mask_threshold"]) for b in range(nbin_lens)
             ]
 
         # Check that the density maps have no unseen values under the mask.

@@ -40,8 +40,8 @@ class TXIngestPlanckLensingMaps(PipelineStage):
         }
 
         with self.open_output("cmb_lensing_map", wrapper=True) as f:
-            f.write_map("kappa_cmb", kappa_pix, kappa_val, metadata)
-            f.write_map("kappa_mask", kappa_pix, mask_val, metadata)
+            f.write_map_pixval("kappa_cmb", kappa_pix, kappa_val, metadata)
+            f.write_map_pixval("kappa_mask", kappa_pix, mask_val, metadata)
 
 
     def ingest_kappa(self):
@@ -185,7 +185,7 @@ class TXIngestQuaia(PipelineStage):
             f.file["maps"].attrs["nbin_lens"] = 2
             f.file["maps"].attrs["zbin_edges"] = z_edges
             for name, (pix, delta) in maps.items():
-                f.write_map(name, pix, delta, metadata)
+                f.write_map_pixval(name, pix, delta, metadata)
 
         # Save the masks. 
         with self.open_output("density_masks", wrapper=True) as f:
@@ -193,7 +193,7 @@ class TXIngestQuaia(PipelineStage):
             f.file["maps"].attrs["nbin_lens"] = 2
             f.file["maps"].attrs["zbin_edges"] = z_edges
             for name, (pix, mask) in masks.items():
-                f.write_map(name, pix, mask, metadata)
+                f.write_map_pixval(name, pix, mask, metadata)
 
         # Save the n(z) as a QP ensemble
         nzs = np.array(nzs)
