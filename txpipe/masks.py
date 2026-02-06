@@ -216,6 +216,7 @@ class TXSimpleMaskSource(TXBaseMask):
         metadata : dict
             Metadata from input file.
         """
+        import healsparse as hsp
         lensing_weights = []
         with self.open_input("source_maps", wrapper=True) as f:
             metadata = dict(f.file["maps"].attrs)
@@ -224,8 +225,12 @@ class TXSimpleMaskSource(TXBaseMask):
                 lw = f.read_map(f"lensing_weight_{i}")
                 lensing_weights.append(lw)
 
-        lensing_weights = np.array(lensing_weights)
-        mask = np.logical_and.reduce(lensing_weights > 0.0, axis=0)
+        # find min lensing weight across all bins
+        # if min > 0.0 -> all bins have a non-zeros lensing weight so we set that pixel to True
+        min_lw = hsp.operations.min_intersection(lensing_weights)
+        valid_pix = min_lw.valid_pixels[min_lw[min_lw.valid_pixels] > 0.]
+        mask = hsp.HealSparseMap.make_empty(lw.nside_coverage, lw.nside_sparse, np.bool)
+        mask[valid_pix] = True
 
         return mask, pixel_scheme, metadata
 
