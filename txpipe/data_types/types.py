@@ -310,7 +310,7 @@ class MapsFile(HDFFile):
         m = hsp_map.generate_healpix_map(nside=nside, reduction=reduction, key=key, nest=nest)
         return m
 
-    def read_mask(self, mask_name=None, thresh=0, degrade_nside=None):
+    def read_mask(self, mask_name=None, thresh=0, degrade_nside=None, returnbool=False):
         """
         Read the mask and return as a healsparse map
 
@@ -323,7 +323,12 @@ class MapsFile(HDFFile):
             minimum fractional coverage of a pixel (at native nside)
         degrade_nside: int
             if required, degrade the mask to this nside
+        returnbool: bool
+            if True, will return a binary map where any pixel with mask > 0 is True
+            if mask was already boolean, return unchanged
         """
+        import healsparse as hsp
+
         if mask_name is None:
             mask_name = "mask"
         mask = self.read_map(mask_name)
@@ -335,6 +340,13 @@ class MapsFile(HDFFile):
         #degrade if requested and nessesary
         if (degrade_nside is not None) and (degrade_nside != mask.nside_sparse):
             mask = degrade_healsparse(mask, reduction="mask", degrade_nside=degrade_nside)
+
+        if returnbool and not np.issubdtype(mask.dtype, np.bool_):
+            #make a boolean mask from a frac map
+            bool_mask = hsp.HealSparseMap.make_empty(mask.nside_coverage, mask.nside_sparse, bool)
+            bool_mask[mask.valid_pixels] = True
+            mask = bool_mask 
+
         return mask
     
     def read_mask_healpix(self, mask_name=None, thresh=0., degrade_nside=None):
