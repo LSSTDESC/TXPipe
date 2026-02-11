@@ -1004,7 +1004,8 @@ class TXTwoPointPixel(TXTwoPoint):
 
         with self.open_input("density_maps", wrapper=True) as f:
             info = f.read_map_info(f"delta_{i}")
-            map_d, pix, nside = f.read_healpix(f"delta_{i}", return_all=True)
+            map_d = f.read_map(f"delta_{i}")
+            pix = map_d.valid_pixels
             print(f"Loaded {i} overdensity maps")
 
         # Read the mask to get fracdet weights
@@ -1032,11 +1033,13 @@ class TXTwoPointPixel(TXTwoPoint):
 
         with self.open_input("source_maps", wrapper=True) as f:
             info_g1 = f.read_map_info(f"g1_{i}")
-            map_g1, pix_g1, nside = f.read_healpix(f"g1_{i}", return_all=True)
+            map_g1 = f.read_map(f"g1_{i}")
+            pix_g1 = map_g1.valid_pixels
             print(f"Loaded shear 1 {i} maps")
 
             info_g2 = f.read_map_info(f"g2_{i}")
-            map_g2, pix_g2, nside = f.read_healpix(f"g2_{i}", return_all=True)
+            map_g2 =  f.read_healpix(f"g2_{i}")
+            pix_g2 = map_g2.valid_pixels
             print(f"Loaded shear 2 {i} maps")
 
         scheme = choose_pixelization(**info_g1)
@@ -1292,7 +1295,9 @@ class TXTwoPointPixelExtCross(TXTwoPointPixel):
         # Read the mask to get fracdet weights
         with self.open_input("mask", wrapper=True) as f:
             info = f.read_map_info("mask")
-            mask, pix, nside = f.read_healpix("mask", return_all=True)
+            mask = f.read_map("mask")
+            pix = mask.valid_pixels
+            nside = mask.nside_sparse
 
         # open the input healsparse map
         sys_files = self.get_ext_list()
