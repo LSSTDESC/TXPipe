@@ -162,17 +162,10 @@ class TXLSSDensityBase(TXMapCorrelations):
         print(f"Found {nsys} total systematic maps")
 
         with self.open_input("mask", wrapper=True) as map_file:
-            mask = map_file.read_map("mask")
-            mask_map_info = map_file.read_map_info("mask")
-            mask_nest = mask_map_info["nest"]
-            mask = hsp.HealSparseMap(
-                nside_coverage=self.config["nside_coverage"],
-                healpix_map=(mask == hp.UNSEEN).astype("int"),
-                nest=mask_nest,
-                sentinel=1,
-            )  # in this mask, 1 = bad pixel!
+            #load *boolean* mask
+            mask = map_file.read_mask("mask", degrade_nside=self.config["nside"], returnbool=True)
 
-        nside = mask_map_info["nside"]
+        nside = mask.nside_sparse
 
         sys_maps = []
         sys_names = []
@@ -198,9 +191,8 @@ class TXLSSDensityBase(TXMapCorrelations):
                     f"Found {n_missing}/{mask.n_valid} mask pixels with missing {sys_name} values, and fill_missing_pix was False"
                 )
 
-            sys_map.apply_mask(mask, mask_bits=1)
-
-            # apply mask
+            # mask is boolean so this should return a map with just the valid sys_map pixels
+            sys_map = hsp.operations.product_intersection([sys_map, mask])
             sys_maps.append(sys_map)
 
         f = time.time()
