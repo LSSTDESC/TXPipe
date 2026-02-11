@@ -78,7 +78,7 @@ class TXIngestCatalogBase(PipelineStage):
 
         # Set up any dummy columns with sentinal values
         # that were not in the original files
-        for col_name, dummy_val in dummy_columns.keys():
+        for col_name, dummy_val in dummy_columns.items():
             g.create_dataset(col_name, data=np.full(n, dummy_val))
 
         output.close()
