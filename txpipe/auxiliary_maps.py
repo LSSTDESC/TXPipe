@@ -251,7 +251,7 @@ class TXUniformDepthMap(PipelineStage):
             f.file.create_group("depth")
             print(len(pix))
             print(len(depth[pix]))
-            f.write_map("depth/depth", pix, depth[pix], metadata)
+            f.write_map_pixval("depth/depth", pix, depth[pix], metadata)
 
 
 class TXAuxiliarySSIMaps(TXBaseMaps):
@@ -409,5 +409,5 @@ class TXAuxiliarySSIMaps(TXBaseMaps):
         # Write the output maps to the output file
         with self.open_output("aux_ssi_maps", wrapper=True) as out:
             for map_name, (pix, m) in maps.items():
-                out.write_map(map_name, pix, m, metadata)
+                out.write_map_pixval(map_name, pix, m, metadata)
             out.file["maps"].attrs.update(metadata)
