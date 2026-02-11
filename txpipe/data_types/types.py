@@ -431,19 +431,25 @@ class MapsFile(HDFFile):
         subgroup.attrs.update(metadata)
 
         #convert pixels and values into a healsparse map and save
-        hsp_map = hsp.HealSparseMap.make_empty(
-                    nside_coverage=nside_coverage,
-                    nside_sparse=metadata['nside'],
-                    dtype=value.dtype)
+        if value.ndim == 2: #input values are a stack of maps. save as recarray (labels 0, 1, 2 etc)
+            dtypes = [(str(i), value.dtype) for i in range(value.shape[0])]
+            value = np.rec.fromarrays(value, dtype=dtypes)
+            hsp_map = hsp.HealSparseMap.make_empty(
+                        nside_coverage=nside_coverage,
+                        nside_sparse=metadata['nside'],
+                        dtype=dtypes,
+                        primary='0')
+        else:
+            hsp_map = hsp.HealSparseMap.make_empty(
+                        nside_coverage=nside_coverage,
+                        nside_sparse=metadata['nside'],
+                        dtype=value.dtype)
         if metadata['nest']:
             hsp_pix = pixel
         else:
             hsp_pix = healpy.ring2nest(metadata['nside'], pixel)
         
-        if value.ndim == 2: 
-            raise NotImplementedError("Saving stacked 2d maps with healsparse not yet implemented")
-        else:
-            hsp_map.update_values_pix(hsp_pix, value)
+        hsp_map.update_values_pix(hsp_pix, value)
 
         hsp_map.write(self.path, format='hdf5', clobber=True, hdf5_group=f"maps/{map_name}/healsparse")
 
