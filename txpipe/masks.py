@@ -159,8 +159,6 @@ class TXSimpleMask(TXBaseMask):
             Metadata from input file.
         """
         import healsparse as hsp
-        from functools import reduce
-        from operator import and_
 
         with self.open_input("aux_lens_maps", wrapper=True) as f:
             metadata = dict(f.file["maps"].attrs)
@@ -168,7 +166,6 @@ class TXSimpleMask(TXBaseMask):
             depth = f.read_map("depth/depth")
             pixel_scheme = choose_pixelization(**metadata)
         
-        #TODO: this can be chunked if we dont want to access all valid pixels at the same time
         valid_pix = depth.valid_pixels
         hit = hsp.HealSparseMap.make_empty(depth.nside_coverage, depth.nside_sparse, dtype=np.bool )
         hit.update_values_pix(valid_pix, 1)
@@ -185,8 +182,6 @@ class TXSimpleMask(TXBaseMask):
             print(f"Mask '{name}' removes fraction {frac:.3f} of hit pixels")
 
         # Overall mask
-        # Note healpsarse only knows about python _and, not numpy's logical_and
-        #mask = reduce(and_, [mask for _, mask in masks.items()])
         mask = hsp.operations.and_intersection([mask for _, mask in masks.items()])
 
         return mask, pixel_scheme, metadata
@@ -241,7 +236,7 @@ class TXSimpleMaskFrac(TXSimpleMask):
     Include the fractional coverage of each pixel using a high-res survey property map (e.g. N-exposures for given band(s) )
 
     #NOTE: This assumes all cuts to the mask are being done within TXpipe at the config Nside
-    #if we want to apply cuts on the survey property map nside (higher resolution), we will need to add this feature
+    #if we want to apply cuts on the survey property map nside (potentially higher resolution), we will need to add this feature
     """
 
     name = "TXSimpleMaskFrac"
@@ -384,7 +379,7 @@ class TXCustomMask(TXSimpleMaskFrac):
             #set value dtype to match the map 
             value = np.array(value, dtype=m.dtype).item()
 
-            #make hit map
+            # make hit map
             # hit is only used to print fraction of pixels removed from each cut
             # Arbitrarily choose the first map specified
             if icut == 0:
