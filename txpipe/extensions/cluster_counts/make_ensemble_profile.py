@@ -34,7 +34,10 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         "nbins" : 5, # number of bins
         #type of profile
         "magnification_profile" : False,
-        "units": "mpc" # options are mpc or arcmin
+        "units": "mpc", # options are mpc or arcmin
+        "cov_type" : "jackknife_covariance",
+        "jackknife_nside": 32,
+        "bootstrap_nboot": 100,
         #coordinate_system for shear
         #"coordinate_system" : 'euclidean' #Must be either 'celestial' or 'euclidean'
     }
@@ -203,7 +206,12 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         print("cluster ensemble computed")
             
         #compute sample covariance
-        cluster_ensemble.compute_sample_covariance(tan_component="tangential_comp", cross_component="cross_comp")
+        if self.config["cov_type"] == "sample_covariance":
+            cluster_ensemble.compute_sample_covariance(tan_component="tangential_comp", cross_component="cross_comp")
+        elif self.config["cov_type"] == "jackknife_covariance":
+            cluster_ensemble.compute_jackknife_covariance(tan_component="tangential_comp", cross_component="cross_comp", n_side = self.config["jackknife_nside"])
+        elif self.config["cov_type"] == "bootstrap_covariance":
+            cluster_ensemble.compute_bootstrap_covariance(tan_component="tangential_comp", cross_component="cross_comp", n_bootstrap = self.config["bootstrap_nboot"])
         print("covariance computed")
     
         return cluster_ensemble

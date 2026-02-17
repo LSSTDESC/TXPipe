@@ -17,6 +17,7 @@ class CLClusterSACC(PipelineStage):
         #distance bin definition
         "d_min" : 0.5, #in Mpc or acrmin
         "d_max" : 5.0, #in Mpc or arcmin
+        "cov_component": "tan_jk",
     }
 
     def run(self):
@@ -124,17 +125,20 @@ class CLClusterSACC(PipelineStage):
 
     def add_covariance_data(self, sacc_obj, data: dict):
         """
-        Adds covariance data to the SACC object.
+        Adds full block-diagonal covariance data to the SACC object.
         """
         import sacc
+        from scipy.linalg import block_diag
+        cov_str = self.config["cov_component"]
         cluster_count = sacc.standard_types.cluster_counts
-        counts_points = np.array(sacc_obj.get_data_points(cluster_count))
-        counts_cov = np.array([point.value for point in counts_points])
+        counts_points = sacc_obj.get_data_points(cluster_count)
+    
+        counts_values = np.array([point.value for point in counts_points])
+        counts_cov_block = np.diag(counts_values) 
 
-        deltasigma_cov = [
-            bin_data['clmm_cluster_ensemble'].cov['tan_sc'].diagonal()
+        ds_blocks = [
+            bin_data['clmm_cluster_ensemble'].cov[cov_str]
             for bin_data in data.values()
         ]
-
-        diag_cov_vector = np.concatenate([counts_cov.flatten(), np.array(deltasigma_cov).flatten()])
-        sacc_obj.add_covariance(np.diag(diag_cov_vector))
+        full_cov = block_diag(counts_cov_block, *ds_blocks)
+        sacc_obj.add_covariance(full_cov)
