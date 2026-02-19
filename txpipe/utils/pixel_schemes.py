@@ -28,7 +28,7 @@ class HealpixScheme:
 
     """
 
-    def __init__(self, nside, nest=False):
+    def __init__(self, nside, nest=True):
         """Make a converter object.
 
         Parameters
@@ -519,8 +519,8 @@ def choose_pixelization(**config):
         if not healpy.isnsideok(nside):
             raise ValueError(f"nside pixelization parameter must be set to a power of two (used value {nside})")
         nest = config.get("nest", False)
-        if nest:
-            raise ValueError("Please do not attempt to use the NEST pixelization.  It will only end badly for you.")
+        if not nest:
+            print("You are using RING ordering, This will be converted to NEST when saving to healsparse")
         scheme = HealpixScheme(nside, nest=nest)
     elif pixelization == "gnomonic":
         ra_cent = config["ra_cent"]
