@@ -3,7 +3,7 @@ from .utils import choose_pixelization
 from .base_stage import PipelineStage
 from .data_types import MapsFile
 from ceci.config import StageParameter
-from ..mapping import degrade_healsparse
+from .mapping import degrade_healsparse
 
 class TXBaseMask(PipelineStage):
     """
