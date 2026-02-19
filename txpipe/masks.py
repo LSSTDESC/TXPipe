@@ -3,7 +3,7 @@ from .utils import choose_pixelization
 from .base_stage import PipelineStage
 from .data_types import MapsFile
 from ceci.config import StageParameter
-
+from ..mapping import degrade_healsparse
 
 class TXBaseMask(PipelineStage):
     """
@@ -439,18 +439,8 @@ class TXCustomMask(TXSimpleMaskFrac):
         import healpy as hp
         import copy
 
-        # do a "sum" degrade of the frac mask
-        map_degraded_sum = mask.degrade(nside_out, reduction="sum")
-
-        # Divide the sum of the mask by the ratio of pixel areas
-        degraded_pixels = np.unique(
-            map_degraded_sum.valid_pixels
-        )  # TODO: figure out why there are sometimes duplicates in valid_pixels
-        mask_out = hsp.HealSparseMap.make_empty_like(map_degraded_sum)
-        mask_out.update_values_pix(
-            degraded_pixels, 
-            map_degraded_sum[degraded_pixels] * (nside_out / metadata_in["nside"]) ** 2.0
-            )
+        # use custom recution "mask" which allows us to degrade a fractional coverage map
+        mask_out = degrade_healsparse(mask, nside_out, reduction="mask")
 
         metadata_out = copy.copy(metadata_in)
         metadata_out["nside"] = nside_out
