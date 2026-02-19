@@ -267,7 +267,7 @@ class TXSimpleMaskFrac(TXSimpleMask):
             "You have specified both map_file and map_files, pick one"
         )
 
-        if self.config["supreme_map_file"] is not "none":
+        if self.config["supreme_map_file"] != "none":
             fracdet = self.compute_fracdet_from_hsp(metadata)
         else:
             fracdet = self.compute_fracdet_from_hsp_list(metadata)

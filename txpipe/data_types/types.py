@@ -486,10 +486,10 @@ class MapsFile(HDFFile):
         import numpy as np
 
         info = self.read_map_info(map_name)
-        assert info["pixelization"] is not "gnomonic"
+        assert info["pixelization"] != "gnomonic"
 
         hsp_map = self.read_map(map_name)
-        
+
         if nside is None:
             nside = hsp_map.nside_sparse
         pix = hsp_map.valid_pixels
