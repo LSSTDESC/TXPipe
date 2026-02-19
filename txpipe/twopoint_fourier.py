@@ -524,7 +524,7 @@ class TXTwoPointFourier(PipelineStage):
 
         # Load mask for calculation of cl_guess and (optionally) analytic noise calculation.
         with self.open_input("mask", wrapper=True) as f:
-            mask = f.read_mask_healpix(thresh=self.config["mask_threshold"])
+            mask = f.read_mask_healpix(thresh=self.config["mask_threshold"], degrade_nside=self.config["nside"])
             if self.rank == 0:
                 print("Loaded mask")
 
@@ -910,7 +910,7 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
             nbin_source = f.file["shear"].attrs["nbin_source"]
 
         # We will obtain nside from somewhere if needed, but for now set to None
-        nside = None
+        nside = self.config["nside"]
         # Load mask for galaxy clustering
         if self.config["deproject_syst_clustering"] or not self.config["use_randoms_clustering"]:
             with self.open_input("mask", wrapper=True) as f:

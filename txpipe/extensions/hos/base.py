@@ -39,7 +39,7 @@ class HOSStage(PipelineStage):
         """
         with self.open_input("mask", wrapper=True) as f:
             info = f.read_map_info("mask")
-            mask = f.read_map_healpix("mask")
+            mask = f.read_mask_healpix("mask", degrade_nside=self.config["nside"])
 
         pixel_scheme = choose_pixelization(**info)
         return mask, pixel_scheme

@@ -33,7 +33,7 @@ class TXCMBLensingCrossMonteCarloCorrection(PipelineStage):
             kappa_cmb_mask = f.read_map_healpix("kappa_mask")
 
         with self.open_input("mask", wrapper=True) as f:
-            galaxy_mask = f.read_mask_healpix(thresh=self.config["mask_threshold"])
+            galaxy_mask = f.read_mask_healpix(thresh=self.config["mask_threshold"], degrade_nside=self.config["nside"])
 
         return kappa_cmb_mask, galaxy_mask
 
@@ -314,7 +314,7 @@ class TXTwoPointFourierCMBLensingCrossDensity(PipelineStage):
         # Read the masks, one per density bin
         with self.open_input("density_masks", wrapper=True) as f:
             masks = [
-                f.read_mask_healpix(f"mask_{b}", thresh=self.config["mask_threshold"]) for b in range(nbin_lens)
+                f.read_mask_healpix(f"mask_{b}", thresh=self.config["mask_threshold"], degrade_nside=self.config["nside"]) for b in range(nbin_lens)
             ]
 
         # Check that the density maps have no unseen values under the mask.
