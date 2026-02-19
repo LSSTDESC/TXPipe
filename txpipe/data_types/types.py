@@ -7,7 +7,7 @@ from .base import HDFFile, DataFile, YamlFile
 from ..mapping import degrade_healsparse
 import yaml
 import numpy as np
-
+import warnings
 
 def metacalibration_names(names):
     """
@@ -215,14 +215,6 @@ class MapsFile(HDFFile):
 
         # return the accumulated list
         return maps
-
-    def read_healpix(self, map_name):
-        is_legacy = self.check_is_legacy(map_name)
-
-        if is_legacy:
-            return self.read_healpix_legacy(map_name)
-        else:
-            return self.read_healsparse(map_name)
     
     def read_healsparse(self, map_name, **kwargs):
         """
@@ -259,7 +251,12 @@ class MapsFile(HDFFile):
         group = self.file[f"maps/{map_name}"]
         info = dict(group.attrs)
         if not "pixelization" in info:
-            raise ValueError(f"Map '{map_name}' not found, or not saved properly in file {self.path}")
+            warnings.warn(
+                f"Warning 'pixelization' not found in '{map_name}' in file {self.path}.\n"
+                "This might mean this is not a TXPipe file.\n"
+                "We will default to assuming a healpix map"
+                , UserWarning)
+            info["pixelization"] = "healpix"
         return info
 
     def read_map(self, map_name):
@@ -277,7 +274,12 @@ class MapsFile(HDFFile):
         if pixelization == "gnomonic":
             m = self.read_gnomonic(map_name)
         elif pixelization == "healpix":
-            m = self.read_healpix(map_name)
+            is_legacy = self.check_is_legacy(map_name)
+
+            if is_legacy:
+                m = self.read_healpix_legacy(map_name)
+            else:
+                m = self.read_healsparse(map_name)
         else:
             raise ValueError(f"Unknown map pixelization type {pixelization}")
         return m
@@ -483,7 +485,11 @@ class MapsFile(HDFFile):
         import healpy
         import numpy as np
 
-        hsp_map = self.read_healpix(map_name)
+        info = self.read_map_info(map_name)
+        assert info["pixelization"] is not "gnomonic"
+
+        hsp_map = self.read_map(map_name)
+        
         if nside is None:
             nside = hsp_map.nside_sparse
         pix = hsp_map.valid_pixels
