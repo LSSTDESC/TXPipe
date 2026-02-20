@@ -72,32 +72,30 @@ def process_metadetect_data(data):
         var_data = data[data["metaStep"] == variant]
 
         var_output = {
-            "ra": var_data["radec"][0],
-            "dec": var_data["radec"][1],
-            "cell_id": var_data["cellId"],
+            "ra": var_data["coord_ra"],
+            "dec": var_data["coord_dec"],
             "id": var_data["shearObjectId"],
-            "metaStep": var_data["metaStep"],
-            "object_mask_fraction": var_data["maskFractionObj"],
-            "cell_mask_fraction": var_data["maskFractionCell"],
-            "n_epoch": var_data["nEpochCell"],
-            "g1": var_data["g1"],
-            "g2": var_data["g2"],
-            "g1_err": var_data["gCov"][0],
-            "g2_err": var_data["gCov"][1],
-            "g_cross": var_data["gCov"][2],
-            "T": var_data["T"],
-            "s2n": var_data["SNR"],
-            "T_err": var_data["TErr"],
-            "psf_g1": var_data["g1PSFOrig"],
-            "psf_g2": var_data["g2PSFOrig"],
-            "mcal_psf_g1": var_data["g1PSFMeta"],
-            "mcal_psf_g2": var_data["g2PSFMeta"],
-            "mcal_psf_T_mean": var_data["TPSFMeta"],
-            "flags": var_data["flags"],
+            "metaStep": var_data["metaStep"], #might not be needed
+            "object_mask_fraction": var_data["mfrac"],
+            #"n_epoch": var_data["nEpochCell"],
+            "g1": var_data["gauss_g1"],
+            "g2": var_data["gauss_g2"],
+            "g1_err": var_data["gauss_g1_g1_Cov"],
+            "g2_err": var_data["gauss_g2_g2_Cov"],
+            "g_cross": var_data["gauss_g1_g2_Cov"],
+            "T": var_data["gauss_T"],
+            "s2n": var_data["gauss_snr"],
+            "T_err": var_data["gauss_TErr"],
+            "psf_g1": var_data["psfOriginal_e1"],
+            "psf_g2": var_data["psfOriginal_e2"],
+            "mcal_psf_g1": var_data["gauss_psfReconvolved_g1"],
+            "mcal_psf_g2": var_data["gauss_psfReconvolved_g1"],
+            "mcal_psf_T_mean": var_data["gauss_psfReconvolved_T"],
+            "flags": var_data["flags"], # TO BE ADDRESSED!
         }
-        for band in "ugrizy":
-            f = var_data["stdFlux"][band]
-            f_err = var_data["stdFluxErr"][band]
+        for band in "griz": # For DP2, we only expect 4 bands
+            f = var_data[f"{band}_pgaussFlux"]
+            f_err = var_data[f"{band}_pgaussFluxErr"]
             var_output[f"flux_{band}"] = f
             var_output[f"flux_err_{band}"] = f_err
         output[f"{variant}"] = var_output
