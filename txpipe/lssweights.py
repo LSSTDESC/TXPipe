@@ -466,6 +466,7 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
             density_correlation.plot1d_singlemap(
                 filepath,
                 imap,
+                plot_hist=True,
             )
 
         filepath = output_dir.path_for_file(f"chi2_hist_lens{ibin}.png")
