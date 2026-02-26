@@ -2,6 +2,33 @@ from ..utils import import_dask
 
 import numpy as np
 
+def make_coverage_map(ra, dec, pixel_scheme):
+    """
+    Create a map that describes which low-res "coverage pixels" will contain data
+
+    Parameters
+    ----------
+    ra : dask.array
+        Right ascension values of the objects.
+    dec : dask.array
+        Declination values of the objects.
+    Returns
+    -------
+    Coverage map: HealSparseCoverage
+    """
+    _, da = import_dask()
+    import healsparse as hsp
+    cov_map = hsp.HealSparseCoverage.make_empty(pixel_scheme.nside_coverage, pixel_scheme.nside)
+
+
+    pix = pixel_scheme.ang2pix(ra, dec)
+    cov_pix = np.unique(cov_map.cov_pixels(pix))
+    
+    #we run compute here so we can return the HealSparseCoverage object
+    cov_pix = cov_pix.compute()
+    cov_map.initialize_pixels(cov_pix)
+
+    return cov_map
 
 def make_dask_flag_maps(ra, dec, flag, max_exponent, pixel_scheme):
     """

@@ -2,6 +2,7 @@ from .maps import TXBaseMaps, map_config_options
 import numpy as np
 from .base_stage import PipelineStage
 from .mapping import (
+    make_coverage_map,
     make_dask_shear_maps,
     make_dask_flag_maps,
     make_dask_bright_object_map,
@@ -155,6 +156,7 @@ class TXAuxiliaryLensMaps(TXBaseMaps):
     def run(self):
         # Import dask and alias it as 'da'
         _, da = import_dask()
+        import healsparse as hsp
 
         # Retrieve configuration parameters
         block_size = self.config["block_size"]
@@ -179,26 +181,34 @@ class TXAuxiliaryLensMaps(TXBaseMaps):
         # Choose the pixelization scheme based on the configuration.
         # Might need to review this to make sure we use the same scheme everywhere
         pixel_scheme = choose_pixelization(**self.config)
+        assert pixel_scheme.nest
+
+        cov_map = make_coverage_map(ra, dec, pixel_scheme)
 
         # Initialize a dictionary to store the maps.
         # To start with this is all lazy too, until we call compute
         maps = {}
 
         # Create a bright object map using dask
-        pix1, bright_object_count_map = make_dask_bright_object_map(
-            ra, dec, mag, extendedness, self.config["bright_obj_threshold"], pixel_scheme
+        bright_object_results = make_dask_bright_object_map(
+            ra, dec, mag, extendedness, self.config["bright_obj_threshold"], pixel_scheme, cov_map
         )
-        maps["bright_objects/count"] = (pix1, bright_object_count_map[pix1])
+        maps["bright_objects/count"] = bright_object_results["count"]
 
         # Create depth maps using dask
         depth_map_results = make_dask_depth_map(
-            ra, dec, mag, snr, self.config["snr_threshold"], self.config["snr_delta"], pixel_scheme
+            ra, dec, mag, snr, self.config["snr_threshold"], self.config["snr_delta"], pixel_scheme, cov_map
         )
-        maps["depth/depth"] = (depth_map_results["pix"], depth_map_results["depth_map"][depth_map_results["pix"]])
-        maps["depth/depth_count"] = (depth_map_results["pix"], depth_map_results["count_map"][depth_map_results["pix"]])
-        maps["depth/depth_var"] = (depth_map_results["pix"], depth_map_results["depth_var"][depth_map_results["pix"]])
+        maps["depth/depth"] =  depth_map_results["depth_map"]
+        maps["depth/depth_count"] =  depth_map_results["count_map"]
+        maps["depth/depth_var"] = depth_map_results["depth_var"]
 
         (maps,) = da.compute(maps)
+
+        # convert sparse_map arrays into healsparse map objects
+        hsp_maps = {}
+        for name, map in maps.items():
+            hsp_maps[name] = hsp.HealSparseMap(cov_map=cov_map, sparse_map=map, nside_sparse=cov_map.nside_sparse)
 
         # Prepare metadata for the maps. Copy the pixelization-related
         # configuration options only here
@@ -212,8 +222,8 @@ class TXAuxiliaryLensMaps(TXBaseMaps):
 
         # Write the output maps to the output file
         with self.open_output("aux_lens_maps", wrapper=True) as out:
-            for map_name, (pix, m) in maps.items():
-                out.write_map_pixval(map_name, pix, m, metadata)
+            for map_name, hsp_map in hsp_maps.items():
+                out.write_map(map_name, hsp_map, metadata)
             out.file["maps"].attrs.update(metadata)
 
 
