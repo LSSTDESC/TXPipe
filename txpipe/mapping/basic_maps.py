@@ -3,8 +3,10 @@ from ..utils import import_dask
 import numpy as np
 import healpy
 
-def make_dask_flag_maps(ra, dec, flag, max_exponent, pixel_scheme, cov_map,):
+def make_dask_flag_maps(ra, dec, flag, max_exponent, pixel_scheme, cov_map ):
     """
+    Create maps of flag counts per pixel
+
     Flags are assumed to be bitmasks, and this makes maps showing
     the number of objects with each flag set in each pixel.
 
@@ -24,6 +26,15 @@ def make_dask_flag_maps(ra, dec, flag, max_exponent, pixel_scheme, cov_map,):
 
     pixel_scheme : PixelScheme
         The pixelization scheme to use, typically Healpix with a given nside
+    
+    cov_map : HealSparseCoverage
+        coverage map corresponding to these sources (or a superset of them)
+
+    Returns
+    -------
+    maps : list of dask arrays
+        List of length max_exponent, where maps[i] contains the count of
+        objects with the 2^i flag bit set in each sparse pixel.
     """
     _, da = import_dask()
     pix = pixel_scheme.ang2pix(ra, dec)
@@ -51,6 +62,50 @@ def make_dask_shear_maps(
     cov_map,
     sentinel=healpy.UNSEEN
 ):
+    """
+    Create weighted shear maps per pixel from a galaxy catalog.
+
+    Computes count, mean shear (g1, g2), lensing weight, shape noise (esq),
+    and variance maps over the sparse healpix pixelization defined by cov_map.
+
+    Parameters
+    ----------
+    ra : dask array
+        Right ascension in degrees.
+    dec : dask array
+        Declination in degrees.
+    g1 : dask array
+        First shear component for each object.
+    g2 : dask array
+        Second shear component for each object.
+    weight : dask array
+        Lensing weight for each object.
+    pixel_scheme : PixelScheme
+        The pixelization scheme to use, typically Healpix with a given nside.
+    cov_map : HealSparseCoverage
+        Coverage map corresponding to these sources (or a superset of them).
+    sentinel : float, optional
+        Value to fill empty pixels with. Default is healpy.UNSEEN.
+
+    Returns
+    -------
+    dict with keys:
+        count_map : dask array
+            Number of objects per pixel.
+        g1_map : dask array
+            Weighted mean g1 per pixel.
+        g2_map : dask array
+            Weighted mean g2 per pixel.
+        weight_map : dask array
+            Sum of lensing weights per pixel.
+        esq_map : dask array
+            Weighted mean squared ellipticity (shape noise) per pixel,
+            computed as sum(w^2 * 0.5 * (g1^2 + g2^2)).
+        var1_map : dask array
+            Weighted variance on the mean g1 per pixel.
+        var2_map : dask array
+            Weighted variance on the mean g2 per pixel.
+    """
     _, da = import_dask()
 
     npix = pixel_scheme.npix
@@ -117,6 +172,40 @@ def make_dask_shear_maps(
 
 
 def make_dask_lens_maps(ra, dec, weight, tomo_bin, target_bin, pixel_scheme, cov_map, sentinel=healpy.UNSEEN):
+    """
+    Create count and weight maps for a lens galaxy sample in a tomographic bin.
+
+    Parameters
+    ----------
+    ra : dask array
+        Right ascension in degrees.
+    dec : dask array
+        Declination in degrees.
+    weight : dask array
+        Weight for each object.
+    tomo_bin : dask array
+        Tomographic bin index for each object. Objects with tomo_bin < 0
+        are considered unassigned.
+    target_bin : int or "2D"
+        The tomographic bin to select. If "2D", all objects with tomo_bin >= 0
+        are counted (but only target_bin objects are weighted).
+    pixel_scheme : PixelScheme
+        The pixelization scheme to use, typically Healpix with a given nside.
+    cov_map : HealSparseCoverage
+        Coverage map corresponding to these sources (or a superset of them).
+    sentinel : float, optional
+        Value to fill empty pixels with. Default is healpy.UNSEEN.
+
+    Returns
+    -------
+    dict with keys:
+        count_map : dask array
+            Number of objects per pixel (unweighted). For "2D", counts all
+            objects with tomo_bin >= 0; otherwise counts only target_bin objects.
+        weight_map : dask array
+            Sum of weights per pixel for target_bin objects. Empty pixels
+            are set to sentinel.
+    """
     # this will actually load numpy if a debug env var is set
     _, da = import_dask()
 
@@ -146,16 +235,40 @@ def make_dask_lens_maps(ra, dec, weight, tomo_bin, target_bin, pixel_scheme, cov
 
 def degrade_healsparse(hsp_map, degrade_nside, reduction, weight_map=None):
     """
-    Degrade a HealSparseMap with a custom reduction method
+    Degrade a HealSparseMap with a custom reduction method.
 
-    There are some reduction methods that we need that are not included in
-    healsparse by default so we will implement them here
+    Implements reduction methods not included in healsparse by default.
 
-    reduction=='weightedmean' will computed a weighted mean of the pixels
-    using weight_map as the weights. unfilled pixels are assumed to have a weight of 0
+    Parameters
+    ----------
+    hsp_map : HealSparseMap
+        The map to degrade.
+    degrade_nside : int
+        The target nside resolution to degrade to. Must be coarser (smaller)
+        than hsp_map.nside_sparse.
+    reduction : str
+        The reduction method to use. Must be one of:
 
-    reduction=="mask" will degrade a fractional coverage mask
-    The resulting map is sum(x) * (Nside_new/Nside_old)^2
+        - "weightedmean" : Compute a weighted mean of the fine pixels within
+          each coarse pixel, using weight_map as the weights. Pixels not
+          present in weight_map are assumed to have weight 0. Requires
+          weight_map to be provided.
+
+        - "mask" : Degrade a coverage mask to a fractional coverage map.
+          For integer (binary) input maps, returns the fracdet map.
+          For float (fractional) input maps, computes
+          sum(x) * (nside_new / nside_old)^2 per coarse pixel.
+          Does not accept a weight_map.
+
+    weight_map : HealSparseMap, optional
+        Weight map to use for the "weightedmean" reduction. Must have the
+        same nside_sparse as hsp_map. Required if reduction="weightedmean",
+        must be None if reduction="mask".
+
+    Returns
+    -------
+    map_out : HealSparseMap
+        Degraded map at degrade_nside resolution.
     """
     import healsparse as hsp
     allowed_reductions = ['weightedmean', 'mask']
@@ -211,6 +324,7 @@ def make_coverage_map(ra, dec, pixel_scheme):
         Right ascension values of the objects.
     dec : dask.array
         Declination values of the objects.
+    
     Returns
     -------
     Coverage map: HealSparseCoverage
@@ -230,6 +344,27 @@ def make_coverage_map(ra, dec, pixel_scheme):
     return cov_map
 
 def pix2sparseindex(pix, cov_map, return_npix=True):
+    """
+    Convert healpix nest pixel IDs to indices into the HealSparseMap._sparse_map array.
+
+    Parameters
+    ----------
+    pix : dask array of int
+        Healpix pixel IDs in NEST scheme at nside_sparse resolution.
+    cov_map : HealSparseCoverage
+        Coverage map defining the sparse map layout.
+    return_npix : bool, optional
+        If True, also return the total length of the sparse map array.
+        Default is True.
+
+    Returns
+    -------
+    sparse_index : dask array of int
+        Index into _sparse_map for each input pixel.
+    npix_sparse : int
+        Total number of elements in the sparse map array, including the
+        sentinel block. Only returned if return_npix is True.
+    """
     _, da = import_dask()
 
     if return_npix:    

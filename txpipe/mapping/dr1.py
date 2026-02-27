@@ -66,8 +66,8 @@ def make_dask_depth_map(ra, dec, mag, snr, threshold, delta, pixel_scheme, cov_m
         coverage map corresponding to these sources (or a superset of them)
     Returns
     -------
-    tuple
-        A tuple containing:
+    dict 
+        A dict containing:
         - pix (dask.array): Unique pixel indices.
         - count_map (dask.array): Count of objects per pixel.
         - depth_map (dask.array): Mean depth per pixel.
@@ -149,8 +149,8 @@ def make_dask_depth_map_det_prob(
 
     Returns
     -------
-    tuple
-        A tuple containing:
+    dict
+        A dict containing:
         - pix (dask.array): Unique pixel indices.
         - det_count_map (dask.array): Count of detected objects per pixel.
         - inj_count_map (dask.array): Count of injected objects per pixel.
