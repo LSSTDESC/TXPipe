@@ -148,7 +148,7 @@ class MetaCalibrator(Calibrator):
         self.R_gamma = R
         self.R_sel = S
         self.R = R + S
-        self.Rinv = np.linalg.inv(R)
+        self.Rinv = np.linalg.inv(self.R)
         if mu_is_calibrated:
             self.mu = np.array(mu)
         else:

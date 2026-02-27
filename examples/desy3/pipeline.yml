@@ -25,6 +25,8 @@ stages:
     #- name: TXJackknifeCenters   # Split the area into jackknife regions
     #- name: TXTwoPoint           # Compute real-space 2-point correlations
     #  threads_per_process: 128
+    #- name: TXShearBmode         # Compute shear B-modes from TXTwoPoint outputs
+    #  threads_per_process: 128
     #- name: TXBlinding           # Blind the data following Muir et al
         #threads_per_process: 2
     #- name: TXTwoPointTheoryReal # compute theory using CCL to save in sacc file and plot later

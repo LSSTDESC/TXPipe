@@ -5,6 +5,7 @@ from .data_types import (
     TomographyCatalog,
     RandomsCatalog,
     SACCFile,
+    MapsFile,
     PNGFile,
     TextFile,
     QPNOfZFile,
@@ -748,3 +749,290 @@ class TXApertureMass(TXTwoPoint):
 
         # Finally, save the output to Sacc file
         S.save_fits(self.get_output("aperture_mass_data"), overwrite=True)
+
+
+class TXShearBmode(PipelineStage):
+    """
+    Make shear B-mode measurements from narrow-bin xi+/xi- measurements.
+
+    This stage can run either:
+    - NaMaster B-mode spectra from maps, or
+    - hybrid-EB (Becker & Rozo 2015) from TreeCorr outputs.
+    """
+
+    name = "TXShearBmode"
+    parallel = False
+
+    inputs = [
+        ("shear_photoz_stack", QPNOfZFile),
+        ("source_maps", MapsFile),
+        ("mask", MapsFile),
+        ("twopoint_data_real_raw", SACCFile),
+    ]
+
+    outputs = [("twopoint_data_fourier_shearbmode", SACCFile)]
+
+    config_options = {
+        "method": StageParameter(str, "hybrideb", msg="B-mode method: 'namaster' or 'hybrideb'."),
+        "purify_b": StageParameter(bool, False, msg="Enable NaMaster B-mode purification."),
+        "Nell": StageParameter(int, 20, msg="Number of ell bins."),
+        "lmin": StageParameter(int, 200, msg="Minimum ell."),
+        "lmax": StageParameter(int, 2000, msg="Maximum ell."),
+        "lspacing": StageParameter(str, "log", msg="Ell spacing: 'log' or 'lin'."),
+        "bin_file": StageParameter(str, "", msg="Optional file with pre-defined bin edges."),
+        "theta_min": StageParameter(float, 2.5, msg="Minimum theta (arcmin) for hybrid-EB."),
+        "theta_max": StageParameter(float, 250.0, msg="Maximum theta (arcmin) for hybrid-EB."),
+        "Ntheta": StageParameter(int, 1000, msg="Number of theta bins for hybrid-EB."),
+        "Nsims": StageParameter(int, 1000, msg="Number of simulations for covariance estimation."),
+    }
+
+    def run(self):
+        if self.config["method"] == "namaster":
+            self.run_namaster(self.config["purify_b"])
+        elif self.config["method"] == "hybrideb":
+            self.run_hybrideb()
+        else:
+            raise ValueError("Method must be 'namaster' or 'hybrideb'")
+
+    def run_namaster(self, purify_b):
+        """
+        B-mode calculation implemented in NaMaster.
+        """
+        import pickle
+        import pymaster as nmt
+        import healpy as hp
+        from tqdm import tqdm
+
+        print("running namaster")
+
+        lmin = self.config["lmin"]
+        lmax = self.config["lmax"]
+        Nell = self.config["Nell"]
+        Nsims = self.config["Nsims"]
+        lspacing = self.config["lspacing"]
+
+        if purify_b:
+            print("WARNING: Namaster's B-mode purification requires a heavily apodized mask.")
+            print("For realistic LSS masks this often performs poorly.")
+
+        with self.open_input("source_maps", wrapper=True) as f:
+            # +1 includes the non-tomographic sample.
+            nbin_source = f.file["maps"].attrs["nbin_source"] + 1
+
+            g1_maps = [f.read_map(f"g1_{b}") for b in range(nbin_source - 1)]
+            g2_maps = [f.read_map(f"g2_{b}") for b in range(nbin_source - 1)]
+
+            # Non-tomographic bin.
+            g1_maps.append(f.read_map("g1_2D"))
+            g2_maps.append(f.read_map("g2_2D"))
+
+            nside = hp.npix2nside(len(g1_maps[0]))
+            assert lmax < 3 * nside, f"lmax must be smaller than 3*nside (lmax={lmax}, nside={nside})"
+
+        with self.open_input("mask", wrapper=True) as f:
+            mask = f.read_map("mask")
+
+        if lspacing == "lin":
+            bine = np.linspace(lmin + 1, lmax + 1, Nell + 1, dtype=np.int64)
+        elif lspacing == "log":
+            bine = np.geomspace(lmin + 1, lmax + 1, Nell + 1, dtype=np.int64)
+        else:
+            raise ValueError("lspacing must be either 'log' or 'lin'")
+
+        b = nmt.NmtBin.from_edges(bine[:-1], bine[1:])
+
+        fields = {}
+        for i in range(nbin_source):
+            g1_maps[i][g1_maps[i] == hp.UNSEEN] = 0
+            g2_maps[i][g2_maps[i] == hp.UNSEEN] = 0
+            fields[i] = nmt.NmtField(mask, [g1_maps[i], g2_maps[i]], purify_e=False, purify_b=purify_b, lmax=lmax)
+
+        products_dict = {
+            "mask": mask,
+            "Nell": Nell,
+            "nbin_source": nbin_source,
+            "g1_maps": g1_maps,
+            "g2_maps": g2_maps,
+        }
+        file_namaster_intermediate = self.get_output("twopoint_data_fourier_shearbmode")[:-5] + "_namaster.pkl"
+        with open(file_namaster_intermediate, "wb") as handle:
+            pickle.dump(products_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+        ret = np.zeros((nbin_source, nbin_source, len(b.get_effective_ells())))
+        for zi in range(nbin_source):
+            for zj in range(zi, nbin_source):
+                if zi != zj and (zi == nbin_source - 1 or zj == nbin_source - 1):
+                    continue
+
+                field1 = fields[zi]
+                field2 = fields[zj]
+                w_yp = nmt.NmtWorkspace()
+                w_yp.compute_coupling_matrix(field1, field2, b)
+
+                cl_coupled = nmt.compute_coupled_cell(field1, field2)
+                cl_decoupled = w_yp.decouple_cell(cl_coupled)
+                ret[zj, zi, :] = cl_decoupled[3]
+
+        tmparr = np.zeros((int(nbin_source * (nbin_source + 1) / 2 * len(b.get_effective_ells())), Nsims))
+        for k in tqdm(range(Nsims)):
+            sim_fields = {}
+            for i in range(nbin_source):
+                idx = np.where(g1_maps[i] != 0)[0]
+                psi = np.random.uniform(0, 2 * np.pi, size=len(idx))
+
+                g1i = g1_maps[i][idx].copy()
+                g2i = g2_maps[i][idx].copy()
+                g1_maps[i][idx] = g1i * np.cos(2 * psi) + g2i * np.sin(2 * psi)
+                g2_maps[i][idx] = -g1i * np.sin(2 * psi) + g2i * np.cos(2 * psi)
+
+                sim_fields[i] = nmt.NmtField(mask, [g1_maps[i], g2_maps[i]], purify_e=False, purify_b=purify_b, lmax=lmax)
+
+            tmp = np.array([])
+            for zi in range(nbin_source):
+                for zj in range(zi, nbin_source):
+                    field1 = sim_fields[zi]
+                    field2 = sim_fields[zj]
+                    w_yp = nmt.NmtWorkspace()
+                    w_yp.compute_coupling_matrix(field1, field2, b)
+
+                    cl_coupled = nmt.compute_coupled_cell(field1, field2)
+                    cl_decoupled = w_yp.decouple_cell(cl_coupled)
+                    tmp = np.concatenate([tmp, cl_decoupled[3]])
+            tmparr[:, k] = tmp
+
+        ell = b.get_effective_ells()
+        results = ret
+        cov = np.cov(tmparr)
+
+        print("Saving ShearBmode Cls in sacc file")
+        self.save_power_spectra(nbin_source, ell, results, cov)
+
+    def run_hybrideb(self):
+        """
+        B-mode method of Becker and Rozo 2015 (arXiv:1412.3851).
+        """
+        import os
+        import pickle
+        import sacc
+        import treecorr
+        import hybrideb
+
+        print("running hybrideb")
+
+        Ntheta = self.config["Ntheta"]
+        if Ntheta < 1000:
+            print("WARNING: Calculating hybridEB with Ntheta<1000 may be inaccurate.")
+
+        file_precomputed_weights = self.get_output("twopoint_data_fourier_shearbmode") + ".precomputedweights.pkl"
+
+        if os.path.exists(file_precomputed_weights):
+            print(f"{self.rank} WARNING: Using precomputed weights from previous run: {file_precomputed_weights}")
+            with open(file_precomputed_weights, "rb") as f:
+                geb_dict = pickle.load(f)
+            Nl = len(geb_dict.keys())
+        else:
+            heb = hybrideb.HybridEB(self.config["theta_min"], self.config["theta_max"], Ntheta)
+            beb = hybrideb.BinEB(self.config["theta_min"], self.config["theta_max"], Ntheta)
+            geb = hybrideb.GaussEB(beb, heb)
+            Nl = geb.Nl
+
+            geb_dict = {}
+            for i in range(geb.Nl):
+                geb_dict[f"{i+1}"] = {}
+                for j in range(6):
+                    geb_dict[f"{i+1}"][f"{j+1}"] = geb(i)[j]
+
+            with open(file_precomputed_weights, "wb") as handle:
+                pickle.dump(geb_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+        Bn0 = np.zeros(Nl)
+        ell = np.zeros(Nl)
+
+        def get_Xm(corrs):
+            vec = []
+            for gg in corrs:
+                xip, xim = gg.xip, gg.xim
+                bn = np.empty(Nl)
+                for i in range(Nl):
+                    filt = geb_dict[f"{i+1}"]
+                    bn[i] = 0.5 * np.sum(filt["2"] * xip - filt["3"] * xim)
+                vec.append(bn)
+            return np.concatenate(vec)
+
+        filename = self.get_input("twopoint_data_real_raw")
+        data_twopt = sacc.Sacc.load_fits(filename)
+        qxip = sacc.standard_types.galaxy_shear_xi_plus
+
+        source_tracers = set()
+        for b1, b2 in data_twopt.get_tracer_combinations(qxip):
+            source_tracers.add(b1)
+            source_tracers.add(b2)
+
+        nbin_source = max(len(source_tracers), 1)
+        results = np.zeros((nbin_source, nbin_source, Nl))
+
+        corr = []
+        output_dir = os.path.dirname(self.get_input("twopoint_data_real_raw"))
+        for zi in range(nbin_source):
+            for zj in range(zi + 1):
+                gg = treecorr.GGCorrelation.from_file(f"{output_dir}/treecorr_0_{zi}_{zj}.out")
+                corr.append(gg)
+
+                for i in range(Nl):
+                    filt = geb_dict[f"{i+1}"]
+                    fp = filt["2"]
+                    fm = filt["3"]
+                    Bn0[i] = np.sum(fp * gg.xip - fm * gg.xim) / 2
+                    ell[i] = filt["4"][np.argmax(filt["5"])]
+
+                results[zj, zi, :] = Bn0[:]
+
+        cov = treecorr.estimate_multi_cov(corr, "jackknife", func=get_Xm)
+
+        print("Saving", f"{output_dir}/hybrideb.npz")
+        np.savez(f"{output_dir}/hybrideb.npz", ell=ell, results=results, cov=cov)
+
+        print("Saving hybridEB Cls in sacc file")
+        self.save_power_spectra(nbin_source, ell, results, cov)
+
+    def save_power_spectra(self, nbin_source, ell, results, cov):
+        import datetime
+        import shutil
+        import sacc
+
+        method = self.config["method"]
+
+        S = sacc.Sacc()
+        S.metadata["nbin_source"] = nbin_source
+        S.metadata["creation"] = datetime.datetime.now().isoformat()
+        S.metadata["method"] = method
+        S.metadata["info"] = "ClBB"
+
+        cbb = sacc.standard_types.galaxy_shear_cl_bb
+
+        with self.open_input("shear_photoz_stack", wrapper=True) as f:
+            for i in range(nbin_source):
+                if i == nbin_source - 1:
+                    z, nz = f.get_2d_n_of_z()
+                    S.add_tracer("NZ", f"source_{i}", z, nz)
+                else:
+                    z, nz = f.get_bin_n_of_z(i)
+                    S.add_tracer("NZ", f"source_{i}", z, nz)
+
+        for zi in range(nbin_source):
+            for zj in range(zi, nbin_source):
+                tracer1 = f"source_{zj}"
+                tracer2 = f"source_{zi}"
+                val = results[zj, zi, :]
+                for k in range(len(val)):
+                    S.add_data_point(cbb, (tracer1, tracer2), value=val[k], ell=ell[k])
+
+        S.add_covariance(cov)
+
+        output_filename = self.get_output("twopoint_data_fourier_shearbmode")
+        S.save_fits(output_filename, overwrite=True)
+
+        # Save a method-specific copy as an extra convenience artifact.
+        output_filename_rename = output_filename.replace(".sacc", f"_{method}.sacc")
+        output_filename_rename = output_filename_rename.replace("inprogress_", "")
+        shutil.copyfile(output_filename, output_filename_rename)

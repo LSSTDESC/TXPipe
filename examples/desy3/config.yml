@@ -124,6 +124,20 @@ TXTwoPoint:
     subtract_mean_shear: True
     source_bins: [0]
     lens_bins: [0]
+    save_treecorr: True
+
+TXShearBmode:
+    method: hybrideb                      # 'namaster' or 'hybrideb'
+    purify_b: False                       # only for namaster
+    Nell: 32                              # Number of ell bins
+    lmin: 20                              # ell min
+    lmax: 2048                            # ell max
+    lspacing: log                         # ell spacing for binning
+    bin_file:                             # Load predefined bin edges instead
+    theta_min: 2.5                        # only for hybrideb
+    theta_max: 250                        # only for hybrideb
+    Ntheta: 250                           # only for hybrideb
+    Nsims: 300                            # Number of simulations for covariance
 
 TXBlinding:
     seed: 1972  ## seed uniquely specifies the shift in parameters

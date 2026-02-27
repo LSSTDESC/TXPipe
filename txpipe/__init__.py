@@ -21,7 +21,7 @@ from .covariance import TXFourierGaussianCovariance, TXRealGaussianCovariance
 from .diagnostics import TXSourceDiagnosticPlots, TXLensDiagnosticPlots
 from .exposure_info import TXExposureInfo
 from .psf_diagnostics import TXPSFDiagnostics, TXRoweStatistics
-from .noise_maps import TXSourceNoiseMaps, TXLensNoiseMaps, TXNoiseMapsJax
+from .noise_maps import TXSourceNoiseMaps, TXSourceNoiseMapsPrecalibrated, TXLensNoiseMaps, TXNoiseMapsJax
 from .maps import TXSourceMaps, TXLensMaps
 from .auxiliary_maps import TXAuxiliarySourceMaps, TXAuxiliaryLensMaps
 from .map_plots import TXMapPlots
@@ -32,7 +32,7 @@ from .map_correlations import TXMapCorrelations
 from .rail import PZRailSummarize, PZRealizationsPlot, TXParqetToHDF
 from .theory import TXTwoPointTheoryReal, TXTwoPointTheoryFourier
 from .jackknife import TXJackknifeCenters
-from .twopoint_null_tests import TXGammaTFieldCenters
+from .twopoint_null_tests import TXGammaTFieldCenters, TXShearBmode
 from .twopoint_plots import TXTwoPointPlots, TXTwoPointPlotsFourier, TXTwoPointPlotsTheory
 from .calibrate import TXShearCalibration
 from .ingest import *

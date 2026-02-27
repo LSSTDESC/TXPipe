@@ -143,7 +143,7 @@ class MetacalCalculator(CalibrationCalculator):
     that are looked up.
     """
 
-    def __init__(self, selector, delta_gamma, resp_mean_diag=False):
+    def __init__(self, selector, delta_gamma, resp_mean_diag=True):
         """
         Initialize the Calibrator using the function you will use to select
         objects. That function should take at least one argument,

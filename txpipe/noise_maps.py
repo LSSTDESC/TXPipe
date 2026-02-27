@@ -19,6 +19,23 @@ from .utils import (
 from ceci.config import StageParameter
 
 
+precalibrated_map_config_options = {
+    "chunk_rows": StageParameter(int, 100000, msg="The number of rows to read in each chunk of data at a time."),
+    "pixelization": StageParameter(str, "healpix", msg="The pixelization scheme to use, currently just healpix."),
+    "nside": StageParameter(
+        int, 0, msg="The Healpix resolution parameter for the generated maps. Only required if using healpix."
+    ),
+    "sparse": StageParameter(
+        bool, True, msg="Whether to generate sparse maps (faster and less memory for small sky areas)."
+    ),
+    "ra_cent": StageParameter(float, np.nan, msg="Required only if pixelization==tan."),
+    "dec_cent": StageParameter(float, np.nan, msg="Required only if pixelization==tan."),
+    "npix_x": StageParameter(int, -1, msg="Required only if pixelization==tan."),
+    "npix_y": StageParameter(int, -1, msg="Required only if pixelization==tan."),
+    "pixel_size": StageParameter(float, np.nan, msg="Pixel size of pixelization scheme."),
+}
+
+
 class TXSourceNoiseMaps(TXBaseMaps):
     """
     Generate realizations of shear noise maps with random rotations
@@ -187,6 +204,114 @@ class TXSourceNoiseMaps(TXBaseMaps):
                     g2[bin_mask],
                 )
         return maps
+
+
+class TXSourceNoiseMapsPrecalibrated(PipelineStage):
+    """
+    Generate source noise maps directly from binned calibrated shear catalogs.
+    """
+
+    name = "TXSourceNoiseMapsPrecalibrated"
+    dask_parallel = True
+
+    inputs = [
+        ("binned_shear_catalog", HDFFile),
+    ]
+
+    outputs = [
+        ("source_noise_maps", LensingNoiseMaps),
+    ]
+
+    config_options = {
+        "block_size": StageParameter(int, 0, msg="Dask block size; 0 means auto."),
+        "lensing_realizations": StageParameter(int, 30, msg="Number of lensing noise realizations to generate."),
+        **precalibrated_map_config_options,
+    }
+
+    def run(self):
+        import dask
+        import dask.array as da
+        import healpy
+
+        pixel_scheme = choose_pixelization(**self.config)
+        nside = self.config["nside"]
+        npix = healpy.nside2npix(nside)
+        block_size = self.config["block_size"]
+
+        if block_size == 0:
+            block_size = "auto"
+
+        lensing_realizations = self.config["lensing_realizations"]
+
+        # Keep the file open while dask lazily reads chunks.
+        f = self.open_input("binned_shear_catalog")
+        nbin = f["shear"].attrs["nbin_source"]
+
+        bins = list(range(nbin)) + ["all"]
+        output = {}
+
+        for bin_id in bins:
+            ra = da.from_array(f[f"shear/bin_{bin_id}/ra"], block_size)
+            dec = da.from_array(f[f"shear/bin_{bin_id}/dec"], block_size)
+            g1 = da.from_array(f[f"shear/bin_{bin_id}/g1"], block_size)
+            g2 = da.from_array(f[f"shear/bin_{bin_id}/g2"], block_size)
+            weight = da.from_array(f[f"shear/bin_{bin_id}/weight"], block_size)
+
+            g1 = g1 - da.mean(g1)
+            g2 = g2 - da.mean(g2)
+
+            pix = pixel_scheme.ang2pix(ra, dec)
+            label = "2D" if bin_id == "all" else bin_id
+
+            for seed in range(lensing_realizations):
+                phi = da.random.uniform(0, 2 * np.pi, len(ra))
+                c = da.cos(phi)
+                s = da.sin(phi)
+                g1r = c * g1 + s * g2
+                g2r = -s * g1 + c * g2
+
+                weight_map = da.bincount(pix, weights=weight, minlength=npix)
+                g1_map = da.bincount(pix, weights=weight * g1r, minlength=npix)
+                g2_map = da.bincount(pix, weights=weight * g2r, minlength=npix)
+
+                g1_map /= weight_map
+                g2_map /= weight_map
+
+                g1_map = da.where(da.isnan(g1_map), healpy.UNSEEN, g1_map)
+                g2_map = da.where(da.isnan(g2_map), healpy.UNSEEN, g2_map)
+
+                output[f"rotation_{seed}/g1_{label}"] = g1_map
+                output[f"rotation_{seed}/g2_{label}"] = g2_map
+
+            output[f"lensing_weight_{label}"] = weight_map
+
+        mask = da.zeros(npix, dtype=bool)
+        for bin_id in bins:
+            label = "2D" if bin_id == "all" else bin_id
+            mask |= output[f"lensing_weight_{label}"] > 0
+        output["mask"] = mask
+
+        (output,) = dask.compute(output)
+        f.close()
+
+        metadata = {key: self.config[key] for key in precalibrated_map_config_options}
+        metadata["nbin"] = nbin
+        metadata["nbin_source"] = nbin
+
+        pix = np.where(output["mask"])[0]
+
+        with self.open_output("source_noise_maps", wrapper=True) as out:
+            for seed in range(lensing_realizations):
+                for bin_id in bins:
+                    label = "2D" if bin_id == "all" else bin_id
+                    for key in ("g1", "g2"):
+                        out.write_map(
+                            f"rotation_{seed}/{key}_{label}",
+                            pix,
+                            output[f"rotation_{seed}/{key}_{label}"][pix],
+                            metadata,
+                        )
+            out.file["maps"].attrs.update(metadata)
 
 
 class TXLensNoiseMaps(TXBaseMaps):

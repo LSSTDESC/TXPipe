@@ -377,14 +377,14 @@ NZDirInformerLens:
     name: NZDirInformerLens
     usecols: [u, g, r, i, z, y]
     hdf5_groupname: photometry
-TXpureB:
+TXShearBmode:
     method: namaster                       # 'namaster' or 'hybrideb'
     Nell: 20                               # Number of ell bins
-    lmin: 100                              # ell min 
+    lmin: 100                              # ell min
     lmax: 2000                             # ell max
-    lspacing: log                          # ell spacing for binning 
-    bin_file:                              # Load predfined bin edges instead        
-    theta_min: 2.5                         # (only for hybrideb) theta min in arcmin 
-    theta_max: 250                         # (only for hybrideb) theta max in arcmin 
-    Ntheta: 1000                           # (only for hybrideb) Number of theta bins 
-    precomputed_hybrideb_weights: /global/cfs/cdirs/lsst/groups/WL/users/yomori/repo/aaa/TXPipe/geb_nosep_dict.npz
+    lspacing: log                          # ell spacing for binning
+    bin_file:                              # Load predefined bin edges instead
+    theta_min: 2.5                         # (only for hybrideb) theta min in arcmin
+    theta_max: 250                         # (only for hybrideb) theta max in arcmin
+    Ntheta: 1000                           # (only for hybrideb) Number of theta bins
+    Nsims: 300                             # Number of simulations for covariance

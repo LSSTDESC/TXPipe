@@ -90,6 +90,11 @@ class TXTwoPoint(PipelineStage):
             msg="Factor by which to decrease lens density to account for increased density contrast.",
         ),
         "use_subsampled_randoms": StageParameter(bool, True, msg="Use subsampled randoms file for RR calculation"),
+        "save_treecorr": StageParameter(
+            bool,
+            True,
+            msg="Save per-bin TreeCorr outputs with patch results for reuse in downstream stages.",
+        ),
     }
 
     def validate(self):
@@ -516,6 +521,12 @@ class TXTwoPoint(PipelineStage):
             xtype = sacc.standard_types.galaxy_density_xi
         else:
             raise ValueError(f"Unknown correlation function {k}")
+
+        # Optionally save TreeCorr outputs including patch-level results so
+        # downstream B-mode stages can reuse them for covariance calculations.
+        if self.config["save_treecorr"]:
+            output_dir = os.path.dirname(self.get_output("twopoint_data_real_raw"))
+            xx.write(f"{output_dir}/treecorr_{k}_{i}_{j}.out", write_patch_results=True)
 
         # Force garbage collection here to make sure all the
         # catalogs are definitely freed
