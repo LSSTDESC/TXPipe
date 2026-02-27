@@ -3,7 +3,7 @@ from .data_types import TomographyCatalog, MapsFile, HDFFile
 from ceci.config import StageParameter
 import numpy as np
 from .utils import unique_list, choose_pixelization, import_dask
-from .mapping import make_dask_shear_maps, make_dask_lens_maps
+from .mapping import make_dask_shear_maps, make_dask_lens_maps, make_coverage_map
 
 
 SHEAR_SHEAR = 0
@@ -190,6 +190,12 @@ class TXSourceMaps(PipelineStage):
         f = self.open_input("binned_shear_catalog")
         nbin = f["shear"].attrs["nbin_source"]
 
+        # Build a "master" coverage map using all the ra and dec values in the catalog
+        # This way we can use the same coverage mask for all the maps
+        ra = da.from_array(f[f"shear/bin_all/ra"], block_size)
+        dec = da.from_array(f[f"shear/bin_all/dec"], block_size)
+        cov_map = make_coverage_map(ra, dec, pixel_scheme)
+
         # The "all" bin is the non-tomographic case.
         bins = list(range(nbin)) + ["all"]
         output = {}
@@ -203,8 +209,8 @@ class TXSourceMaps(PipelineStage):
             g2 = da.from_array(f[f"shear/bin_{i}/g2"], block_size)
             weight = da.from_array(f[f"shear/bin_{i}/weight"], block_size)
 
-            count_map, g1_map, g2_map, weight_map, esq_map, var1_map, var2_map = make_dask_shear_maps(
-                ra, dec, g1, g2, weight, pixel_scheme
+            shear_map_results = make_dask_shear_maps(
+                ra, dec, g1, g2, weight, pixel_scheme, cov_map
             )
 
             # slight change in output name
@@ -212,21 +218,20 @@ class TXSourceMaps(PipelineStage):
                 i = "2D"
 
             # Save all the stuff we want here.
-            output[f"count_{i}"] = count_map
-            output[f"g1_{i}"] = g1_map
-            output[f"g2_{i}"] = g2_map
-            output[f"lensing_weight_{i}"] = weight_map
-            output[f"count_{i}"] = count_map
-            output[f"var_e_{i}"] = esq_map
-            output[f"var_g1_{i}"] = var1_map
-            output[f"var_g2_{i}"] = var2_map
+            output[f"count_{i}"]          = shear_map_results["count_map"]
+            output[f"g1_{i}"]             = shear_map_results["g1_map"]
+            output[f"g2_{i}"]             = shear_map_results["g2_map"]
+            output[f"lensing_weight_{i}"] = shear_map_results["weight_map"]
+            output[f"var_e_{i}"]          = shear_map_results["esq_map"]
+            output[f"var_g1_{i}"]         = shear_map_results["var1_map"]
+            output[f"var_g2_{i}"]         = shear_map_results["var2_map"]
 
         # mask is where a pixel is hit in any of the tomo bins
-        mask = da.zeros(npix, dtype=bool)
+        mask = da.zeros(shear_map_results["count_map"].shape[0], dtype=bool)
         for i in bins:
             if i == "all":
                 i = "2D"
-            mask |= output[f"lensing_weight_{i}"] > 0
+            mask |= output[f"lensing_weight_{i}"] > 0 
 
         output["mask"] = mask
 
@@ -235,13 +240,16 @@ class TXSourceMaps(PipelineStage):
         (output,) = dask.compute(output)
         f.close()
 
+        # convert sparse_map arrays into healsparse map objects
+        output_hsp = {}
+        for name, map in output.items():
+            output_hsp[name] = hsp.HealSparseMap(cov_map=cov_map, sparse_map=map, nside_sparse=cov_map.nside_sparse)
+
         # collate metadata
         metadata = {key: self.config[key] for key in map_config_options}
         metadata["nbin"] = nbin
         metadata["nbin_source"] = nbin
         metadata.update(pixel_scheme.metadata)
-
-        pix = np.where(output["mask"])[0]
 
         # write the output maps
         with self.open_output("source_maps", wrapper=True) as out:
@@ -253,7 +261,7 @@ class TXSourceMaps(PipelineStage):
                 # We save the pixels in the mask - i.g. any pixel that is hit in any
                 # tomographic bin is included. Some will be UNSEEN.
                 for key in "g1", "g2", "count", "var_e", "var_g1", "var_g2", "lensing_weight":
-                    out.write_map_pixval(f"{key}_{i}", pix, output[f"{key}_{i}"][pix], metadata)
+                    out.write_map(f"{key}_{i}", output_hsp[f"{key}_{i}"], metadata)
 
             out.file["maps"].attrs.update(metadata)
 

@@ -41,7 +41,7 @@ class TXAuxiliarySourceMaps(PipelineStage):
 
     def run(self):
         dask, da = import_dask()
-        import healpy
+        import healsparse as hsp
 
         pixel_scheme = self.choose_pixel_scheme()
         block_size = self.config["block_size"]
@@ -83,47 +83,52 @@ class TXAuxiliarySourceMaps(PipelineStage):
         metadata["nbin_source"] = nbin
         metadata.update(pixel_scheme.metadata)
 
+        cov_map = make_coverage_map(ra, dec, pixel_scheme)
+
         for i in bins:
             if i == "all":
                 w = b >= 0
             else:
                 w = b == i
 
-            count_map, g1_map, g2_map, weight_map, esq_map, var1_map, var2_map = make_dask_shear_maps(
-                ra[w], dec[w], psf_g1[w], psf_g2[w], weight[w], pixel_scheme
+            shear_map_results = make_dask_shear_maps(
+                ra[w], dec[w], psf_g1[w], psf_g2[w], weight[w], pixel_scheme, cov_map
             )
-
-            pix = da.where(weight_map > 0)[0]
 
             # Change output name
             if i == "all":
                 i = "2D"
 
-            maps[f"psf/count_{i}"] = (pix, count_map[pix])
-            maps[f"psf/g1_{i}"] = (pix, g1_map[pix])
-            maps[f"psf/g2_{i}"] = (pix, g2_map[pix])
-            maps[f"psf/var_g1_{i}"] = (pix, var1_map[pix])
-            maps[f"psf/var_g2_{i}"] = (pix, var2_map[pix])
-            maps[f"psf/var_e_{i}"] = (pix, esq_map[pix])
-            maps[f"psf/lensing_weight_{i}"] = (pix, weight_map[pix])
+            maps[f"psf/count_{i}"] = shear_map_results["count_map"]
+            maps[f"psf/g1_{i}"] = shear_map_results["g1_map"]
+            maps[f"psf/g2_{i}"] = shear_map_results["g2_map"]
+            maps[f"psf/var_g1_{i}"] = shear_map_results["var1_map"]
+            maps[f"psf/var_g2_{i}"] = shear_map_results["var2_map"]
+            maps[f"psf/var_e_{i}"] = shear_map_results["esq_map"]
+            maps[f"psf/lensing_weight_{i}"] = shear_map_results["weight_map"]
 
         # Now add the flag maps. These are not tomographic.
-        pix, flag_maps = make_dask_flag_maps(ra, dec, flag, flag_exponent_max, pixel_scheme)
+        flag_maps = make_dask_flag_maps(ra, dec, flag, flag_exponent_max, pixel_scheme, cov_map)
         for j in range(flag_exponent_max):
-            maps[f"flags/flag_{2**j}"] = (pix, flag_maps[j][pix])
+            maps[f"flags/flag_{2**j}"] = flag_maps[j]
 
         (maps,) = dask.compute(maps)
 
         # Print out some info about the flag maps
         for i in range(flag_exponent_max):
             f = 2**i
-            count = maps[f"flags/flag_{f}"][1].sum()
+            count = maps[f"flags/flag_{f}"].sum()
             print(f"Map shows total {count} objects with flag {f}")
+
+        # convert sparse_map arrays into healsparse map objects
+        hsp_maps = {}
+        for name, map in maps.items():
+            hsp_maps[name] = hsp.HealSparseMap(cov_map=cov_map, sparse_map=map, nside_sparse=cov_map.nside_sparse)
 
         # write the output maps
         with self.open_output("aux_source_maps", wrapper=True) as out:
-            for map_name, (pix, m) in maps.items():
-                out.write_map_pixval(map_name, pix, m, metadata)
+            for map_name, hsp_map in hsp_maps.items():
+                out.write_map(map_name, hsp_map, metadata)
             out.file["maps"].attrs.update(metadata)
 
 

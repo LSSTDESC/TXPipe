@@ -1,8 +1,9 @@
 import numpy as np
 import healpy as hp
 from ..utils import import_dask
+from .basic_maps import pix2sparseindex
 
-def make_dask_bright_object_map(ra, dec, mag, extended, threshold, pixel_scheme, cov_map=None):
+def make_dask_bright_object_map(ra, dec, mag, extended, threshold, pixel_scheme, cov_map):
     """
     Create a map of bright objects using Dask.
 
@@ -32,14 +33,8 @@ def make_dask_bright_object_map(ra, dec, mag, extended, threshold, pixel_scheme,
     bright = da.where((mag < threshold) & (extended == 0), 1, 0)
     pix = pixel_scheme.ang2pix(ra, dec)
 
-    #get the number of pixels in the coverage and sparse map
-    ncov = np.sum(cov_map.coverage_mask)
-    npix_sparse = (ncov+1)*cov_map.nfine_per_cov
-
-    #convert healpix pixel ID to healsparse index
-    bit_shift = cov_map._bit_shift
-    cov_pix = da.right_shift(pix, bit_shift)
-    sparse_index = cov_map[cov_pix] + pix
+    # get the sparse map index for each of these pixel (is dask aware)
+    sparse_index, npix_sparse = pix2sparseindex(pix, cov_map)
 
     bright_object_count_map = da.bincount(sparse_index, weights=bright, minlength=npix_sparse).astype(int)
     
@@ -83,14 +78,8 @@ def make_dask_depth_map(ra, dec, mag, snr, threshold, delta, pixel_scheme, cov_m
     hit = da.where(abs(snr - threshold) < delta, 1, 0)
     depth = da.where(abs(snr - threshold) < delta, mag, 0)
 
-    #get the number of pixels in the coverage and sparse map
-    ncov = np.sum(cov_map.coverage_mask)
-    npix_sparse = (ncov+1)*cov_map.nfine_per_cov
-
-    #convert healpix pixel ID to healsparse index
-    bit_shift = cov_map._bit_shift
-    cov_pix = da.right_shift(pix, bit_shift)
-    sparse_index = cov_map[cov_pix] + pix
+    # get the sparse map index for each of these pixel (is dask aware)
+    sparse_index, npix_sparse = pix2sparseindex(pix, cov_map)
 
     # get the count and sum of the depth and depth^2
     count_map = da.bincount(sparse_index, weights=hit, minlength=npix_sparse)
@@ -108,9 +97,7 @@ def make_dask_depth_map(ra, dec, mag, snr, threshold, delta, pixel_scheme, cov_m
     depth_map = da.where(count_map != 0, depth_map, sentinel)
     depth_var = da.where(count_map != 0, depth_var, sentinel)
 
-    pix = da.unique(pix)
     return {
-        "pix": pix,
         "count_map": count_map,
         "depth_map": depth_map,
         "depth_var": depth_var,
