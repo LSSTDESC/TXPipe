@@ -7,6 +7,7 @@ from .data_types import (
     FileCollection,
     FiducialCosmology,
     TomographyCatalog,
+    QPNOfZFile,
 )
 import numpy as np
 import glob
@@ -65,6 +66,9 @@ class TXLSSDensityBase(TXMapCorrelations):
         """
         For this method we need sys maps to be normalized to mean 0
         """
+
+        self.verify_config()
+
         sys_maps, sys_names = self.load_and_mask_sysmaps()
 
         # normalize sysmaps (and keep track of the normalization factors)
@@ -358,7 +362,7 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
             TomographyCatalog,
         ),  # this file is used by the stage to compute density correlations
         ("mask", MapsFile),
-        ("lens_photoz_stack", HDFFile),  # Photoz stack (need if using theory curve in covariance)
+        ("lens_photoz_stack", QPNOfZFile),  # Photoz stack (need if using theory curve in covariance)
         (
             "fiducial_cosmology",
             FiducialCosmology,
@@ -699,14 +703,19 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
 
     def load_tracer(self, tomobin):
         """
-        Load the N(z) and convert to sacc tracers (lenses only)
-        We need this to compute the theory guess
-        for the SV term
+        Load the N(z) (lenses only)
+        We need this to compute the theory estimate
+        in the SV term in the 1d covariance
         """
-        with self.open_input("lens_photoz_stack") as f_lens:
+        with self.open_input("lens_photoz_stack", wrapper=True) as f_lens:
             z, nz = f_lens.get_bin_n_of_z(tomobin)
         return z, nz
 
+    def verify_config(self):
+        """
+        Nothing to verify for the null tests
+        """
+        pass
 
 class TXLSSWeights(TXLSSDensityBase):
     """
@@ -804,6 +813,27 @@ class TXLSSWeights(TXLSSDensityBase):
 
         # save object weights and weight maps
         self.save_weights(output_dir, mean_density_map_list)
+
+    def verify_config(self):
+        """
+        Checks the SP map config being used for this stage matches that of the input density null tests 
+        """
+
+        #these config options current have to be the same between density Null calls and LSS weights calls
+        config_asserts = [
+            'equal_area_bins'
+            'fill_missing_pix'
+            'nbin'
+            'nside'
+            'nside_coverage'
+            'outlier_fraction'
+            'pixelization'
+            'supreme_path_root'
+        ]
+
+        with self.open_input("unweighted_density_correlation") as f:
+            for c in config_asserts:
+                assert f["provenance"].attrs[f"config/{c}"] == self.config[c]
 
     def load_density_corr(self, ibin):
         """
