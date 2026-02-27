@@ -68,7 +68,7 @@ def process_shear_data(data):
 
 def process_metadetect_data(data):
     output = {}
-    for variant in ["00", "1p", "1m", "2p", "2m"]:
+    for variant in ["ns", "1p", "1m", "2p", "2m"]:
         var_data = data[data["metaStep"] == variant]
 
         var_output = {
