@@ -1635,3 +1635,457 @@ def load_star_type(data):
     star_type[reserved == 1] = STAR_PSF_RESERVED
 
     return star_type
+
+    
+class TXPHStatistics(PipelineStage):
+    """
+    Compute and plot PSF Statistics as described in Paulin-Henricksson et. al 2008 
+    Heavily drawing upon work by B. Giblin here:
+    https://github.com/KiDS-WL/Cat_to_Obs_K1000_P1/tree/master/PSF_systests
+    """
+    name     = "TXPHStatistics"
+    parallel = False
+    inputs   = [("binned_shear_catalog"    , ShearCatalog),
+                ("star_catalog"            , HDFFile),
+                ("patch_centers"           , TextFile),
+                ("twopoint_theory_real"    , SACCFile),
+               ]
+
+    outputs  = [
+                ("PHstat_plus"   , PNGFile),
+                ("PHstat_min"    , PNGFile),
+                ("ph_stats"       , HDFFile),
+               ]
+
+
+    config_options = {
+                       "shear_prefix"  : "",
+                       "min_sep"       : 0.5,
+                       "max_sep"       : 250.0,
+                       "nbins"         : 20,
+                       "bin_slop"      : 0.01,
+                       "sep_units"     : "arcmin",
+                       "npatch"        : 150,
+                       "metric"        : 'Arc',
+                       "psf_size_units": "sigma",
+                       "subtract_mean" : False,
+                       "dec_cut"       : True,           # affects KiDS-1000 only
+                       "star_type"     : 'PSF-reserved',
+                       "cov_method"    : 'bootstrap',
+                       "flip_g2"       : False,
+                       "ang_cell"      : 5./60.,
+                       "nboot"         : 30,
+                     }
+
+    def run(self):
+        import treecorr
+        import h5py
+        import matplotlib
+
+        matplotlib.use("agg")
+
+        # Load star properties
+        sra, sdec, e_psf, de, T_psf, dT, star_type = self.load_stars()
+
+        # Compute size quantities
+        dT_Tg_ratio, Tg_invsq, dT_Tg_ratio_tot, Tg_invsq_tot, num_zbin, nzbin_tot = self.compute_Tquantities(sra,sdec,dT)
+        
+        # Compute PH correlations
+        ph_corr, ph_stats = {}, {}
+        for t in STAR_TYPES:
+            s = np.where(star_type==t)[0]
+            if len(s)==0:
+                continue
+            ph_corr[0, t] = self.compute_PHCorr(0, s, sra, sdec, e_psf, e_psf, dT, dT)
+            ph_corr[1, t] = self.compute_PHCorr(1, s, sra, sdec, e_psf, de, dT, T_psf)
+            ph_corr[2, t] = self.compute_PHCorr(2, s, sra, sdec, de, de, T_psf, T_psf)
+        
+            ph_stats[t] = self.compute_PHStat(ph_corr, dT_Tg_ratio, Tg_invsq, dT_Tg_ratio_tot,
+                                              Tg_invsq_tot, num_zbin, nzbin_tot)
+
+        self.save_stats(ph_stats)
+        self.ph_plots(ph_stats, num_zbin)
+        
+    def compute_Tquantities(self, sra, sdec, dT):
+        '''
+        Compute average dT/T_g, 1/T_g**2 & estimate errors for each zbin pair
+        '''
+        with self.open_input("binned_shear_catalog") as f:
+            num_zbin = f["shear"].attrs["nbin_source"]
+
+        dT_Tg_ratio = np.zeros([2, num_zbin])      
+        Tg_invsq = np.zeros_like(dT_Tg_ratio)       
+
+        # RA values that cross 0 causes issues with interpolation. Convert.
+        sra[((sra<360) & (sra>300))] += -360.
+        
+        # Load galaxy properties
+        for n in range(num_zbin):
+            gra, gdec, Tgal, T_psf_g, wg = self.load_galaxies(n)
+        
+            #convert RA values.
+            gra[((gra<360) & (gra>300))] += -360. 
+            
+            # Compute dT at the position of the galaxy
+            dT_interpg = self.interpolate_dT(sra, sdec, dT,gra, gdec)
+
+            dT_Tg_ratio[0,n] = np.average(dT_interpg/Tgal, weights=wg)
+            dT_Tg_ratio[1,n] = self.estimate_Terror(self.config["nboot"],
+                                                    dT_interpg/Tgal, weights=wg)
+
+            Tg_inv = np.average(1./Tgal, weights=wg)
+            Tg_invsq[0,n] = Tg_inv**2
+            Tg_invsq[1,n] = np.sqrt(2 * Tg_inv) * self.estimate_Terror(self.config["nboot"],
+                                                                       1/Tgal, weights=wg)
+
+        # For cross-bins, average the Tquantities from the individual bins
+        nzbin_tot = np.sum(range(num_zbin+1))
+        dT_Tg_ratio_tot = np.zeros([2, nzbin_tot])
+        Tg_invsq_tot = np.zeros_like(dT_Tg_ratio_tot )
+
+        k=0
+        for i in range(num_zbin):
+            for j in range(num_zbin):
+                if j>= i:
+                    dT_Tg_ratio_tot[0,k] = (dT_Tg_ratio[0,i] + dT_Tg_ratio[0,j]) / 2
+                    dT_Tg_ratio_tot[1,k] = np.sqrt(dT_Tg_ratio[1,i]**2 + dT_Tg_ratio[1,j]**2)
+                    Tg_invsq_tot[0,k]    = (Tg_invsq[0,i] + Tg_invsq[0,j]) / 2
+                    Tg_invsq_tot[1,k]    = np.sqrt(Tg_invsq[0,i]**2 + Tg_invsq[0,j]**2)
+                    k+=1
+                    
+        return dT_Tg_ratio, Tg_invsq, dT_Tg_ratio_tot, Tg_invsq_tot, num_zbin, nzbin_tot
+        
+    def interpolate_dT(self, sra, sdec, dT, gra, gdec):
+        '''
+        Makes grid for interpolating star delta T to the galaxy positions
+        '''
+        from scipy.stats import binned_statistic_2d
+        
+        # Load angular size for 1 cell (default 5 arcmin) & make bins for the grid
+        ang_cell = self.config["ang_cell"]
+        nbins_x = int((sra.max() - sra.min()) / ang_cell)
+        nbins_y = int((sdec.max() - sdec.min()) / ang_cell)
+        
+        # Compute cell coordinates of stars                                                                        
+        X_p = nbins_x * (sra - sra.min()) / (sra.max()-sra.min())
+        Y_p = nbins_y * (sdec - sdec.min()) / (sdec.max()-sdec.min())
+        
+        # Make dT grid:                                                                                
+        sum_wdT_grid, _, _, _ = binned_statistic_2d(Y_p, X_p, dT * np.ones_like(dT),
+                                                    statistic='sum', bins=[nbins_y, nbins_x])
+        sum_grid, _, _, _    = binned_statistic_2d(Y_p, X_p, np.ones_like(dT),
+                                                   statistic='sum', bins=[nbins_y, nbins_x])
+        Av_grid = sum_wdT_grid / sum_grid
+        dT_grid = np.nan_to_num(Av_grid, nan=0.)
+        
+        # Append last row, column to fix interpolation error:                                                      
+        dT_grid = np.c_[dT_grid, dT_grid[:,-1]]
+        dT_grid = np.r_[dT_grid, [dT_grid[-1,:]]]
+        
+        # Get cell coordinates of galaxies, round down
+        X_g = nbins_x * (gra - sra.min()) / (sra.max()-sra.min())
+        Y_g = nbins_y * (gdec - sdec.min()) / (sdec.max()-sdec.min())
+        Xi = X_g.astype(int)
+        Yi = Y_g.astype(int)                                                       
+        
+        # Calculate dT @ the galaxy's position
+        VAL_XYlo = dT_grid[Yi, Xi]    + (X_g - Xi) * (dT_grid[Yi, Xi + 1]    - dT_grid[Yi, Xi])
+        VAL_XYhi = dT_grid[Yi + 1,Xi] + (X_g - Xi) * (dT_grid[Yi + 1,Xi + 1] - dT_grid[Yi+1, Xi])
+        dT_interpg = VAL_XYlo + (Y_g - Yi) * (VAL_XYhi - VAL_XYlo)
+        
+        return dT_interpg
+        
+    def estimate_Terror(self, nboot, Tquant, weights):
+        '''
+        Bootstrapped error estimation for size quantity
+        '''
+        N = len(Tquant)
+        samples = np.zeros(nboot)       
+        for i in range(nboot):
+            idx = np.random.randint(0,N,N)                         
+            samples[i] = np.sum(weights[idx] * Tquant[idx]) / np.sum(weights[idx])
+            
+        return np.std(samples)
+    
+    def compute_PHCorr(self, i, s, ra, dec, q1, q2, q3, q4):
+        import treecorr
+        
+        # Select a subset of the stars
+        ra, dec, n = ra[s], dec[s], len(ra)
+        q1 = q1[:, s]
+        q2 = q2[:, s]
+        q3 = q3[s]
+        q4 = q4[s]
+        
+        print(f"Computing PH statistic ph_{i} from {n} objects")
+        corr = treecorr.GGCorrelation(self.config)
+        
+        cat1 = treecorr.Catalog(
+            ra = ra, dec = dec, g1 = q1[0] * q3,g2 = q1[1] * q3, ra_units="deg", dec_units="deg",
+            patch_centers = self.get_input("patch_centers"))
+        
+        cat2 = treecorr.Catalog(
+            ra = ra, dec = dec, g1 = q2[0] * q4, g2 = q2[1]* q4, ra_units="deg", dec_units="deg",
+            patch_centers = self.get_input("patch_centers"))
+        corr.process(cat1, cat2)
+        
+        return corr.meanr, corr.xip, corr.xim, corr.varxip**0.5, corr.varxim**0.5
+
+    def compute_PHStat(self, phcorr, dT_Tg_ratio, Tg_invsq, dT_Tg_ratio_tot, Tg_invsq_tot, num_zbin, nzbin_tot):
+        '''
+        Finally combine theory data vector, correlations, and T quantities
+        to create delta xi as shown in Eq.10 of Giblin et al. 2021 
+        And do error propagation 
+        '''
+        dxip = np.zeros([nzbin_tot, self.config["nbins"]])
+        dxim = np.zeros_like(dxip)
+        err_dxip = np.zeros_like(dxip)
+        err_dxim = np.zeros_like(dxip)
+        
+        dxip_terms = np.zeros([nzbin_tot, self.config["nbins"], 4])
+        dxim_terms = np.zeros_like(dxip_terms)
+        err_dxip_terms = np.zeros_like(dxip_terms)
+        err_dxim_terms = np.zeros_like(dxip_terms)
+        
+        for s in STAR_TYPES:
+                if STAR_TYPE_NAMES[s] != self.config.star_type:
+                    continue
+                    
+        ttht, txip, txim = self.load_theory(num_zbin,nzbin_tot)
+        
+        # now combine 1/Tg**2 and theory, PH correlations
+        for n in range(nzbin_tot):
+                
+                # Interpolate the theory vector onto the theta bins of the PH-stats (in case they're different)
+                dxip_terms[n,:,0] = 2 * np.interp(phcorr[0, s][0], ttht[n], txip[n]) * dT_Tg_ratio_tot[0,n]
+                dxim_terms[n,:,0] = 2 * np.interp(phcorr[0, s][0], ttht[n], txim[n]) * dT_Tg_ratio_tot[0,n]
+                
+                # cycle through 3 PH terms (PH term 2 has factor of 2)
+                fac = [1,2,1] 
+                for t in range(1,4):
+                    dxip_terms[n,:,t] = fac[t-1] * Tg_invsq_tot[0,n] * (phcorr[t-1, s][1])
+                    dxim_terms[n,:,t] = fac[t-1] * Tg_invsq_tot[0,n] * (phcorr[t-1, s][2])
+                
+                #combine for total delta xi
+                dxip[n,:] = dxip_terms[n,:,0] + dxip_terms[n,:,1] + dxip_terms[n,:,2] + dxip_terms[n,:,3]
+                dxim[n,:] = dxim_terms[n,:,0] + dxim_terms[n,:,1 ]+ dxim_terms[n,:,2] + dxim_terms[n,:,3]
+
+                # Repeat above steps for error propagation:
+                err_dxip_terms[n,:,0] = 2*np.interp(phcorr[0, s][0], ttht[n], txip[n]) * dT_Tg_ratio_tot[1,n]
+                err_dxim_terms[n,:,0] = 2*np.interp(phcorr[0, s][0], ttht[n], txim[n]) * dT_Tg_ratio_tot[1,n]
+                            
+                for t in range(1,4): 
+                        part1 = fac[t-1] * Tg_invsq_tot[1,n]**2 * phcorr[t-1, s][1]**2  
+                        part2 = fac[t-1] * Tg_invsq_tot[0,n]**2 * phcorr[t-1, s][3]**2 
+                        err_dxip_terms[ n,:,t] = (part1 + part2)**0.5
+                        
+                        part1 = fac[t-1] * Tg_invsq_tot[1,n]**2 * phcorr[t-1, s][2]**2  
+                        part2 = fac[t-1] * Tg_invsq_tot[0,n]**2 * phcorr[t-1, s][4]**2 
+                        err_dxim_terms[n,:,t] = (part1 + part2)**0.5
+
+                err_dxip[n,:] = (  err_dxip_terms[n,:,0]**2 + err_dxip_terms[n,:,1]**2 
+                                 + err_dxip_terms[n,:,2]**2 + err_dxip_terms[n,:,3]**2 )**0.5
+                err_dxim[n,:] = (  err_dxim_terms[n,:,0]**2 + err_dxim_terms[n,:,1]**2 
+                                 + err_dxim_terms[n,:,2]**2 + err_dxim_terms[n,:,3]**2 )**0.5
+            
+        return phcorr[0, s][0], dxip, dxim, err_dxip, err_dxim, dxip_terms, dxim_terms, err_dxip_terms, err_dxim_terms    
+
+    def load_theory(self,num_zbin,nzbin_tot):
+        import sacc
+        filename_theory = self.get_input("twopoint_theory_real")
+        s = sacc.Sacc.load_fits(filename_theory)
+
+        theta, xip, xim = [], [], []
+        for i in range(num_zbin):
+                for j in range(num_zbin):
+                    if j>=i:
+                        theta_, xip_ = s.get_theta_xi('galaxy_shear_xi_plus',
+                                                      'source_' + f'{j}','source_' + f'{i}')
+                    
+                        theta_, xim_ = s.get_theta_xi('galaxy_shear_xi_minus',
+                                                      'source_' + f'{j}','source_' + f'{i}')
+                        if len(xip_) != 0:
+                            theta.append(theta_); xip.append(xip_); xim.append(xim_);
+        return theta, xip, xim
+                        
+    def load_galaxies(self,zbin):
+        with self.open_input("binned_shear_catalog") as f:
+            prefix = self.config["shear_prefix"]    
+            g     = f[f"shear/bin_{zbin}/"]
+            ra    = g["ra"][:]
+            dec   = g["dec"][:]
+            Tgal  = g[f"{prefix}T"][:]
+            Tpsf  = g[f"{prefix}psf_T_mean"][:]
+            w     = g["weight"][:]
+            
+        return ra, dec, Tgal, Tpsf, w
+
+    def load_stars(self):
+        with self.open_input("star_catalog") as f:
+            g      = f["stars"]
+            ra     = g["ra"][:]
+            dec    = g["dec"][:]
+            e1meas = g["measured_e1"][:]
+            e2meas = g["measured_e2"][:]
+            e1mod  = g["model_e1"][:]
+            e2mod  = g["model_e2"][:]
+            if self.config["flip_g2"]:
+                e2meas *= -1
+                e2mod  *= -1
+            de1    = e1meas - e1mod
+            de2    = e2meas - e2mod
+             
+            if self.config["psf_size_units"] == "sigma":
+                Tmeas  =  g["measured_T"][:] ** 2
+                dT     = (g["measured_T"][:] ** 2 - g["model_T"][:] ** 2) / g["measured_T"][:] ** 2
+            else:
+                Tmeas  =  g["measured_T"][:]
+                dT     = (g["measured_T"][:] - g["model_T"][:])
+
+            if self.config['subtract_mean']:
+                e_meas = np.array((e1meas - np.mean(e1meas), e2meas - np.mean(e2meas)))
+                de     = np.array((de1 - np.mean(de1)      , de2 - np.mean(de2)))
+
+            else:
+                e_meas = np.array((e1meas, e2meas ))
+                de     = np.array((de1   , de2    ))
+
+            star_type = load_star_type(g)
+
+        return ra, dec, e_meas, de, Tmeas, dT, star_type
+
+    def save_stats(self, ph_stats):
+        
+        f = self.open_output("ph_stats")
+        g = f.create_group("ph_statistics")
+        for s in STAR_TYPES:
+            if STAR_TYPE_NAMES[s] != self.config.star_type:
+                continue
+            name = STAR_TYPE_NAMES[s]
+            h = g.create_group(f"ph_{name}")
+            h.create_dataset("theta", data=ph_stats[s][0])
+            h.create_dataset("deltaxi_plus_sys", data=ph_stats[s][1])
+            h.create_dataset("deltaxi_minus_sys", data=ph_stats[s][2])
+            h.create_dataset("deltaxi_plus_sys_err", data=ph_stats[s][3])
+            h.create_dataset("deltaxi_minus_sys_err", data=ph_stats[s][4])
+            
+            h.create_dataset("PH_1_plus", data=ph_stats[s][5][:,:,0])
+            h.create_dataset("PH_1_minus", data=ph_stats[s][6][:,:,0])
+            
+            h.create_dataset("PH_1_plus_err", data=ph_stats[s][7][:,:,0])
+            h.create_dataset("PH_1_minus_err", data=ph_stats[s][8][:,:,0])
+            
+            h.create_dataset("PH_2_plus", data=ph_stats[s][5][:,:,1])
+            h.create_dataset("PH_2_minus", data=ph_stats[s][6][:,:,1])
+            
+            h.create_dataset("PH_2_plus_err", data=ph_stats[s][7][:,:,2])
+            h.create_dataset("PH_2_minus_err", data=ph_stats[s][8][:,:,2])
+            
+            h.create_dataset("PH_3_plus", data=ph_stats[s][5][:,:,3])
+            h.create_dataset("PH_3_minus", data=ph_stats[s][6][:,:,3])
+            
+            h.create_dataset("PH_3_plus_err", data=ph_stats[s][7][:,:,3])
+            h.create_dataset("PH_3_minus_err", data=ph_stats[s][8][:,:,3])
+        f.close()
+
+    def ph_plots(self, ph_stats,num_zbin):
+        import matplotlib.pyplot as plt
+        # we're only going to produce plots for autocorrelation bin pairs
+        k = np.linspace(2,num_zbin-1,num_zbin-2)
+        autocorrbins = np.concatenate(([0,num_zbin],k*num_zbin-k*(k-1)/2)).astype(int)
+        
+        f = self.open_output("PHstat_plus", wrapper=True,
+                             figsize=(4 * num_zbin,6 * len(STAR_TYPES)))
+        for s in STAR_TYPES:
+            if STAR_TYPE_NAMES[s] != self.config.star_type:
+                continue
+            _, axes = plt.subplots(num_zbin, len(STAR_TYPES),
+                                   squeeze=False, num=f.file.number)
+            for j, n in enumerate(autocorrbins): 
+                plt.sca(axes[j, s])
+                plt.errorbar(ph_stats[s][0],
+                    np.abs(ph_stats[s][1][n]),
+                    ph_stats[s][3][n],
+                    fmt="o", capsize=3,color="black",
+                    label=r"$\delta\xi_+^{\rm sys}$")
+                
+                plt.plot( ph_stats[s][0], 
+                    np.abs(ph_stats[s][5][n,:,0]),
+                    color="xkcd:taupe", linestyle="None", 
+                    marker="o",ms=5,
+                   label = r"PH$_1$")
+        
+                plt.plot(ph_stats[s][0], 
+                    np.abs(ph_stats[s][5][n,:,1]),
+                    color="rosybrown", linestyle="None", 
+                    marker="o", ms=5,
+                    label = r"PH$_2$")
+            
+                plt.plot( ph_stats[s][0],
+                    np.abs(ph_stats[s][5][n,:,2]),
+                    color="lightsteelblue", linestyle="None", 
+                    marker="o",ms=5,
+                    label = r"PH$_3$")
+                
+                plt.plot( ph_stats[s][0],
+                    np.abs(ph_stats[s][5][n,:,3]),
+                    color="slategray", linestyle="None", 
+                    marker="o",ms=5,
+                    label = r"PH$_4$")
+                plt.ylim(bottom=1e-12)
+                plt.xscale("log")
+                plt.yscale("log")
+                plt.xlabel(r"$\theta$")
+                plt.ylabel(r"$|\delta\xi_+^{\rm sys},{\rm terms}|$")
+            axes[0, s].set_title(STAR_TYPE_NAMES[s])
+            axes[0, 1].legend(bbox_to_anchor=(1.1, 1), loc="upper right")
+        f.close()
+
+        f = self.open_output("PHstat_min", wrapper=True,
+                             figsize=(4 * num_zbin,6 * len(STAR_TYPES)))
+        for s in STAR_TYPES:
+            if STAR_TYPE_NAMES[s] != self.config.star_type:
+                continue
+            _, axes = plt.subplots(num_zbin, len(STAR_TYPES),
+                                   squeeze=False, num=f.file.number)
+            for j, n in enumerate(autocorrbins): 
+                plt.sca(axes[j, s])
+                plt.errorbar(ph_stats[s][0],
+                    np.abs(ph_stats[s][2][n]),
+                    ph_stats[s][4][n],
+                    fmt="o",capsize=3,color="black",
+                    label=r"$\delta\xi_-^{\rm sys}$")
+                
+                plt.plot( ph_stats[s][0], 
+                    np.abs(ph_stats[s][6][n,:,0]),
+                    color="xkcd:taupe", linestyle="None", 
+                    marker="o",ms=5,
+                    label = r"PH$_1$")
+                
+                plt.plot(ph_stats[s][0], 
+                    np.abs(ph_stats[s][6][n,:,1]),
+                    color="rosybrown", linestyle="None", 
+                    marker="o", ms=5,
+                    label = r"PH$_2$")
+            
+                plt.plot( ph_stats[s][0],
+                    np.abs(ph_stats[s][6][n,:,2]),
+                    color="lightsteelblue", linestyle="None", 
+                    marker="o",ms=5,
+                    label = r"PH$_3$")
+                
+                plt.plot( ph_stats[s][0], 
+                    np.abs(ph_stats[s][6][n,:,3]),
+                    color="slategray", linestyle="None", 
+                    marker="o",ms=5,
+                    label = r"PH$_4$")
+                plt.ylim(bottom=1e-12)
+                plt.xscale("log")
+                plt.yscale("log")
+                plt.xlabel(r"$\theta$")
+                plt.ylabel(r"$|\delta\xi_-^{\rm sys},{\rm terms}|$")
+            axes[0, s].set_title(STAR_TYPE_NAMES[s])
+            axes[0, 1].legend(bbox_to_anchor=(1.1, 1), loc="upper right")
+        f.close()
+        
+
