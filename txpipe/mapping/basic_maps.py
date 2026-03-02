@@ -372,10 +372,15 @@ def pix2sparseindex(pix, cov_map, return_npix=True):
         ncov = np.sum(cov_map.coverage_mask)
         npix_sparse = (ncov+1)*cov_map.nfine_per_cov
 
-    #convert healpix pixel ID to healsparse index
+    #get coverage pixel for each healpix id
     bit_shift = cov_map._bit_shift
     cov_pix = da.right_shift(pix, bit_shift)
-    sparse_index = cov_map[cov_pix] + pix
+    
+    # This needs to be a dask array 
+    cov_index_map = da.array(cov_map._cov_index_map)
+
+    # convert healpix pixel ID to healsparse index
+    sparse_index = cov_index_map[cov_pix] + pix
 
     if return_npix:
         return sparse_index, npix_sparse
