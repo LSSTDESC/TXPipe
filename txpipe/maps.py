@@ -295,7 +295,7 @@ class TXLensMaps(PipelineStage):
         return "photometry_catalog", "photometry"
 
     def run(self):
-        import healpy
+        import healsparse as hsp
 
         _, da = import_dask()
 
@@ -324,18 +324,27 @@ class TXLensMaps(PipelineStage):
         weight = da.from_array(tomo_cat.file["tomography/lens_weight"], block_size)
         tomo_bin = da.from_array(tomo_cat.file["tomography/bin"], block_size)
 
+        # Build a "master" coverage map using all the ra and dec values in the catalog
+        # This way we can use the same coverage mask for all the maps
+        cov_map = make_coverage_map(ra, dec, pixel_scheme)
+
         # bins to generate maps for
         bins = list(range(nbin_lens)) + ["2D"]
         maps = {}
 
         # Generate the maps with dask. This is lazy until we do da.compute
         for b in bins:
-            pix, count_map, weight_map = make_dask_lens_maps(ra, dec, weight, tomo_bin, b, pixel_scheme)
-            maps[f"ngal_{b}"] = (pix, count_map[pix])
-            maps[f"weighted_ngal_{b}"] = (pix, weight_map[pix])
+            lens_map_results = make_dask_lens_maps(ra, dec, weight, tomo_bin, b, pixel_scheme, cov_map)
+            maps[f"ngal_{b}"] = lens_map_results["count_map"]
+            maps[f"weighted_ngal_{b}"] = lens_map_results["weight_map"]
 
         # Actually run everything
         (maps,) = da.compute(maps)
+
+        # convert sparse_map arrays into healsparse map objects
+        maps_hsp = {}
+        for name, map in maps.items():
+            maps_hsp[name] = hsp.HealSparseMap(cov_map=cov_map, sparse_map=map, nside_sparse=cov_map.nside_sparse)
 
         # collate metadata
         metadata = {key: self.config[key] for key in map_config_options}
@@ -345,8 +354,8 @@ class TXLensMaps(PipelineStage):
 
         # Save all the maps
         with self.open_output("lens_maps", wrapper=True) as out:
-            for name, (pix, m) in maps.items():
-                out.write_map_pixval(name, pix, m, metadata)
+            for name, map in maps_hsp.items():
+                out.write_map(name, map, metadata)
             out.file["maps"].attrs.update(metadata)
 
 
