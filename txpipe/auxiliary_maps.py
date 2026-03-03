@@ -251,22 +251,20 @@ class TXUniformDepthMap(PipelineStage):
     }
 
     def run(self):
-        import healpy
+        import healsparse as hsp
 
         with self.open_input("mask", wrapper=True) as f:
             metadata = dict(f.file["maps/mask"].attrs)
             mask = f.read_mask()
-            pix = f.file["maps/mask/pixel"][:]
 
         # Make a fake depth map
-        depth = mask.copy()
-        depth[pix] = self.config["depth"]  # e.g. 25 everywhere
+        depth = hsp.HealSparseMap.make_empty(mask.nside_coverage, mask.nside_sparse, dtype=float)
+        depth[mask.valid_pixels] = self.config["depth"]  # e.g. 25 everywhere
 
         with self.open_output("aux_lens_maps", wrapper=True) as f:
             f.file.create_group("depth")
-            print(len(pix))
-            print(len(depth[pix]))
-            f.write_map_pixval("depth/depth", pix, depth[pix], metadata)
+            print(depth)
+            f.write_map("depth/depth", depth, metadata)
 
 
 class TXAuxiliarySSIMaps(TXBaseMaps):
