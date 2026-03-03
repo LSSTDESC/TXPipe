@@ -235,7 +235,7 @@ def make_dask_lens_maps(ra, dec, weight, tomo_bin, target_bin, pixel_scheme, cov
 
 def degrade_healsparse(hsp_map, degrade_nside, reduction, weight_map=None):
     """
-    Degrade a HealSparseMap with a custom reduction method.
+    Degrade a HealSparseMap
 
     Implements reduction methods not included in healsparse by default.
 
@@ -271,15 +271,14 @@ def degrade_healsparse(hsp_map, degrade_nside, reduction, weight_map=None):
         Degraded map at degrade_nside resolution.
     """
     import healsparse as hsp
-    allowed_reductions = ['weightedmean', 'mask']
-    assert reduction in allowed_reductions
+    custom_reductions = ['weightedmean', 'mask']
 
     if reduction == "mask":
         assert weight_map is None, "weight_map not used for fractional mask degrade"
 
         #if the map is a binary mask, return the fracdet
         if np.issubdtype(hsp_map.dtype, np.integer):
-            mask_out = hsp_map.fracdet_map(degrade_nside)
+            map_out = hsp_map.fracdet_map(degrade_nside)
         
         # if the map is already a fractional coverage map, sum(frac)/N_tot_subpix
         elif np.issubdtype(hsp_map.dtype, np.floating):
@@ -312,6 +311,10 @@ def degrade_healsparse(hsp_map, degrade_nside, reduction, weight_map=None):
         sumxw = xw.degrade(degrade_nside, reduction="sum")
         sumw = weight_map.degrade(degrade_nside, reduction="sum")
         map_out = hsp.operations.divide_intersection([sumxw,sumw])
+    else:
+        #reduction not in custom list, using healsparse degrade
+        map_out = hsp_map.degrade(degrade_nside, reduction=reduction, weights=weight_map)
+
     return map_out
 
 def make_coverage_map(ra, dec, pixel_scheme):
