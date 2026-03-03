@@ -161,6 +161,12 @@ class TXMapPlots(PipelineStage):
                    rot180=self.config["rot180"])
 
     def source_plots(self):
+        """
+        Plot source maps
+
+        These maps were constructed using the mask but are not neccesarily at the same Nide as the mask
+        so we typically degrade with reduction='weightedmean'
+        """
         import matplotlib.pyplot as plt
 
         if self.get_input("source_maps") == "none":
@@ -207,6 +213,12 @@ class TXMapPlots(PipelineStage):
         fig.close()
 
     def lens_plots(self):
+        """
+        Plot lens maps
+
+        These maps were constructed using the mask but are not neccesarily at the same Nide as the mask
+        so we typically degrade with reduction='weightedmean'
+        """
         import matplotlib.pyplot as plt
 
         if self.get_input("lens_maps") == "none":
@@ -246,6 +258,9 @@ class TXMapPlots(PipelineStage):
         fig.close()
 
     def mask_plots(self):
+        """
+        Plot Mask maps
+        """
         import matplotlib.pyplot as plt
 
         if self.get_input("mask") == "none":
