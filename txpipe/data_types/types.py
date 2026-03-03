@@ -523,9 +523,9 @@ class MapsFile(HDFFile):
         m[m == 0] = healpy.UNSEEN
         title = kwargs.pop("title", map_name)
         if view == "cart":
-            healpy.cartview(m, lonra=lon_range, latra=lat_range, title=title, hold=True, **kwargs)
+            healpy.cartview(m, lonra=lon_range, latra=lat_range, title=title, hold=True, nest=info["nest"], **kwargs)
         elif view == "moll":
-            healpy.mollview(m, title=title, hold=True, **kwargs)
+            healpy.mollview(m, title=title, hold=True, nest=info["nest"], **kwargs)
         else:
             raise ValueError(f"Unknown Healpix view mode {view}")
 
