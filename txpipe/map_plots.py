@@ -74,6 +74,11 @@ class TXMapPlots(PipelineStage):
                 sys.stderr.write(f"Failed to make maps with method {m.__name__}")
 
     def aux_source_plots(self):
+        """
+        Plot source auxiliary maps
+
+        Auxiliary maps are at their native Nside so we typically degrade with reduction='mean'
+        """
         import matplotlib.pyplot as plt
 
         if self.get_input("aux_source_maps") == "none":
@@ -85,12 +90,6 @@ class TXMapPlots(PipelineStage):
             return
 
         m = self.open_input("aux_source_maps", wrapper=True)
-
-        # If the maps require a degrade, the reduction will be a weighted mean
-        # so we load the mask here at the same nside as the map (to be used as weights)
-        nside = m.read_map_info("psf/g1_0")["nside"]
-        with self.open_input("mask",wrapper=True) as f:
-            mask = f.read_mask("mask", thresh=self.config["mask_threshold"], degrade_nside=nside)
 
         # Get these two config options from the maps where
         # they were originally saved
@@ -119,19 +118,22 @@ class TXMapPlots(PipelineStage):
             m.plot(f"psf/g1_{i}", 
                    view=self.config["projection"], 
                    nside=self.config["nside"], 
-                   reduction='weightedmean',
-                   weight_map = mask,
+                   reduction='mean',
                    rot180=self.config["rot180"])
             plt.sca(axes[1, i])
             m.plot(f"psf/g2_{i}", 
                    view=self.config["projection"], 
                    nside=self.config["nside"], 
-                   reduction='weightedmean',
-                   weight_map = mask,
+                   reduction='mean',
                    rot180=self.config["rot180"])
         fig.close()
 
     def aux_lens_plots(self):
+        """
+        Plot lens auxiliary maps
+
+        Auxiliary maps are at their native Nside so we typically degrade with reduction='mean'
+        """
         import matplotlib.pyplot as plt
 
         if self.get_input("aux_lens_maps") == "none":
@@ -142,19 +144,12 @@ class TXMapPlots(PipelineStage):
 
         m = self.open_input("aux_lens_maps", wrapper=True)
 
-        # If the maps require a degrade the reduction will be a weighted mean
-        # so we load the mask here at the same nside as the map (to be used as weights)
-        nside = m.read_map_info("depth/depth")["nside"]
-        with self.open_input("mask",wrapper=True) as f:
-            mask = f.read_mask("mask", thresh=self.config["mask_threshold"], degrade_nside=nside)
-
         # Depth plots
         with self.open_output("depth_map", wrapper=True, figsize=(5, 5)) as fig:
             m.plot("depth/depth", 
                    view=self.config["projection"], 
                    nside=self.config["nside"], 
-                   reduction='weightedmean',
-                   weight_map = mask,
+                   reduction='mean',
                    rot180=self.config["rot180"])
 
         # Bright objects
@@ -162,8 +157,7 @@ class TXMapPlots(PipelineStage):
             m.plot("bright_objects/count", 
                    view=self.config["projection"], 
                    nside=self.config["nside"], 
-                   reduction='weightedmean',
-                   weight_map = mask,
+                   reduction='mean',
                    rot180=self.config["rot180"])
 
     def source_plots(self):
