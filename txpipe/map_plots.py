@@ -328,19 +328,12 @@ class TXMapPlotsSSI(TXMapPlots):
 
         m = self.open_input("aux_ssi_maps", wrapper=True)
 
-        # If the maps require a degrade the reduction will be a weighted mean
-        # so we load the mask here at the same nside as the map (to be used as weights)
-        nside = m.read_map_info("depth_meas/depth")["nside"]
-        with self.open_input("mask",wrapper=True) as f:
-            mask = f.read_mask("mask", thresh=self.config["mask_threshold"], degrade_nside=nside)
-
         # Depth plots (measured magnitude)
         with self.open_output("depth_ssi_meas_map", wrapper=True, figsize=(5, 5)) as fig:
             m.plot("depth_meas/depth", 
                    view=self.config["projection"], 
                    nside=self.config["nside"], 
-                   reduction='weightedmean',
-                   weight_map=mask,
+                   reduction='mean',
                    rot180=self.config["rot180"])
 
         # Depth plots (true magnitude)
@@ -348,8 +341,7 @@ class TXMapPlotsSSI(TXMapPlots):
             m.plot("depth_true/depth", 
                    view=self.config["projection"], 
                    nside=self.config["nside"], 
-                   reduction='weightedmean',
-                   weight_map=mask,
+                   reduction='mean',
                    rot180=self.config["rot180"])
 
         # Depth plots (true magnitude)
@@ -357,6 +349,5 @@ class TXMapPlotsSSI(TXMapPlots):
             m.plot("depth_det_prob/depth", 
                    view=self.config["projection"], 
                    nside=self.config["nside"], 
-                   reduction='weightedmean',
-                   weight_map=mask,
+                   reduction='mean',
                    rot180=self.config["rot180"])

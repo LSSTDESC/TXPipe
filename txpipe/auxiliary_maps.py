@@ -308,6 +308,7 @@ class TXAuxiliarySSIMaps(TXBaseMaps):
     def run(self):
         # Import dask and alias it as 'da'
         _, da = import_dask()
+        import healsparse as hsp
 
         # Retrieve configuration parameters
         block_size = self.config["block_size"]
@@ -331,6 +332,13 @@ class TXAuxiliarySSIMaps(TXBaseMaps):
         mag_meas = da.from_array(f_matched.file[f"photometry/mag_{band}"], block_size)
         mag_true = da.from_array(f_matched.file[f"photometry/inj_mag_{band}"], block_size)
 
+        # Choose the pixelization scheme based on the configuration.
+        # Might need to review this to make sure we use the same scheme everywhere
+        pixel_scheme = choose_pixelization(**self.config)
+
+        #make coverage map for these ra,dec
+        cov_map = make_coverage_map(ra, dec, pixel_scheme)
+
         # Load detection catalog data into dask arrays.
         # This is lazy in dask, so we're not actually loading the data here.
         ra_inj = da.from_array(f_inj.file["photometry/ra"], block_size)
@@ -338,41 +346,25 @@ class TXAuxiliarySSIMaps(TXBaseMaps):
         inj_mag = da.from_array(f_inj.file[f"photometry/inj_mag_{band}"], block_size)
         det = da.from_array(f_det.file[f"photometry/detected"], block_size)
 
-        # Choose the pixelization scheme based on the configuration.
-        # Might need to review this to make sure we use the same scheme everywhere
-        pixel_scheme = choose_pixelization(**self.config)
-
         # Initialize a dictionary to store the maps.
         # To start with this is all lazy too, until we call compute
         maps = {}
 
         # Create depth maps using dask and measured magnitudes
         depth_map_results = make_dask_depth_map(
-            ra, dec, mag_meas, snr, self.config["snr_threshold"], self.config["snr_delta"], pixel_scheme
+            ra, dec, mag_meas, snr, self.config["snr_threshold"], self.config["snr_delta"], pixel_scheme, cov_map
         )
-        maps["depth_meas/depth"] = (depth_map_results["pix"], depth_map_results["depth_map"][depth_map_results["pix"]])
-        maps["depth_meas/depth_count"] = (
-            depth_map_results["pix"],
-            depth_map_results["count_map"][depth_map_results["pix"]],
-        )
-        maps["depth_meas/depth_var"] = (
-            depth_map_results["pix"],
-            depth_map_results["depth_var"][depth_map_results["pix"]],
-        )
+        maps["depth_meas/depth"] = depth_map_results["depth_map"]
+        maps["depth_meas/depth_count"] = depth_map_results["count_map"]
+        maps["depth_meas/depth_var"] = depth_map_results["depth_var"]
 
         # Create depth maps using dask and true magnitudes
         depth_map_results = make_dask_depth_map(
-            ra, dec, mag_true, snr, self.config["snr_threshold"], self.config["snr_delta"], pixel_scheme
+            ra, dec, mag_true, snr, self.config["snr_threshold"], self.config["snr_delta"], pixel_scheme, cov_map
         )
-        maps["depth_true/depth"] = (depth_map_results["pix"], depth_map_results["depth_map"][depth_map_results["pix"]])
-        maps["depth_true/depth_count"] = (
-            depth_map_results["pix"],
-            depth_map_results["count_map"][depth_map_results["pix"]],
-        )
-        maps["depth_true/depth_var"] = (
-            depth_map_results["pix"],
-            depth_map_results["depth_var"][depth_map_results["pix"]],
-        )
+        maps["depth_true/depth"] = depth_map_results["depth_map"]
+        maps["depth_true/depth_count"] = depth_map_results["count_map"]
+        maps["depth_true/depth_var"] = depth_map_results["depth_var"]
 
         # Create depth maps using injection catalog
         # depth is defined at given detection probability
@@ -386,27 +378,26 @@ class TXAuxiliarySSIMaps(TXBaseMaps):
             self.config["min_depth"],
             self.config["max_depth"],
             pixel_scheme,
+            cov_map,
             self.config["smooth_det_frac"],
             self.config["smooth_window"],
         )
-        maps["depth_det_prob/depth"] = (
-            depth_map_results["pix"],
-            depth_map_results["depth_map"][depth_map_results["pix"]],
-        )
-        maps["depth_det_prob/depth_det_count"] = (
-            depth_map_results["pix"],
-            depth_map_results["det_count_map"][depth_map_results["pix"]],
-        )
-        maps["depth_det_prob/depth_inj_count"] = (
-            depth_map_results["pix"],
-            depth_map_results["inj_count_map"][depth_map_results["pix"]],
-        )
-        maps["depth_det_prob/det_frac_by_mag_thres"] = (
-            depth_map_results["pix"],
-            depth_map_results["det_frac_by_mag_thres"][:, depth_map_results["pix"]],
-        )
+        maps["depth_det_prob/depth"] = depth_map_results["depth_map"]
+        maps["depth_det_prob/depth_det_count"] = depth_map_results["det_count_map"]
+        maps["depth_det_prob/depth_inj_count"] = depth_map_results["inj_count_map"]
+        maps["depth_det_prob/det_frac_by_mag_thres"] = depth_map_results["det_frac_by_mag_thres"]
 
         (maps,) = da.compute(maps)
+        
+        # convert sparse_map arrays into healsparse map objects
+        hsp_maps = {}
+        for name, map in maps.items():
+            if map.ndim == 2: #is a 2D map, save as recarray
+                map = np.rec.fromarrays(map, names=[f'bin{i}' for i in range(map.shape[0])])
+                primary = 'bin0'
+            else:
+                primary= None
+            hsp_maps[name] = hsp.HealSparseMap(cov_map=cov_map, sparse_map=map, nside_sparse=cov_map.nside_sparse, primary=primary)
 
         # Prepare metadata for the maps. Copy the pixelization-related
         # configuration options only here
@@ -423,6 +414,6 @@ class TXAuxiliarySSIMaps(TXBaseMaps):
 
         # Write the output maps to the output file
         with self.open_output("aux_ssi_maps", wrapper=True) as out:
-            for map_name, (pix, m) in maps.items():
-                out.write_map_pixval(map_name, pix, m, metadata)
+            for map_name, m in hsp_maps.items():
+                out.write_map(map_name, m, metadata)
             out.file["maps"].attrs.update(metadata)

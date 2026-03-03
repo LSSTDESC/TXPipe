@@ -114,6 +114,7 @@ def make_dask_depth_map_det_prob(
     min_depth,
     max_depth,
     pixel_scheme,
+    cov_map,
     smooth_det_frac=False,
     smooth_window=0.5,
 ):
@@ -142,6 +143,8 @@ def make_dask_depth_map_det_prob(
         maximum magnitude at which to compute detection fraction
     pixel_scheme : PixelScheme
         An object that provides pixelization scheme with methods `npix` and `ang2pix`.
+    cov_map : HealSparseCoverage
+        coverage map corresponding to these sources (or a superset of them)
     smooth_det_frac: bool
         if True apply a savgol filtering to the individual detection frac vs magnitude cut signals
     smooth_window: float
@@ -164,8 +167,11 @@ def make_dask_depth_map_det_prob(
     npix = pixel_scheme.npix
     pix = pixel_scheme.ang2pix(ra, dec)
 
-    det_count_map = da.bincount(pix, weights=det, minlength=npix)
-    inj_count_map = da.bincount(pix, minlength=npix)
+    # get the sparse map index for each of these pixel (is dask aware)
+    sparse_index, npix_sparse = pix2sparseindex(pix, cov_map)
+
+    det_count_map = da.bincount(sparse_index, weights=det, minlength=npix_sparse)
+    inj_count_map = da.bincount(sparse_index, minlength=npix_sparse)
 
     # Make array of magnitude bins
     mag_edges = da.arange(min_depth, max_depth, mag_delta)
@@ -176,8 +182,8 @@ def make_dask_depth_map_det_prob(
     frac_list = []
     for mag_thresh in mag_edges:
         above_thresh = mag < mag_thresh
-        ntot = da.bincount(pix, weights=above_thresh, minlength=npix)
-        ndet = da.bincount(pix, weights=above_thresh * det, minlength=npix)
+        ntot = da.bincount(sparse_index, weights=above_thresh, minlength=npix_sparse)
+        ndet = da.bincount(sparse_index, weights=above_thresh * det, minlength=npix_sparse)
         frac_det = da.where(ntot != 0, ndet / ntot, np.nan)
         frac_list.append(frac_det)
     det_frac_by_mag_thres = da.stack(frac_list)
@@ -213,9 +219,7 @@ def make_dask_depth_map_det_prob(
     depth_map = mag_edges[thres_index]
     depth_map[~valid_pix_mask] = np.nan
 
-    pix = da.unique(pix)
     return {
-        "pix": pix,
         "det_count_map": det_count_map,
         "inj_count_map": inj_count_map,
         "depth_map": depth_map,
