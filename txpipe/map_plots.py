@@ -102,11 +102,10 @@ class TXMapPlots(PipelineStage):
         for i in range(flag_max):
             plt.subplot(1, flag_max, i + 1)
             f = 2**i
-            # NOTE: currently, if we require flag map to be degraded, we plot to the max value to highlight flagged regions
             m.plot(f"flags/flag_{f}", 
                    view=self.config["projection"], 
                    nside=self.config["nside"], 
-                   reduction='max', 
+                   reduction='sum', 
                    rot180=self.config["rot180"])
         fig.close()
 
