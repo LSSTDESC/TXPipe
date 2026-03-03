@@ -499,11 +499,11 @@ class MapsFile(HDFFile):
         else:
             m = hsp_map.generate_healpix_map(nside=nside, reduction=reduction, key=key)
         
-        lon, lat = healpy.pix2ang(nside, pix, lonlat=True)
+        lon, lat = healpy.pix2ang(nside, pix, lonlat=True, nest=True)
         if rot180:  # (optional) rotate 180 degrees in the lon direction
             lon += 180
             lon[lon > 360.0] -= 360.0
-            pix_rot = healpy.ang2pix(nside, lon, lat, lonlat=True)
+            pix_rot = healpy.ang2pix(nside, lon, lat, lonlat=True, nest=True)
             m_rot = np.ones(healpy.nside2npix(nside)) * healpy.UNSEEN
             m_rot[pix_rot] = m[pix]
             m = m_rot
@@ -523,9 +523,9 @@ class MapsFile(HDFFile):
         m[m == 0] = healpy.UNSEEN
         title = kwargs.pop("title", map_name)
         if view == "cart":
-            healpy.cartview(m, lonra=lon_range, latra=lat_range, title=title, hold=True, nest=info["nest"], **kwargs)
+            healpy.cartview(m, lonra=lon_range, latra=lat_range, title=title, hold=True, nest=True, **kwargs)
         elif view == "moll":
-            healpy.mollview(m, title=title, hold=True, nest=info["nest"], **kwargs)
+            healpy.mollview(m, title=title, hold=True, nest=True, **kwargs)
         else:
             raise ValueError(f"Unknown Healpix view mode {view}")
 
