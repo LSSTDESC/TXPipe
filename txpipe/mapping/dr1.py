@@ -217,7 +217,7 @@ def make_dask_depth_map_det_prob(
     thres_index = da.nanmin(masked, axis=0)  # the index of the magnitude where det frac drops below threshold
 
     depth_map = mag_edges[thres_index]
-    depth_map[~valid_pix_mask] = np.nan
+    depth_map[~valid_pix_mask] = hp.UNSEEN
 
     return {
         "det_count_map": det_count_map,
