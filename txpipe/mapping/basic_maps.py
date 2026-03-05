@@ -251,8 +251,8 @@ def degrade_healsparse(hsp_map, degrade_nside, reduction, weight_map=None):
 
         - "weightedmean" : Compute a weighted mean of the fine pixels within
           each coarse pixel, using weight_map as the weights. Pixels not
-          present in weight_map are assumed to have weight 0. Requires
-          weight_map to be provided.
+          present in weight_map are assumed to have weight 0 (which differs
+          from healsparse's reuction="wmean"). Requires weight_map to be provided.
 
         - "mask" : Degrade a coverage mask to a fractional coverage map.
           For integer (binary) input maps, returns the fracdet map.
