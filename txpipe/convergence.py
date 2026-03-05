@@ -62,8 +62,8 @@ class TXConvergenceMaps(PipelineStage):
         for i in maps:
             print(f"Producing convergence map for bin {i}")
             # Load input shear maps
-            g1 = source_maps.read_map_healpix(f"g1_{i}", nside=self.config["nside"])
-            g2 = source_maps.read_map_healpix(f"g2_{i}", nside=self.config["nside"])
+            g1 = source_maps.read_map_healpix(f"g1_{i}")
+            g2 = source_maps.read_map_healpix(f"g2_{i}")
             mask = (g1 == healpy.UNSEEN) | (g2 == healpy.UNSEEN)
             gmap = np.vstack([g1, g2])
             print(" - read maps")
