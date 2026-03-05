@@ -196,7 +196,9 @@ class TXSimpleMaskSource(TXBaseMask):
     name = "TXSimpleMaskSource"
     # make a mask from the source maps
     inputs = [("source_maps", MapsFile)]
-    config_options = {}
+    config_options = {
+        "require_all_bins": True,
+    }
 
     def make_binary_mask(self):
         """
@@ -220,13 +222,20 @@ class TXSimpleMaskSource(TXBaseMask):
                 lw = f.read_map(f"lensing_weight_{i}")
                 lensing_weights.append(lw)
 
-        # find min lensing weight across all bins
-        # if min > 0.0 -> all bins have a non-zeros lensing weight so we set that pixel to True
-        min_lw = hsp.operations.min_intersection(lensing_weights)
-        valid_pix = min_lw.valid_pixels[min_lw[min_lw.valid_pixels] > 0.]
-        mask = hsp.HealSparseMap.make_empty(lw.nside_coverage, lw.nside_sparse, np.bool)
+        if self.config["require_all_bins"]:
+            #if *all* bins have a positive lensing weight, set mask to True 
+            # find min lensing weight across all bins
+            # if min > 0.0 -> all bins have a non-zeros lensing weight so we set that pixel to True
+            min_lw = hsp.operations.min_intersection(lensing_weights)
+            valid_pix = min_lw.valid_pixels[min_lw[min_lw.valid_pixels] > 0.]
+        else:
+            #if *any* bin has a positive lensing weight, set mask to True 
+            # find max lensing weight across all bins
+            # if max > 0.0 -> at least 1 bins has a non-zeros lensing weight so we set that pixel to True
+            max_lw = hsp.operations.max_union(lensing_weights)
+            valid_pix = max_lw.valid_pixels[max_lw[max_lw.valid_pixels] > 0.]
+        mask = hsp.HealSparseMap.make_empty(lw.nside_coverage, lw.nside_sparse, np.bool_)
         mask[valid_pix] = True
-
         return mask, pixel_scheme, metadata
 
 
