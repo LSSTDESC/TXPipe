@@ -163,7 +163,7 @@ jobs:
           - os: ubuntu-latest
             INSTALL_DEPS: echo nothing to do
           - os: macos-14
-            INSTALL_DEPS: brew update-reset && brew install --cask basictex && eval "$(/usr/libexec/path_helper)" && pdflatex --version
+            INSTALL_DEPS: echo nothing to do
 
     steps:
     - name: Checkout repository
