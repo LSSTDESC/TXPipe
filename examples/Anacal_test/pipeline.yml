@@ -1,0 +1,20 @@
+stages:
+  - name: TXIngestAnacal
+
+output_dir: data/example/output_anacal
+
+launcher:
+    name: mini
+    interval: 1.0
+
+site:
+    name: local
+    max_threads: 2
+
+modules: >
+    txpipe
+
+config: examples/Anacal_test/config.yml
+
+inputs:
+    anacal_catalog: /Users/eskemollerpedersen/Research/TXPipe/Catalog_examples/Anacal/anacal_table.fits
