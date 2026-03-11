@@ -312,7 +312,7 @@ class MapsFile(HDFFile):
         m = hsp_map.generate_healpix_map(nside=nside, reduction=reduction, key=key, nest=nest)
         return m
 
-    def read_mask(self, mask_name=None, thresh=0, degrade_nside=None, returnbool=False):
+    def read_mask(self, mask_name=None, thresh=0., degrade_nside=None, returnbool=False):
         """
         Read the mask and return as a healsparse map
 
@@ -333,11 +333,17 @@ class MapsFile(HDFFile):
 
         if mask_name is None:
             mask_name = "mask"
-        mask = self.read_map(mask_name)
-
-        #remove any pixels below the threshold
-        pix_to_cut = mask.valid_pixels[mask[mask.valid_pixels]<=thresh]
-        mask.update_values_pix(pix_to_cut, mask.sentinel)
+        mask_in = self.read_map(mask_name)
+        
+        if thresh > 0.:
+            # Remove any pixels below the threshold
+            # Setting pixels to the sentinel can be buggy in healsparse 
+            # so we'll make a copy of the mask with the < thresh pixels removed
+            mask = hsp.HealSparseMap.make_empty_like(mask_in)
+            pix_to_keep = mask.valid_pixels[mask[mask.valid_pixels]>thresh]
+            mask.update_values_pix(pix_to_keep, mask[pix_to_keep])
+        else:
+            mask = mask_in
 
         #degrade if requested and nessesary
         if (degrade_nside is not None) and (degrade_nside != mask.nside_sparse):
