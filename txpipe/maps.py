@@ -334,7 +334,7 @@ class TXLensMaps(PipelineStage):
 
         # Generate the maps with dask. This is lazy until we do da.compute
         for b in bins:
-            lens_map_results = make_dask_lens_maps(ra, dec, weight, tomo_bin, b, pixel_scheme, cov_map)
+            lens_map_results = make_dask_lens_maps(ra, dec, weight, tomo_bin, b, pixel_scheme, cov_map, sentinel=0.)
             maps[f"ngal_{b}"] = lens_map_results["count_map"]
             maps[f"weighted_ngal_{b}"] = lens_map_results["weight_map"]
 
@@ -344,7 +344,7 @@ class TXLensMaps(PipelineStage):
         # convert sparse_map arrays into healsparse map objects
         maps_hsp = {}
         for name, map in maps.items():
-            maps_hsp[name] = hsp.HealSparseMap(cov_map=cov_map, sparse_map=map, nside_sparse=cov_map.nside_sparse)
+            maps_hsp[name] = hsp.HealSparseMap(cov_map=cov_map, sparse_map=map, nside_sparse=cov_map.nside_sparse, sentinel=0.)
 
         # collate metadata
         metadata = {key: self.config[key] for key in map_config_options}
@@ -406,7 +406,10 @@ class TXDensityMaps(PipelineStage):
 
         # Read the mask and set all pixels below the threshold to 0
         with self.open_input("mask", wrapper=True) as f:
-            mask = f.read_mask(thresh=self.config["mask_threshold"])
+            mask = f.read_mask(
+                thresh=self.config["mask_threshold"], 
+                degrade_nside=self.config["nside"]
+                )
 
         # identify unmasked pixels
         pix = mask.valid_pixels
@@ -414,16 +417,28 @@ class TXDensityMaps(PipelineStage):
         # Read the count maps
         with self.open_input("lens_maps", wrapper=True) as f:
             meta = dict(f.file["maps"].attrs)
+            assert meta['nside'] == self.config['nside']
             nbin_lens = meta["nbin_lens"]
             ngal_maps = [f.read_map(f"weighted_ngal_{b}") for b in range(nbin_lens)]
 
         # Convert count maps into density maps
         density_maps = []
         for i, ng in enumerate(ngal_maps):
+            # In order to interpret the empty pixels as 0 the sentinel must be 0.
+            assert ng.sentinel == 0. 
+
             # calculate mean of ng and mean of mask
             mu_n = np.mean(ng[pix])
             mu_w = np.mean(mask[pix])
-            delta_map = (hsp.operations.divide_intersection([ng,mask]) / (mu_n / mu_w)) - 1
+
+            #make a new map for density
+            delta_map = hsp.HealSparseMap.make_empty(
+                ng.nside_coverage,
+                ng.nside_sparse,
+                np.float64
+                )
+            delta_map[pix] = (ng[pix] / mask[pix]) / (mu_n / mu_w)
+
             density_maps.append(delta_map)
 
         # write output
