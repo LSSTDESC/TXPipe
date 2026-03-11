@@ -523,7 +523,9 @@ def choose_pixelization(**config):
             raise ValueError(f"nside pixelization parameter must be set to a power of two (used value {nside})")
         nest = config.get("nest", True)
         if not nest:
-            print("You are using RING ordering, This will be converted to NEST when saving to healsparse")
+            print(
+                "You are using RING ordering, This will be converted to NEST when saving to healsparse"
+            )
         scheme = HealpixScheme(nside, nest=nest)
     elif pixelization == "gnomonic":
         ra_cent = config["ra_cent"]

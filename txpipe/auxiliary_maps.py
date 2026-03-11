@@ -109,7 +109,9 @@ class TXAuxiliarySourceMaps(PipelineStage):
             maps[f"psf/lensing_weight_{i}"] = shear_map_results["weight_map"]
 
         # Now add the flag maps. These are not tomographic.
-        flag_maps = make_dask_flag_maps(ra, dec, flag, flag_exponent_max, pixel_scheme, cov_map)
+        flag_maps = make_dask_flag_maps(
+            ra, dec, flag, flag_exponent_max, pixel_scheme, cov_map
+        )
         for j in range(flag_exponent_max):
             maps[f"flags/flag_{2**j}"] = flag_maps[j]
 
@@ -124,7 +126,9 @@ class TXAuxiliarySourceMaps(PipelineStage):
         # convert sparse_map arrays into healsparse map objects
         hsp_maps = {}
         for name, map in maps.items():
-            hsp_maps[name] = hsp.HealSparseMap(cov_map=cov_map, sparse_map=map, nside_sparse=cov_map.nside_sparse)
+            hsp_maps[name] = hsp.HealSparseMap(
+                cov_map=cov_map, sparse_map=map, nside_sparse=cov_map.nside_sparse
+            )
 
         # write the output maps
         with self.open_output("aux_source_maps", wrapper=True) as out:
@@ -197,16 +201,29 @@ class TXAuxiliaryLensMaps(TXBaseMaps):
 
         # Create a bright object map using dask
         bright_object_results = make_dask_bright_object_map(
-            ra, dec, mag, extendedness, self.config["bright_obj_threshold"], pixel_scheme, cov_map
+            ra,
+            dec,
+            mag,
+            extendedness,
+            self.config["bright_obj_threshold"],
+            pixel_scheme,
+            cov_map,
         )
         maps["bright_objects/count"] = bright_object_results["count"]
 
         # Create depth maps using dask
         depth_map_results = make_dask_depth_map(
-            ra, dec, mag, snr, self.config["snr_threshold"], self.config["snr_delta"], pixel_scheme, cov_map
+            ra,
+            dec,
+            mag,
+            snr,
+            self.config["snr_threshold"],
+            self.config["snr_delta"],
+            pixel_scheme,
+            cov_map,
         )
-        maps["depth/depth"] =  depth_map_results["depth_map"]
-        maps["depth/depth_count"] =  depth_map_results["count_map"]
+        maps["depth/depth"] = depth_map_results["depth_map"]
+        maps["depth/depth_count"] = depth_map_results["count_map"]
         maps["depth/depth_var"] = depth_map_results["depth_var"]
 
         (maps,) = da.compute(maps)
@@ -214,7 +231,9 @@ class TXAuxiliaryLensMaps(TXBaseMaps):
         # convert sparse_map arrays into healsparse map objects
         hsp_maps = {}
         for name, map in maps.items():
-            hsp_maps[name] = hsp.HealSparseMap(cov_map=cov_map, sparse_map=map, nside_sparse=cov_map.nside_sparse)
+            hsp_maps[name] = hsp.HealSparseMap(
+                cov_map=cov_map, sparse_map=map, nside_sparse=cov_map.nside_sparse
+            )
 
         # Prepare metadata for the maps. Copy the pixelization-related
         # configuration options only here
@@ -259,7 +278,9 @@ class TXUniformDepthMap(PipelineStage):
             mask = f.read_mask()
 
         # Make a fake depth map
-        depth = hsp.HealSparseMap.make_empty(mask.nside_coverage, mask.nside_sparse, dtype=float)
+        depth = hsp.HealSparseMap.make_empty(
+            mask.nside_coverage, mask.nside_sparse, dtype=float
+        )
         depth[mask.valid_pixels] = self.config["depth"]  # e.g. 25 everywhere
 
         with self.open_output("aux_lens_maps", wrapper=True) as f:
@@ -335,7 +356,7 @@ class TXAuxiliarySSIMaps(TXBaseMaps):
         # Might need to review this to make sure we use the same scheme everywhere
         pixel_scheme = choose_pixelization(**self.config)
 
-        #make coverage map for these ra,dec
+        # make coverage map for these ra,dec
         cov_map = make_coverage_map(ra, dec, pixel_scheme)
 
         # Load detection catalog data into dask arrays.
@@ -351,7 +372,14 @@ class TXAuxiliarySSIMaps(TXBaseMaps):
 
         # Create depth maps using dask and measured magnitudes
         depth_map_results = make_dask_depth_map(
-            ra, dec, mag_meas, snr, self.config["snr_threshold"], self.config["snr_delta"], pixel_scheme, cov_map
+            ra,
+            dec,
+            mag_meas,
+            snr,
+            self.config["snr_threshold"],
+            self.config["snr_delta"],
+            pixel_scheme,
+            cov_map,
         )
         maps["depth_meas/depth"] = depth_map_results["depth_map"]
         maps["depth_meas/depth_count"] = depth_map_results["count_map"]
@@ -359,7 +387,14 @@ class TXAuxiliarySSIMaps(TXBaseMaps):
 
         # Create depth maps using dask and true magnitudes
         depth_map_results = make_dask_depth_map(
-            ra, dec, mag_true, snr, self.config["snr_threshold"], self.config["snr_delta"], pixel_scheme, cov_map
+            ra,
+            dec,
+            mag_true,
+            snr,
+            self.config["snr_threshold"],
+            self.config["snr_delta"],
+            pixel_scheme,
+            cov_map,
         )
         maps["depth_true/depth"] = depth_map_results["depth_map"]
         maps["depth_true/depth_count"] = depth_map_results["count_map"]
@@ -384,19 +419,28 @@ class TXAuxiliarySSIMaps(TXBaseMaps):
         maps["depth_det_prob/depth"] = depth_map_results["depth_map"]
         maps["depth_det_prob/depth_det_count"] = depth_map_results["det_count_map"]
         maps["depth_det_prob/depth_inj_count"] = depth_map_results["inj_count_map"]
-        maps["depth_det_prob/det_frac_by_mag_thres"] = depth_map_results["det_frac_by_mag_thres"]
+        maps["depth_det_prob/det_frac_by_mag_thres"] = depth_map_results[
+            "det_frac_by_mag_thres"
+        ]
 
         (maps,) = da.compute(maps)
-        
+
         # convert sparse_map arrays into healsparse map objects
         hsp_maps = {}
         for name, map in maps.items():
-            if map.ndim == 2: #is a 2D map, save as recarray
-                map = np.rec.fromarrays(map, names=[f'bin{i}' for i in range(map.shape[0])])
-                primary = 'bin0'
+            if map.ndim == 2:  # is a 2D map, save as recarray
+                map = np.rec.fromarrays(
+                    map, names=[f"bin{i}" for i in range(map.shape[0])]
+                )
+                primary = "bin0"
             else:
-                primary= None
-            hsp_maps[name] = hsp.HealSparseMap(cov_map=cov_map, sparse_map=map, nside_sparse=cov_map.nside_sparse, primary=primary)
+                primary = None
+            hsp_maps[name] = hsp.HealSparseMap(
+                cov_map=cov_map,
+                sparse_map=map,
+                nside_sparse=cov_map.nside_sparse,
+                primary=primary,
+            )
 
         # Prepare metadata for the maps. Copy the pixelization-related
         # configuration options only here

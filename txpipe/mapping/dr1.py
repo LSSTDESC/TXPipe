@@ -3,7 +3,10 @@ import healpy as hp
 from ..utils import import_dask
 from .basic_maps import pix2sparseindex
 
-def make_dask_bright_object_map(ra, dec, mag, extended, threshold, pixel_scheme, cov_map):
+
+def make_dask_bright_object_map(
+    ra, dec, mag, extended, threshold, pixel_scheme, cov_map
+):
     """
     Create a map of bright objects using Dask.
 
@@ -25,7 +28,7 @@ def make_dask_bright_object_map(ra, dec, mag, extended, threshold, pixel_scheme,
         coverage map corresponding to these sources (or a superset of them)
     Returns
     -------
-    dict 
+    dict
         A dict containing
         "count" (dask.array): Sparse count map of bright objects per pixel.
     """
@@ -36,12 +39,16 @@ def make_dask_bright_object_map(ra, dec, mag, extended, threshold, pixel_scheme,
     # get the sparse map index for each of these pixel (is dask aware)
     sparse_index, npix_sparse = pix2sparseindex(pix, cov_map)
 
-    bright_object_count_map = da.bincount(sparse_index, weights=bright, minlength=npix_sparse).astype(int)
-    
+    bright_object_count_map = da.bincount(
+        sparse_index, weights=bright, minlength=npix_sparse
+    ).astype(int)
+
     return {"count": bright_object_count_map}
 
 
-def make_dask_depth_map(ra, dec, mag, snr, threshold, delta, pixel_scheme, cov_map, sentinel=hp.UNSEEN):
+def make_dask_depth_map(
+    ra, dec, mag, snr, threshold, delta, pixel_scheme, cov_map, sentinel=hp.UNSEEN
+):
     """
     Generate a depth map using Dask, by finding the mean magnitude of
     objects with a signal-to-noise ratio close to a given threshold.
@@ -66,7 +73,7 @@ def make_dask_depth_map(ra, dec, mag, snr, threshold, delta, pixel_scheme, cov_m
         coverage map corresponding to these sources (or a superset of them)
     Returns
     -------
-    dict 
+    dict
         A dict containing:
         - pix (dask.array): Unique pixel indices.
         - count_map (dask.array): Count of objects per pixel.
@@ -93,7 +100,7 @@ def make_dask_depth_map(ra, dec, mag, snr, threshold, delta, pixel_scheme, cov_m
     # get the variance from the mean depth
     depth_var = depth2_map - depth_map**2
 
-    #set pixels with 0 counts to sentinel value
+    # set pixels with 0 counts to sentinel value
     depth_map = da.where(count_map != 0, depth_map, sentinel)
     depth_var = da.where(count_map != 0, depth_var, sentinel)
 
@@ -183,7 +190,9 @@ def make_dask_depth_map_det_prob(
     for mag_thresh in mag_edges:
         above_thresh = mag < mag_thresh
         ntot = da.bincount(sparse_index, weights=above_thresh, minlength=npix_sparse)
-        ndet = da.bincount(sparse_index, weights=above_thresh * det, minlength=npix_sparse)
+        ndet = da.bincount(
+            sparse_index, weights=above_thresh * det, minlength=npix_sparse
+        )
         frac_det = da.where(ntot != 0, ndet / ntot, np.nan)
         frac_list.append(frac_det)
     det_frac_by_mag_thres = da.stack(frac_list)

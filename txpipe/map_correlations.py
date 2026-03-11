@@ -41,6 +41,7 @@ class TXMapCorrelations(PipelineStage):
 
     def read_healsparse(self, map_path, nside):
         import healsparse
+
         # Convert to correct res healsparse map
         m = healsparse.HealSparseMap.read(map_path, degrade_nside=nside)
         return m
@@ -140,10 +141,7 @@ class TXMapCorrelations(PipelineStage):
         # clean the data
         valid_pix = np.intersect1d(sys_map.valid_pixels, data_map.valid_pixels)
         valid_pix = np.intersect1d(valid_pix, mask.valid_pixels)
-        finite = (
-            np.isfinite(sys_map[valid_pix])
-            & np.isfinite(data_map[valid_pix])
-        )
+        finite = np.isfinite(sys_map[valid_pix]) & np.isfinite(data_map[valid_pix])
         valid_pix = valid_pix[finite]
 
         sys_map = sys_map[valid_pix]

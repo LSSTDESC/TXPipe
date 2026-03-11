@@ -145,7 +145,9 @@ class TXBaseMaps(PipelineStage):
 
         # same the relevant maps in each
         for (tag, map_name), (pix, map_data) in maps.items():
-            output_files[tag].write_map_pixval(map_name, pix, map_data, self.pixel_metadata)
+            output_files[tag].write_map_pixval(
+                map_name, pix, map_data, self.pixel_metadata
+            )
 
 
 class TXSourceMaps(PipelineStage):
@@ -218,6 +220,7 @@ class TXSourceMaps(PipelineStage):
                 i = "2D"
 
             # Save all the stuff we want here.
+            # fmt: off
             output[f"count_{i}"]          = shear_map_results["count_map"]
             output[f"g1_{i}"]             = shear_map_results["g1_map"]
             output[f"g2_{i}"]             = shear_map_results["g2_map"]
@@ -225,13 +228,14 @@ class TXSourceMaps(PipelineStage):
             output[f"var_e_{i}"]          = shear_map_results["esq_map"]
             output[f"var_g1_{i}"]         = shear_map_results["var1_map"]
             output[f"var_g2_{i}"]         = shear_map_results["var2_map"]
+            # fmt: on
 
         # mask is where a pixel is hit in any of the tomo bins
         mask = da.zeros(shear_map_results["count_map"].shape[0], dtype=bool)
         for i in bins:
             if i == "all":
                 i = "2D"
-            mask |= output[f"lensing_weight_{i}"] > 0 
+            mask |= output[f"lensing_weight_{i}"] > 0
 
         output["mask"] = mask
 
@@ -243,7 +247,9 @@ class TXSourceMaps(PipelineStage):
         # convert sparse_map arrays into healsparse map objects
         output_hsp = {}
         for name, map in output.items():
-            output_hsp[name] = hsp.HealSparseMap(cov_map=cov_map, sparse_map=map, nside_sparse=cov_map.nside_sparse)
+            output_hsp[name] = hsp.HealSparseMap(
+                cov_map=cov_map, sparse_map=map, nside_sparse=cov_map.nside_sparse
+            )
 
         # collate metadata
         metadata = {key: self.config[key] for key in map_config_options}
@@ -334,7 +340,9 @@ class TXLensMaps(PipelineStage):
 
         # Generate the maps with dask. This is lazy until we do da.compute
         for b in bins:
-            lens_map_results = make_dask_lens_maps(ra, dec, weight, tomo_bin, b, pixel_scheme, cov_map, sentinel=0.)
+            lens_map_results = make_dask_lens_maps(
+                ra, dec, weight, tomo_bin, b, pixel_scheme, cov_map, sentinel=0.0
+            )
             maps[f"ngal_{b}"] = lens_map_results["count_map"]
             maps[f"weighted_ngal_{b}"] = lens_map_results["weight_map"]
 
@@ -344,7 +352,12 @@ class TXLensMaps(PipelineStage):
         # convert sparse_map arrays into healsparse map objects
         maps_hsp = {}
         for name, map in maps.items():
-            maps_hsp[name] = hsp.HealSparseMap(cov_map=cov_map, sparse_map=map, nside_sparse=cov_map.nside_sparse, sentinel=0.)
+            maps_hsp[name] = hsp.HealSparseMap(
+                cov_map=cov_map,
+                sparse_map=map,
+                nside_sparse=cov_map.nside_sparse,
+                sentinel=0.0,
+            )
 
         # collate metadata
         metadata = {key: self.config[key] for key in map_config_options}
@@ -407,9 +420,8 @@ class TXDensityMaps(PipelineStage):
         # Read the mask and set all pixels below the threshold to 0
         with self.open_input("mask", wrapper=True) as f:
             mask = f.read_mask(
-                thresh=self.config["mask_threshold"], 
-                degrade_nside=self.config["nside"]
-                )
+                thresh=self.config["mask_threshold"], degrade_nside=self.config["nside"]
+            )
 
         # identify unmasked pixels
         pix = mask.valid_pixels
@@ -417,7 +429,7 @@ class TXDensityMaps(PipelineStage):
         # Read the count maps
         with self.open_input("lens_maps", wrapper=True) as f:
             meta = dict(f.file["maps"].attrs)
-            assert meta['nside'] == self.config['nside']
+            assert meta["nside"] == self.config["nside"]
             nbin_lens = meta["nbin_lens"]
             ngal_maps = [f.read_map(f"weighted_ngal_{b}") for b in range(nbin_lens)]
 
@@ -425,18 +437,16 @@ class TXDensityMaps(PipelineStage):
         density_maps = []
         for i, ng in enumerate(ngal_maps):
             # In order to interpret the empty pixels as 0 the sentinel must be 0.
-            assert ng.sentinel == 0. 
+            assert ng.sentinel == 0.0
 
             # calculate mean of ng and mean of mask
             mu_n = np.mean(ng[pix])
             mu_w = np.mean(mask[pix])
 
-            #make a new map for density
+            # make a new map for density
             delta_map = hsp.HealSparseMap.make_empty(
-                ng.nside_coverage,
-                ng.nside_sparse,
-                np.float64
-                )
+                ng.nside_coverage, ng.nside_sparse, np.float64
+            )
             delta_map[pix] = (ng[pix] / mask[pix]) / (mu_n / mu_w)
 
             density_maps.append(delta_map)

@@ -92,7 +92,9 @@ class HOSStage(PipelineStage):
         """
         with self.open_input("convergence_maps", wrapper=True) as f:
             nbin_source = f.file["maps"].attrs["nbin_source"]
-            convergence_maps = [f.read_map_healpix(f"kappa_E_{b}") for b in range(nbin_source)]
+            convergence_maps = [
+                f.read_map_healpix(f"kappa_E_{b}") for b in range(nbin_source)
+            ]
             convergence_maps.append(f.read_map_healpix("kappa_E_2D"))
             print(f"Loaded {nbin_source} convergence maps")
         return convergence_maps, nbin_source        

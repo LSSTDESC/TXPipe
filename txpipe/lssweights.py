@@ -162,8 +162,10 @@ class TXLSSDensityBase(TXMapCorrelations):
         print(f"Found {nsys} total systematic maps")
 
         with self.open_input("mask", wrapper=True) as map_file:
-            #load *boolean* mask
-            mask = map_file.read_mask("mask", degrade_nside=self.config["nside"], returnbool=True)
+            # load *boolean* mask
+            mask = map_file.read_mask(
+                "mask", degrade_nside=self.config["nside"], returnbool=True
+            )
 
         nside = mask.nside_sparse
 
@@ -813,14 +815,14 @@ class TXLSSWeights(TXLSSDensityBase):
 
         #these config options current have to be the same between density Null calls and LSS weights calls
         config_asserts = [
-            'equal_area_bins',
-            'fill_missing_pix',
-            'nbin',
-            'nside',
-            'nside_coverage',
-            'outlier_fraction',
-            'pixelization',
-            'supreme_path_root',
+            "equal_area_bins",
+            "fill_missing_pix",
+            "nbin",
+            "nside",
+            "nside_coverage",
+            "outlier_fraction",
+            "pixelization",
+            "supreme_path_root",
         ]
 
         with self.open_input("unweighted_density_correlation") as f:
@@ -856,8 +858,10 @@ class TXLSSWeights(TXLSSDensityBase):
         map_output_file.file["maps"].attrs.update(self.config)
 
         for ibin, mean_density_map in enumerate(mean_density_map_list):
-            weight_map = mean_density_map ** -1
-            map_output_file.write_map(f"weight_map_bin_{ibin}", weight_map, self.pixel_metadata)
+            weight_map = mean_density_map**-1
+            map_output_file.write_map(
+                f"weight_map_bin_{ibin}", weight_map, self.pixel_metadata
+            )
 
         #### save the binned lens samples
         # There is probably a better way to do this using the batch writer

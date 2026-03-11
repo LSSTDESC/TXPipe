@@ -3,7 +3,8 @@ from ..utils import import_dask
 import numpy as np
 import healpy
 
-def make_dask_flag_maps(ra, dec, flag, max_exponent, pixel_scheme, cov_map ):
+
+def make_dask_flag_maps(ra, dec, flag, max_exponent, pixel_scheme, cov_map):
     """
     Create maps of flag counts per pixel
 
@@ -26,7 +27,7 @@ def make_dask_flag_maps(ra, dec, flag, max_exponent, pixel_scheme, cov_map ):
 
     pixel_scheme : PixelScheme
         The pixelization scheme to use, typically Healpix with a given nside
-    
+
     cov_map : HealSparseCoverage
         coverage map corresponding to these sources (or a superset of them)
 
@@ -46,21 +47,16 @@ def make_dask_flag_maps(ra, dec, flag, max_exponent, pixel_scheme, cov_map ):
     for i in range(max_exponent):
         f = 2**i
         flag_map = da.where(flag & f, 1, 0)
-        flag_map = da.bincount(sparse_index, weights=flag_map, minlength=npix_sparse).astype(int)
+        flag_map = da.bincount(
+            sparse_index, weights=flag_map, minlength=npix_sparse
+        ).astype(int)
         maps.append(flag_map)
 
     return maps
 
 
 def make_dask_shear_maps(
-    ra,
-    dec,
-    g1,
-    g2,
-    weight,
-    pixel_scheme,
-    cov_map,
-    sentinel=healpy.UNSEEN
+    ra, dec, g1, g2, weight, pixel_scheme, cov_map, sentinel=healpy.UNSEEN
 ):
     """
     Create weighted shear maps per pixel from a galaxy catalog.
@@ -127,7 +123,9 @@ def make_dask_shear_maps(
     weight_map = da.bincount(sparse_index, weights=weight, minlength=npix_sparse)
     g1_map = da.bincount(sparse_index, weights=weight * g1, minlength=npix_sparse)
     g2_map = da.bincount(sparse_index, weights=weight * g2, minlength=npix_sparse)
-    esq_map = da.bincount(sparse_index, weights=weight**2 * 0.5 * (g1**2 + g2**2), minlength=npix_sparse)
+    esq_map = da.bincount(
+        sparse_index, weights=weight**2 * 0.5 * (g1**2 + g2**2), minlength=npix_sparse
+    )
 
     # normalize by weights to get the mean map value in each pixel
     g1_map /= weight_map
@@ -140,8 +138,12 @@ def make_dask_shear_maps(
     g2_mean = g2_map[sparse_index]
 
     # Also generate variance maps
-    var1_map = da.bincount(sparse_index, weights=weight * (g1 - g1_mean) ** 2, minlength=npix_sparse)
-    var2_map = da.bincount(sparse_index, weights=weight * (g2 - g2_mean) ** 2, minlength=npix_sparse)
+    var1_map = da.bincount(
+        sparse_index, weights=weight * (g1 - g1_mean) ** 2, minlength=npix_sparse
+    )
+    var2_map = da.bincount(
+        sparse_index, weights=weight * (g2 - g2_mean) ** 2, minlength=npix_sparse
+    )
 
     # we want the variance on the mean, so we divide by both the weight
     # (to go from the sum to the variance) and then by the count (to get the
@@ -171,7 +173,9 @@ def make_dask_shear_maps(
     }
 
 
-def make_dask_lens_maps(ra, dec, weight, tomo_bin, target_bin, pixel_scheme, cov_map, sentinel=healpy.UNSEEN):
+def make_dask_lens_maps(
+    ra, dec, weight, tomo_bin, target_bin, pixel_scheme, cov_map, sentinel=healpy.UNSEEN
+):
     """
     Create count and weight maps for a lens galaxy sample in a tomographic bin.
 
@@ -233,6 +237,7 @@ def make_dask_lens_maps(ra, dec, weight, tomo_bin, target_bin, pixel_scheme, cov
         "weight_map": weight_map,
     }
 
+
 def degrade_healsparse(hsp_map, degrade_nside, reduction, weight_map=None):
     """
     Degrade a HealSparseMap
@@ -271,30 +276,34 @@ def degrade_healsparse(hsp_map, degrade_nside, reduction, weight_map=None):
         Degraded map at degrade_nside resolution.
     """
     import healsparse as hsp
-    custom_reductions = ['weightedmean', 'mask']
+
+    custom_reductions = ["weightedmean", "mask"]
 
     if reduction == "mask":
         assert weight_map is None, "weight_map not used for fractional mask degrade"
 
-        #if the map is a binary mask, return the fracdet
+        # if the map is a binary mask, return the fracdet
         if np.issubdtype(hsp_map.dtype, np.integer):
             map_out = hsp_map.fracdet_map(degrade_nside)
-        
+
         # if the map is already a fractional coverage map, sum(frac)/N_tot_subpix
         elif np.issubdtype(hsp_map.dtype, np.floating):
             map_degraded_sum = hsp_map.degrade(degrade_nside, reduction="sum")
 
-            #only select unique pixels in the degraded map (I'm not sure why they sometimes duplicate)
-            degraded_pixels = np.unique(map_degraded_sum.valid_pixels) 
+            # only select unique pixels in the degraded map (I'm not sure why they sometimes duplicate)
+            degraded_pixels = np.unique(map_degraded_sum.valid_pixels)
 
             map_out = hsp.HealSparseMap.make_empty_like(map_degraded_sum)
             map_out.update_values_pix(
-                degraded_pixels, 
-                map_degraded_sum[degraded_pixels] * (degrade_nside / hsp_map.nside_sparse) ** 2.0
-                )
+                degraded_pixels,
+                map_degraded_sum[degraded_pixels]
+                * (degrade_nside / hsp_map.nside_sparse) ** 2.0,
+            )
         else:
-            raise RuntimeError(f'Map dtype is {hsp_map.dtype}, expected float-like or int-like for mask reduction')
-    
+            raise RuntimeError(
+                f"Map dtype is {hsp_map.dtype}, expected float-like or int-like for mask reduction"
+            )
+
     elif reduction == "weightedmean":
         assert weight_map is not None
         assert hsp_map.nside_sparse == weight_map.nside_sparse
@@ -302,7 +311,9 @@ def degrade_healsparse(hsp_map, degrade_nside, reduction, weight_map=None):
         # If the map is an integer map, first convert to floats
         if np.issubdtype(hsp_map.dtype, np.integer):
             valid_pix = hsp_map.valid_pixels
-            m = hsp.HealSparseMap.make_empty(hsp_map.nside_coverage, hsp_map.nside_sparse, dtype=float)
+            m = hsp.HealSparseMap.make_empty(
+                hsp_map.nside_coverage, hsp_map.nside_sparse, dtype=float
+            )
             m.update_values_pix(valid_pix, hsp_map[valid_pix].astype(float))
         else:
             m = hsp_map
@@ -310,12 +321,15 @@ def degrade_healsparse(hsp_map, degrade_nside, reduction, weight_map=None):
         xw = hsp.operations.product_intersection([weight_map, m])
         sumxw = xw.degrade(degrade_nside, reduction="sum")
         sumw = weight_map.degrade(degrade_nside, reduction="sum")
-        map_out = hsp.operations.divide_intersection([sumxw,sumw])
+        map_out = hsp.operations.divide_intersection([sumxw, sumw])
     else:
-        #reduction not in custom list, using healsparse degrade
-        map_out = hsp_map.degrade(degrade_nside, reduction=reduction, weights=weight_map)
+        # reduction not in custom list, using healsparse degrade
+        map_out = hsp_map.degrade(
+            degrade_nside, reduction=reduction, weights=weight_map
+        )
 
     return map_out
+
 
 def make_coverage_map(ra, dec, pixel_scheme):
     """
@@ -327,24 +341,27 @@ def make_coverage_map(ra, dec, pixel_scheme):
         Right ascension values of the objects.
     dec : dask.array
         Declination values of the objects.
-    
+
     Returns
     -------
     Coverage map: HealSparseCoverage
     """
     _, da = import_dask()
     import healsparse as hsp
-    cov_map = hsp.HealSparseCoverage.make_empty(pixel_scheme.nside_coverage, pixel_scheme.nside)
 
+    cov_map = hsp.HealSparseCoverage.make_empty(
+        pixel_scheme.nside_coverage, pixel_scheme.nside
+    )
 
     pix = pixel_scheme.ang2pix(ra, dec)
     cov_pix = np.unique(cov_map.cov_pixels(pix))
-    
-    #we run compute here so we can return the HealSparseCoverage object
+
+    # we run compute here so we can return the HealSparseCoverage object
     (cov_pix,) = da.compute(cov_pix)
     cov_map.initialize_pixels(cov_pix)
 
     return cov_map
+
 
 def pix2sparseindex(pix, cov_map, return_npix=True):
     """
@@ -370,16 +387,16 @@ def pix2sparseindex(pix, cov_map, return_npix=True):
     """
     _, da = import_dask()
 
-    if return_npix:    
+    if return_npix:
         # get the number of pixels in the coverage and sparse map
         ncov = np.sum(cov_map.coverage_mask)
-        npix_sparse = (ncov+1)*cov_map.nfine_per_cov
+        npix_sparse = (ncov + 1) * cov_map.nfine_per_cov
 
-    #get coverage pixel for each healpix id
+    # get coverage pixel for each healpix id
     bit_shift = cov_map._bit_shift
     cov_pix = da.right_shift(pix, bit_shift)
-    
-    # This needs to be a dask array 
+
+    # This needs to be a dask array
     cov_index_map = da.array(cov_map._cov_index_map)
 
     # convert healpix pixel ID to healsparse index

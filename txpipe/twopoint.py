@@ -1038,7 +1038,7 @@ class TXTwoPointPixel(TXTwoPoint):
             print(f"Loaded shear 1 {i} maps")
 
             info_g2 = f.read_map_info(f"g2_{i}")
-            map_g2 =  f.read_healpix(f"g2_{i}")
+            map_g2 = f.read_healpix(f"g2_{i}")
             pix_g2 = map_g2.valid_pixels
             print(f"Loaded shear 2 {i} maps")
 

@@ -184,7 +184,7 @@ class TXTwoPointFourier(PipelineStage):
         import healpy
 
         # We will assert that the maps being correlated (density, shear etc)
-        # must have been generated at the config nside 
+        # must have been generated at the config nside
         # This does not apply to the mask which will be degraded at read
         nside = self.config["nside"]
 
@@ -194,7 +194,9 @@ class TXTwoPointFourier(PipelineStage):
             info = f.read_map_info("mask")
             area = info["area"]
             f_sky = info["f_sky"]
-            mask = f.read_mask_healpix(thresh=self.config["mask_threshold"], degrade_nside=nside)
+            mask = f.read_mask_healpix(
+                thresh=self.config["mask_threshold"], degrade_nside=nside
+            )
             if self.rank == 0:
                 print("Loaded mask")
 
@@ -208,7 +210,10 @@ class TXTwoPointFourier(PipelineStage):
                 nbin_source = f.file["maps"].attrs["nbin_source"]
                 g1_maps = [f.read_map_healpix(f"g1_{b}") for b in range(nbin_source)]
                 g2_maps = [f.read_map_healpix(f"g2_{b}") for b in range(nbin_source)]
-                lensing_weights = [f.read_map_healpix(f"lensing_weight_{b}") for b in range(nbin_source)]
+                lensing_weights = [
+                    f.read_map_healpix(f"lensing_weight_{b}")
+                    for b in range(nbin_source)
+                ]
                 assert all(healpy.npix2nside(len(m)) == nside for m in g1_maps)
                 assert all(healpy.npix2nside(len(m)) == nside for m in g2_maps)
                 assert all(healpy.npix2nside(len(m)) == nside for m in lensing_weights)
@@ -524,7 +529,9 @@ class TXTwoPointFourier(PipelineStage):
 
         # Load mask for calculation of cl_guess and (optionally) analytic noise calculation.
         with self.open_input("mask", wrapper=True) as f:
-            mask = f.read_mask_healpix(thresh=self.config["mask_threshold"], degrade_nside=self.config["nside"])
+            mask = f.read_mask_healpix(
+                thresh=self.config["mask_threshold"], degrade_nside=self.config["nside"]
+            )
             if self.rank == 0:
                 print("Loaded mask")
 
@@ -915,7 +922,9 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
         if self.config["deproject_syst_clustering"] or not self.config["use_randoms_clustering"]:
             with self.open_input("mask", wrapper=True) as f:
                 info = f.read_map_info("mask")
-                mask_gc = f.read_mask_healpix(thresh=self.config["mask_threshold"], degrade_nside=nside)
+                mask_gc = f.read_mask_healpix(
+                    thresh=self.config["mask_threshold"], degrade_nside=nside
+                )
                 if self.rank == 0:
                     print("Loaded mask")
         else:
