@@ -47,6 +47,7 @@ class TXAuxiliarySourceMaps(PipelineStage):
         block_size = self.config["block_size"]
         if block_size == 0:
             block_size = "auto"
+        psf_prefix = self.config["psf_prefix"]
 
         flag_exponent_max = self.config["flag_exponent_max"]
 
@@ -66,8 +67,8 @@ class TXAuxiliarySourceMaps(PipelineStage):
         # force all columns to use the same block size
         block_size = ra.chunksize
         dec = da.from_array(shear_cat.file[f"{group}/dec"], block_size)
-        psf_g1 = da.from_array(shear_cat.file[f"{group}/psf_g1"], block_size)
-        psf_g2 = da.from_array(shear_cat.file[f"{group}/psf_g2"], block_size)
+        psf_g1 = da.from_array(shear_cat.file[f"{group}/{psf_prefix}g1"], block_size)
+        psf_g2 = da.from_array(shear_cat.file[f"{group}/{psf_prefix}g2"], block_size)
         weight = da.from_array(shear_cat.file[f"{group}/weight"], block_size)
         if shear_cat.catalog_type == "metacal":
             flag_name = "mcal_flags"
