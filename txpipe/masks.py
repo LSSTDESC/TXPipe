@@ -384,8 +384,9 @@ class TXCustomMask(TXSimpleMaskFrac):
 
         # get a list of quantities to be cut
         cuts = self.config["cuts"]
-        compare_pattern = r"(==|!=|>=|<=|>|<)"
-        names = np.unique([re.split(compare_pattern, cut_string)[0].strip() for cut_string in cuts])
+
+        #join operators and put in () so they can be used in re.split
+        compare_pattern = "("+'|'.join(OP_MAP.keys())+")"
 
         masks = []
 
