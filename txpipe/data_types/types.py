@@ -216,7 +216,7 @@ class MapsFile(HDFFile):
         # return the accumulated list
         return maps
 
-    def read_healsparse(self, map_name, **kwargs):
+    def _read_healsparse(self, map_name, **kwargs):
         """
         Read healsparse map from hdf5
 
@@ -228,7 +228,7 @@ class MapsFile(HDFFile):
             self.path, hdf5_group=f"maps/{map_name}/healsparse", **kwargs
         )
 
-    def check_is_legacy(self, map_name):
+    def _check_is_legacy(self, map_name):
         """
         Returns True if map was saved using an old TXPipe file format
         i.e. is not a healsparse file
@@ -236,7 +236,7 @@ class MapsFile(HDFFile):
         keys = self.file[f"maps/{map_name}"].keys()
         return ("pixel" in keys) and ("value" in keys)
 
-    def read_healpix_legacy(self, map_name):
+    def _read_healpix_legacy(self, map_name):
         import healsparse as hsp
         import healpy
 
@@ -278,12 +278,12 @@ class MapsFile(HDFFile):
         if pixelization == "gnomonic":
             m = self.read_gnomonic(map_name)
         elif pixelization == "healpix":
-            is_legacy = self.check_is_legacy(map_name)
+            is_legacy = self._check_is_legacy(map_name)
 
             if is_legacy:
-                m = self.read_healpix_legacy(map_name)
+                m = self._read_healpix_legacy(map_name)
             else:
-                m = self.read_healsparse(map_name)
+                m = self._read_healsparse(map_name)
         else:
             raise ValueError(f"Unknown map pixelization type {pixelization}")
         return m
