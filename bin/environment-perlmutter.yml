@@ -1,5 +1,6 @@
 channels:
   - conda-forge
+  - defaults
 dependencies:
   - astropy=7.1.*
   - camb=1.6.*
