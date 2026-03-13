@@ -41,14 +41,9 @@ class TXMapCorrelations(PipelineStage):
 
     def read_healsparse(self, map_path, nside):
         import healsparse
-        import healpy
 
-        # Convert to correct res healpix map
-        m = healsparse.HealSparseMap.read(map_path)
-        m = m.generate_healpix_map(nside=nside)
-        # Re-order the pixels from nest to ring.  Does not change the
-        # resolution at all, just the ordering.
-        m = healpy.ud_grade(m, nside, order_in="nest", order_out="ring")
+        # Convert to correct res healsparse map
+        m = healsparse.HealSparseMap.read(map_path, degrade_nside=nside)
         return m
 
     def run(self):
@@ -76,7 +71,7 @@ class TXMapCorrelations(PipelineStage):
 
         # In python (unlike in e.g. C) you can chain equality tests
         # like this (or indeed inequalities). Cool right?
-        if not (kappa.size == ngal.size == mask.size):
+        if not (kappa.nside_sparse == ngal.nside_sparse == mask.nside_sparse):
             raise ValueError("Maps are different sizes")
 
         output_dir = self.open_output("map_systematic_correlations", wrapper=True)
@@ -115,6 +110,28 @@ class TXMapCorrelations(PipelineStage):
         output_dir.write_listing(outputs)
 
     def correlate(self, sys_map, data_map, mask):
+        """
+        Compute a binned correlation between a systematic map and a data map.
+
+        Parameters
+        ----------
+        sys_map : healsparse.HealSparseMap
+            Systematic map
+        data_map : healsparse.HealSparseMap
+            Data map whose mean value is computed in bins of the systematic.
+        mask : healsparse.HealSparseMap
+            fractional mask map
+
+        Returns
+        -------
+        x : np.ndarray
+            Mean systematic value in each bin.
+        y : np.ndarray
+            Mean data value in each bin.
+        yerr : np.ndarray
+            Uncertainty on the mean data value in each bin, computed as
+            sqrt(var / N).
+        """
         import scipy.stats
         import healpy
 
@@ -122,16 +139,13 @@ class TXMapCorrelations(PipelineStage):
         f = 0.5 * self.config["outlier_fraction"]
 
         # clean the data
-        finite = (
-            np.isfinite(sys_map)
-            & np.isfinite(data_map)
-            & (sys_map != healpy.UNSEEN)
-            & (data_map != healpy.UNSEEN)
-            & (mask > 0)
-        )
+        valid_pix = np.intersect1d(sys_map.valid_pixels, data_map.valid_pixels)
+        valid_pix = np.intersect1d(valid_pix, mask.valid_pixels)
+        finite = np.isfinite(sys_map[valid_pix]) & np.isfinite(data_map[valid_pix])
+        valid_pix = valid_pix[finite]
 
-        sys_map = sys_map[finite]
-        data_map = data_map[finite]
+        sys_map = sys_map[valid_pix]
+        data_map = data_map[valid_pix]
 
         # Choose bin edges and put pixels in them.
         percentiles = np.linspace(f, 1 - f, N + 1)

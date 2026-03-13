@@ -62,8 +62,8 @@ class TXConvergenceMaps(PipelineStage):
         for i in maps:
             print(f"Producing convergence map for bin {i}")
             # Load input shear maps
-            g1 = source_maps.read_map(f"g1_{i}")
-            g2 = source_maps.read_map(f"g2_{i}")
+            g1 = source_maps.read_map_healpix(f"g1_{i}")
+            g2 = source_maps.read_map_healpix(f"g2_{i}")
             mask = (g1 == healpy.UNSEEN) | (g2 == healpy.UNSEEN)
             gmap = np.vstack([g1, g2])
             print(" - read maps")
@@ -77,8 +77,8 @@ class TXConvergenceMaps(PipelineStage):
             # Save pixels, just where they are valid.
             # Should be same for kappa_E and kappa_B.
             pix = np.where(kappa_E != healpy.UNSEEN)[0]
-            output.write_map(f"kappa_E_{i}", pix, kappa_E[pix], metadata)
-            output.write_map(f"kappa_B_{i}", pix, kappa_B[pix], metadata)
+            output.write_map_pixval(f"kappa_E_{i}", pix, kappa_E[pix], metadata)
+            output.write_map_pixval(f"kappa_B_{i}", pix, kappa_B[pix], metadata)
             print(" - saved")
 
         output.close()

@@ -63,11 +63,12 @@ class TXSourceNoiseMaps(TXBaseMaps):
             nbin_source = f.file["tomography"].attrs["nbin"]
 
         # Mapping from 0 .. nhit - 1 to healpix indices
-        reverse_map = np.where(mask > 0)[0]
+        reverse_map = mask.valid_pixels
         # Get a mapping from healpix indices to masked pixel indices
-        # This reduces memory usage.  We could use a healsparse array
-        # here, but I'm not sure how to do that best with our
-        # many realizations.  Possiby a recarray?
+        # This reduces memory usage compared to the full healpix array
+        # We could use the healsparse array itself here
+        # Possiby with a recarray for different realizations
+        # TODO: test and implement this
         index_map = np.zeros(pixel_scheme.npix, dtype=np.int64) - 1
         index_map[reverse_map] = np.arange(reverse_map.size)
 
@@ -229,12 +230,13 @@ class TXLensNoiseMaps(TXBaseMaps):
         with self.open_input("lens_tomography_catalog", wrapper=True) as f:
             nbin_lens = f.file["tomography"].attrs["nbin"]
 
-        # Mapping from 0 .. nhit - 1  to healpix indices
-        reverse_map = np.where(mask > 0)[0]
+        # Mapping from 0 .. nhit - 1 to healpix indices
+        reverse_map = mask.valid_pixels
         # Get a mapping from healpix indices to masked pixel indices
-        # This reduces memory usage.  We could use a healsparse array
-        # here, but I'm not sure how to do that best with our
-        # many realizations.  Possiby a recarray?
+        # This reduces memory usage compared to the full healpix array
+        # We could use the healsparse array itself here
+        # Possiby with a recarray for different realizations
+        # TODO: test and implement this
         index_map = np.zeros(pixel_scheme.npix, dtype=np.int64) - 1
         index_map[reverse_map] = np.arange(reverse_map.size)
 
