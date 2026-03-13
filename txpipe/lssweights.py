@@ -827,7 +827,9 @@ class TXLSSWeights(TXLSSDensityBase):
 
         with self.open_input("unweighted_density_correlation") as f:
             for c in config_asserts:
-                assert f["provenance"].attrs[f"config/{c}"] == self.config[c]
+                c_input = str(f["provenance"].attrs[f"config/{c}"])
+                c_stage = str(self.config[c])
+                assert c_input == c_stage
 
     def load_density_corr(self, ibin):
         """
