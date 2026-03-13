@@ -13,8 +13,8 @@ stages:
         model: lens_photoz_model
   - name: PZEstimatorLens 
     classname: DNFEstimator
-    nprocess: 32
-    threads_per_process: 4
+    nprocess: 8
+    threads_per_process: 2
     aliases:
         model: lens_photoz_model
         input: photometry_catalog
@@ -23,14 +23,15 @@ stages:
   - name: TXLensCatalogSplitter
   - name: PZRailSummarizeLens     #Run the RAIL PZ summarizer on each tomo bin
     classname: PZRailPZSummarize
-    nprocess: 32
-    threads_per_process: 4
+    nprocess: 8
+    threads_per_process: 2
     aliases:
         tomography_catalog: lens_tomography_catalog_unweighted
         photoz_pdfs: lens_photoz_pdfs
         model: lens_photoz_model
         photoz_stack: lens_photoz_stack
         photoz_realizations: lens_photoz_realizations
+  - name: TXLSSDensityNullTests
   - name: TXLSSWeightsLinBinned
 
   #plots
@@ -53,7 +54,7 @@ launcher:
 
 # Where to run the pipeline: cori-interactive, cori-batch, or local
 site:
-    name: local
+    name: nersc-interactive
     max_threads: 128
 
 # configuration settings
