@@ -15,6 +15,7 @@ dependencies:
   - jax=0.7.*
   - jaxlib=0.7.*
   - jupyter=1.1.*
+  - lsstdesc-ceci=2.4.*
   - matplotlib=3.10.*
   - mockmpi=0.8.*
   - mpi4py=4.1.*
@@ -45,8 +46,6 @@ dependencies:
   - pyarrow
   - pytables
   - pip:
-    # does not exist yet - must release before merge:
-    - ceci==2.4.*
     - git+https://github.com/jlvdb/hyperbolic@b88b107a291fa16c2006cf971ce610248d58e94c
     - dask-mpi==2022.4.0
     - git+https://github.com/LSSTDESC/CLMM.git@1.14.6
