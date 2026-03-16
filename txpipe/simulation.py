@@ -48,7 +48,7 @@ class TXLogNormalGlass(PipelineStage):
     ]
 
     config_options = {
-        "num_dens": StageParameter(float, required=True, msg="Number density of galaxies per square arcmin"),
+        "num_dens": StageParameter(list, required=True, msg="Number density of galaxies per square arcmin"),
         "zmin": StageParameter(float, 0.0, msg="Minimum redshift for the simulation"),
         "zmax": StageParameter(float, 2.0, msg="Maximum redshift for the simulation"),
         "dx": StageParameter(int, 100, msg="Comoving distance spacing for redshift shells in Mpc"),
@@ -299,7 +299,8 @@ class TXLogNormalGlass(PipelineStage):
 
         # get number density arcmin^-2 for each z bin from config
         target_num_dens = np.array(self.config["num_dens"])
-        assert len(target_num_dens) == len(nzs)
+        if not len(target_num_dens) == len(nzs):
+            raise ValueError(f"num_dens config option length ({len(target_num_dens)}) does not match number of tomographic bins ({len(nzs)})")
         self.nbin_lens = len(nzs)
 
         # prepare the Lognormal C(l)

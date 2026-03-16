@@ -163,7 +163,7 @@ jobs:
           - os: ubuntu-latest
             INSTALL_DEPS: echo nothing to do
           - os: macos-14
-            INSTALL_DEPS: brew update-reset && brew install --cask basictex && eval "$(/usr/libexec/path_helper)" && pdflatex --version
+            INSTALL_DEPS: echo nothing to do
 
     steps:
     - name: Checkout repository
@@ -226,18 +226,3 @@ jobs:
       run: |
         # always run
         cat data/example/logs_${{ matrix.pipeline }}/*
-
-    - name: Create output report
-      if: matrix.os == 'macos-14'
-      run: |
-          source ./conda/bin/activate
-          eval "$(/usr/libexec/path_helper)"
-          python bin/make_output_report.py data/example/outputs_${{ matrix.pipeline }} ${{ matrix.pipeline }}-report.md
-          pandoc ${{ matrix.pipeline }}-report.md -o ${{ matrix.pipeline }}-report.pdf
-
-    - name: Upload output report
-      if: matrix.os == 'macos-14'
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ matrix.pipeline }}-report
-        path: ${{ matrix.pipeline }}-report.pdf

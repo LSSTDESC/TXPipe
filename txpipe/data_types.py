@@ -1,9 +1,9 @@
 """
 This file contains TXPipe-specific file types, subclassing the more
-generic types in base.py
+generic types in ceci.
 """
 
-from .base import HDFFile, DataFile, YamlFile
+from ceci.file_types import HDFFile, DataFile, YamlFile, TextFile, FitsFile, Directory, FileCollection, PickleFile, ParquetFile, PNGFile, FileValidationError
 import yaml
 import numpy as np
 
