@@ -7,7 +7,7 @@ ENV_PATH=./conda
 module load python
 module load cray-mpich
 
-mamba env  create --yes -f bin/environment-perlmutter.yml -p ${ENV_PATH} python=3.10
+mamba env  create --yes -f bin/environment-perlmutter.yml -p ${ENV_PATH}
 mamba activate ./conda
 
 # we manually install firecrown as we have to remove numcosmo to avoid clashes
