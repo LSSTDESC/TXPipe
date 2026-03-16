@@ -74,12 +74,11 @@ class TXDiagnosticQuantiles(PipelineStage):
             selected = bins >= 0
 
             fg = f.file[f.get_primary_catalog_group()]
-            
 
             # We now build up the quantile values
             quantile_values = {}
-            print(fg.keys())
             for name in col_names:
+                print(name)
                 # Create dask arrays of the columns. This loads them lazily,
                 # so no data is actually loaded here. Only when the "compute"
                 # method is called below does anything actually happen.
