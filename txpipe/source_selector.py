@@ -457,7 +457,7 @@ class TXSourceSelectorBase(PipelineStage):
                     max_value = value
                 else:
                     raise ValueError("mag_cuts values should be either a single max value or a tuple of (min, max)")
-                mag = data[f"{shear_prefix}mag_{band}{variant}"]
+                mag = data[f"{shear_prefix}mag_{band}"]
                 sel &= (mag < max_value) & (mag > min_value)
                 f5 = sel.sum() / n0
                 if verbose:
