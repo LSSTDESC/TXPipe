@@ -59,7 +59,7 @@ class TXDiagnosticQuantiles(PipelineStage):
             chunk_rows = "auto"
 
         # We canonicalise the names here
-        col_names = ["psf_g1", "psf_g2", "psf_T", "snr", "T"]
+        col_names = ["psf_g1", "psf_g2", "psf_T", "s2n", "T"]
         for band in self.config["bands"]:
             col_names.append(f"mag_{band}")
 
@@ -67,17 +67,18 @@ class TXDiagnosticQuantiles(PipelineStage):
         quantiles = np.linspace(0, 1, nedge, endpoint=True)
         percentiles = quantiles * 100
 
-        with self.open_input("shear_catalog") as f, self.open_input("shear_tomography_catalog") as g:
+        with self.open_input("shear_catalog", wrapper=True) as f, self.open_input("shear_tomography_catalog") as g:
             # We will be checking if the source is in a tomographic bin
             # and doing quantiles only of selected obejcts (in any bin)
             bins = da.from_array(g["tomography/bin"], chunks=chunk_rows)
             selected = bins >= 0
 
-            fg = f.get_primary_catalog_group()
+            fg = f.file[f.get_primary_catalog_group()]
 
             # We now build up the quantile values
             quantile_values = {}
-            for name in col_names.items():
+            for name in col_names:
+                print(name)
                 # Create dask arrays of the columns. This loads them lazily,
                 # so no data is actually loaded here. Only when the "compute"
                 # method is called below does anything actually happen.
