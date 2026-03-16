@@ -132,6 +132,7 @@ class TXSourceSelectorBase(PipelineStage):
         "verbose": StageParameter(bool, False, msg="Whether to print verbose output"),
         "T_cut": StageParameter(float, required=True, msg="Size cut threshold for object selection"),
         "s2n_cut": StageParameter(float, required=True, msg="Signal-to-noise cut threshold for object selection"),
+
         "chunk_rows": StageParameter(int, 10000, msg="Number of rows to process in each chunk"),
         "source_zbin_edges": StageParameter(list, required=True, msg="Redshift bin edges for source tomography"),
         "random_seed": StageParameter(int, 42, msg="Random seed for reproducibility"),
@@ -442,6 +443,25 @@ class TXSourceSelectorBase(PipelineStage):
         # tomographic bins
         sel &= data["zbin"] >= 0
         f4 = sel.sum() / n0
+
+        if "mag_cuts" in self.config:
+            mag_cuts = self.config["mag_cuts"]
+            if not isinstance(mag_cuts, dict):
+                raise ValueError("mag_cuts should be a dict with keys for each band")
+
+            for band, value in mag_cuts.items():
+                if isinstance(value, [tuple, list]):
+                    min_value, max_value = value
+                elif isinstance(value, (int, float)):
+                    min_value = -1000
+                    max_value = value
+                else:
+                    raise ValueError("mag_cuts values should be either a single max value or a tuple of (min, max)")
+                mag = data[f"{shear_prefix}mag_{band}{variant}"]
+                sel &= (mag < max_value) & (mag > min_value)
+                f5 = sel.sum() / n0
+                if verbose:
+                    print(f"{f5:.2%} mag cut by {band} < {max_value}, > {min_value}")
 
         # Print out a message.  If we are selecting a 2D sample
         # this is the complete message.  Otherwise if we are about
