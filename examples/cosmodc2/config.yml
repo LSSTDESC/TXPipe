@@ -2,18 +2,20 @@ global:
     pixelization: healpix
     chunk_rows: 1000000
     chunk_size: 200000
+    nside: 512
+    ell_max: 1536
 
 TXLSSWeightsUnit:
-    nside: 2048
     pixelization: healpix
 
 TXDiagnosticQuantiles:
-    psf_prefix: mcal_psf_
-    shear_prefix: mcal_
+    psf_prefix: psf_
+    shear_prefix: ""
     nbins: 20
 
 TXShearCalibration:
-    shear_prefix: mcal_
+    shear_prefix: ""
+
 
 TXCosmoDC2Mock:
     cat_name: cosmoDC2_v1.1.4_image
@@ -43,22 +45,18 @@ TXLensTrueNumberDensity:
 
 TXLensMaps:
     pixelization: healpix
-    nside: 2048
     sparse: true
 
 TXSourceMaps:
-    nside: 2048
     sparse: true
     pixelization: healpix
     true_shear: false
 
 TXExternalLensMaps:
-    nside: 2048
     sparse: true
     pixelization: healpix
 
 TXExternalLensNoiseMaps:
-    nside: 2048
     pixelization: healpix
 
 TXAuxiliarySourceMaps:
@@ -67,7 +65,6 @@ TXAuxiliarySourceMaps:
 
 TXAuxiliaryLensMaps:
     sparse: true
-    nside: 2048
     pixelization: healpix
     bright_obj_threshold: 22.0
 
@@ -75,19 +72,11 @@ TXSimpleMask:
     depth_cut: 23.0
     bright_object_max: 10.0
 
-
-
-TXSourceSelectorMetacal:
-    input_pz: false
+TXSourceTomography:
     bands: riz #used for selection
-    T_cut: 0.5
-    s2n_cut: 10.0
-    max_rows: 1000
-    delta_gamma: 0.02
+    random_seed: 123213
     source_zbin_edges: [0.19285902, 0.40831394, 0.65503818, 0.94499109, 1.2947086, 1.72779632, 2.27855242, 3.]  # 7 bins
     # source_zbin_edges: [0.25588604, 0.55455363, 0.91863365, 1.38232001, 2.] # 4 bins
-    true_z: false
-    shear_prefix: mcal_
 
 TXSourceSelectorMetadetect:
     input_pz: false
@@ -96,10 +85,10 @@ TXSourceSelectorMetadetect:
     s2n_cut: 10.0
     max_rows: 1000
     delta_gamma: 0.02
-    source_zbin_edges: [0.19285902, 0.40831394, 0.65503818, 0.94499109, 1.2947086, 1.72779632, 2.27855242, 3.]  # 7 bins
-    # source_zbin_edges: [0.25588604, 0.55455363, 0.91863365, 1.38232001, 2.] # 4 bins
     true_z: false
     shear_prefix: ''
+    source_zbin_edges: [0.19285902, 0.40831394, 0.65503818, 0.94499109, 1.2947086, 1.72779632, 2.27855242, 3.]  # 7 bins
+    # source_zbin_edges: [0.25588604, 0.55455363, 0.91863365, 1.38232001, 2.] # 4 bins
 
 
 TXRandomCat:
@@ -109,15 +98,16 @@ TXJackknifeCenters:
     npatch: 40
 
 TXSourceDiagnosticPlots:
-    shear_prefix: mcal_
+    shear_prefix: "00/"
+    psf_prefix: "00/psf_"
 
 TXFourierGaussianCovariance:
     galaxy_bias: [1.404, 1.458, 1.693, 1.922, 2.133] # Tinker bias values
-    cache_dir: ./cache_nmt/cosmodc2/nside2048/
+    cache_dir: ./cache_nmt/cosmodc2/nside512/
 
 TXFourierTJPCovariance:
     galaxy_bias: [1.404, 1.458, 1.693, 1.922, 2.133] # Tinker bias values
-    cache_dir: ./cache_nmt/cosmodc2/nside2048/
+    cache_dir: ./cache_nmt/cosmodc2/nside512/
     IA: 0.
 
 TXRealGaussianCovariance:
@@ -131,11 +121,9 @@ TXTwoPointFourier:
     flip_g1: true
     flip_g2: true
     apodization_size: 0.0
-    cache_dir: ./cache_nmt/cosmodc2/nside2048/
+    cache_dir: ./cache_nmt/cosmodc2/nside512/
     true_shear: false
     n_ell: 30
-    ell_max: 6144 # nside * 3 , since Namaster computes that anyway. 
-    nside: 2048
     analytic_noise: true
 
 TXTwoPoint:
@@ -179,6 +167,21 @@ FlowCreator:
     n_samples: 1000000
     seed: 5763248
 
+LSSTErrorModel:
+    renameDict: {u: mag_u_lsst, g: mag_g_lsst, r: mag_r_lsst, i: mag_i_lsst, z: mag_z_lsst, "y": mag_y_lsst}
+    seed: 29
+
+InvRedshiftIncompleteness:
+    pivot_redshift: 1.0
+
+LineConfusion:
+    true_wavelen: 5007.0
+    wrong_wavelen: 3727.0
+    frac_wrong: 0.05
+
+QuantityCut:
+    cuts: {mag_i_lsst: 25.0}
+    
 
 GridSelection:
     redshift_cut: 5.1

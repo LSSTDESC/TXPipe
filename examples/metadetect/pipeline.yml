@@ -46,6 +46,8 @@ stages:
         model: source_direct_calibration_model
         photoz_stack: shear_photoz_stack
         photoz_realizations: source_photoz_realizations
+  - name: TXSourceTomography
+    # threads_per_process: 8
   - name: TXSourceSelectorMetadetect    # select and split objects into source bins
   - name: NZDirInformerSource       # Prepare the DIR method inputs for the source sample
     classname: NZDirInformer
@@ -148,7 +150,7 @@ python_paths:
   - submodules/pyfsb
 
 # Where to put outputs
-output_dir: data/example/outputs_metadetect
+output_dir: data/cosmodc2-1deg2/outputs
 
 # How to run the pipeline: mini, parsl, or cwl
 launcher:
@@ -168,8 +170,8 @@ config: examples/metadetect/config.yml
 
 inputs:
     # See README for paths to download these files
-    shear_catalog: data/example/inputs/metadetect_shear_catalog.hdf5
-    photometry_catalog: data/example/inputs/photometry_catalog.hdf5
+    shear_catalog: data/cosmodc2-1deg2/inputs/shear_catalog.hdf5
+    photometry_catalog: data/cosmodc2-1deg2/inputs/photometry_catalog.hdf5
     exposures: data/example/inputs/exposures.hdf5
     star_catalog: data/example/inputs/star_catalog.hdf5
     # This file comes with the code
