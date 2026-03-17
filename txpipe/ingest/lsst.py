@@ -70,13 +70,14 @@ def process_metadetect_data(data):
     output = {}
     for variant in ["ns", "1p", "1m", "2p", "2m"]:
         var_data = data[data["metaStep"] == variant]
+        var_data = sanitize(var_data)
 
         var_output = {
-            "ra": var_data["coord_ra"],
-            "dec": var_data["coord_dec"],
+            "ra": var_data["ra"],
+            "dec": var_data["dec"],
             "id": var_data["shearObjectId"],
-            "metaStep": var_data["metaStep"], #might not be needed
-            "object_mask_fraction": var_data["mfrac"],
+            "metaStep": var_data["metaStep"].astype("S"), #might not be needed
+            #"object_mask_fraction": var_data["mfrac"],
             #"n_epoch": var_data["nEpochCell"],
             "g1": var_data["gauss_g1"],
             "g2": var_data["gauss_g2"],
@@ -91,9 +92,9 @@ def process_metadetect_data(data):
             "mcal_psf_g1": var_data["gauss_psfReconvolved_g1"],
             "mcal_psf_g2": var_data["gauss_psfReconvolved_g1"],
             "mcal_psf_T_mean": var_data["gauss_psfReconvolved_T"],
-            "flags": var_data["flags"], # TO BE ADDRESSED!
+            "flags": var_data["gauss_shape_flags"], # TO BE ADDRESSED!
         }
-        for band in "griz": # For DP2, we only expect 4 bands
+        for band in "gri": # For DP2, we only expect 4 bands
             f = var_data[f"{band}_pgaussFlux"]
             f_err = var_data[f"{band}_pgaussFluxErr"]
             var_output[f"flux_{band}"] = f
@@ -101,3 +102,16 @@ def process_metadetect_data(data):
         output[f"{variant}"] = var_output
 
     return output
+
+def sanitize(data):
+    """
+    Convert unicode arrays into types that h5py can save
+    """
+    # convert unicode to strings
+    if data.dtype.kind == "U":
+        data = data.astype("S")
+    # convert dates to integers
+    elif data.dtype.kind == "M":
+        data = data.astype(int)
+
+    return data
