@@ -106,11 +106,13 @@ class TXLSSDensityBase(TXMapCorrelations):
         import healpy as hp
         import healsparse as hsp
 
+        nside = self.config["nside"]
+        
         with self.open_input("mask", wrapper=True) as map_file:
             mask_map_info = map_file.read_map_info("mask")
-            mask = map_file.read_map("mask")
-        nside = mask_map_info["nside"]
-        nest = mask_map_info["nest"]
+            mask = map_file.read_mask("mask", degrade_nside=self.config["nside"])
+
+        maskpix = mask.valid_pixels
 
         # TO DO: Parallelize this
         # load the ra and dec of this lens bins
@@ -122,29 +124,22 @@ class TXLSSDensityBase(TXMapCorrelations):
         # pixel ID for each lens galaxy
         obj_pix = hp.ang2pix(nside, ra, dec, lonlat=True, nest=True)
 
+        #this is not healsparsed yet
         Ncounts_bincount = np.bincount(obj_pix, weights=weight)
         pixels_bincount = np.arange(len(Ncounts_bincount))
 
+        #only select the occupied pixels
         pixel = pixels_bincount[Ncounts_bincount != 0.0]
         Ncounts = Ncounts_bincount[Ncounts_bincount != 0.0]
 
-        if nest:
-            maskpix = np.where(mask != hp.UNSEEN)[0]
-        else:
-            maskpix = hp.ring2nest(nside, np.where(mask != hp.UNSEEN)[0])
-
-        # fractional coverage
-        frac = hsp.HealSparseMap.make_empty(self.config["nside_coverage"], nside, dtype=np.float64)
-        frac.update_values_pix(maskpix, mask[np.where(mask != hp.UNSEEN)[0]])
-
         deltag = hsp.HealSparseMap.make_empty(self.config["nside_coverage"], nside, dtype=np.float64)
-        deltag.update_values_pix(maskpix, 0.0)
-        deltag.update_values_pix(pixel, Ncounts)
-        n = deltag[maskpix] / frac[maskpix]
-        nmean = np.average(n, weights=frac[maskpix])
+        deltag.update_values_pix(maskpix, 0.0) #initially set all valid pixels to 0
+        deltag.update_values_pix(pixel, Ncounts) #then set the occupied values to their ncount
+        n = deltag[maskpix] / mask[maskpix]
+        nmean = np.average(n, weights=mask[maskpix])
         deltag.update_values_pix(maskpix, n / nmean - 1.0)  # overdenity map
 
-        return deltag, frac
+        return deltag, mask
 
     def load_and_mask_sysmaps(self):
         """
