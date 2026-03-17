@@ -358,6 +358,11 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.plot(mu1, line12, color="blue", label=r"$m=%.2e \pm %.2e$" % (slope12, std_err12))
         plt.plot(mu1, [0] * len(line11), color="black")
 
+        std11[std11<0] = 0
+        std12[std12<0] = 0
+        std21[std21<0] = 0
+        std22[std22<0] = 0
+
         plt.errorbar(mu1 + dx, mean11, std11, label="g1", fmt="s", markersize=5, color="red")
         plt.errorbar(mu1 - dx, mean12, std12, label="g2", fmt="o", markersize=5, color="blue")
 
@@ -418,6 +423,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         if self.rank != 0:
             return
+        
 
         dx = 0.05 * (psf_T_edges[1] - psf_T_edges[0])
         idx = np.where(np.isfinite(mu))[0]
@@ -429,6 +435,10 @@ class TXSourceDiagnosticPlots(PipelineStage):
         line2 = slope2 * mu + intercept2
 
         fig = self.open_output("g_psf_T", wrapper=True)
+
+
+        std1[std1<0] = 0
+        std2[std2<0] = 0
 
         plt.plot(mu, line1, color="red", label=r"$m=%.2e \pm %.2e$" % (slope1, std_err1))
         plt.plot(mu, line2, color="blue", label=r"$m=%.2e \pm %.2e$" % (slope2, std_err2))
@@ -494,6 +504,10 @@ class TXSourceDiagnosticPlots(PipelineStage):
         std_err2 = mc_cov[0, 0] ** 0.5
         line2 = slope2 * mu + intercept2
 
+
+        std1[std1<0] = 0
+        std2[std2<0] = 0
+
         fig = self.open_output("g_snr", wrapper=True)
 
         plt.plot(mu, line1, color="red", label=r"$m=%.2e \pm %.2e$" % (slope1, std_err1))
@@ -556,6 +570,9 @@ class TXSourceDiagnosticPlots(PipelineStage):
         std_err2 = mc_cov[0, 0] ** 0.5
         line2 = slope2 * mu + intercept2
 
+        std1[std1<0] = 0
+        std2[std2<0] = 0
+
         fig = self.open_output("g_T", wrapper=True)
 
         plt.plot(mu, line1, color="red", label=r"$m=%.2e \pm %.2e$" % (slope1, std_err1))
@@ -591,7 +608,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
             m_edges = self.get_bin_edges(f"{shear_prefix}mag_{band}")
 
             binnedShear[f"{band}"] = MeanShearInBins(
-                f"mag_{band}",
+                f"{shear_prefix}mag_{band}",
                 m_edges,
                 delta_gamma,
                 cut_source_bin=True,
@@ -610,6 +627,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 binnedShear[f"{band}"].add_data(data)
 
         for band in self.config["bands"]:
+            print("collecting for", band)
             (
                 stat[f"mu_{band}"],
                 stat[f"mean1_{band}"],
@@ -650,6 +668,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 label=r"$m=%.2e \pm %.2e$" % (stat[f"slope1_{band}"], stat[f"std_err1_{band}"]),
             )
             plt.plot(stat[f"mu_{band}"], [0] * len(stat[f"mu_{band}"]), color="black")
+            stat[f"std1_{band}"][stat[f"std1_{band}"] < 0] = 0
+            stat[f"std2_{band}"][stat[f"std2_{band}"] < 0] = 0
             plt.errorbar(
                 stat[f"mu_{band}"] + dx,
                 stat[f"mean1_{band}"],
