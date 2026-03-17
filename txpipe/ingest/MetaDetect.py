@@ -228,7 +228,7 @@ class TXIngestMetaDetect(PipelineStage):
             "metaStep",
             "ra",
             "dec",
-            #"mfrac",
+            "mfrac",
             #"maskFractionCell", #Removed
             #"nEpochCell", #Removed
             "gauss_g1",

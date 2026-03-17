@@ -77,7 +77,7 @@ def process_metadetect_data(data):
             "dec": var_data["dec"],
             "id": var_data["shearObjectId"],
             "metaStep": var_data["metaStep"].astype("S"), #might not be needed
-            #"object_mask_fraction": var_data["mfrac"],
+            "object_mask_fraction": var_data["mfrac"],
             #"n_epoch": var_data["nEpochCell"],
             "g1": var_data["gauss_g1"],
             "g2": var_data["gauss_g2"],
