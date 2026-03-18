@@ -199,14 +199,12 @@ class TXSourceSelectorBase(PipelineStage):
                 )
             # Combine this selection with size and snr cuts to produce a source selection
             # and calculate the shear bias it would generate
-            tomo_bin, R, counts = self.calculate_tomography(pz_data, shear_data, calculators)
+            tomo_bin, R = self.calculate_tomography(pz_data, shear_data, calculators)
 
-            # Save the tomography for this chunk
-            self.write_tomography(output_file, start, end, tomo_bin, R)
+            # Save the tomography for this chunk and accumulate the number
+            # density information.
+            self.accumulate_statistics(output_file, shear_data, start, end, tomo_bin, R, number_density_stats)
 
-            # Accumulate information on the number counts and the selection biases.
-            # These will be brought together at the end.
-            number_density_stats.add_data(shear_data, tomo_bin)  # check this
 
         # Do the selection bias averaging and output that too.
         self.write_global_values(output_file, calculators, number_density_stats)
@@ -217,8 +215,17 @@ class TXSourceSelectorBase(PipelineStage):
         # Restore the original warning settings in case we are being called from a library
         np.seterr(**original_warning_settings)
 
+
+    def accumulate_statistics(self, output_file, shear_data, start, end, tomo_bin, R, number_density_stats):
+        # Save the tomography for this chunk
+        self.write_tomography(output_file, start, end, tomo_bin, R)
+
+        # Accumulate information on the number counts and the selection biases.
+        # These will be brought together at the end.
+        number_density_stats.add_data(shear_data, tomo_bin)  # check this
+
+
     def apply_simple_redshift_cut(self, shear_data):
-        pz_data = {}
         if self.config["input_pz"]:
             zz = shear_data["mean_z"]
         else:
@@ -259,18 +266,14 @@ class TXSourceSelectorBase(PipelineStage):
         R = self.compute_per_object_response(data)
 
         for i in range(nbin):
-            sel_00 = calculators[i].add_data(self.config, data, i)
+            sel_00 = calculators[i].add_data(data, self.config, i)
             tomo_bin[sel_00] = i
-            nsum = sel_00.sum()
-            counts[i] = nsum
-            # also count up the 2D sample
-            counts[-1] += nsum
 
         # and calibrate the 2D sample.
         # This calibrator refers to select_weak_lensing_sample
-        calculators[-1].add_data(data)
+        calculators[-1].add_data(data, self.config)
 
-        return tomo_bin, R, counts
+        return tomo_bin, R
 
     def compute_per_object_response(self, data):
         # The default implementation has no per-object response
@@ -366,7 +369,7 @@ class TXSourceSelectorBase(PipelineStage):
 
 
 
-def select_tomographic_weak_lensing_sample(config, data, bin_index):
+def select_tomographic_weak_lensing_sample(data, config, bin_index):
     """
     Select which objects are to be chosen in this tomographic bin.
     We do this by calling out to the 2D selector, which does the
@@ -379,7 +382,7 @@ def select_tomographic_weak_lensing_sample(config, data, bin_index):
     zbin = data["zbin"]
     verbose = config["verbose"]
 
-    sel = select_weak_lensing_sample(config, data, calling_from_select=True)
+    sel = select_weak_lensing_sample(data, config, calling_from_select=True)
     sel &= zbin == bin_index
     f4 = sel.sum() / sel.size
 
@@ -389,7 +392,7 @@ def select_tomographic_weak_lensing_sample(config, data, bin_index):
 
     return sel
 
-def select_weak_lensing_sample(config, data, calling_from_select=False):
+def select_weak_lensing_sample(data, config, calling_from_select=False):
     # Select any objects that pass general WL cuts
     # The calling_from_select option just specifies whether we
     # are calling this function from within the select

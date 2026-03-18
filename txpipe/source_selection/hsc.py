@@ -95,7 +95,7 @@ class TXSourceSelectorHSC(TXSourceSelectorBase):
         calculators.append(HSCCalculator(select_hsc_weak_lensing_sample))
         return calculators
     
-def select_hsc_tomographic_weak_lensing_sample(config, data, bin_index):
+def select_hsc_tomographic_weak_lensing_sample(data, config, bin_index):
     """
     Select which objects are to be chosen in this tomographic bin.
     We do this by calling out to the 2D selector, which does the
@@ -107,7 +107,7 @@ def select_hsc_tomographic_weak_lensing_sample(config, data, bin_index):
     zbin = data["zbin"]
     verbose = config["verbose"]
 
-    sel = select_hsc_weak_lensing_sample(config, data, calling_from_select=True)
+    sel = select_hsc_weak_lensing_sample(data, config, calling_from_select=True)
     sel &= zbin == bin_index
     f4 = sel.sum() / sel.size
 
@@ -117,13 +117,13 @@ def select_hsc_tomographic_weak_lensing_sample(config, data, bin_index):
 
     return sel
 
-def select_hsc_weak_lensing_sample(config, data, calling_from_select=False):
+def select_hsc_weak_lensing_sample(data, config, calling_from_select=False):
     """
     Add an additional cut to the parent class, if specified, on the max shear.
     HSM DP0.2 catalogs seem to contain occasional very large shears that skew peaks.
     This removes those. This is only really for testing.
     """
-    sel = select_weak_lensing_sample(config, data, calling_from_select=calling_from_select)
+    sel = select_weak_lensing_sample(data, config, calling_from_select=calling_from_select)
     shear_cut = config["max_shear_cut"]
     if shear_cut:
         g = np.sqrt(data["g1"] ** 2 + data["g2"] ** 2)

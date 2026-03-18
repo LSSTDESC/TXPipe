@@ -373,13 +373,12 @@ class MetaDetectCalculator(CalibrationCalculator):
             Keyword arguments to be passed to the selection function
 
         """
-
-        prefixes = ["00/", "1p/", "1m/", "2p/", "2m/"]
+        selections = []
+        prefixes = [m + "/" for m in META_VARIANTS]
         for i, p in enumerate(prefixes):
             data_p = _DataWrapper(data, prefix=p)
             sel = self.selector(data_p, *args, **kwargs)
-            if p == "00/":
-                sel_00 = sel
+            selections.append(sel)
             w = data_p["weight"][sel]
             if w.size == 0:
                 continue
@@ -391,7 +390,7 @@ class MetaDetectCalculator(CalibrationCalculator):
             self.sum_weights[i] += np.sum(w)
             self.sum_sq_weights[i] += np.sum(w**2)
 
-        return sel_00
+        return selections
 
     def collect(self, comm=None, allgather=False):
         """
