@@ -6,6 +6,7 @@ from ..binning import build_tomographic_classifier, apply_classifier, read_train
 from ceci.config import StageParameter
 import numpy as np
 
+
 class BinStats:
     """
     This is a small helper class to store and write the statistics of a
@@ -105,12 +106,18 @@ class TXSourceSelectorBase(PipelineStage):
         "bands": StageParameter(str, "riz", msg="Bands from the catalog to use for selection"),
         "verbose": StageParameter(bool, False, msg="Whether to print verbose output"),
         "T_cut": StageParameter(float, required=True, msg="Size cut threshold for object selection"),
-        "s2n_cut": StageParameter(float, required=True, msg="Signal-to-noise cut threshold for object selection"),
+        "s2n_cut": StageParameter(
+            float,
+            required=True,
+            msg="Signal-to-noise cut threshold for object selection",
+        ),
         "chunk_rows": StageParameter(int, 10000, msg="Number of rows to process in each chunk"),
         "source_zbin_edges": StageParameter(list, required=True, msg="Redshift bin edges for source tomography"),
         "random_seed": StageParameter(int, 42, msg="Random seed for reproducibility"),
         "spec_mag_column_format": StageParameter(
-            str, "photometry/{band}", msg="Format string for spectroscopic magnitude columns"
+            str,
+            "photometry/{band}",
+            msg="Format string for spectroscopic magnitude columns",
         ),
         "spec_redshift_column": StageParameter(
             str, "photometry/redshift", msg="Column name for spectroscopic redshifts"

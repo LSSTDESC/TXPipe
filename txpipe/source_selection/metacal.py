@@ -5,7 +5,6 @@ import numpy as np
 from ceci.config import StageParameter
 
 
-
 class TXSourceSelectorMetacal(TXSourceSelectorBase):
     """
     Source selection and tomography for metacal catalogs
@@ -20,9 +19,15 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
     # add one option to the base class configuration
     config_options = {
         **TXSourceSelectorBase.config_options,
-        "delta_gamma": StageParameter(float, required=True, msg="Delta gamma value for metacal response calculation"),
+        "delta_gamma": StageParameter(
+            float,
+            required=True,
+            msg="Delta gamma value for metacal response calculation",
+        ),
         "use_diagonal_response": StageParameter(
-            bool, False, msg="Whether to use only diagonal elements of the response matrix"
+            bool,
+            False,
+            msg="Whether to use only diagonal elements of the response matrix",
         ),
     }
 

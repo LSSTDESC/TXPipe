@@ -1,9 +1,14 @@
 from .base import TXSourceSelectorBase, BinStats
 from ..utils.calibrators import MetaDetectCalibrator
-from ..utils.calibration_tools import metadetect_variants, MetaDetectCalculator, band_variants
+from ..utils.calibration_tools import (
+    metadetect_variants,
+    MetaDetectCalculator,
+    band_variants,
+)
 import numpy as np
 from ceci.config import StageParameter
 from ..utils import rename_iterated
+
 
 class TXSourceSelectorMetadetect(TXSourceSelectorBase):
     """
@@ -23,7 +28,9 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
     config_options = {
         **TXSourceSelectorBase.config_options,
         "delta_gamma": StageParameter(
-            float, required=True, msg="Delta gamma value for metadetect response calculation"
+            float,
+            required=True,
+            msg="Delta gamma value for metadetect response calculation",
         ),
     }
 

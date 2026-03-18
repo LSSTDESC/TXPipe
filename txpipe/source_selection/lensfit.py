@@ -1,11 +1,8 @@
-
 from .base import TXSourceSelectorBase, BinStats
 from ..utils.calibrators import LensfitCalibrator
 from ..utils.calibration_tools import LensfitCalculator, band_variants
 import numpy as np
 from ceci.config import StageParameter
-
-
 
 
 class TXSourceSelectorLensfit(TXSourceSelectorBase):

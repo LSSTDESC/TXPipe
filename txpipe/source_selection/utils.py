@@ -58,8 +58,6 @@ class BinStats:
         self.calibrator.save(outfile, i)
 
 
-
-
 class SourceNumberDensityStats:
     def __init__(self, nbin_source, shear_type, comm=None):
         from parallel_statistics import ParallelMeanVariance
@@ -108,5 +106,3 @@ class SourceNumberDensityStats:
         # and the 2D one
         _, means[nb], variances[nb] = self.shear_stats_2d.collect(self.comm, mode="allgather")
         return means, variances
-
-
