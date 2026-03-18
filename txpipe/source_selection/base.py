@@ -372,7 +372,7 @@ def select_tomographic_weak_lensing_sample(config, data, bin_index):
     We do this by calling out to the 2D selector, which does the
     cuts on size and SNR, and then combining this with a cut on tomographic bin.
 
-    Note that we don't call this method directly in this class. Instead
+    Note that we don't call this method directly in the selector classes. Instead
     we pass it to the Calculator objects that call it, sometimes on different
     columns of data.
     """

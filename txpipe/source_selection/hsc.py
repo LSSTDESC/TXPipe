@@ -1,5 +1,5 @@
 from .base import TXSourceSelectorBase
-from base import select_weak_lensing_sample
+from .base import select_weak_lensing_sample
 from ..utils.calibration_tools import band_variants, HSCCalculator
 from ..utils.calibrators import HSCCalibrator
 import numpy as np

@@ -1,6 +1,7 @@
 import numpy as np
 from .mpi_utils import in_place_reduce
-
+META_VARIANTS = ["00", "1p", "2p", "1m", "2m"]
+META_VARIANTS
 
 def read_shear_catalog_type(stage):
     """
@@ -20,7 +21,7 @@ def metacal_variants(*names):
 
 
 def metadetect_variants(*names):
-    return [f"{group}/{name}" for group in ["00", "1p", "1m", "2p", "2m"] for name in names]
+    return [f"{group}/{name}" for group in META_VARIANTS for name in names]
 
 
 def band_variants(bands, *names, shear_catalog_type="metacal"):
@@ -33,7 +34,7 @@ def band_variants(bands, *names, shear_catalog_type="metacal"):
         ]
     elif shear_catalog_type == "metadetect":
         return [
-            f"{group}/{name}_{band}" for group in ["00", "1p", "1m", "2p", "2m"] for band in bands for name in names
+            f"{group}/{name}_{band}" for group in META_VARIANTS for band in bands for name in names
         ]
     else:
         return [name + "_" + band for band in bands for name in names]
