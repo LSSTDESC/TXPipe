@@ -259,7 +259,7 @@ class TXSourceSelectorBase(PipelineStage):
         R = self.compute_per_object_response(data)
 
         for i in range(nbin):
-            sel_00 = calculators[i].add_data(data, i)
+            sel_00 = calculators[i].add_data(self.config, data, i)
             tomo_bin[sel_00] = i
             nsum = sel_00.sum()
             counts[i] = nsum
@@ -267,7 +267,7 @@ class TXSourceSelectorBase(PipelineStage):
             counts[-1] += nsum
 
         # and calibrate the 2D sample.
-        # This calibrator refers to self.select_2d
+        # This calibrator refers to select_weak_lensing_sample
         calculators[-1].add_data(data)
 
         return tomo_bin, R, counts
@@ -364,76 +364,78 @@ class TXSourceSelectorBase(PipelineStage):
             if self.rank == 0:
                 stats.write_to(outfile, i if i < nbin_source else "2d")
 
-    def select(self, data, bin_index):
-        """
-        Select which objects are to be chosen in this tomographic bin.
-        We do this by calling out to the 2D selector, which does the
-        cuts on size and SNR, and then combining this with a cut on tomographic bin.
 
-        Note that we don't call this method directly in this class. Instead
-        we pass it to the Calculator objects that call it, sometimes on different
-        columns of data.
-        """
-        zbin = data["zbin"]
-        verbose = self.config["verbose"]
 
-        sel = self.select_2d(data, calling_from_select=True)
-        sel &= zbin == bin_index
-        f4 = sel.sum() / sel.size
+def select_tomographic_weak_lensing_sample(config, data, bin_index):
+    """
+    Select which objects are to be chosen in this tomographic bin.
+    We do this by calling out to the 2D selector, which does the
+    cuts on size and SNR, and then combining this with a cut on tomographic bin.
 
-        if verbose:
-            print(f"{f4:.2%} z for bin {bin_index}")
-            print("total tomo", sel.sum())
+    Note that we don't call this method directly in this class. Instead
+    we pass it to the Calculator objects that call it, sometimes on different
+    columns of data.
+    """
+    zbin = data["zbin"]
+    verbose = config["verbose"]
 
-        return sel
+    sel = select_weak_lensing_sample(config, data, calling_from_select=True)
+    sel &= zbin == bin_index
+    f4 = sel.sum() / sel.size
 
-    def select_2d(self, data, calling_from_select=False):
-        # Select any objects that pass general WL cuts
-        # The calling_from_select option just specifies whether we
-        # are calling this function from within the select
-        # method above, because the useful printed verbose
-        # output is different in each case
-        s2n_cut = self.config["s2n_cut"]
-        T_cut = self.config["T_cut"]
-        verbose = self.config["verbose"]
-        variant = data.suffix
+    if verbose:
+        print(f"{f4:.2%} z for bin {bin_index}")
+        print("total tomo", sel.sum())
 
-        shear_prefix = self.config["shear_prefix"]
-        s2n = data[f"{shear_prefix}s2n{variant}"]
-        T = data[f"{shear_prefix}T{variant}"]
-        Tpsf = data[f"{shear_prefix}psf_T_mean"]
-        flag = data[f"{shear_prefix}flags{variant}"]
+    return sel
 
-        # Apply our cuts.  We keep track of the number of objects
-        # reject by each cut in case it's important.
-        # First we require flag = 0
-        n0 = len(flag)
-        sel = flag == 0
-        f1 = sel.sum() / n0
+def select_weak_lensing_sample(config, data, calling_from_select=False):
+    # Select any objects that pass general WL cuts
+    # The calling_from_select option just specifies whether we
+    # are calling this function from within the select
+    # method above, because the useful printed verbose
+    # output is different in each case
+    s2n_cut = config["s2n_cut"]
+    T_cut = config["T_cut"]
+    verbose = config["verbose"]
+    variant = data.suffix
 
-        # Next we required a minimum object size compared to the PSF
-        sel &= (T / Tpsf) > T_cut
-        f2 = sel.sum() / n0
+    shear_prefix = config["shear_prefix"]
+    s2n = data[f"{shear_prefix}s2n{variant}"]
+    T = data[f"{shear_prefix}T{variant}"]
+    Tpsf = data[f"{shear_prefix}psf_T_mean"]
+    flag = data[f"{shear_prefix}flags{variant}"]
 
-        # Then we require a signal-to-noise minimum
-        sel &= s2n > s2n_cut
-        f3 = sel.sum() / n0
+    # Apply our cuts.  We keep track of the number of objects
+    # reject by each cut in case it's important.
+    # First we require flag = 0
+    n0 = len(flag)
+    sel = flag == 0
+    f1 = sel.sum() / n0
 
-        # Finally we want objects that have been put into any of our other
-        # tomographic bins
-        sel &= data["zbin"] >= 0
-        f4 = sel.sum() / n0
+    # Next we required a minimum object size compared to the PSF
+    sel &= (T / Tpsf) > T_cut
+    f2 = sel.sum() / n0
 
-        # Print out a message.  If we are selecting a 2D sample
-        # this is the complete message.  Otherwise if we are about
-        # to also apply a redshift bin cut about then the message will continue
-        # as above
-        if verbose and calling_from_select:
-            print(
-                f"Tomo selection ({variant}) {f1:.2%} flag, {f2:.2%} size, {f3:.2%} SNR, ",
-                end="",
-            )
-        elif verbose:
-            print(f"2D selection ({variant}) {f1:.2%} flag, {f2:.2%} size, {f3:.2%} SNR, {f4:.2%} any z bin")
-            print("total 2D", sel.sum())
-        return sel
+    # Then we require a signal-to-noise minimum
+    sel &= s2n > s2n_cut
+    f3 = sel.sum() / n0
+
+    # Finally we want objects that have been put into any of our other
+    # tomographic bins
+    sel &= data["zbin"] >= 0
+    f4 = sel.sum() / n0
+
+    # Print out a message.  If we are selecting a 2D sample
+    # this is the complete message.  Otherwise if we are about
+    # to also apply a redshift bin cut about then the message will continue
+    # as above
+    if verbose and calling_from_select:
+        print(
+            f"Tomo selection ({variant}) {f1:.2%} flag, {f2:.2%} size, {f3:.2%} SNR, ",
+            end="",
+        )
+    elif verbose:
+        print(f"2D selection ({variant}) {f1:.2%} flag, {f2:.2%} size, {f3:.2%} SNR, {f4:.2%} any z bin")
+        print("total 2D", sel.sum())
+    return sel

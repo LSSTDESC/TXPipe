@@ -1,4 +1,5 @@
 from .base import TXSourceSelectorBase, BinStats
+from base import select_weak_lensing_sample, select_tomographic_weak_lensing_sample
 from ..utils.calibrators import MetaDetectCalibrator
 from ..utils.calibration_tools import (
     metadetect_variants,
@@ -63,8 +64,8 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
 
     def setup_response_calculators(self, nbin_source):
         delta_gamma = self.config["delta_gamma"]
-        calculators = [MetaDetectCalculator(self.select, delta_gamma) for i in range(nbin_source)]
-        calculators.append(MetaDetectCalculator(self.select_2d, delta_gamma))
+        calculators = [MetaDetectCalculator(select_tomographic_weak_lensing_sample, delta_gamma) for i in range(nbin_source)]
+        calculators.append(MetaDetectCalculator(select_weak_lensing_sample, delta_gamma))
         return calculators
 
     def apply_simple_redshift_cut(self, data):

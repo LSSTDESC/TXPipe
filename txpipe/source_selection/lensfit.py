@@ -1,9 +1,9 @@
 from .base import TXSourceSelectorBase, BinStats
+from .base import select_weak_lensing_sample, select_tomographic_weak_lensing_sample
 from ..utils.calibrators import LensfitCalibrator
 from ..utils.calibration_tools import LensfitCalculator, band_variants
 import numpy as np
 from ceci.config import StageParameter
-
 
 class TXSourceSelectorLensfit(TXSourceSelectorBase):
     """
@@ -50,10 +50,10 @@ class TXSourceSelectorLensfit(TXSourceSelectorBase):
 
     def setup_response_calculators(self, nbin_source):
         calculators = [
-            LensfitCalculator(self.select, input_m_is_weighted=self.config["input_m_is_weighted"])
+            LensfitCalculator(select_tomographic_weak_lensing_sample, input_m_is_weighted=self.config["input_m_is_weighted"])
             for i in range(nbin_source)
         ]
-        calculators.append(LensfitCalculator(self.select_2d, input_m_is_weighted=self.config["input_m_is_weighted"]))
+        calculators.append(LensfitCalculator(select_weak_lensing_sample, input_m_is_weighted=self.config["input_m_is_weighted"]))
         return calculators
 
     def setup_output(self):
