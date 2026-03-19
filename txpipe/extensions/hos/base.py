@@ -41,6 +41,10 @@ class HOSStage(PipelineStage):
             info = f.read_map_info("mask")
             mask = f.read_mask_healpix("mask", degrade_nside=self.config["nside"])
 
+        #overwrite nside if it differs from the mask's native nside
+        if self.config['nside'] != info["nside"]:
+            info["nside"] = self.config['nside']
+
         pixel_scheme = choose_pixelization(**info)
         return mask, pixel_scheme
 
