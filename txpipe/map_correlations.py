@@ -66,8 +66,9 @@ class TXMapCorrelations(PipelineStage):
         with self.open_input("convergence_maps", wrapper=True) as map_file:
             kappa = map_file.read_map("kappa_E_2D")
 
+        mask_degrade_nside = kappa.nside_sparse
         with self.open_input("mask", wrapper=True) as map_file:
-            mask = map_file.read_map("mask")
+            mask = map_file.read_mask("mask", degrade_nside=mask_degrade_nside)
 
         # In python (unlike in e.g. C) you can chain equality tests
         # like this (or indeed inequalities). Cool right?
