@@ -3,7 +3,7 @@ This file contains TXPipe-specific file types, subclassing the more
 generic types in ceci.
 """
 from ceci.file_types import HDFFile, DataFile, YamlFile, TextFile, FitsFile, Directory, FileCollection, PickleFile, ParquetFile, PNGFile, FileValidationError
-from ..mapping import degrade_healsparse
+from .mapping import degrade_healsparse
 import yaml
 import numpy as np
 import warnings
