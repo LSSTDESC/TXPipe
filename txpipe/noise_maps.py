@@ -54,6 +54,8 @@ class TXSourceNoiseMaps(TXBaseMaps):
         return choose_pixelization(**pix_info)
 
     def prepare_mappers(self, pixel_scheme):
+        import healsparse as hsp 
+
         read_shear_catalog_type(self)
 
         with self.open_input("mask", wrapper=True) as maps_file:
@@ -69,7 +71,12 @@ class TXSourceNoiseMaps(TXBaseMaps):
         # We could use the healsparse array itself here
         # Possiby with a recarray for different realizations
         # TODO: test and implement this
-        index_map = np.zeros(pixel_scheme.npix, dtype=np.int64) - 1
+        index_map = hsp.HealSparseMap.make_empty(
+            pixel_scheme.nside_coverage, 
+            pixel_scheme.nside,
+            dtype=int,
+            sentinel=-1,
+            )
         index_map[reverse_map] = np.arange(reverse_map.size)
 
         # Number of unmasked pixels
@@ -224,6 +231,8 @@ class TXLensNoiseMaps(TXBaseMaps):
         return choose_pixelization(**pix_info)
 
     def prepare_mappers(self, pixel_scheme):
+        import healsparse as hsp
+
         with self.open_input("mask", wrapper=True) as maps_file:
             mask = maps_file.read_map("mask")
 
@@ -237,7 +246,12 @@ class TXLensNoiseMaps(TXBaseMaps):
         # We could use the healsparse array itself here
         # Possiby with a recarray for different realizations
         # TODO: test and implement this
-        index_map = np.zeros(pixel_scheme.npix, dtype=np.int64) - 1
+        index_map = hsp.HealSparseMap.make_empty(
+            pixel_scheme.nside_coverage, 
+            pixel_scheme.nside,
+            dtype=int,
+            sentinel=-1,
+            )
         index_map[reverse_map] = np.arange(reverse_map.size)
 
         # Number of unmasked pixels
