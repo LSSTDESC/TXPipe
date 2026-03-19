@@ -51,6 +51,10 @@ class TXSourceNoiseMaps(TXBaseMaps):
         with self.open_input("mask", wrapper=True) as maps_file:
             pix_info = maps_file.read_map_info("mask")
 
+        #overwrite nside if it differs from the mask's native nside
+        if self.config['nside'] != pix_info["nside"]:
+            pix_info["nside"] = self.config['nside']
+
         return choose_pixelization(**pix_info)
 
     def prepare_mappers(self, pixel_scheme):
@@ -59,7 +63,7 @@ class TXSourceNoiseMaps(TXBaseMaps):
         read_shear_catalog_type(self)
 
         with self.open_input("mask", wrapper=True) as maps_file:
-            mask = maps_file.read_map("mask")
+            mask = maps_file.read_mask("mask", degrade_nside=self.config["nside"])
 
         with self.open_input("shear_tomography_catalog", wrapper=True) as f:
             nbin_source = f.file["tomography"].attrs["nbin"]
@@ -228,13 +232,17 @@ class TXLensNoiseMaps(TXBaseMaps):
         with self.open_input("mask", wrapper=True) as maps_file:
             pix_info = maps_file.read_map_info("mask")
 
+        #overwrite nside if it differs from the mask's native nside
+        if self.config['nside'] != pix_info["nside"]:
+            pix_info["nside"] = self.config['nside']
+
         return choose_pixelization(**pix_info)
 
     def prepare_mappers(self, pixel_scheme):
         import healsparse as hsp
 
         with self.open_input("mask", wrapper=True) as maps_file:
-            mask = maps_file.read_map("mask")
+            mask = maps_file.read_mask("mask", degrade_nside=self.config["nside"])
 
         with self.open_input("lens_tomography_catalog", wrapper=True) as f:
             nbin_lens = f.file["tomography"].attrs["nbin"]
@@ -688,7 +696,7 @@ class TXNoiseMapsJax(PipelineStage):
 
     def read_inputs(self):
         with self.open_input("mask", wrapper=True) as f:
-            mask = f.read_map("mask")
+            mask = f.read_mask("mask", degrade_nside=self.config["nside"])
             # pixelization etc
             map_info = f.read_map_info("mask")
 
