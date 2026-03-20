@@ -198,12 +198,14 @@ class TXSourceSelectorBase(PipelineStage):
                     shear_data,
                 )
             # Combine this selection with size and snr cuts to produce a source selection
-            # and calculate the shear bias it would generate
-            tomo_bin, R = self.calculate_tomography(pz_data, shear_data, calculators)
+            # and calculate the shear bias it would generate.
+            # Note that the per-object response can be None for methods like MetaDetect that
+            # only calibrate the entire bin
+            tomo_bin, per_object_response = self.calculate_tomography(pz_data, shear_data, calculators)
 
             # Save the tomography for this chunk and accumulate the number
             # density information.
-            self.accumulate_statistics(output_file, shear_data, start, end, tomo_bin, R, number_density_stats)
+            self.accumulate_statistics(output_file, shear_data, start, end, tomo_bin, per_object_response, number_density_stats)
 
 
         # Do the selection bias averaging and output that too.
@@ -216,9 +218,9 @@ class TXSourceSelectorBase(PipelineStage):
         np.seterr(**original_warning_settings)
 
 
-    def accumulate_statistics(self, output_file, shear_data, start, end, tomo_bin, R, number_density_stats):
+    def accumulate_statistics(self, output_file, shear_data, start, end, tomo_bin, per_object_response, number_density_stats):
         # Save the tomography for this chunk
-        self.write_tomography(output_file, start, end, tomo_bin, R)
+        self.write_tomography(output_file, start, end, tomo_bin, per_object_response)
 
         # Accumulate information on the number counts and the selection biases.
         # These will be brought together at the end.
@@ -256,10 +258,6 @@ class TXSourceSelectorBase(PipelineStage):
         # The main output data - the tomographic
         # bin index for each object, or -1 for no bin.
         tomo_bin = np.repeat(-1, n)
-
-        # We also keep count of total count of objects in each bin,
-        # and also the overall count for all the bins (the last entry)
-        counts = np.zeros(nbin + 1, dtype=int)
 
         data = {**pz_data, **shear_data}
 
@@ -319,7 +317,7 @@ class TXSourceSelectorBase(PipelineStage):
 
         return outfile
 
-    def write_tomography(self, outfile, start, end, source_bin, R):
+    def write_tomography(self, outfile, start, end, source_bin, per_object_response):
         """
         Write out a chunk of tomography and response.
 
@@ -338,7 +336,7 @@ class TXSourceSelectorBase(PipelineStage):
         tomo_bin: array of shape (nrow,)
             The bin index for each output object
 
-        R: array of shape (nrow,2,2)
+        per_object_response: array of shape (nrow,2,2)
             Multiplicative bias calibration factor for each object
 
 

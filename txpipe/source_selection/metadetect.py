@@ -76,9 +76,9 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         calculators.append(MetaDetectCalculator(select_weak_lensing_sample, delta_gamma))
         return calculators
 
-    def accumulate_statistics(self, output_file, shear_data, start, end, tomo_bin, R, number_density_stats):
+    def accumulate_statistics(self, output_file, shear_data, start, end, tomo_bin, per_object_response, number_density_stats):
         # Save the tomography for this chunk
-        self.write_tomography(output_file, start, end, tomo_bin, R)
+        self.write_tomography(output_file, start, end, tomo_bin, per_object_response)
 
         # Accumulate information on the number counts and the selection biases.
         # These will be brought together at the end.
@@ -86,12 +86,14 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         # variant, so we take the first tomo_bin value.
         number_density_stats.add_data(shear_data, tomo_bin[0])
 
-    def write_tomography(self, outfile, start, end, source_bin, R):
+    def write_tomography(self, outfile, start, end, source_bin, per_object_response):
         # Write out each of the individual variants.
         # The basic "bin" column was set up to be the same as the 00 variant,
         # so we can just write to all of them.
         for i, v in enumerate(META_VARIANTS):
             outfile[f"tomography/bin_{v}"][start:end] = source_bin[i]
+
+        assert per_object_response is None, "MetaDetect does not produce per-object response values, only per-bin values, so this should be None"
 
 
     def apply_simple_redshift_cut(self, data):

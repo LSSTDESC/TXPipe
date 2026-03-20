@@ -1,7 +1,6 @@
 import numpy as np
 from .mpi_utils import in_place_reduce
-META_VARIANTS = ["00", "1p", "2p", "1m", "2m"]
-META_VARIANTS
+META_VARIANTS = ["00", "1p", "1m", "2p", "2m"]
 
 def read_shear_catalog_type(stage):
     """
