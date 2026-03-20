@@ -97,8 +97,8 @@ def process_metadetect_data(data):
         for band in "gri": # For DP2, we only expect 4 bands
             f = var_data[f"{band}_pgaussFlux"]
             f_err = var_data[f"{band}_pgaussFluxErr"]
-            var_output[f"flux_{band}"] = f
-            var_output[f"flux_err_{band}"] = f_err
+            var_output[f"mag_{band}"] = nanojansky_to_mag_ab(f)
+            var_output[f"mag_err_{band}"] = nanojansky_err_to_mag_ab(f, f_err)
         output[f"{variant}"] = var_output
 
     return output
