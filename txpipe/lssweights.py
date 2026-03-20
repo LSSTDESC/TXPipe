@@ -821,19 +821,21 @@ class TXLSSWeights(TXLSSDensityBase):
 
         #these config options current have to be the same between density Null calls and LSS weights calls
         config_asserts = [
-            'equal_area_bins'
-            'fill_missing_pix'
-            'nbin'
-            'nside'
-            'nside_coverage'
-            'outlier_fraction'
-            'pixelization'
-            'supreme_path_root'
+            'equal_area_bins',
+            'fill_missing_pix',
+            'nbin',
+            'nside',
+            'nside_coverage',
+            'outlier_fraction',
+            'pixelization',
+            'supreme_path_root',
         ]
 
         with self.open_input("unweighted_density_correlation") as f:
             for c in config_asserts:
-                assert f["provenance"].attrs[f"config/{c}"] == self.config[c]
+                c_input = str(f["provenance"].attrs[f"config/{c}"])
+                c_stage = str(self.config[c])
+                assert c_input == c_stage
 
     def load_density_corr(self, ibin):
         """
