@@ -538,13 +538,12 @@ class MapsFile(HDFFile):
 
         if nside is None:
             nside = hsp_map.nside_sparse
+        
+        if nside is not None:  # degrade (including custom reductions)
+            hsp_map = degrade_healsparse(hsp_map, nside, reduction, weight_map)
+        
+        m = hsp_map.generate_healpix_map()
         pix = hsp_map.valid_pixels
-        if reduction in ["weightedmean", "mask"]:  # custom degrading reductions
-            degraded_map = degrade_healsparse(hsp_map, nside, reduction, weight_map)
-            m = degraded_map.generate_healpix_map()
-        else:
-            m = hsp_map.generate_healpix_map(nside=nside, reduction=reduction, key=key)
-
         lon, lat = healpy.pix2ang(nside, pix, lonlat=True, nest=True)
         if rot180:  # (optional) rotate 180 degrees in the lon direction
             lon += 180
@@ -566,7 +565,6 @@ class MapsFile(HDFFile):
         lat_range = [lat[w].min() - 0.1, lat[w].max() + 0.1]
         lat_range = np.clip(lat_range, -90, 90)
         lon_range = np.clip(lon_range, 0, 360.0)
-        m[m == 0] = healpy.UNSEEN
         title = kwargs.pop("title", map_name)
         if view == "cart":
             healpy.cartview(
