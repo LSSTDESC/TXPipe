@@ -28,3 +28,4 @@ def test_firecrown_theory():
     fill_empty_sacc(sacc_data, ell_values=ell_values)
     cosmo = pyccl.CosmologyVanillaLCDM()
     theory_sacc = theory_3x2pt(cosmo, sacc_data)
+    print(theory_sacc.get_mean())
