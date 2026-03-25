@@ -883,7 +883,7 @@ class MeanShearInBins:
         w = (x > self.limits[i]) & (x < self.limits[i + 1])
         if self.cut_source_bin:
             w &= data["bin"] != -1
-        return np.where(w)
+        return np.where(w)[0]
 
     def add_data(self, data):
         for i in range(self.size):
@@ -893,6 +893,10 @@ class MeanShearInBins:
                 self.g1.add_data(i, data["mcal_g1"][w], weight)
                 self.g2.add_data(i, data["mcal_g2"][w], weight)
             elif self.shear_catalog_type == "metadetect":
+                # The selector for metadetect returns the
+                # selection for each of the variants. We just want
+                # the first 00 selection here.
+                w = w[0]
                 weight = data["00/weight"][w]
                 self.g1.add_data(i, data["00/g1"][w], weight)
                 self.g2.add_data(i, data["00/g2"][w], weight)
