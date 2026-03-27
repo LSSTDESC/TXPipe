@@ -393,6 +393,7 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
 
         pixel_scheme = choose_pixelization(**self.config)
         self.pixel_metadata = pixel_scheme.metadata
+        self.pixel_metadata["nest"] = True #This stage uses healsparse maps which always use nested ordering
 
         # check the metadata nside matches the mask (might not be true if you use an external mask)
         with self.open_input("mask", wrapper=True) as map_file:
@@ -455,6 +456,7 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
             density_correlation.plot1d_singlemap(
                 filepath,
                 imap,
+                plot_hist=True,
             )
 
         filepath = output_dir.path_for_file(f"chi2_hist_lens{ibin}.png")
@@ -762,6 +764,8 @@ class TXLSSWeights(TXLSSDensityBase):
 
         pixel_scheme = choose_pixelization(**self.config)
         self.pixel_metadata = pixel_scheme.metadata
+        self.pixel_metadata["nest"] = True #This stage uses healsparse maps which always use nested ordering
+
 
         # check the metadata nside matches the mask (might not be true of you use an external mask)
         with self.open_input("mask", wrapper=True) as map_file:
