@@ -1,0 +1,133 @@
+# =============================================================================
+# TXPipe pipeline: parquet ingestion → density maps → null tests → C_ell
+# =============================================================================
+#
+# Stages executed (in dependency order, resolved automatically by ceci):
+#
+#   1. TXIngestParquetCatalog   – read the simulation parquet, write photometry_catalog.hdf5
+#   2. TXTruthLensSelector      – select lens galaxies from true redshifts, write lens tomography
+#   3. TXLensMaps               – build raw n_gal maps per lens bin
+#   4. TXSimpleMask             – build a binary mask from the n_gal maps
+#   5. TXDensityMaps            – convert n_gal → overdensity δ maps
+#   6. TXTracerMetadata         – collate n_eff, sigma_e, n(z) metadata
+#   7. TXLSSDensityNullTests    – large-scale structure density null tests
+#   8. TXLensNoiseMaps          – shot-noise realisations for the lens bins
+#   9. TXTwoPointFourier        – measure all C_ell (pos-pos, shear-pos, shear-shear)
+#
+# NOTE: This pipeline is lens-only (no source/shear bins are selected).
+#       TXTwoPointFourier will therefore only compute the pos-pos (gg) spectra.
+#       Add TXSourceSelector + TXSourceMaps + TXSourceNoiseMaps + a shear
+#       photoz stack to enable shear-shear and galaxy-shear cross-spectra.
+# =============================================================================
+
+stages:
+  # --------------------------------------------------------------------------
+  # Ingestion
+  # --------------------------------------------------------------------------
+  - name: TXIngestParquetCatalog   # read parquet → photometry_catalog HDF5
+
+  # --------------------------------------------------------------------------
+  # Lens selection (uses true redshifts from the simulation)
+  # --------------------------------------------------------------------------
+  - name: TXTruthLensSelector      # select lens bins from redshift_true
+
+  - name: TXTruthLensCatalogSplitter   # split photometry_catalog into per-bin lens catalogs 
+
+  - name: TXLSSWeightsUnit # compute large-scale structure weights to mitigate density fluctuations from systematics 
+
+  # # --------------------------------------------------------------------------
+  # Maps
+  # --------------------------------------------------------------------------
+  - name: TXLensMaps               # n_gal maps per lens tomographic bin
+  # - name: TXSimpleMask             # binary mask from n_gal coverage
+  - name: TXDensityMaps            # overdensity maps δ = (n - <n>) / <n>
+
+  # # --------------------------------------------------------------------------
+  # # Metadata & null tests
+  # # --------------------------------------------------------------------------
+  # - name: TXTracerMetadata         # effective number densities, n(z) info
+  - name: TXLSSDensityNullTests    # density field null / systematics tests
+
+  # # --------------------------------------------------------------------------
+  # # Noise maps
+  # # --------------------------------------------------------------------------
+  # - name: TXLensNoiseMaps          # shot-noise realisations for C_ell errors
+
+  # # --------------------------------------------------------------------------
+  # # Two-point statistics
+  # # --------------------------------------------------------------------------
+  # - name: TXTwoPointFourier        # angular power spectra via NaMaster
+  #   threads_per_process: 2
+
+# =============================================================================
+# Python modules that define the pipeline stages
+# =============================================================================
+modules: txpipe
+
+# If TXIngestParquetCatalog lives in a separate file (e.g. txpipe/ingest_parquet.py)
+# and is imported in txpipe/__init__.py, no extra python_paths entry is needed.
+# If you keep it outside the package, add its directory here:
+# python_paths:
+#   - /path/to/your/extra/modules
+
+# =============================================================================
+# Output directory  (created automatically if absent)
+# =============================================================================
+output_dir: data/outputs
+
+# =============================================================================
+# Launcher  –  "mini" is the simplest single-machine scheduler
+# =============================================================================
+launcher:
+  name: mini
+  interval: 1.0
+
+# =============================================================================
+# Execution site
+# =============================================================================
+site:
+  name: local
+  max_threads: 4        # adjust to the number of physical cores available
+
+# =============================================================================
+# Configuration file (stage parameters live there)
+# =============================================================================
+config: examples/dp2_mocks/config_lens.yml
+
+# =============================================================================
+# Pipeline-level inputs
+#   - photometry_catalog is intentionally ABSENT here: TXIngestParquetCatalog
+#     produces it as an output.  All other stages that need it will consume
+#     that output automatically.
+#   - fiducial_cosmology ships with TXPipe in data/fiducial_cosmology.yml.
+#   - lens_photoz_stack and shear_photoz_stack are required by
+#     TXTwoPointFourier; they are listed here as pre-existing files because
+#     we are not running a full photoz chain in this slim pipeline.
+# =============================================================================
+inputs:
+  # Cosmological parameter file (bundled with TXPipe)
+  fiducial_cosmology: data/fiducial_cosmology.yml
+
+  mask: /pscratch/sd/a/anicola/DP2/data/masks/dp2_mask.hdf5
+
+  # Hack to get rid of issues with missing photometry_catalog input for stages that need it.  
+  # lens_tomography_catalog: data/outputs/lens_tomography_catalog_unweighted.hdf5
+
+  # Pre-computed photoz n(z) stacks.
+  # If you run TXPhotozStack these will be produced automatically; otherwise
+  # supply them from a previous run or from an external source.
+  lens_photoz_stack:   data/inputs/lens_photoz_stack.hdf5
+  shear_photoz_stack:  data/inputs/shear_photoz_stack.hdf5
+
+  # Source maps and source noise maps are required by TXTwoPointFourier even
+  # if you only want pos-pos.  Supply empty / dummy files if running
+  # lens-only, or add source stages to the pipeline.
+  source_maps:         data/inputs/source_maps.hdf5
+  source_noise_maps:   data/inputs/source_noise_maps.hdf5
+
+# =============================================================================
+# Ceci bookkeeping
+# =============================================================================
+resume: True                         # skip stages whose outputs already exist
+log_dir: data/logs
+pipeline_log: data/pipeline_log.txt

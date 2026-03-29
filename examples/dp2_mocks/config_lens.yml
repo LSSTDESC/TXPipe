@@ -1,0 +1,176 @@
+# =============================================================================
+# TXPipe configuration file
+# Adjust values to match your data and computing environment.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Global options – shared across all stages that read them
+# -----------------------------------------------------------------------------
+global:
+  # Number of catalog rows to read/write in a single chunk.
+  # Larger values are faster but use more RAM.
+  chunk_rows: 100000
+
+  # HEALPix pixelisation (required by TXTwoPointFourier)
+  pixelization: healpix
+  nside: 512            # ~6.9 arcmin pixels; increase for higher resolution
+  sparse: True          # use sparse maps (faster for small sky areas)
+
+
+# =============================================================================
+# Stage-specific configuration
+# Each block name must match the stage's `name` attribute exactly.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# TXIngestParquetCatalog  (our custom stage from ingest_parquet.py)
+#
+# parquet_paths accepts three formats – pick ONE and delete the others:
+#
+#   (a) Single file
+#   (b) Explicit list of files  ← concatenated in the order listed
+#   (c) Glob pattern            ← resolved alphabetically
+#
+# All files must have the same column schema.
+# -----------------------------------------------------------------------------
+TXIngestParquetCatalog:
+
+  # (a) Single file -------------------------------------------------------
+  # parquet_paths: data/inputs/simulation_catalog.parquet
+
+  # (b) Explicit list of files --------------------------------------------
+  parquet_paths:
+    - /pscratch/sd/q/qhang/Flagship/dp2_mock_run_flagship_gold_test/24811/output_deredden_lsst_obs_cond_dp2.pq
+    - /pscratch/sd/q/qhang/Flagship/dp2_mock_run_flagship_gold_test/24812/output_deredden_lsst_obs_cond_dp2.pq
+    - /pscratch/sd/q/qhang/Flagship/dp2_mock_run_flagship_gold_test/24813/output_deredden_lsst_obs_cond_dp2.pq
+    - /pscratch/sd/q/qhang/Flagship/dp2_mock_run_flagship_gold_test/24814/output_deredden_lsst_obs_cond_dp2.pq
+    - /pscratch/sd/q/qhang/Flagship/dp2_mock_run_flagship_gold_test/24815/output_deredden_lsst_obs_cond_dp2.pq
+    - /pscratch/sd/q/qhang/Flagship/dp2_mock_run_flagship_gold_test/24816/output_deredden_lsst_obs_cond_dp2.pq
+    - /pscratch/sd/q/qhang/Flagship/dp2_mock_run_flagship_gold_test/24817/output_deredden_lsst_obs_cond_dp2.pq
+    - /pscratch/sd/q/qhang/Flagship/dp2_mock_run_flagship_gold_test/24818/output_deredden_lsst_obs_cond_dp2.pq
+
+  # (c) Glob pattern (resolved alphabetically) ----------------------------
+  # parquet_paths: data/inputs/catalog_*.parquet
+
+  # Rows to stream per chunk (can differ from global chunk_rows)
+  chunk_rows: 100000
+
+
+# -----------------------------------------------------------------------------
+# TXTruthLensSelector
+# Selects lens galaxy bins using true (simulation) redshifts.
+# -----------------------------------------------------------------------------
+TXTruthLensSelector:
+  # Tomographic bin edges in redshift.
+  # Example: 3 bins covering 0.2 < z < 0.8
+  lens_zbin_edges: [0.2, 0.4, 0.6, 0.8]
+
+  # Column name in photometry_catalog that holds the true redshift
+  redshift_column: redshift_true
+
+  # Magnitude cut applied before bin selection (use -1 to disable)
+  mag_cut: 25.3
+  mag_band: i          # band to apply the magnitude cut in
+
+
+# -----------------------------------------------------------------------------
+# TXLensMaps
+# Builds raw galaxy count maps (n_gal) per lens tomographic bin.
+# -----------------------------------------------------------------------------
+TXLensMaps:
+  chunk_rows: 100000
+
+
+# -----------------------------------------------------------------------------
+# TXSimpleMask
+# Builds a binary footprint mask from the n_gal maps.
+# A pixel is unmasked if it has at least `min_counts` galaxies.
+# -----------------------------------------------------------------------------
+TXSimpleMask:
+  # Minimum galaxy count per pixel to be considered unmasked
+  min_counts: 1
+
+
+# -----------------------------------------------------------------------------
+# TXDensityMaps
+# Converts raw n_gal maps to overdensity maps:  δ = (n - <n>) / <n>
+# The mean <n> is computed over unmasked pixels.
+# No additional config options needed beyond the global pixelization settings.
+# -----------------------------------------------------------------------------
+TXDensityMaps: {}
+
+
+# -----------------------------------------------------------------------------
+# TXTracerMetadata
+# Collates per-bin metadata: effective galaxy density, sigma_e, n(z) info.
+# -----------------------------------------------------------------------------
+TXTracerMetadata:
+  # Whether photoz stacks are provided (True) or should be skipped (False).
+  # Set to True if lens_photoz_stack and shear_photoz_stack are provided.
+  true_nz: False        # set True to use redshift_true column for n(z)
+
+
+# -----------------------------------------------------------------------------
+# TXLSSDensityNullTests
+# Performs large-scale structure density null / systematics tests.
+# Checks for correlations between the density maps and potential systematics.
+# -----------------------------------------------------------------------------
+TXLSSDensityNullTests:
+  # ell range for the null-test power spectra
+  ell_min: 10
+  ell_max: 1000
+  n_ell: 15
+  ell_spacing: log       # 'log' or 'linear'
+
+  # Significance threshold for null-test failures (in sigma)
+  null_test_threshold: 3.0
+  supreme_path_root: /pscratch/sd/a/anicola/DP2/data/sysmaps/
+  # TODO: Fix this
+  # Hack to get the stage running despite mask being larger than the sysmaps:
+  fill_missing_pix: True
+
+
+# -----------------------------------------------------------------------------
+# TXLensNoiseMaps
+# Generates shot-noise realisations for the lens bins.
+# Used internally by TXTwoPointFourier for noise bias subtraction.
+# -----------------------------------------------------------------------------
+TXLensNoiseMaps:
+  chunk_rows: 100000
+  # Number of noise realisations (more → lower variance in noise estimate)
+  clustering_realizations: 30
+
+
+# -----------------------------------------------------------------------------
+# TXTwoPointFourier
+# Computes angular power spectra C_ell using NaMaster.
+# With a lens-only pipeline, only pos-pos spectra are available.
+# -----------------------------------------------------------------------------
+TXTwoPointFourier:
+  # ell binning
+  ell_min: 100
+  ell_max: 1500
+  n_ell: 20
+  ell_spacing: log       # 'log' or 'linear'
+
+  # Mask threshold: pixels with mask value below this are excluded
+  mask_threshold: 0.0
+
+  # Shear sign conventions (flip if you see negative shear-shear)
+  flip_g1: False
+  flip_g2: False
+
+  # Which spectra to compute
+  do_pos_pos: True       # galaxy-galaxy (density-density)
+  do_shear_pos: False    # galaxy-shear  (requires source bins)
+  do_shear_shear: False  # shear-shear   (requires source bins)
+
+  # Use true shear (simulation only, bypasses shape noise)
+  true_shear: False
+
+  # Optional: systematics deprojection for number counts
+  deproject_syst_clustering: False
+  systmaps_clustering_dir: ''
+
+  # Optional NaMaster workspace cache (speeds up repeated runs)
+  cache_dir: data/cache
