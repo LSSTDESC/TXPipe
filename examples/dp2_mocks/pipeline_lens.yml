@@ -45,7 +45,7 @@ stages:
   # # --------------------------------------------------------------------------
   # # Metadata & null tests
   # # --------------------------------------------------------------------------
-  # - name: TXTracerMetadata         # effective number densities, n(z) info
+  - name: TXTracerMetadata         # effective number densities, n(z) info
   - name: TXLSSDensityNullTests    # density field null / systematics tests
 
   # # --------------------------------------------------------------------------
@@ -56,8 +56,10 @@ stages:
   # # --------------------------------------------------------------------------
   # # Two-point statistics
   # # --------------------------------------------------------------------------
-  # - name: TXTwoPointFourier        # angular power spectra via NaMaster
-  #   threads_per_process: 2
+  - name: TXTwoPointFourier        # angular power spectra via NaMaster
+    threads_per_process: 2
+
+  - name: TXFourierNamasterCovariance
 
 # =============================================================================
 # Python modules that define the pipeline stages
@@ -110,20 +112,21 @@ inputs:
 
   mask: /pscratch/sd/a/anicola/DP2/data/masks/dp2_mask.hdf5
 
-  # Hack to get rid of issues with missing photometry_catalog input for stages that need it.  
-  # lens_tomography_catalog: data/outputs/lens_tomography_catalog_unweighted.hdf5
-
   # Pre-computed photoz n(z) stacks.
   # If you run TXPhotozStack these will be produced automatically; otherwise
   # supply them from a previous run or from an external source.
-  lens_photoz_stack:   data/inputs/lens_photoz_stack.hdf5
+  lens_photoz_stack:   data/outputs/lens_photoz_stack.hdf5
   shear_photoz_stack:  data/inputs/shear_photoz_stack.hdf5
+
+  shear_tomography_catalog: none
+  shear_catalog: none
 
   # Source maps and source noise maps are required by TXTwoPointFourier even
   # if you only want pos-pos.  Supply empty / dummy files if running
   # lens-only, or add source stages to the pipeline.
   source_maps:         data/inputs/source_maps.hdf5
   source_noise_maps:   data/inputs/source_noise_maps.hdf5
+  lens_noise_maps:   data/inputs/source_noise_maps.hdf5
 
 # =============================================================================
 # Ceci bookkeeping

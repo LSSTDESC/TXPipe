@@ -564,7 +564,7 @@ class TXFourierNamasterCovariance(PipelineStage):
         nmt_cov *= norm_nmt
 
         # interpolate nmt-part covariance to the original ell
-        f = scipy.interpolate.interp2d(ell_nmt0, ell_nmt0, nmt_cov, kind="cubic")
+        f = scipy.interpolate.RectBivariateSpline(ell_nmt0, ell_nmt0, nmt_cov)
         nmt_cov = f(ell_nmt, ell_nmt)
 
         # Combining tjp and nmt parts together
@@ -724,17 +724,43 @@ class TXFourierNamasterCovariance(PipelineStage):
         return nmt_input
 
     def get_angular_bins(self, two_point_data):
-        # Assume that the ell binning is the same for each of the bins.
-        # This is true in the current pipeline.
-        X = two_point_data.get_data_points("galaxy_shear_cl_ee", i=0, j=0)
-        # Further assume that the ell ranges are contiguous, so that
-        # the max value of one window is the min value of the next.
-        # So we just need the lower edges of each bin and then the
-        # final maximum value of the last bin
-        ell_edges = [x["window"].min for x in X]
-        ell_edges.append(X[-1]["window"].max)
+        # Find the first available data type — do not hardcode galaxy_shear_cl_ee
+        # since that is absent in a lens-only pipeline.
+        available_types = list(set(dp.data_type for dp in two_point_data.data))
+        if not available_types:
+            raise ValueError("No data points found in SACC file.")
 
-        return np.array(ell_edges)
+        dt = available_types[0]
+        tracers = two_point_data.get_tracer_combinations(dt)
+        t1, t2 = tracers[0]
+
+        # Get the effective (central) ell values for each bandpower
+        ell, _ = two_point_data.get_ell_cl(dt, t1, t2)
+
+        if len(ell) == 0:
+            raise ValueError(
+                f"No ell values found for data type {dt}, tracers {t1}, {t2}"
+            )
+
+        # Reconstruct bin edges as geometric midpoints between consecutive
+        # effective ell values, with the first and last edges extrapolated.
+        # This is consistent with log-spaced ell bins as used by TXTwoPointFourier.
+        ell = np.array(ell, dtype=float)
+        if len(ell) == 1:
+            # Only one bin — use a symmetric log-space interval around it
+            ell_edges = np.array([ell[0] / np.sqrt(2.0), ell[0] * np.sqrt(2.0)])
+        else:
+            # Interior edges: geometric mean between consecutive ell values
+            interior = np.sqrt(ell[:-1] * ell[1:])
+            # Extrapolate first and last edges using the same ratio
+            first = ell[0] ** 2 / interior[0]
+            last  = ell[-1] ** 2 / interior[-1]
+            ell_edges = np.concatenate([[first], interior, [last]])
+
+        print(f"Reconstructed {len(ell_edges)-1} ell bin edges from effective ells")
+        print(f"  ell range: [{ell_edges[0]:.1f}, {ell_edges[-1]:.1f}]")
+
+        return ell_edges
 
     def make_wigner_transform(self, meta):
         import threadpoolctl

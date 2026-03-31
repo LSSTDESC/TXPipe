@@ -169,8 +169,18 @@ TXTwoPointFourier:
   true_shear: False
 
   # Optional: systematics deprojection for number counts
-  deproject_syst_clustering: False
-  systmaps_clustering_dir: ''
+  deproject_syst_clustering: True
+  systmaps_clustering_dir: /pscratch/sd/a/anicola/DP2/data/sysmaps/
 
   # Optional NaMaster workspace cache (speeds up repeated runs)
   cache_dir: data/cache
+
+  analytic_noise: True
+
+# =============================================================================
+# TXFourierNamasterCovariance
+# Computes the covariance matrix for the angular power spectra using NaMaster.
+# =============================================================================
+TXFourierNamasterCovariance:
+  use_true_shear: False
+  scratch_dir: data/temp
