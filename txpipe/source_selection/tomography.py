@@ -1,7 +1,7 @@
 from .base import PipelineStage
 from ceci.config import StageParameter
-from .data_types import HDFFile, PickleFile
-from .binning import read_training_data, build_tomographic_classifier
+from ..data_types import HDFFile, PickleFile
+from ..binning import read_training_data, build_tomographic_classifier
 
 class TXSourceTomography(PipelineStage):
     name = "TXSourceTomography"
