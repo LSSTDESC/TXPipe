@@ -82,6 +82,10 @@ TXTruthLensCatalogSplitter: {}
 TXStarCatalogSplitter: {} 
 TXPhotozPlots: {}
 
+TXSourceTomography:
+    bands: riz #used for selection
+    source_zbin_edges: [0.0, 0.2, 0.4, 0.6, 0.8]
+
 TXSourceMaps:
     sparse: True  # Generate sparse maps - faster if using small areas
 

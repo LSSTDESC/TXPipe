@@ -146,6 +146,10 @@ TXSourceSelectorMetacal:
     shear_prefix: mcal_
     use_diagonal_response: true
 
+TXSourceTomography:
+    bands: i    #used for selection
+    source_zbin_edges: [0.5, 1.5, 2.5, 3.5, 4.5]
+
 TXShearCalibration:
     use_true_shear: false
     chunk_rows: 100000
