@@ -215,6 +215,23 @@ jobs:
           test -f data/example/outputs_${{ matrix.pipeline }}/shear_xi_plus.png
         fi
 
+    - name: Run metadetect with multi-length data
+      if: ${{ matrix.pipeline == 'metadetect' }}
+      run: |
+        source ./conda/bin/activate
+
+        # remove the old target file
+        rm -f data/example/outputs_${{ matrix.pipeline }}/shear_xi_plus.png
+
+        # Generate the new data file
+        python bin/make_metadetect_file_different_lengths.py
+
+        # Run the pipeline with the new file
+        ceci examples/metadetect/pipeline.yml resume=restart inputs.shear_catalog=data/example/inputs/metadetect_shear_catalog_different_lengths.hdf5
+
+        test -f data/example/outputs_${{ matrix.pipeline }}/shear_xi_plus.png
+
+
     - name: Dry run DP1
       run: |
         source ./conda/bin/activate

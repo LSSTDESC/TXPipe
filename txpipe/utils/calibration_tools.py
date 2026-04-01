@@ -1,6 +1,6 @@
 import numpy as np
 from .mpi_utils import in_place_reduce
-
+META_VARIANTS = ["00", "1p", "1m", "2p", "2m"]
 
 def read_shear_catalog_type(stage):
     """
@@ -20,7 +20,7 @@ def metacal_variants(*names):
 
 
 def metadetect_variants(*names):
-    return [f"{group}/{name}" for group in ["00", "1p", "1m", "2p", "2m"] for name in names]
+    return [f"{group}/{name}" for group in META_VARIANTS for name in names]
 
 
 def band_variants(bands, *names, shear_catalog_type="metacal"):
@@ -33,7 +33,7 @@ def band_variants(bands, *names, shear_catalog_type="metacal"):
         ]
     elif shear_catalog_type == "metadetect":
         return [
-            f"{group}/{name}_{band}" for group in ["00", "1p", "1m", "2p", "2m"] for band in bands for name in names
+            f"{group}/{name}_{band}" for group in META_VARIANTS for band in bands for name in names
         ]
     else:
         return [name + "_" + band for band in bands for name in names]
@@ -372,13 +372,12 @@ class MetaDetectCalculator(CalibrationCalculator):
             Keyword arguments to be passed to the selection function
 
         """
-
-        prefixes = ["00/", "1p/", "1m/", "2p/", "2m/"]
+        selections = []
+        prefixes = [m + "/" for m in META_VARIANTS]
         for i, p in enumerate(prefixes):
             data_p = _DataWrapper(data, prefix=p)
             sel = self.selector(data_p, *args, **kwargs)
-            if p == "00/":
-                sel_00 = sel
+            selections.append(sel)
             w = data_p["weight"][sel]
             if w.size == 0:
                 continue
@@ -390,7 +389,7 @@ class MetaDetectCalculator(CalibrationCalculator):
             self.sum_weights[i] += np.sum(w)
             self.sum_sq_weights[i] += np.sum(w**2)
 
-        return sel_00
+        return selections
 
     def collect(self, comm=None, allgather=False):
         """
@@ -884,7 +883,7 @@ class MeanShearInBins:
         w = (x > self.limits[i]) & (x < self.limits[i + 1])
         if self.cut_source_bin:
             w &= data["bin"] != -1
-        return np.where(w)
+        return np.where(w)[0]
 
     def add_data(self, data):
         for i in range(self.size):
@@ -894,6 +893,10 @@ class MeanShearInBins:
                 self.g1.add_data(i, data["mcal_g1"][w], weight)
                 self.g2.add_data(i, data["mcal_g2"][w], weight)
             elif self.shear_catalog_type == "metadetect":
+                # The selector for metadetect returns the
+                # selection for each of the variants. We just want
+                # the first 00 selection here.
+                w = w[0]
                 weight = data["00/weight"][w]
                 self.g1.add_data(i, data["00/g1"][w], weight)
                 self.g2.add_data(i, data["00/g2"][w], weight)

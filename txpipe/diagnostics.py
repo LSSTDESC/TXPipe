@@ -260,6 +260,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
             "tomography",
             shear_tomo_cols,
             *more_iters,
+            longest=True,
         )
 
         # Now loop through each chunk of input data, one at a time.
