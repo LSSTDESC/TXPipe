@@ -192,7 +192,7 @@ def make_dask_lens_maps(
         are considered unassigned.
     target_bin : int or "2D"
         The tomographic bin to select. If "2D", all objects with tomo_bin >= 0
-        are counted (but only target_bin objects are weighted).
+        are counted.
     pixel_scheme : PixelScheme
         The pixelization scheme to use, typically Healpix with a given nside.
     cov_map : HealSparseCoverage
@@ -218,9 +218,10 @@ def make_dask_lens_maps(
     # one unweighted count and one weighted count
     if target_bin == "2D":
         hit = da.where(tomo_bin >= 0, 1, 0)
+        weighted_hit = da.where(tomo_bin >= 0, weight, 0)
     else:
         hit = da.where(tomo_bin == target_bin, 1, 0)
-    weighted_hit = da.where(tomo_bin == target_bin, weight, 0)
+        weighted_hit = da.where(tomo_bin == target_bin, weight, 0)
 
     # get the sparse map index for each of these pixel (is dask aware)
     sparse_index, npix_sparse = pix2sparseindex(pix, cov_map)
