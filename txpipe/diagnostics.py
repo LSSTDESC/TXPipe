@@ -244,7 +244,10 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 "m",
             ] + [f"{shear_prefix}mag_{b}" for b in self.config["bands"]]
 
-        shear_tomo_cols = ["bin"]
+        if self.config["shear_catalog_type"] == 'metadetect':
+            shear_tomo_cols = ["bin_00", "bin_1p", "bin_2p", "bin_1m", "bin_2m"]
+        else:
+            shear_tomo_cols = ["bin"]
 
         if self.config["shear_catalog_type"] == "metacal":
             more_iters = ["shear_tomography_catalog", "response", ["R_gamma"]]
@@ -269,6 +272,14 @@ class TXSourceDiagnosticPlots(PipelineStage):
             print(f"Read data {start} - {end}")
             # This causes each data = yield statement in each plotter to
             # be given this data chunk as the variable data.
+
+            if self.config["shear_catalog_type"] == "metadetect":
+                data['bin'] = data['bin_00']
+                data['00/bin'] = data['bin_00']
+                data['1p/bin'] = data['bin_1p']
+                data['2p/bin'] = data['bin_2p']
+                data['1m/bin'] = data['bin_1m']
+                data['2m/bin'] = data['bin_2m']
 
             for plotter in plotters:
                 plotter.send(data)
@@ -468,7 +479,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         # This class includes all the cutting and calibration, both for
         # estimator and selection biases
         binnedShear = MeanShearInBins(
-            f"{shear_prefix}s2n",
+            f"s2n",
             snr_edges,
             delta_gamma,
             cut_source_bin=True,
@@ -530,7 +541,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         T_edges = self.get_bin_edges("T")
 
         binnedShear = MeanShearInBins(
-            f"{shear_prefix}T",
+            f"T",
             T_edges,
             delta_gamma,
             cut_source_bin=True,
@@ -597,7 +608,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
             m_edges = self.get_bin_edges(f"{shear_prefix}mag_{band}")
 
             binnedShear[f"{band}"] = MeanShearInBins(
-                f"{shear_prefix}mag_{band}",
+                f"mag_{band}",
                 m_edges,
                 delta_gamma,
                 cut_source_bin=True,
@@ -719,27 +730,37 @@ class TXSourceDiagnosticPlots(PipelineStage):
             if data is None:
                 break
 
-            qual_cut = data["bin"] != -1
+            
 
             if cat_type == "metacal":
                 g1 = data["mcal_g1"]
                 g2 = data["mcal_g2"]
                 w = data["weight"]
+                bin_cut = data["bin"] >= 0
             elif cat_type == "metadetect":
                 g1 = data["00/g1"]
                 g2 = data["00/g2"]
                 w = data["00/weight"]
+                bin_cut = data["bin_00"] >= 0
             elif cat_type == "lensfit":
                 dec = data["dec"]
                 g1 = data["g1"]
                 g2 = data["g2"]
                 w = data["weight"]
+                bin_cut = data["bin"] >= 0
             else:
                 g1 = data["g1"]
                 g2 = data["g2"]
                 c1 = data["c1"]
                 c2 = data["c2"]
                 w = data["weight"]
+                bin_cut = data["bin"] >= 0
+                c1 = c1[bin_cut]
+                c2 = c2[bin_cut]
+
+            g1 = g1[bin_cut]
+            g2 = g2[bin_cut]
+            w = w[bin_cut]
 
             if cat_type == "metacal" or cat_type == "metadetect":
                 g1, g2 = cal.apply(g1, g2)
@@ -809,13 +830,14 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 break
 
             qual_cut = data["bin"] != -1
+            s2n = data['00/s2n'] if self.config["shear_catalog_type"] == "metadetect" else data[f"s2n"]
 
-            b1 = np.digitize(data[f"{shear_prefix}s2n"][qual_cut], edges) - 1
+            b1 = np.digitize(s2n[qual_cut], edges) - 1
 
             for i in range(bins):
                 w = np.where(b1 == i)
                 # Do more things here to establish
-                calc1.add_data(i, data[f"{shear_prefix}s2n"][qual_cut][w])
+                calc1.add_data(i, s2n[qual_cut][w])
 
         count1, mean1, var1 = calc1.collect(self.comm, mode="gather")
         if self.rank != 0:
