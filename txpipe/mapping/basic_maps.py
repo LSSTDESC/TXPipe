@@ -360,6 +360,8 @@ def make_coverage_map(ra, dec, pixel_scheme):
         Right ascension values of the objects.
     dec : dask.array
         Declination values of the objects.
+    pixel_scheme : PixelScheme
+        The pixelization scheme to use, typically Healpix with a given nside
 
     Returns
     -------
