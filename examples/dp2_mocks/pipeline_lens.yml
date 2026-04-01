@@ -75,7 +75,7 @@ modules: txpipe
 # =============================================================================
 # Output directory  (created automatically if absent)
 # =============================================================================
-output_dir: data/outputs
+output_dir: data/outputs/dp2_23p5
 
 # =============================================================================
 # Launcher  –  "mini" is the simplest single-machine scheduler
@@ -110,12 +110,12 @@ inputs:
   # Cosmological parameter file (bundled with TXPipe)
   fiducial_cosmology: data/fiducial_cosmology.yml
 
-  mask: /pscratch/sd/a/anicola/DP2/data/masks/dp2_mask.hdf5
+  mask: /pscratch/sd/a/anicola/DP2/data/masks/dp2_23p5_mask.hdf5
 
   # Pre-computed photoz n(z) stacks.
   # If you run TXPhotozStack these will be produced automatically; otherwise
   # supply them from a previous run or from an external source.
-  lens_photoz_stack:   data/outputs/lens_photoz_stack.hdf5
+  lens_photoz_stack:   data/outputs/dp2_23p5/lens_photoz_stack.hdf5
   shear_photoz_stack:  data/inputs/shear_photoz_stack.hdf5
 
   shear_tomography_catalog: none
