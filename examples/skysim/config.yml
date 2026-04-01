@@ -86,6 +86,10 @@ TXSourceSelectorMetacal:
     true_z: false
     shear_prefix: mcal_
 
+
+TXSourceTomography:
+    bands: riz #used for selection
+    source_zbin_edges: [0.3, 0.55, 0.8, 1.05, 2.0]
 TXRandomCat:
     density: 10 # gals per sq arcmin
 

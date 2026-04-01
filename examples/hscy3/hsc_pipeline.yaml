@@ -23,6 +23,7 @@ stages:
         input: specz_catalog_pq
         output: spectroscopic_catalog
   - name: TXSourceSelectorHSC       # select and split objects into source bins
+  - name: TXSourceTomography
   - name: TXShearCalibration
   - name: TXTruthLensSelector
   - name: PZPrepareEstimatorLens

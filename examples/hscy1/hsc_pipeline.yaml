@@ -3,6 +3,7 @@ stages:
     - name: TXSourceSelectorHSC     # select and split objects into source bins
   #  - name: TXShearCalibration
   #  - name: TXSourceDiagnosticPlots
+    - name: TXSourceTomography
     - name: TXRoweStatistics  
     - name: TXTauStatistics
       #- name: TXPSFDiagnostics

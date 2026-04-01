@@ -78,6 +78,10 @@ TXSourceSelectorLensfit:
     shear_prefix: ''
     input_m_is_weighted: true
 
+
+TXSourceTomography:
+    bands: ri #used for selection
+    source_zbin_edges: [0.1, 0.5, 1.0, 2.0]
 PZPrepareEstimatorLens:
     name: PZPrepareEstimatorLens
     classname: BPZliteInformer

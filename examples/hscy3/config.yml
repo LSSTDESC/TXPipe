@@ -134,6 +134,10 @@ TXSourceSelectorHSC:
     source_zbin_edges: [0.5, 1.5, 2.5, 3.5, 4.5]
     shear_prefix: ''
     shear_catalog_type: hsc
+
+TXSourceTomography:
+    bands: riz #used for selection
+    source_zbin_edges: [0.0, 0.2, 0.4, 0.6, 0.8]
 TXSourceSelectorMetacal:
     input_pz: true
     true_z: false

@@ -17,6 +17,10 @@ TXSourceSelectorSimple:
     shear_prefix: ''
     verbose: true
 
+
+TXSourceTomography:
+    bands: riz
+    source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
 TXMockTruthPZ:
     mock_sigma_z: 0.001
 

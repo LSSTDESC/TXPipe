@@ -11,6 +11,10 @@ TXSourceSelectorMetadetect:
     shear_prefix: ''
 
     
+
+TXSourceTomography:
+    bands: riz #used for selection
+    source_zbin_edges: [0.1, 3.0]
 Inform_BPZ_lite:
     zmin: 0.0
     zmax: 3.0

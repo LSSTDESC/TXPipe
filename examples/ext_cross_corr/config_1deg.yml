@@ -175,6 +175,10 @@ TXSourceSelectorMetadetect:
     shear_prefix: ""
     true_z: False
 
+
+TXSourceTomography:
+    bands: riz #used for selection
+    source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
 TXTruthLensSelector:
     # Mag cuts
     input_pz: False

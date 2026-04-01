@@ -84,6 +84,10 @@ TXSimpleMask: {}
 
 TXTracerMetadata: {}
 
+
+TXSourceTomography:
+    bands: ugrizy
+    source_zbin_edges: [0.3, 0.5, 0.7, 0.9]
 TXRandomCat:
     method: spherical_projection
 TXJackknifeCenters:
