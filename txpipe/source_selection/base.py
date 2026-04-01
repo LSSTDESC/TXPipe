@@ -1,5 +1,5 @@
 from ..base_stage import PipelineStage
-from ..data_types import ShearCatalog, TomographyCatalog, HDFFile
+from ..data_types import ShearCatalog, TomographyCatalog, HDFFile, PickleFile
 from .utils import SourceNumberDensityStats
 from ..utils.calibration_tools import read_shear_catalog_type
 from ..binning import build_tomographic_classifier, apply_classifier, read_training_data
@@ -96,6 +96,7 @@ class TXSourceSelectorBase(PipelineStage):
     inputs = [
         ("shear_catalog", ShearCatalog),
         ("spectroscopic_catalog", HDFFile),
+        ("shear_tomography_classifier", PickleFile),
     ]
 
     outputs = [("shear_tomography_catalog", TomographyCatalog)]
@@ -103,7 +104,7 @@ class TXSourceSelectorBase(PipelineStage):
     config_options = {
         "input_pz": StageParameter(bool, False, msg="Whether to use input photo-z posteriors"),
         "true_z": StageParameter(bool, False, msg="Whether to use true redshifts instead of photo-z"),
-        "bands": StageParameter(str, "riz", msg="Bands from the catalog to use for selection"),
+        "bands": StageParameter(list, ["r", "i", "z"], msg="Bands from the catalog to use for selection"),
         "verbose": StageParameter(bool, False, msg="Whether to print verbose output"),
         "T_cut": StageParameter(float, required=True, msg="Size cut threshold for object selection"),
         "s2n_cut": StageParameter(
@@ -113,15 +114,6 @@ class TXSourceSelectorBase(PipelineStage):
         ),
         "chunk_rows": StageParameter(int, 10000, msg="Number of rows to process in each chunk"),
         "source_zbin_edges": StageParameter(list, required=True, msg="Redshift bin edges for source tomography"),
-        "random_seed": StageParameter(int, 42, msg="Random seed for reproducibility"),
-        "spec_mag_column_format": StageParameter(
-            str,
-            "photometry/{band}",
-            msg="Format string for spectroscopic magnitude columns",
-        ),
-        "spec_redshift_column": StageParameter(
-            str, "photometry/redshift", msg="Column name for spectroscopic redshifts"
-        ),
     }
 
     def run(self):
@@ -154,21 +146,7 @@ class TXSourceSelectorBase(PipelineStage):
 
         # Build a classifier used to put objects into tomographic bins
         if not (self.config["input_pz"] or self.config["true_z"]):
-            with self.open_input("spectroscopic_catalog") as spec_file:
-                training_data = read_training_data(
-                    spec_file,
-                    bands,
-                    self.config["spec_mag_column_format"],
-                    self.config["spec_redshift_column"],
-                )
-
-            classifier, features = build_tomographic_classifier(
-                bands,
-                training_data,
-                self.config["source_zbin_edges"],
-                self.config["random_seed"],
-                self.comm,
-            )
+            classifier, features = self.read_tomography_classifier()
 
         # We will collect the selection biases for each bin
         # as a matrix.  We will collect together the different
@@ -225,6 +203,30 @@ class TXSourceSelectorBase(PipelineStage):
         # Accumulate information on the number counts and the selection biases.
         # These will be brought together at the end.
         number_density_stats.add_data(shear_data, tomo_bin)  # check this
+
+    def read_tomography_classifier(self):
+        # Read the tomography classifier from file
+        with self.open_input("shear_tomography_classifier", wrapper=True) as infile:
+            pickle_data = infile.read()
+
+        # Check that the tomographer used the same configuration
+        # as we have here.
+        if not pickle_data["bands"] == self.config["bands"]:
+            raise ValueError(
+                "Bands used in tomography classifier do not match those "
+                "in source selector configuration."
+            )
+        # Also check bin edges are close enough
+        if not np.allclose(pickle_data["source_zbin_edges"], self.config["source_zbin_edges"]):
+            raise ValueError(
+                "Source redshift bin edges used in tomography classifier do not match those "
+                "in source selector configuration."
+            )
+
+        # This is all that is actually needed in this class
+        classifier = pickle_data["classifier"]
+        features = pickle_data["features"]
+        return classifier, features
 
 
     def apply_simple_redshift_cut(self, shear_data):
