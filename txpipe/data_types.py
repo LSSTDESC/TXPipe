@@ -241,7 +241,10 @@ class MapsFile(HDFFile):
 
         group = self.file[f"maps/{map_name}"]
         nside = group.attrs["nside"]
-        m = hsp.HealSparseMap.make_empty(32, nside, dtype=type(group["value"][0]))
+        
+        # Legacy files don't have an nside_coverage so we default to 32
+        nside_coverage = 32
+        m = hsp.HealSparseMap.make_empty(nside_coverage, nside, dtype=type(group["value"][0]))
         if group.attrs["nest"]:
             pix = group["pixel"][:]
         else:
