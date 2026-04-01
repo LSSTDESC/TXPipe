@@ -63,16 +63,6 @@ class TXBaseMask(PipelineStage):
         metadata["area"] = area
         metadata["f_sky"] = f_sky
 
-        # Note: leaving these here in case we want to keep the gnomonic maps?
-        if pixel_scheme == "gnomonic":
-            mask[np.isnan(mask)] = 0.0
-            mask[mask < 0] = 0
-
-            # The flatten required for gnomonic maps
-            mask = mask.flatten()
-            pix = np.where(mask)[0]
-            mask = mask[pix].astype(float)
-
         return mask, metadata
 
     def compute_fracdet_from_hsp(self, metadata):
