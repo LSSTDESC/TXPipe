@@ -301,30 +301,16 @@ class TXIngestMapsHsp(TXIngestMapsBase):
 
     name = "TXIngestMapsHsp"
 
-    def load_map(self, input_filepath, return_healpix=False, return_nest=False):
+    def load_map(self, input_filepath):
         """
-        Add a single map to the HDF5 file
+        load map from a healsparse file
 
         Parameters
         ----------
         input_filepath: str
             input healsparse map files
-        return_healpix: bool
-            if True, output the full healpix array
-        return_nest: bool
-            if True output healpix array will be in nest format
-            does nothing if return_heapix is False as hsp maps are always nested
         """
-        import healpy as hp
         import healsparse as hsp
 
         hsmap = hsp.HealSparseMap.read(input_filepath)
-        if return_healpix:
-            nside = hsmap.nside_sparse
-            valid_pix = hsmap.valid_pixels
-            if return_nest:
-                return valid_pix, hsmap[valid_pix]
-            else:
-                return hp.nest2ring(nside, valid_pix), hsmap[valid_pix]
-        else:
-            return hsmap
+        return hsmap
