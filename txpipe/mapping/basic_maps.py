@@ -311,11 +311,7 @@ def degrade_healsparse(hsp_map, degrade_nside, reduction, weight_map=None):
 
         # If the map is an integer map, first convert to floats
         if np.issubdtype(hsp_map.dtype, np.integer):
-            valid_pix = hsp_map.valid_pixels
-            m = hsp.HealSparseMap.make_empty(
-                hsp_map.nside_coverage, hsp_map.nside_sparse, dtype=float
-            )
-            m.update_values_pix(valid_pix, hsp_map[valid_pix].astype(float))
+            m = hsp_int2float(hsp_map)
         else:
             m = hsp_map
 
@@ -331,6 +327,28 @@ def degrade_healsparse(hsp_map, degrade_nside, reduction, weight_map=None):
 
     return map_out
 
+def hsp_int2float(hsp_map ):
+    """
+    Convert a HealSparseMap with integer dtype to one with float dtype.
+
+    Parameters
+    ----------
+    hsp_map : healsparse.HealSparseMap
+        Input HealSparseMap with an integer dtype.
+
+    Returns
+    -------
+    healsparse.HealSparseMap
+        A new HealSparseMap with the same coverage and sparse nside,
+        valid pixels, and values cast to float.
+    """
+    import healsparse as hsp
+    valid_pix = hsp_map.valid_pixels
+    m = hsp.HealSparseMap.make_empty(
+                hsp_map.nside_coverage, hsp_map.nside_sparse, dtype=float
+            )
+    m.update_values_pix(valid_pix, hsp_map[valid_pix].astype(float))
+    return m
 
 def make_coverage_map(ra, dec, pixel_scheme):
     """
