@@ -285,7 +285,6 @@ class TXUniformDepthMap(PipelineStage):
 
         with self.open_output("aux_lens_maps", wrapper=True) as f:
             f.file.create_group("depth")
-            print(depth)
             f.write_map("depth/depth", depth, metadata)
 
 
