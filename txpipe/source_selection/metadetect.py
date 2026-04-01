@@ -46,7 +46,7 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         bands = self.config["bands"]
 
         # Core quantities we need
-        shear_cols = metadetect_variants("T", "s2n", "g1", "g2", "ra", "dec", "mcal_psf_T_mean", "weight", "flags")
+        shear_cols = metadetect_variants("T", "s2n", "g1", "g2", "ra", "dec", "psf_T_mean", "weight", "flags")
 
         # Magnitudes and errors
         shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="metadetect")
@@ -59,7 +59,7 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
             shear_cols += metadetect_variants("redshift_true")
 
         for prefix in ["00", "1p", "1m", "2p", "2m"]:
-            renames[f"{prefix}/mcal_psf_T_mean"] = f"{prefix}/psf_T_mean"
+            renames[f"{prefix}/psf_T_mean"] = f"{prefix}/psf_T_mean"
 
         # This is a parent ceci.PipelineStage method.
         # It returns an iterator we loop through.

@@ -876,6 +876,7 @@ class MeanShearInBins:
             raise ValueError(f"Please specify metacal, metadetect, lensfit or hsc for shear_catalog in config.")
 
     def selector(self, data, i):
+        print(type(data), i, self.x_name, data.prefix)
         x = data[self.x_name]
         if (self.shear_catalog_type == "lensfit") & (self.psf_unit_conv == True) & ("T" in self.x_name):
             pix2arcsec = 0.214
@@ -908,7 +909,13 @@ class MeanShearInBins:
                 weight = data["weight"][w]
                 self.g1.add_data(i, data["g1"][w] - data["c1"][w], weight)
                 self.g2.add_data(i, data["g2"][w] - data["c2"][w], weight)
-            self.x.add_data(i, data[self.x_name][w], weight)
+
+            if self.x_name in data:
+                self.x.add_data(i, data[self.x_name][w], weight)
+            elif self.shear_catalog_type == "metadetect":
+                self.x.add_data(i, data["00/" + self.x_name][w], weight)
+            else:
+                raise ValueError(f"Please specify a valid x_name for the shear catalog type {self.shear_catalog_type}.")
 
     def collect(self, comm=None):
         count1, g1, var1 = self.g1.collect(comm, mode="gather")
