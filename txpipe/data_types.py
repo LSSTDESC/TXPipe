@@ -426,7 +426,7 @@ class MapsFile(HDFFile):
 
     def write_map_pixval(self, map_name, pixel, value, metadata, nside_coverage=32):
         """
-        Save an array of pixel indicies and values to an HDF5 subgroup in healsparse format
+        Save an array of pixel indices and values to an HDF5 subgroup in healsparse format
 
         The metadata is also saved.
 
