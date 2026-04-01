@@ -138,6 +138,7 @@ TXSourceSelectorMetadetect:
     delta_gamma: 0.02
     source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
     shear_prefix: ''
+    psf_prefix: psf_
 
 TXSourceTomography:
     bands: riz #used for selection
@@ -215,12 +216,12 @@ TXBlinding:
     delete_unblinded: true
 
 TXDiagnosticQuantiles:
-    psf_prefix: 00/mcal_psf_
+    psf_prefix: 00/psf_
     shear_prefix: 00/
     nbins: 20
 
 TXSourceDiagnosticPlots:
-    psf_prefix: 00/mcal_psf_
+    psf_prefix: ""
     shear_prefix: 00/
     nbins: 20
     g_min: -0.01
@@ -245,7 +246,7 @@ TXDiagnosticMaps:
     npix_x: 60
     npix_y: 60
     depth_cut: 23.0
-    psf_prefix: mcal_psf_
+    psf_prefix: psf_
 
 TXSourceMaps:
     sparse: true  # Generate sparse maps - faster if using small areas

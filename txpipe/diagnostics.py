@@ -223,9 +223,9 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 "g1",
                 "g2",
                 "T",
-                "mcal_psf_g1",
-                "mcal_psf_g2",
-                "mcal_psf_T_mean",
+                f"{psf_prefix}psf_g1",
+                f"{psf_prefix}psf_g2",
+                f"{psf_prefix}psf_T_mean",
                 "s2n",
                 "weight",
             )
@@ -302,15 +302,16 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         psf_g_edges = self.get_bin_edges("psf_g1")
 
+
         p1 = MeanShearInBins(
-            f"{psf_prefix}g1",
+            f"psf_g1",
             psf_g_edges,
             delta_gamma,
             cut_source_bin=True,
             shear_catalog_type=self.config["shear_catalog_type"],
         )
         p2 = MeanShearInBins(
-            f"{psf_prefix}g2",
+            f"psf_g2",
             psf_g_edges,
             delta_gamma,
             cut_source_bin=True,
@@ -324,6 +325,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
             if data is None:
                 break
+
             p1.add_data(data)
             p2.add_data(data)
 
@@ -402,7 +404,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         psf_T_edges = self.get_bin_edges("psf_T_mean")
 
         binnedShear = MeanShearInBins(
-            f"{psf_prefix}T_mean",
+            f"psf_T_mean",
             psf_T_edges,
             delta_gamma,
             cut_source_bin=True,
