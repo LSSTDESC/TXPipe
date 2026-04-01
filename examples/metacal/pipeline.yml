@@ -47,7 +47,6 @@ stages:
         photoz_stack: shear_photoz_stack
         photoz_realizations: source_photoz_realizations
   - name: TXSourceSelectorMetacal    # select and split objects into source bins
-  - name: TXSourceTomography
   - name: NZDirInformerSource       # Prepare the DIR method inputs for the source sample
     classname: NZDirInformer
     aliases:

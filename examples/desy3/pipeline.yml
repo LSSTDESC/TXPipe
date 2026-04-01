@@ -3,7 +3,6 @@
 stages:
 
     - name: TXSourceSelectorMetacal # select and split objects into source bins
-    - name: TXSourceTomography
     - name: TXShearCalibration   # Calibrate and split the source sample tomographically
     #- name: TXPhotozPlots
     #- name: TXPhotozSourceStack 

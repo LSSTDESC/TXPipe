@@ -23,7 +23,6 @@ stages:
   - name: TXSourceSelectorSimple
     nprocess: 1
     threads_per_process: 1
-  - name: TXSourceTomography
   - name: TXShearCalibration
   - name: TXLSSWeightsUnit
   - name: TXRandomForestLensSelector

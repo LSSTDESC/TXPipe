@@ -61,10 +61,6 @@ TXSourceSelectorMetacal:
     source_zbin_edges: [0.2, 0.43, 0.63, 0.90, 1.30]
     shear_prefix: mcal_
 
-
-TXSourceTomography:
-    bands: ri #used for selection
-    source_zbin_edges: [0.1, 0.3, 0.5, 0.7, 0.9, 1.2]
 TXSourceSelectorLensfit:
     bands: ri #used for selection
     T_cut: 0.0

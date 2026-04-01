@@ -2,7 +2,6 @@
 stages:
   - name: TXSimpleMock             # Convert a text file mock catalog to HDF5
   - name: TXSourceSelectorSimple   # select and split objects into source bins
-  - name: TXSourceTomography
   - name: TXShearCalibration       # Calibrate and split the source sample tomographically
   - name: TXMockTruthPZ            # Generate PDFs as narrow gaussian centered on the true redshifts
     aliases:

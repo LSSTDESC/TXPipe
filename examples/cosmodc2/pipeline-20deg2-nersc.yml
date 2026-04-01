@@ -16,8 +16,6 @@ stages:
     nprocess: 32
   - name: TXSourceSelectorMetadetect
     nprocess: 32
-  - name: TXSourceTomography
-    threads_per_process: 4
   - name: TXLSSWeightsUnit
   - name: TXRandomForestLensSelector
     nprocess: 32

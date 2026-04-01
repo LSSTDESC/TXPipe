@@ -24,7 +24,6 @@ stages:
   - name: TXSourceNoiseMaps
   - name: TXLensNoiseMaps
   - name: TXSourceSelector
-  - name: TXSourceTomography
   - name: PZRailEstimateSource
   - name: PZRailEstimateLensFromSource
   - name: TXShearCalibration
