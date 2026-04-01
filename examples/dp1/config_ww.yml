@@ -70,19 +70,20 @@ TXSourceSelectorSimple:
     source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
     shear_prefix: ''
 
+TXSourceTomography:
+    source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
+    bands: ugrizy
+
 
 TXRandomForestLensSelector:
     verbose: true
-
-TXSourceTomography:
-    spec_mag_column_format: "{band}_cModelMag"
-    spec_redshift_column: redshift
     bands: ugrizy
-    source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
     lens_zbin_edges: [0.1, 1.2]
     random_seed: 12344
     mag_i_limit: 24.1
     selection_type: maglim
+    spec_mag_column_format: "{band}_cModelMag"
+    spec_redshift_column: redshift
 
 TXPhotozSourceStack:
     classname: TXPhotozStack
