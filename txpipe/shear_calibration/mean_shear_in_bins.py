@@ -68,7 +68,6 @@ class MeanShearInBins:
 
         for i in range(self.size):
             stats = self.calibrators[i].collect(comm, allgather=True)
-            print(i, stats, stats.N_eff, stats.sigma_e)
             sigma1[i], sigma2[i] = stats.sigma / np.sqrt(stats.N_eff)
             g1[i], g2[i] = stats.mean_e
 

@@ -243,7 +243,6 @@ class MetacalCalculator(CalibrationCalculator):
 
         if self.resp_mean_diag:
             # Sets response to scalar R[0,0]==R[1,1] = (R[0,0]+R[1,1])/2 and nulls the off-diagonal elements (used in DES-Y3)
-            print("Setting  R[0,0]==R[1,1] = (R[0,0]+R[1,1])/2")
             Ravg = (R_mean[0, 0] + R_mean[1, 1]) / 2.0
             R_mean[1, 0] = R_mean[0, 1] = 0
             R_mean[0, 0] = R_mean[1, 1] = Ravg
@@ -472,13 +471,13 @@ class LensfitCalculator(CalibrationCalculator):
         if self.dec_cut == True:
             Nmask = dec[sel] > -25.0
             Smask = dec[sel] <= -25.0
-            print("Computing additive bias for North and South fields")
+
             self.C_N.add_data(0, g1[sel][Nmask], w[sel][Nmask])
             self.C_N.add_data(1, g2[sel][Nmask], w[sel][Nmask])
             self.C_S.add_data(0, g1[sel][Smask], w[sel][Smask])
             self.C_S.add_data(1, g2[sel][Smask], w[sel][Smask])
         else:
-            print("Field split config set to False, computing additive bias for whole dataset")
+
             self.C_N.add_data(0, g1[sel], w[sel])
             self.C_N.add_data(1, g2[sel], w[sel])
             self.C_S.add_data(0, np.zeros(n), np.zeros(n))
@@ -614,8 +613,8 @@ class HSCCalculator(CalibrationCalculator):
         self.count += n
         self.sum_weights += np.sum(w[sel])
         self.sum_sq_weights += np.sum(w[sel] ** 2)
-        self.shear_stats.add_data(0, g1[sel], w[sel])
-        self.shear_stats.add_data(1, g2[sel], w[sel])
+        self.shear_stats.add_data(0, g1[sel] - data["c1"][sel], w[sel])
+        self.shear_stats.add_data(1, g2[sel] - data["c2"][sel], w[sel])
 
         w = w[sel]
 
@@ -683,9 +682,7 @@ class HSCCalculator(CalibrationCalculator):
 
         calibrator = HSCCalibrator(R[0], K[0])
         mu = calibrator.apply(mean_e[0], mean_e[1])
-        print("mean_e", mean_e)
-        print("mu", mu)
-        print("calibrator", calibrator.K, calibrator.R)
+
         sigma_e = calibrator.calibrate_variance_to_sigma_e(var_e)
         sigma = calibrator.calibrate_sigma(np.sqrt(var_e))
         bin_stats = BinStats(count, Neff, mu, sigma_e, sigma, calibrator)

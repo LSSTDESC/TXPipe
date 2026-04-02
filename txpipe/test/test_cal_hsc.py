@@ -38,6 +38,8 @@ def core_hsc(comm):
         "m": m,
         "sigma_e": sigma_e,
         "weight": weight,
+        "c1": np.zeros_like(g[0]),
+        "c2": np.zeros_like(g[1])
     }
 
     # test each type of selector
