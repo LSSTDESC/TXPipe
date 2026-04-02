@@ -2,26 +2,6 @@ import numpy as np
 import warnings
 
 
-            # if self.shear_catalog_type in ["metacal", "metadetect"]:
-            #     # Get the inverse response matrix to apply
-            #     R_inv = np.linalg.inv(R[i])
-
-            #     # Apply the matrix in full to the shears and errors
-            #     g1[i], g2[i] = R_inv @ g
-            #     sigma1[i], sigma2[i] = R_inv @ sigma
-            # elif self.shear_catalog_type == "lensfit":
-            #     g1[i] = g1[i] * (1.0 / (1 + K[i]))
-            #     g2[i] = g2[i] * (1.0 / (1 + K[i]))
-
-            #     sigma1[i] = (1.0 / (1 + K[i])) * (sigma[0])
-            #     sigma2[i] = (1.0 / (1 + K[i])) * (sigma[1])
-            # else:
-            #     g1[i] = (g1[i] / (2 * R[i])) / (1 + K[i])
-            #     g2[i] = (g2[i] / (2 * R[i])) / (1 + K[i])
-
-            #     sigma1[i] = (sigma[0] / (2 * R[i])) / (1 + K[i])
-            #     sigma2[i] = (sigma[1] / (2 * R[i])) / (1 + K[i])
-
 class Calibrator:
     """
     Base class for classes which calibrate shear measurements.

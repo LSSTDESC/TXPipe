@@ -59,13 +59,13 @@ def core_lensfit(comm):
 
     # test each type of selector
     for sel in [select_all_bool, select_all_where, select_all_index]:
-        cal = LensfitCalculator(sel)
+        cal = LensfitCalculator(sel, dec_cut=True)
         cal.add_data(data)
 
-        K, C_N, C_S, n, _ = cal.collect(comm, allgather=True)
-        assert np.allclose(C_N, C_N_true)
-        assert np.allclose(K, K_true)
-        assert n == N * nproc
+        stats = cal.collect(comm, allgather=True)
+        assert np.allclose(stats.calibrator.c_n, C_N_true)
+        assert np.allclose(stats.calibrator.K, K_true)
+        assert stats.source_count == N * nproc
 
 
 def test_lensfit_serial():

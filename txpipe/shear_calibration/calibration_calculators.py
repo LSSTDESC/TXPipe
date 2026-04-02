@@ -374,7 +374,7 @@ class MetaDetectCalculator(CalibrationCalculator):
         Neff = sum_weights[0] ** 2 / sum_sq_weights[0]
 
         calibrator = MetaDetectCalibrator(R, mean_e[:2], mu_is_calibrated=False)
-        mu = calibrator.apply(mean_e[0], mean_e[1])
+        mu = calibrator.apply(mean_e[0], mean_e[1], subtract_mean=False)
         sigma_e = calibrator.calibrate_variance_to_sigma_e(var_e[0:2])
         sigma = calibrator.calibrate_sigma(np.sqrt(var_e[:2]))
         bin_stats = BinStats(counts[0], Neff, mu, sigma_e, sigma, calibrator)
@@ -541,7 +541,7 @@ class LensfitCalculator(CalibrationCalculator):
             Neff = sum_weights**2 / sum_sq_weights
 
         calibrator = LensfitCalibrator(K[0], C_N, C_S, dec_cut=self.dec_cut)
-        mu = calibrator.apply(mean_e[0], mean_e[1])
+        mu = calibrator.apply(mean_e[0], mean_e[1], subtract_mean=False)
         sigma_e = calibrator.calibrate_variance_to_sigma_e(var_e)
         sigma = calibrator.calibrate_sigma(np.sqrt(var_e))
         bin_stats = BinStats(count, Neff, mu, sigma_e, sigma, calibrator)
@@ -681,7 +681,7 @@ class HSCCalculator(CalibrationCalculator):
             Neff = sum_weights**2 / sum_sq_weights
 
         calibrator = HSCCalibrator(R[0], K[0])
-        mu = calibrator.apply(mean_e[0], mean_e[1])
+        mu = calibrator.apply(mean_e[0], mean_e[1], subtract_mean=False)
 
         sigma_e = calibrator.calibrate_variance_to_sigma_e(var_e)
         sigma = calibrator.calibrate_sigma(np.sqrt(var_e))
@@ -796,7 +796,7 @@ class MockCalculator(CalibrationCalculator):
         calibrator = NullCalibrator()
 
         Neff = sum_weights**2 / sum_weights_sq
-        mu = calibrator.apply(mean_e[0], mean_e[1])
+        mu = calibrator.apply(mean_e[0], mean_e[1], subtract_mean=False)
         sigma_e = calibrator.calibrate_variance_to_sigma_e(var_e)
         sigma = calibrator.calibrate_sigma(np.sqrt(var_e))
         bin_stats = BinStats(count, Neff, mu, sigma_e, sigma, calibrator)
