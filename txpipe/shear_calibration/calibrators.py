@@ -122,7 +122,7 @@ class NullCalibrator:
         calibrated_var_e: array or list length 2
             The calibrated variance
         """
-        return np.sqrt(var_e)
+        return np.sqrt(var_e).mean()
 
     def calibrate_sigma(self, sigma):
         """

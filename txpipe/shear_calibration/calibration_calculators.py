@@ -743,7 +743,7 @@ class MockCalculator(CalibrationCalculator):
         self.count += n
         w = w[sel]
         self.sum_weights += np.sum(w)
-        self.sum_weights_sq += np.sum(w**2)
+        self.sum_sq_weights += np.sum(w**2)
         self.shear_stats.add_data(0, g1[sel], w)
         self.shear_stats.add_data(1, g2[sel], w)
 
@@ -777,16 +777,16 @@ class MockCalculator(CalibrationCalculator):
             if allgather:
                 count = comm.allreduce(self.count)
                 sum_weights = comm.allreduce(self.sum_weights)
-                sum_weights_sq = comm.allreduce(self.sum_weights_sq)
+                sum_weights_sq = comm.allreduce(self.sum_sq_weights)
 
             else:
                 count = comm.reduce(self.count)
                 sum_weights = comm.reduce(self.sum_weights)
-                sum_weights_sq = comm.reduce(self.sum_weights_sq)
+                sum_weights_sq = comm.reduce(self.sum_sq_weights)
         else:
             count = self.count
             sum_weights = self.sum_weights
-            sum_weights_sq = self.sum_weights_sq
+            sum_weights_sq = self.sum_sq_weights
 
         # Collect the weighted means of these numbers.
         # this collects all the values from the different
