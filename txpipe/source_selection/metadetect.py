@@ -1,19 +1,15 @@
 from .base import TXSourceSelectorBase, BinStats
 from .base import select_weak_lensing_sample, select_tomographic_weak_lensing_sample
-from ..utils.calibrators import MetaDetectCalibrator
-from ..utils.calibration_tools import (
+from ..shear_calibration import (
+    MetaDetectCalibrator,
     metadetect_variants,
     MetaDetectCalculator,
     band_variants,
-    read_shear_catalog_type,
     META_VARIANTS
 )
-from ..binning import build_tomographic_classifier, apply_classifier, read_training_data
 import numpy as np
 from ceci.config import StageParameter
 from ..utils import rename_iterated
-from .utils import SourceNumberDensityStats
-from ..base_stage import PipelineStage
 
 
 class TXSourceSelectorMetadetect(TXSourceSelectorBase):

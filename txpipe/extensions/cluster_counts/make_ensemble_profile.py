@@ -4,7 +4,7 @@ import numpy as np
 from ...base_stage import PipelineStage
 from .sources_select_compute import CLClusterShearCatalogs, CombinedClusterCatalog
 from ...data_types import ShearCatalog, HDFFile, PhotozPDFFile, FiducialCosmology, TomographyCatalog, PickleFile
-from ...utils.calibrators import Calibrator
+from ...shear_calibration import Calibrator
 from collections import defaultdict
 import yaml
 import ceci

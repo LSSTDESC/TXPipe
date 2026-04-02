@@ -1,9 +1,11 @@
-from ..utils.calibration_tools import (
+from ..shear_calibration import (
     MeanShearInBins,
     MetacalCalculator,
     MetaDetectCalculator,
+    MetaCalibrator,
+    NullCalibrator,
 )
-from ..utils import MetaCalibrator, LensfitCalibrator, NullCalibrator
+
 import numpy as np
 import mockmpi
 

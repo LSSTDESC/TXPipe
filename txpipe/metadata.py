@@ -2,7 +2,7 @@ import numpy as np
 import yaml
 from .base_stage import PipelineStage
 from .data_types import TomographyCatalog, MapsFile, HDFFile, YamlFile, ShearCatalog
-from .utils.calibration_tools import read_shear_catalog_type
+from .utils import read_shear_catalog_type
 from .utils import choose_pixelization
 
 
