@@ -744,7 +744,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 # In KiDS, the additive bias is calculated and removed per North and South field
                 # therefore, we add dec to split data into these fields.
                 # You can choose not to by setting dec_cut = 90 in the config, for example.
-                g1, g2 = cal.apply(dec, g1, g2)
+                g1, g2 = cal.apply(g1, g2, dec)
             else:
                 g1, g2 = cal.apply(g1, g2, c1, c2)
 

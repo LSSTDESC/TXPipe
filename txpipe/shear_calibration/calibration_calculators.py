@@ -1,6 +1,7 @@
 import numpy as np
 from .names import META_VARIANTS
-from .calibrators import MetaCalibrator, LensfitCalibrator, HSCCalibrator, MockCalibrator, MetaDetectCalibrator, NullCalibrator
+from .calibrators import MetaCalibrator, LensfitCalibrator, HSCCalibrator, MetaDetectCalibrator, NullCalibrator
+from .utils import BinStats
 
 class _DataWrapper:
     """
@@ -37,12 +38,12 @@ class _DataWrapper:
 
 class CalibrationCalculator:
     def __init__(self, selector):
-        from parallel_statistics import ParallelMean
+        from parallel_statistics import ParallelMeanVariance
         self.selector = selector
         self.count = 0
         self.sum_weights = 0
         self.sum_sq_weights = 0
-        self.mean_shear = ParallelMean(size=2)
+        self.shear_stats = ParallelMeanVariance(size=2)
 
 
 class MetacalCalculator(CalibrationCalculator):
@@ -169,10 +170,13 @@ class MetacalCalculator(CalibrationCalculator):
         self.sel_bias_means.add_data(6, g2[sel_2p], weight2p[sel_2p])
         self.sel_bias_means.add_data(7, g2[sel_2m], weight2m[sel_2m])
 
+        self.shear_stats.add_data(0, g1[sel_00], w00)
+        self.shear_stats.add_data(1, g2[sel_00], w00)
+
         # The user of this class may need the base selection, so return it
         return sel_00
 
-    def collect(self, comm=None, allgather=False):
+    def collect(self, comm=None, allgather=False) -> BinStats:
         """
         Finalize and sum up all the response values, returning separate
         R (estimator response) and S (selection bias) 2x2 matrices
@@ -212,6 +216,7 @@ class MetacalCalculator(CalibrationCalculator):
         mode = "allgather" if allgather else "gather"
         _, S = self.sel_bias_means.collect(comm, mode)
         _, R = self.cal_bias_means.collect(comm, mode)
+        _, mean_e, var_e = self.shear_stats.collect(comm, mode)
 
         # Unpack the flat mean R and S values into
         # matrices
@@ -247,7 +252,11 @@ class MetacalCalculator(CalibrationCalculator):
             S_mean[1, 0] = S_mean[0, 1] = 0
             S_mean[0, 0] = S_mean[1, 1] = Savg
 
-        return R_mean, S_mean, count, Neff
+        calibrator = MetaCalibrator(R_mean, S_mean, mean_e, mu_is_calibrated=False)
+        sigma_e = calibrator.calibrate_variance_to_sigma_e(var_e)
+        sigma = calibrator.calibrate_sigma(np.sqrt(var_e))
+        bin_stats = BinStats(count, Neff, calibrator.mu, sigma_e, sigma, calibrator)
+        return bin_stats
 
 
 class MetaDetectCalculator(CalibrationCalculator):
@@ -263,10 +272,17 @@ class MetaDetectCalculator(CalibrationCalculator):
         delta_gamma: float
             The difference in applied g between 1p and 1m metacal variants
         """
-        from parallel_statistics import ParallelMean
-        super().__init__(selector)
+        from parallel_statistics import ParallelMean, ParallelMeanVariance
+        # The MetaDetectCalculator is a bit different to the others in that
+        # it has to keep track of 5 copies of everything, one for each variant.
+        # so there is no point calling the parent __init__.
+
+        self.selector = selector
+        self.counts = np.zeros(5, dtype=int)
+        self.sum_weights = np.zeros(5, dtype=int)
+        self.sum_sq_weights = np.zeros(5, dtype=int)
         self.delta_gamma = delta_gamma
-        self.mean_e = ParallelMean(size=10)
+        self.shear_stats = ParallelMeanVariance(size=10)
 
     def add_data(self, data, *args, **kwargs):
         """Select objects from a new chunk of data and tally their responses
@@ -292,15 +308,15 @@ class MetaDetectCalculator(CalibrationCalculator):
                 continue
             g1 = data_p["g1"][sel]
             g2 = data_p["g2"][sel]
-            self.mean_e.add_data(2 * i + 0, g1, w)
-            self.mean_e.add_data(2 * i + 1, g2, w)
+            self.shear_stats.add_data(2 * i + 0, g1, w)
+            self.shear_stats.add_data(2 * i + 1, g2, w)
             self.counts[i] += w.size
             self.sum_weights[i] += np.sum(w)
             self.sum_sq_weights[i] += np.sum(w**2)
 
         return selections
 
-    def collect(self, comm=None, allgather=False):
+    def collect(self, comm=None, allgather=False) -> BinStats:
         """
         Finalize and sum up all the response values, returning separate
         R (estimator response) 2x2 matrix
@@ -316,7 +332,7 @@ class MetaDetectCalculator(CalibrationCalculator):
         """
         # collect all the things we need
         mode = "allgather" if allgather else "gather"
-        _, mean_e = self.mean_e.collect(comm, mode)
+        _, mean_e, var_e = self.shear_stats.collect(comm, mode)
 
         if comm is not None:
             if allgather:
@@ -337,8 +353,8 @@ class MetaDetectCalculator(CalibrationCalculator):
             sum_sq_weights = self.sum_sq_weights
 
         # The ordering of these arrays is, from above:
-        # 0: g1 (not actually used here)
-        # 1: g2 (not actually used here)
+        # 0: g1
+        # 1: g2
         # 2: g1_1p
         # 3: g2_1p
         # 4: g1_1m
@@ -356,8 +372,16 @@ class MetaDetectCalculator(CalibrationCalculator):
         R[1, 1] = mean_e[7] - mean_e[9]  # g2_2p - g2_2m
         R /= self.delta_gamma
 
+        Neff = sum_weights[0] ** 2 / sum_sq_weights[0]
+
+        calibrator = MetaDetectCalibrator(R, mean_e[:2], mu_is_calibrated=False)
+        mu = calibrator.apply(mean_e[0], mean_e[1])
+        sigma_e = calibrator.calibrate_variance_to_sigma_e(var_e[0:2])
+        sigma = calibrator.calibrate_sigma(np.sqrt(var_e[:2]))
+        bin_stats = BinStats(counts[0], Neff, mu, sigma_e, sigma, calibrator)
+
         # we just want the count of the 00 base catalog
-        return R, counts[0], sum_weights[0] ** 2 / sum_sq_weights[0]
+        return bin_stats
 
 
 class LensfitCalculator(CalibrationCalculator):
@@ -433,6 +457,9 @@ class LensfitCalculator(CalibrationCalculator):
         self.sum_weights += np.sum(w[sel])
         self.sum_sq_weights += np.sum(w[sel] ** 2)
 
+        self.shear_stats.add_data(0, g1[sel], w[sel])
+        self.shear_stats.add_data(1, g2[sel], w[sel])
+
         # Accumulate the calibration quantities so that later we
         # can compute the weighted mean of the values
         if self.input_m_is_weighted:
@@ -459,7 +486,7 @@ class LensfitCalculator(CalibrationCalculator):
 
         return sel
 
-    def collect(self, comm=None, allgather=False):
+    def collect(self, comm=None, allgather=False) -> BinStats:
         """
         Finalize and sum up all the response values, returning calibration
         quantities.
@@ -507,13 +534,20 @@ class LensfitCalculator(CalibrationCalculator):
         _, K = self.K.collect(comm, mode)
         _, C_N = self.C_N.collect(comm, mode)
         _, C_S = self.C_S.collect(comm, mode)
+        _, mean_e, var_e = self.shear_stats.collect(comm, mode)
 
         if sum_weights is None:
             Neff = None
         else:
             Neff = sum_weights**2 / sum_sq_weights
 
-        return K, C_N, C_S, count, Neff
+        calibrator = LensfitCalibrator(K[0], C_N, C_S, dec_cut=self.dec_cut)
+        mu = calibrator.apply(mean_e[0], mean_e[1])
+        sigma_e = calibrator.calibrate_variance_to_sigma_e(var_e)
+        sigma = calibrator.calibrate_sigma(np.sqrt(var_e))
+        bin_stats = BinStats(count, Neff, mu, sigma_e, sigma, calibrator)
+
+        return bin_stats
 
 
 class HSCCalculator(CalibrationCalculator):
@@ -573,11 +607,15 @@ class HSCCalculator(CalibrationCalculator):
         # Extract the calibration quantities for the selected objects
         w = data["weight"]
         K = data["m"]
+        g1 = data['g1']
+        g2 = data['g2']
         R = 1.0 - data["sigma_e"] ** 2
         n = w[sel].size
         self.count += n
         self.sum_weights += np.sum(w[sel])
         self.sum_sq_weights += np.sum(w[sel] ** 2)
+        self.shear_stats.add_data(0, g1[sel], w[sel])
+        self.shear_stats.add_data(1, g2[sel], w[sel])
 
         w = w[sel]
 
@@ -587,7 +625,7 @@ class HSCCalculator(CalibrationCalculator):
         self.K.add_data(0, K[sel], w)
         return sel
 
-    def collect(self, comm=None, allgather=False):
+    def collect(self, comm=None, allgather=False) -> BinStats:
         """
         Finalize and sum up all the response values, returning calibration
         quantities.
@@ -636,13 +674,24 @@ class HSCCalculator(CalibrationCalculator):
         mode = "allgather" if allgather else "gather"
         _, R = self.R.collect(comm, mode)
         _, K = self.K.collect(comm, mode)
+        _, mean_e, var_e = self.shear_stats.collect(comm, mode)
 
         if sum_weights is None:
             Neff = None
         else:
             Neff = sum_weights**2 / sum_sq_weights
 
-        return R, K, count, Neff
+        calibrator = HSCCalibrator(R[0], K[0])
+        mu = calibrator.apply(mean_e[0], mean_e[1])
+        print("mean_e", mean_e)
+        print("mu", mu)
+        print("calibrator", calibrator.K, calibrator.R)
+        sigma_e = calibrator.calibrate_variance_to_sigma_e(var_e)
+        sigma = calibrator.calibrate_sigma(np.sqrt(var_e))
+        bin_stats = BinStats(count, Neff, mu, sigma_e, sigma, calibrator)
+
+
+        return bin_stats
 
 
 class MockCalculator(CalibrationCalculator):
@@ -691,15 +740,20 @@ class MockCalculator(CalibrationCalculator):
 
         # Extract the calibration quantities for the selected objects
         w = data["weight"]
+        g1 = data['g1']
+        g2 = data['g2']
         n = w[sel].size
         self.count += n
         w = w[sel]
         self.sum_weights += np.sum(w)
-        self.sum_weights_sq += np.sum(w)
+        self.sum_weights_sq += np.sum(w**2)
+        self.shear_stats.add_data(0, g1[sel], w)
+        self.shear_stats.add_data(1, g2[sel], w)
+
 
         return sel
 
-    def collect(self, comm=None, allgather=False):
+    def collect(self, comm=None, allgather=False) -> BinStats:
         """
         Finalize and sum up all the response values, returning calibration
         quantities.
@@ -736,10 +790,20 @@ class MockCalculator(CalibrationCalculator):
             count = self.count
             sum_weights = self.sum_weights
             sum_weights_sq = self.sum_weights_sq
+
         # Collect the weighted means of these numbers.
         # this collects all the values from the different
         # processes and over all the chunks of data
         mode = "allgather" if allgather else "gather"
-        return count, sum_weights**2 / sum_weights_sq
+        _, mean_e, var_e = self.shear_stats.collect(comm, mode)
+        calibrator = NullCalibrator()
+
+        Neff = sum_weights**2 / sum_weights_sq
+        mu = calibrator.apply(mean_e[0], mean_e[1])
+        sigma_e = calibrator.calibrate_variance_to_sigma_e(var_e)
+        sigma = calibrator.calibrate_sigma(np.sqrt(var_e))
+        bin_stats = BinStats(count, Neff, mu, sigma_e, sigma, calibrator)
+
+        return bin_stats
 
 

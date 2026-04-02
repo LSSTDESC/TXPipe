@@ -77,7 +77,7 @@ def test_lensfit_parallel():
     mockmpi.mock_mpiexec(10, core_lensfit)
 
 
-def test_mean_shear():
+def test_lensfit_mean_shear_no_weights():
     name = "x"
     limits = [-1.0, 0.0, 1.0]
     delta_gamma = 0.02
@@ -113,7 +113,7 @@ def test_mean_shear():
     assert np.allclose(sigma2, expected_sigma2)
 
 
-def test_mean_shear_weights():
+def test_lensfit_mean_shear_weights():
     name = "x"
     limits = [-1.0, 0.0, 1.0]
     delta_gamma = 0.02
@@ -158,7 +158,7 @@ def test_lensfit_array():
     g1_obs = (g1) * (1 + K[0]) + C_N[0]
     g2_obs = (g2) * (1 + K[0]) + C_N[1]
     g_obs = [g1_obs, g2_obs]
-    g1_, g2_ = cal.apply(dec, g_obs[0], g_obs[1])
+    g1_, g2_ = cal.apply(g_obs[0], g_obs[1], dec)
 
     assert np.allclose(g1_, g1)
     assert np.allclose(g2_, g2)

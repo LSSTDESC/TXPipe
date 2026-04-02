@@ -71,11 +71,13 @@ def core_metacal(comm):
     for sel in [select_all_bool, select_all_where, select_all_index]:
         cal = MetacalCalculator(select_all_bool, delta_gamma)
         cal.add_data(data)
-        R, S, n, _ = cal.collect(comm, allgather=True)
+        stats = cal.collect(comm, allgather=True)
+        calibrator = stats.calibrator
 
-        assert np.allclose(R, R_true)
-        assert np.allclose(S, 0.0)
-        assert n == N * nproc
+        assert isinstance(calibrator, MetaCalibrator)
+        assert np.allclose(calibrator.R, R_true)
+        assert np.allclose(calibrator.R_sel, 0.0)
+        assert stats.source_count == N * nproc
 
     # equal non-unit weights - everything should be the same.
     data["weight"] *= 0.5
@@ -83,12 +85,12 @@ def core_metacal(comm):
     for sel in [select_all_bool, select_all_where, select_all_index]:
         cal = MetacalCalculator(sel, delta_gamma)
         cal.add_data(data)
-        R, S, n, _ = cal.collect(comm, allgather=True)
-        print("R = ", R)
+        stats = cal.collect(comm, allgather=True)
+        calibrator = stats.calibrator
 
-        assert np.allclose(R, R_true)
-        assert np.allclose(S, 0.0)
-        assert n == N * nproc
+        assert np.allclose(calibrator.R, R_true)
+        assert np.allclose(calibrator.R_sel, 0.0)
+        assert stats.source_count == N * nproc
 
     # random weights.  since R is constant this should still be the same
     data["weight"] = np.random.uniform(0, 1, size=N)
@@ -96,12 +98,13 @@ def core_metacal(comm):
     for sel in [select_all_bool, select_all_where, select_all_index]:
         cal = MetacalCalculator(sel, delta_gamma)
         cal.add_data(data)
-        R, S, n, _ = cal.collect(comm, allgather=True)
-        print("R = ", R)
+        stats = cal.collect(comm, allgather=True)
+        calibrator = stats.calibrator
+        print("R = ", calibrator.R)
 
-        assert np.allclose(R, R_true)
-        assert np.allclose(S, 0.0)
-        assert n == N * nproc
+        assert np.allclose(calibrator.R, R_true)
+        assert np.allclose(calibrator.R_sel, 0.0)
+        assert stats.source_count == N * nproc
 
 
 def core_metadet(comm):
@@ -143,10 +146,12 @@ def core_metadet(comm):
     for sel in [select_all_bool_md, select_all_where_md, select_all_index_md]:
         cal = MetaDetectCalculator(sel, delta_gamma)
         cal.add_data(data)
-        R, n, _ = cal.collect(comm, allgather=True)
+        stats = cal.collect(comm, allgather=True)
+        calibrator = stats.calibrator
 
-        assert np.allclose(R, R_true)
-        assert np.allclose(n, N * nproc)
+        assert np.allclose(calibrator.R, R_true)
+        assert np.allclose(calibrator.R_sel, 0.0)
+        assert stats.source_count == N * nproc
 
     # equal non-unit weights - everything should be the same.
     data["1p/weight"] *= 0.5
@@ -157,9 +162,11 @@ def core_metadet(comm):
     for sel in [select_all_bool_md, select_all_where_md, select_all_index_md]:
         cal = MetaDetectCalculator(sel, delta_gamma)
         cal.add_data(data)
-        R, n, _ = cal.collect(comm, allgather=True)
-        print("R = ", R)
-        assert np.allclose(n, N * nproc)
+        stats = cal.collect(comm, allgather=True)
+        calibrator = stats.calibrator
+        print("R = ", calibrator.R)
+        assert np.allclose(calibrator.R_sel, 0.0)
+        assert stats.source_count == N * nproc
 
     # random weights.  since R is constant this should still be the same
     data["1p/weight"] *= np.random.uniform(0, 1, size=N)
@@ -170,11 +177,13 @@ def core_metadet(comm):
     for sel in [select_all_bool_md, select_all_where_md, select_all_index_md]:
         cal = MetaDetectCalculator(sel, delta_gamma)
         cal.add_data(data)
-        R, n, _ = cal.collect(comm, allgather=True)
-        print("R = ", R)
+        stats = cal.collect(comm, allgather=True)
+        calibrator = stats.calibrator
+        print("R = ", calibrator.R)
 
-        assert np.allclose(R, R_true)
-        assert np.allclose(n, N * nproc)
+        assert np.allclose(calibrator.R, R_true)
+        assert np.allclose(calibrator.R_sel, 0.0)
+        assert stats.source_count == N * nproc
 
 
 def test_metacalibrator_serial():
@@ -190,7 +199,7 @@ def test_metadetect_parallel():
     mockmpi.mock_mpiexec(10, core_metadet)
 
 
-def test_mean_shear():
+def test_mean_shear_no_weights():
     name = "x"
     limits = [-1.0, 0.0, 1.0]
     delta_gamma = 0.02
@@ -389,6 +398,6 @@ def test_null_mean():
 
 if __name__ == "__main__":
     test_metacalibrator_serial()
-    test_metacalibrator_parallel()
-    test_mean_shear()
+    test_metadetect_parallel()
+    test_mean_shear_no_weights()
     test_mean_shear_weights()

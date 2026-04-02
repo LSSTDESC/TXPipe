@@ -1,7 +1,6 @@
-from .base import TXSourceSelectorBase, BinStats
+from .base import TXSourceSelectorBase
 from .base import select_weak_lensing_sample, select_tomographic_weak_lensing_sample
 from ..shear_calibration import (
-    MetaDetectCalibrator,
     metadetect_variants,
     MetaDetectCalculator,
     band_variants,
@@ -72,16 +71,6 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         calculators.append(MetaDetectCalculator(select_weak_lensing_sample, delta_gamma))
         return calculators
 
-    def accumulate_statistics(self, output_file, shear_data, start, end, tomo_bin, per_object_response, number_density_stats):
-        # Save the tomography for this chunk
-        self.write_tomography(output_file, start, end, tomo_bin, per_object_response)
-
-        # Accumulate information on the number counts and the selection biases.
-        # These will be brought together at the end.
-        # For metadetect we only want to accumulate info for the 00
-        # variant, so we take the first tomo_bin value.
-        number_density_stats.add_data(shear_data, tomo_bin[0])
-
     def write_tomography(self, outfile, start, end, source_bin, per_object_response):
         # Write out each of the individual variants.
         # The basic "bin" column was set up to be the same as the 00 variant,
@@ -146,18 +135,6 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         group.create_dataset("R_2d", (2, 2), dtype="f")
         return outfile
 
-    def compute_output_stats(self, calculator, mean, variance):
-        # Collate calibration values
-        R, N, Neff = calculator.collect(self.comm, allgather=True)
-        calibrator = MetaDetectCalibrator(R, mean, mu_is_calibrated=False)
-        mean_e = calibrator.mu.copy()
-
-        # Apply to the variances to get sigma_e
-        P = np.diag(np.linalg.inv(R @ R))
-        sigma_e = np.sqrt(0.5 * P @ variance)
-
-        # Like metacal, N_eff = N for metadetect
-        return BinStats(N, Neff, mean_e, sigma_e, calibrator)
 
     def calculate_tomography(self, pz_data, shear_data, calculators):
         """
