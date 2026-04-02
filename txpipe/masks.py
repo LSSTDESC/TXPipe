@@ -266,7 +266,7 @@ class TXSimpleMaskFrac(TXSimpleMask):
         Apply mask logic and replace selected pixels with fractional coverage values.
         """
         import healsparse as hsp
-
+ 
         mask, pixel_scheme, metadata = self.make_binary_mask()
         mask, metadata = self.finalize_mask(mask, pixel_scheme, metadata)
 
