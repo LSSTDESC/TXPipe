@@ -52,6 +52,10 @@ class MeanShearInBins:
             # through to the "selector" method above.
             w = self.calibrators[i].add_data(data, i)
             if self.shear_catalog_type == "metadetect":
+                # the metadetector selector returns selections
+                # for all 5 variants. We just want the unsheared on
+                # here.
+                w = w[0]
                 weight = data["00/weight"][w]
             else:
                 weight = data["weight"][w]
