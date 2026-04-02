@@ -286,6 +286,9 @@ class TXSimpleMaskFrac(TXSimpleMask):
         )
 
         # find the intersection of the mask cuts and the fractional coverage map
+        # fracdet contains the fractional coverage value
+        # mask is the boolean mask built by the cuts to aux maps
+        # frac_cut_mask is a boolean mask with only the high frac pixels
         frac_det_mask = hsp.operations.product_intersection(
             [fracdet, mask, frac_cut_mask]
         )
