@@ -1,6 +1,6 @@
 import numpy as np
-from ..utils import in_place_reduce
 from .names import META_VARIANTS
+from .calibrators import MetaCalibrator, LensfitCalibrator, HSCCalibrator, MockCalibrator, MetaDetectCalibrator, NullCalibrator
 
 class _DataWrapper:
     """
@@ -36,7 +36,13 @@ class _DataWrapper:
 
 
 class CalibrationCalculator:
-    pass
+    def __init__(self, selector):
+        from parallel_statistics import ParallelMean
+        self.selector = selector
+        self.count = 0
+        self.sum_weights = 0
+        self.sum_sq_weights = 0
+        self.mean_shear = ParallelMean(size=2)
 
 
 class MetacalCalculator(CalibrationCalculator):
@@ -74,11 +80,9 @@ class MetacalCalculator(CalibrationCalculator):
             The difference in applied g between 1p and 1m metacal variants
         """
         from parallel_statistics import ParallelMean
+        super().__init__(selector)
 
         self.selector = selector
-        self.count = 0
-        self.sum_weights = 0
-        self.sum_sq_weights = 0
         self.delta_gamma = delta_gamma
         self.resp_mean_diag = resp_mean_diag
         self.cal_bias_means = ParallelMean(size=4)
@@ -260,13 +264,9 @@ class MetaDetectCalculator(CalibrationCalculator):
             The difference in applied g between 1p and 1m metacal variants
         """
         from parallel_statistics import ParallelMean
-
-        self.selector = selector
+        super().__init__(selector)
         self.delta_gamma = delta_gamma
         self.mean_e = ParallelMean(size=10)
-        self.counts = np.zeros(5, dtype=int)
-        self.sum_weights = np.zeros(5, dtype=int)
-        self.sum_sq_weights = np.zeros(5, dtype=int)
 
     def add_data(self, data, *args, **kwargs):
         """Select objects from a new chunk of data and tally their responses
@@ -386,7 +386,7 @@ class LensfitCalculator(CalibrationCalculator):
             Function that selects objects
         """
         from parallel_statistics import ParallelMean
-
+        super().__init__(selector)
         self.selector = selector
         # Create a set of calculators that will calculate (in parallel)
         # the three quantities we need to compute the overall calibration
@@ -395,11 +395,6 @@ class LensfitCalculator(CalibrationCalculator):
         self.K = ParallelMean(1)
         self.C_N = ParallelMean(2)
         self.C_S = ParallelMean(2)
-        self.count = 0
-        self.sum_weights = 0
-        self.sum_sq_weights = 0
-
-        self.sum_weights_sq = 0
         # In KiDS, the additive bias is calculated and removed per North and South field
         # we have implemented a config to choose whether or not to do this split
         self.dec_cut = dec_cut
@@ -546,17 +541,13 @@ class HSCCalculator(CalibrationCalculator):
             Function that selects objects
         """
         from parallel_statistics import ParallelMean
-
-        self.selector = selector
+        super().__init__(selector)
         # Create a set of calculators that will calculate (in parallel)
         # the three quantities we need to compute the overall calibration
         # We create these, then add data to them below, then collect them
         # together over all the processes
         self.K = ParallelMean(1)
         self.R = ParallelMean(1)
-        self.count = 0
-        self.sum_weights = 0
-        self.sum_sq_weights = 0
 
     def add_data(self, data, *args, **kwargs):
         """Select objects from a new chunk of data and tally their responses
@@ -678,10 +669,8 @@ class MockCalculator(CalibrationCalculator):
         selector: function
             Function that selects objects
         """
-        self.selector = selector
-        self.count = 0
-        self.sum_weights = 0
-        self.sum_weights_sq = 0
+        super().__init__(selector)
+        # There is nothing else to do for the mock calculator.
 
     def add_data(self, data, *args, **kwargs):
         """Select objects from a new chunk of data and tally their responses
