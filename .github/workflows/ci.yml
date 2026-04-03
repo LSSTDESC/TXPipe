@@ -157,23 +157,27 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-14]
-        pipeline: [metadetect, metacal, redmagic, lensfit, metadetect_source_only, mock_shear]
         include:
           - os: ubuntu-latest
-            INSTALL_DEPS: echo nothing to do
+            pipeline: metadetect
+          - os: ubuntu-latest
+            pipeline: metacal
+          - os: ubuntu-latest
+            pipeline: redmagic
+          - os: ubuntu-latest
+            pipeline: lensfit
+          - os: ubuntu-latest
+            pipeline: metadetect_source_only
+          - os: ubuntu-latest
+            pipeline: mock_shear
           - os: macos-14
-            INSTALL_DEPS: echo nothing to do
+            pipeline: metadetect
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
         submodules: true
-
-    - name: Install dependencies
-      run: |
-        ${{ matrix.INSTALL_DEPS }}
 
     - name: Restore conda environment
       id: restore-conda
