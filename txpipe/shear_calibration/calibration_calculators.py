@@ -1,5 +1,6 @@
-import numpy as np
 import warnings
+
+import numpy as np
 from .names import META_VARIANTS
 from .calibrators import MetaCalibrator, LensfitCalibrator, HSCCalibrator, MetaDetectCalibrator, NullCalibrator
 from .utils import BinStats
