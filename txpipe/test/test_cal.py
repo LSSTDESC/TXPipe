@@ -154,11 +154,11 @@ def core_metadet(comm):
         assert stats.source_count == N * nproc
 
     # equal non-unit weights - everything should be the same.
-    data["00/weight"]  *= 0.5
-    data["1p/weight"]  *= 0.5
-    data["1m/weight"]  *= 0.5
-    data["2p/weight"]  *= 0.5
-    data["2m/weight"]  *= 0.5
+    data["00/weight"] *= 0.5
+    data["1p/weight"] *= 0.5
+    data["1m/weight"] *= 0.5
+    data["2p/weight"] *= 0.5
+    data["2m/weight"] *= 0.5
     print('weight = ', data['1p/weight'])
 
     # test each type of selector
