@@ -83,7 +83,6 @@ class MetacalCalculator(CalibrationCalculator):
         from parallel_statistics import ParallelMean
         super().__init__(selector)
 
-        self.selector = selector
         self.delta_gamma = delta_gamma
         self.resp_mean_diag = resp_mean_diag
         self.cal_bias_means = ParallelMean(size=4)
@@ -410,7 +409,6 @@ class LensfitCalculator(CalibrationCalculator):
         """
         from parallel_statistics import ParallelMean
         super().__init__(selector)
-        self.selector = selector
         # Create a set of calculators that will calculate (in parallel)
         # the three quantities we need to compute the overall calibration
         # We create these, then add data to them below, then collect them

@@ -119,10 +119,10 @@ class NullCalibrator:
 
         Returns
         -------
-        calibrated_var_e: array or list length 2
-            The calibrated variance
+        calibrated_var_e: float
+            The calibrated standard deviation of the ellipticities in the sample.
         """
-        return np.sqrt(var_e).mean()
+        return np.sqrt(var_e.mean())
 
     def calibrate_sigma(self, sigma):
         """
@@ -230,8 +230,8 @@ class MetaCalibrator(Calibrator):
 
         Returns
         -------
-        calibrated_var_e: array or list length 2
-            The calibrated variance
+        sigma_e: float
+            The calibrated standard deviation of the ellipticities in the sample.
         """
         P = np.diag(np.linalg.inv(self.R @ self.R))
         return np.sqrt(0.5 * P @ var_e)
@@ -485,8 +485,8 @@ class LensfitCalibrator(Calibrator):
 
         Returns
         -------
-        calibrated_var_e: array or list length 2
-            The calibrated variance
+        calibrated_var_e: float
+            The calibrated standard deviation of the ellipticities in the sample.
         """
         return np.sqrt((0.5 * (var_e[0] + var_e[1]))) / (1 + self.K)
 
@@ -608,8 +608,8 @@ class HSCCalibrator(Calibrator):
 
         Returns
         -------
-        calibrated_var_e: array or list length 2
-            The calibrated variance
+        calibrated_var_e: float
+            The calibrated standard deviation of the ellipticities in the sample.
         """
         return np.sqrt((0.5 * (var_e[0] + var_e[1]))) / (1 + self.K)
 
