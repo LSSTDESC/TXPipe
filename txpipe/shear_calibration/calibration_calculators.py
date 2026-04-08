@@ -83,6 +83,7 @@ class MetacalCalculator(CalibrationCalculator):
         from parallel_statistics import ParallelMean
         super().__init__(selector)
 
+        self.selector = selector
         self.delta_gamma = delta_gamma
         self.resp_mean_diag = resp_mean_diag
         self.cal_bias_means = ParallelMean(size=4)
@@ -409,6 +410,7 @@ class LensfitCalculator(CalibrationCalculator):
         """
         from parallel_statistics import ParallelMean
         super().__init__(selector)
+        self.selector = selector
         # Create a set of calculators that will calculate (in parallel)
         # the three quantities we need to compute the overall calibration
         # We create these, then add data to them below, then collect them
@@ -466,22 +468,20 @@ class LensfitCalculator(CalibrationCalculator):
             # if not apply the weights
             self.K.add_data(0, K[sel], w[sel])
 
-        if self.dec_cut:
+        if self.dec_cut == True:
             Nmask = dec[sel] > -25.0
             Smask = dec[sel] <= -25.0
 
-            if Nmask.any():
-                self.C_N.add_data(0, g1[sel][Nmask], w[sel][Nmask])
-                self.C_N.add_data(1, g2[sel][Nmask], w[sel][Nmask])
-            if Smask.any():
-                self.C_S.add_data(0, g1[sel][Smask], w[sel][Smask])
-                self.C_S.add_data(1, g2[sel][Smask], w[sel][Smask])
+            self.C_N.add_data(0, g1[sel][Nmask], w[sel][Nmask])
+            self.C_N.add_data(1, g2[sel][Nmask], w[sel][Nmask])
+            self.C_S.add_data(0, g1[sel][Smask], w[sel][Smask])
+            self.C_S.add_data(1, g2[sel][Smask], w[sel][Smask])
         else:
 
             self.C_N.add_data(0, g1[sel], w[sel])
             self.C_N.add_data(1, g2[sel], w[sel])
-            self.C_S.add_data(0, np.zeros(n), np.ones(n))
-            self.C_S.add_data(1, np.zeros(n), np.ones(n))
+            self.C_S.add_data(0, np.zeros(n), np.zeros(n))
+            self.C_S.add_data(1, np.zeros(n), np.zeros(n))
 
         return sel
 
