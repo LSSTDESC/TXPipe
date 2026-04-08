@@ -135,11 +135,11 @@ def core_metadet(comm):
         "1m/g2": g_1m[1],
         "2p/g2": g_2p[1],
         "2m/g2": g_2m[1],
-        "00/weight": weight,
-        "1p/weight": weight,
-        "1m/weight": weight,
-        "2p/weight": weight,
-        "2m/weight": weight,
+        "00/weight": weight.copy(),
+        "1p/weight": weight.copy(),
+        "1m/weight": weight.copy(),
+        "2p/weight": weight.copy(),
+        "2m/weight": weight.copy(),
     }
 
     # test each type of selector

@@ -278,8 +278,8 @@ class MetaDetectCalculator(CalibrationCalculator):
 
         self.selector = selector
         self.counts = np.zeros(5, dtype=int)
-        self.sum_weights = np.zeros(5, dtype=int)
-        self.sum_sq_weights = np.zeros(5, dtype=int)
+        self.sum_weights = np.zeros(5, dtype=float)
+        self.sum_sq_weights = np.zeros(5, dtype=float)
         self.delta_gamma = delta_gamma
         self.shear_stats = ParallelMeanVariance(size=10)
 
@@ -344,7 +344,7 @@ class MetaDetectCalculator(CalibrationCalculator):
                 sum_sq_weights = comm.reduce(self.sum_sq_weights)
 
                 if comm.rank > 0:
-                    return None, None, None
+                    return None
 
         else:
             counts = self.counts

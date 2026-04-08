@@ -22,7 +22,6 @@ class MeanShearInBins:
         elif shear_catalog_type == "metadetect":
             self.calibrators = [MetaDetectCalculator(self.selector, delta_gamma) for i in range(self.size)]
         elif shear_catalog_type == "lensfit":
-            print("for i in range ", self.size)
             self.calibrators = [LensfitCalculator(self.selector, dec_cut=False) for i in range(self.size)]
         elif shear_catalog_type == "hsc":
             self.calibrators = [HSCCalculator(self.selector) for i in range(self.size)]
