@@ -110,7 +110,7 @@ class NullCalibrator:
     def calibrate_variance_to_sigma_e(self, var_e):
         """
         Convert a variance of ellipticities to a sigma.
-        For the null calibrator this is just a sqrt.
+        For the null calibrator this is just the RMS of the two components.
 
         Parameters
         ----------
@@ -119,10 +119,10 @@ class NullCalibrator:
 
         Returns
         -------
-        calibrated_var_e: array or list length 2
-            The calibrated variance
+        sigma_e: float
+            The ellipticity dispersion per component
         """
-        return np.sqrt(var_e).mean()
+        return np.sqrt(0.5 * (var_e[0] + var_e[1]))
 
     def calibrate_sigma(self, sigma):
         """

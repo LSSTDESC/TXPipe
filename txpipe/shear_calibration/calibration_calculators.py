@@ -1,4 +1,5 @@
 import numpy as np
+import warnings
 from .names import META_VARIANTS
 from .calibrators import MetaCalibrator, LensfitCalibrator, HSCCalibrator, MetaDetectCalibrator, NullCalibrator
 from .utils import BinStats
@@ -83,7 +84,6 @@ class MetacalCalculator(CalibrationCalculator):
         from parallel_statistics import ParallelMean
         super().__init__(selector)
 
-        self.selector = selector
         self.delta_gamma = delta_gamma
         self.resp_mean_diag = resp_mean_diag
         self.cal_bias_means = ParallelMean(size=4)
@@ -278,8 +278,8 @@ class MetaDetectCalculator(CalibrationCalculator):
 
         self.selector = selector
         self.counts = np.zeros(5, dtype=int)
-        self.sum_weights = np.zeros(5, dtype=int)
-        self.sum_sq_weights = np.zeros(5, dtype=int)
+        self.sum_weights = np.zeros(5, dtype=float)
+        self.sum_sq_weights = np.zeros(5, dtype=float)
         self.delta_gamma = delta_gamma
         self.shear_stats = ParallelMeanVariance(size=10)
 
@@ -344,7 +344,7 @@ class MetaDetectCalculator(CalibrationCalculator):
                 sum_sq_weights = comm.reduce(self.sum_sq_weights)
 
                 if comm.rank > 0:
-                    return None, None, None
+                    return None
 
         else:
             counts = self.counts
@@ -410,7 +410,6 @@ class LensfitCalculator(CalibrationCalculator):
         """
         from parallel_statistics import ParallelMean
         super().__init__(selector)
-        self.selector = selector
         # Create a set of calculators that will calculate (in parallel)
         # the three quantities we need to compute the overall calibration
         # We create these, then add data to them below, then collect them
@@ -480,8 +479,7 @@ class LensfitCalculator(CalibrationCalculator):
 
             self.C_N.add_data(0, g1[sel], w[sel])
             self.C_N.add_data(1, g2[sel], w[sel])
-            self.C_S.add_data(0, np.zeros(n), np.zeros(n))
-            self.C_S.add_data(1, np.zeros(n), np.zeros(n))
+            # C_S is not used when dec_cut=False, so we don't add data to it
 
         return sel
 
@@ -532,7 +530,17 @@ class LensfitCalculator(CalibrationCalculator):
         mode = "allgather" if allgather else "gather"
         _, K = self.K.collect(comm, mode)
         _, C_N = self.C_N.collect(comm, mode)
-        _, C_S = self.C_S.collect(comm, mode)
+        # When dec_cut=False, C_S has no data; use zeros as the south additive bias.
+        # When dec_cut=True, C_S may still have no data if there are no southern objects;
+        # in that case also use zeros.
+        if self.dec_cut:
+            # Suppress the divide-by-zero warning when there are no southern objects
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", RuntimeWarning)
+                _, raw_C_S = self.C_S.collect(comm, mode)
+            C_S = np.where(np.isnan(raw_C_S), 0.0, raw_C_S)
+        else:
+            C_S = np.zeros(2)
         _, mean_e, var_e = self.shear_stats.collect(comm, mode)
 
         if sum_weights is None:

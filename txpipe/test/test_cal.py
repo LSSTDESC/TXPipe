@@ -135,11 +135,11 @@ def core_metadet(comm):
         "1m/g2": g_1m[1],
         "2p/g2": g_2p[1],
         "2m/g2": g_2m[1],
-        "00/weight": weight,
-        "1p/weight": weight,
-        "1m/weight": weight,
-        "2p/weight": weight,
-        "2m/weight": weight,
+        "00/weight": weight.copy(),
+        "1p/weight": weight.copy(),
+        "1m/weight": weight.copy(),
+        "2p/weight": weight.copy(),
+        "2m/weight": weight.copy(),
     }
 
     # test each type of selector
@@ -154,10 +154,11 @@ def core_metadet(comm):
         assert stats.source_count == N * nproc
 
     # equal non-unit weights - everything should be the same.
-    data["1p/weight"] *= 0.5
-    data["1m/weight"] *= 0.5
-    data["2p/weight"] *= 0.5
-    data["2m/weight"] *= 0.5
+    data["1p/weight"] = data["1p/weight"] * 0.5
+    data["1m/weight"] = data["1m/weight"] * 0.5
+    data["2p/weight"] = data["2p/weight"] * 0.5
+    data["2m/weight"] = data["2m/weight"] * 0.5
+    data["00/weight"] = data["00/weight"] * 0.5
     # test each type of selector
     for sel in [select_all_bool_md, select_all_where_md, select_all_index_md]:
         cal = MetaDetectCalculator(sel, delta_gamma)
@@ -168,11 +169,15 @@ def core_metadet(comm):
         assert np.allclose(calibrator.R_sel, 0.0)
         assert stats.source_count == N * nproc
 
-    # random weights.  since R is constant this should still be the same
-    data["1p/weight"] *= np.random.uniform(0, 1, size=N)
-    data["1m/weight"] *= np.random.uniform(0, 1, size=N)
-    data["2p/weight"] *= np.random.uniform(0, 1, size=N)
-    data["2m/weight"] *= np.random.uniform(0, 1, size=N)
+    # random weights.  since R is constant this should still be the same,
+    # but only when the same weights are used across variants (otherwise the
+    # weighted means differ and R comes out wrong).
+    rng_weights = np.random.uniform(0, 1, size=N)
+    data["00/weight"] = rng_weights
+    data["1p/weight"] = rng_weights
+    data["1m/weight"] = rng_weights
+    data["2p/weight"] = rng_weights
+    data["2m/weight"] = rng_weights
     # test each type of selector
     for sel in [select_all_bool_md, select_all_where_md, select_all_index_md]:
         cal = MetaDetectCalculator(sel, delta_gamma)
