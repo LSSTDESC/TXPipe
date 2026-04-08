@@ -6,7 +6,6 @@ from ceci.file_types import HDFFile, DataFile, YamlFile, TextFile, FitsFile, Dir
 from .mapping import degrade_healsparse
 import yaml
 import numpy as np
-import warnings
 
 def metacalibration_names(names):
     """
@@ -256,13 +255,7 @@ class MapsFile(HDFFile):
         group = self.file[f"maps/{map_name}"]
         info = dict(group.attrs)
         if not "pixelization" in info:
-            warnings.warn(
-                f"Warning 'pixelization' not found in '{map_name}' in file {self.path}.\n"
-                "This might mean this is not a TXPipe file.\n"
-                "We will default to assuming a healpix map",
-                UserWarning,
-            )
-            info["pixelization"] = "healpix"
+            raise ValueError(f"Map '{map_name}' not found, or not saved properly in file {self.path}")
         return info
 
     def read_map(self, map_name):
