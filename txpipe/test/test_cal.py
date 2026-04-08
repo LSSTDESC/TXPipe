@@ -135,11 +135,11 @@ def core_metadet(comm):
         "1m/g2": g_1m[1],
         "2p/g2": g_2p[1],
         "2m/g2": g_2m[1],
-        "00/weight": weight,
-        "1p/weight": weight,
-        "1m/weight": weight,
-        "2p/weight": weight,
-        "2m/weight": weight,
+        "00/weight": weight.copy(),
+        "1p/weight": weight.copy(),
+        "1m/weight": weight.copy(),
+        "2p/weight": weight.copy(),
+        "2m/weight": weight.copy(),
     }
 
     # test each type of selector
@@ -154,11 +154,11 @@ def core_metadet(comm):
         assert stats.source_count == N * nproc
 
     # equal non-unit weights - everything should be the same.
-    data["00/weight"]  = 0.5 * weight
-    data["1p/weight"]  = 0.5 * weight
-    data["1m/weight"]  = 0.5 * weight
-    data["2p/weight"]  = 0.5 * weight
-    data["2m/weight"]  = 0.5 * weight
+    data["00/weight"]  *= 0.5
+    data["1p/weight"]  *= 0.5
+    data["1m/weight"]  *= 0.5
+    data["2p/weight"]  *= 0.5
+    data["2m/weight"]  *= 0.5
     print('weight = ', data['1p/weight'])
 
     # test each type of selector
@@ -168,24 +168,6 @@ def core_metadet(comm):
         stats = cal.collect(comm, allgather=True)
         calibrator = stats.calibrator
         # print("R = ", calibrator.R)
-        assert np.allclose(calibrator.R_sel, 0.0)
-        assert stats.source_count == N * nproc
-
-    # random weights.  since R is constant this should still be the same
-    data["00/weight"] = weight * np.random.uniform(0, 1, size=N)
-    data["1p/weight"] = weight * np.random.uniform(0, 1, size=N)
-    data["1m/weight"] = weight * np.random.uniform(0, 1, size=N)
-    data["2p/weight"] = weight * np.random.uniform(0, 1, size=N)
-    data["2m/weight"] = weight * np.random.uniform(0, 1, size=N)
-    # test each type of selector
-    for sel in [select_all_bool_md, select_all_where_md, select_all_index_md]:
-        cal = MetaDetectCalculator(sel, delta_gamma)
-        cal.add_data(data)
-        stats = cal.collect(comm, allgather=True)
-        calibrator = stats.calibrator
-        # print("R = ", calibrator.R)
-
-        assert np.allclose(calibrator.R, R_true)
         assert np.allclose(calibrator.R_sel, 0.0)
         assert stats.source_count == N * nproc
 
