@@ -1,6 +1,6 @@
 from .base import TXSourceSelectorBase, BinStats
-from ..utils.calibrators import MetaCalibrator
-from ..utils.calibration_tools import metacal_variants, MetacalCalculator, band_variants
+from .base import select_weak_lensing_sample, select_tomographic_weak_lensing_sample
+from ..shear_calibration import MetaCalibrator, metacal_variants, MetacalCalculator, band_variants
 import numpy as np
 from ceci.config import StageParameter
 
@@ -84,8 +84,8 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
     def setup_response_calculators(self, nbin_source):
         delta_gamma = self.config["delta_gamma"]
         use_diagonal_response = self.config["use_diagonal_response"]
-        calculators = [MetacalCalculator(self.select, delta_gamma, use_diagonal_response) for i in range(nbin_source)]
-        calculators.append(MetacalCalculator(self.select_2d, delta_gamma, use_diagonal_response))
+        calculators = [MetacalCalculator(select_tomographic_weak_lensing_sample, delta_gamma, use_diagonal_response) for i in range(nbin_source)]
+        calculators.append(MetacalCalculator(select_weak_lensing_sample, delta_gamma, use_diagonal_response))
         return calculators
 
     def write_tomography(self, outfile, start, end, source_bin, R):

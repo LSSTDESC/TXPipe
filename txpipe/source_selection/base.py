@@ -1,7 +1,7 @@
 from ..base_stage import PipelineStage
 from ..data_types import ShearCatalog, TomographyCatalog, HDFFile
 from .utils import SourceNumberDensityStats
-from ..utils.calibration_tools import read_shear_catalog_type
+from ..utils import read_shear_catalog_type
 from ..binning import build_tomographic_classifier, apply_classifier, read_training_data
 from ceci.config import StageParameter
 import numpy as np
@@ -198,15 +198,15 @@ class TXSourceSelectorBase(PipelineStage):
                     shear_data,
                 )
             # Combine this selection with size and snr cuts to produce a source selection
-            # and calculate the shear bias it would generate
-            tomo_bin, R, counts = self.calculate_tomography(pz_data, shear_data, calculators)
+            # and calculate the shear bias it would generate.
+            # Note that the per-object response can be None for methods like MetaDetect that
+            # only calibrate the entire bin
+            tomo_bin, per_object_response = self.calculate_tomography(pz_data, shear_data, calculators)
 
-            # Save the tomography for this chunk
-            self.write_tomography(output_file, start, end, tomo_bin, R)
+            # Save the tomography for this chunk and accumulate the number
+            # density information.
+            self.accumulate_statistics(output_file, shear_data, start, end, tomo_bin, per_object_response, number_density_stats)
 
-            # Accumulate information on the number counts and the selection biases.
-            # These will be brought together at the end.
-            number_density_stats.add_data(shear_data, tomo_bin)  # check this
 
         # Do the selection bias averaging and output that too.
         self.write_global_values(output_file, calculators, number_density_stats)
@@ -217,8 +217,17 @@ class TXSourceSelectorBase(PipelineStage):
         # Restore the original warning settings in case we are being called from a library
         np.seterr(**original_warning_settings)
 
+
+    def accumulate_statistics(self, output_file, shear_data, start, end, tomo_bin, per_object_response, number_density_stats):
+        # Save the tomography for this chunk
+        self.write_tomography(output_file, start, end, tomo_bin, per_object_response)
+
+        # Accumulate information on the number counts and the selection biases.
+        # These will be brought together at the end.
+        number_density_stats.add_data(shear_data, tomo_bin)  # check this
+
+
     def apply_simple_redshift_cut(self, shear_data):
-        pz_data = {}
         if self.config["input_pz"]:
             zz = shear_data["mean_z"]
         else:
@@ -250,27 +259,19 @@ class TXSourceSelectorBase(PipelineStage):
         # bin index for each object, or -1 for no bin.
         tomo_bin = np.repeat(-1, n)
 
-        # We also keep count of total count of objects in each bin,
-        # and also the overall count for all the bins (the last entry)
-        counts = np.zeros(nbin + 1, dtype=int)
-
         data = {**pz_data, **shear_data}
 
         R = self.compute_per_object_response(data)
 
         for i in range(nbin):
-            sel_00 = calculators[i].add_data(data, i)
+            sel_00 = calculators[i].add_data(data, self.config, i)
             tomo_bin[sel_00] = i
-            nsum = sel_00.sum()
-            counts[i] = nsum
-            # also count up the 2D sample
-            counts[-1] += nsum
 
         # and calibrate the 2D sample.
-        # This calibrator refers to self.select_2d
-        calculators[-1].add_data(data)
+        # This calibrator refers to select_weak_lensing_sample
+        calculators[-1].add_data(data, self.config)
 
-        return tomo_bin, R, counts
+        return tomo_bin, R
 
     def compute_per_object_response(self, data):
         # The default implementation has no per-object response
@@ -316,7 +317,7 @@ class TXSourceSelectorBase(PipelineStage):
 
         return outfile
 
-    def write_tomography(self, outfile, start, end, source_bin, R):
+    def write_tomography(self, outfile, start, end, source_bin, per_object_response):
         """
         Write out a chunk of tomography and response.
 
@@ -335,7 +336,7 @@ class TXSourceSelectorBase(PipelineStage):
         tomo_bin: array of shape (nrow,)
             The bin index for each output object
 
-        R: array of shape (nrow,2,2)
+        per_object_response: array of shape (nrow,2,2)
             Multiplicative bias calibration factor for each object
 
 
@@ -364,76 +365,78 @@ class TXSourceSelectorBase(PipelineStage):
             if self.rank == 0:
                 stats.write_to(outfile, i if i < nbin_source else "2d")
 
-    def select(self, data, bin_index):
-        """
-        Select which objects are to be chosen in this tomographic bin.
-        We do this by calling out to the 2D selector, which does the
-        cuts on size and SNR, and then combining this with a cut on tomographic bin.
 
-        Note that we don't call this method directly in this class. Instead
-        we pass it to the Calculator objects that call it, sometimes on different
-        columns of data.
-        """
-        zbin = data["zbin"]
-        verbose = self.config["verbose"]
 
-        sel = self.select_2d(data, calling_from_select=True)
-        sel &= zbin == bin_index
-        f4 = sel.sum() / sel.size
+def select_tomographic_weak_lensing_sample(data, config, bin_index):
+    """
+    Select which objects are to be chosen in this tomographic bin.
+    We do this by calling out to the 2D selector, which does the
+    cuts on size and SNR, and then combining this with a cut on tomographic bin.
 
-        if verbose:
-            print(f"{f4:.2%} z for bin {bin_index}")
-            print("total tomo", sel.sum())
+    Note that we don't call this method directly in the selector classes. Instead
+    we pass it to the Calculator objects that call it, sometimes on different
+    columns of data.
+    """
+    zbin = data["zbin"]
+    verbose = config["verbose"]
 
-        return sel
+    sel = select_weak_lensing_sample(data, config, calling_from_select=True)
+    sel &= zbin == bin_index
+    f4 = sel.sum() / sel.size
 
-    def select_2d(self, data, calling_from_select=False):
-        # Select any objects that pass general WL cuts
-        # The calling_from_select option just specifies whether we
-        # are calling this function from within the select
-        # method above, because the useful printed verbose
-        # output is different in each case
-        s2n_cut = self.config["s2n_cut"]
-        T_cut = self.config["T_cut"]
-        verbose = self.config["verbose"]
-        variant = data.suffix
+    if verbose:
+        print(f"{f4:.2%} z for bin {bin_index}")
+        print("total tomo", sel.sum())
 
-        shear_prefix = self.config["shear_prefix"]
-        s2n = data[f"{shear_prefix}s2n{variant}"]
-        T = data[f"{shear_prefix}T{variant}"]
-        Tpsf = data[f"{shear_prefix}psf_T_mean"]
-        flag = data[f"{shear_prefix}flags{variant}"]
+    return sel
 
-        # Apply our cuts.  We keep track of the number of objects
-        # reject by each cut in case it's important.
-        # First we require flag = 0
-        n0 = len(flag)
-        sel = flag == 0
-        f1 = sel.sum() / n0
+def select_weak_lensing_sample(data, config, calling_from_select=False):
+    # Select any objects that pass general WL cuts
+    # The calling_from_select option just specifies whether we
+    # are calling this function from within the select
+    # method above, because the useful printed verbose
+    # output is different in each case
+    s2n_cut = config["s2n_cut"]
+    T_cut = config["T_cut"]
+    verbose = config["verbose"]
+    variant = data.suffix
 
-        # Next we required a minimum object size compared to the PSF
-        sel &= (T / Tpsf) > T_cut
-        f2 = sel.sum() / n0
+    shear_prefix = config["shear_prefix"]
+    s2n = data[f"{shear_prefix}s2n{variant}"]
+    T = data[f"{shear_prefix}T{variant}"]
+    Tpsf = data[f"{shear_prefix}psf_T_mean"]
+    flag = data[f"{shear_prefix}flags{variant}"]
 
-        # Then we require a signal-to-noise minimum
-        sel &= s2n > s2n_cut
-        f3 = sel.sum() / n0
+    # Apply our cuts.  We keep track of the number of objects
+    # reject by each cut in case it's important.
+    # First we require flag = 0
+    n0 = len(flag)
+    sel = flag == 0
+    f1 = sel.sum() / n0
 
-        # Finally we want objects that have been put into any of our other
-        # tomographic bins
-        sel &= data["zbin"] >= 0
-        f4 = sel.sum() / n0
+    # Next we required a minimum object size compared to the PSF
+    sel &= (T / Tpsf) > T_cut
+    f2 = sel.sum() / n0
 
-        # Print out a message.  If we are selecting a 2D sample
-        # this is the complete message.  Otherwise if we are about
-        # to also apply a redshift bin cut about then the message will continue
-        # as above
-        if verbose and calling_from_select:
-            print(
-                f"Tomo selection ({variant}) {f1:.2%} flag, {f2:.2%} size, {f3:.2%} SNR, ",
-                end="",
-            )
-        elif verbose:
-            print(f"2D selection ({variant}) {f1:.2%} flag, {f2:.2%} size, {f3:.2%} SNR, {f4:.2%} any z bin")
-            print("total 2D", sel.sum())
-        return sel
+    # Then we require a signal-to-noise minimum
+    sel &= s2n > s2n_cut
+    f3 = sel.sum() / n0
+
+    # Finally we want objects that have been put into any of our other
+    # tomographic bins
+    sel &= data["zbin"] >= 0
+    f4 = sel.sum() / n0
+
+    # Print out a message.  If we are selecting a 2D sample
+    # this is the complete message.  Otherwise if we are about
+    # to also apply a redshift bin cut about then the message will continue
+    # as above
+    if verbose and calling_from_select:
+        print(
+            f"Tomo selection ({variant}) {f1:.2%} flag, {f2:.2%} size, {f3:.2%} SNR, ",
+            end="",
+        )
+    elif verbose:
+        print(f"2D selection ({variant}) {f1:.2%} flag, {f2:.2%} size, {f3:.2%} SNR, {f4:.2%} any z bin")
+        print("total 2D", sel.sum())
+    return sel

@@ -1,5 +1,4 @@
-from ..utils.calibration_tools import MeanShearInBins, LensfitCalculator
-from ..utils import LensfitCalibrator, NullCalibrator
+from ..shear_calibration import MeanShearInBins, LensfitCalculator, LensfitCalibrator, NullCalibrator
 import numpy as np
 import mockmpi
 

@@ -4,9 +4,9 @@ from .data_types import Directory, ShearCatalog, HDFFile, PNGFile, TomographyCat
 import numpy as np
 import sys
 import os
-from .utils.calibration_tools import read_shear_catalog_type
+from .utils import read_shear_catalog_type
 from .plotting import manual_step_histogram
-from .utils.calibrators import Calibrator
+from .shear_calibration import Calibrator
 
 
 STAR_PSF_USED = 0

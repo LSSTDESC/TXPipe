@@ -1,97 +1,6 @@
 import numpy as np
-from .mpi_utils import in_place_reduce
-
-
-def read_shear_catalog_type(stage):
-    """
-    Determine the type of shear catalog a stage is using as input.
-    Returns a string, e.g. metacal, lensfit.
-    Also sets shear_catalog_type in the stage's configuration
-    so that it is available later and is saved in output.
-    """
-    with stage.open_input("shear_catalog", wrapper=True) as f:
-        shear_catalog_type = f.catalog_type
-        stage.config["shear_catalog_type"] = shear_catalog_type
-    return shear_catalog_type
-
-
-def metacal_variants(*names):
-    return [name + suffix for suffix in ["", "_1p", "_1m", "_2p", "_2m"] for name in names]
-
-
-def metadetect_variants(*names):
-    return [f"{group}/{name}" for group in ["00", "1p", "1m", "2p", "2m"] for name in names]
-
-
-def band_variants(bands, *names, shear_catalog_type="metacal"):
-    if shear_catalog_type == "metacal":
-        return [
-            name + "_" + band + suffix
-            for suffix in ["", "_1p", "_1m", "_2p", "_2m"]
-            for band in bands
-            for name in names
-        ]
-    elif shear_catalog_type == "metadetect":
-        return [
-            f"{group}/{name}_{band}" for group in ["00", "1p", "1m", "2p", "2m"] for band in bands for name in names
-        ]
-    else:
-        return [name + "_" + band for band in bands for name in names]
-
-
-def calculate_selection_response(g1, g2, sel_1p, sel_2p, sel_1m, sel_2m, delta_gamma):
-    import numpy as np
-
-    S = np.ones((2, 2))
-    S_11 = (g1[sel_1p].mean() - g1[sel_1m].mean()) / delta_gamma
-    S_12 = (g1[sel_2p].mean() - g1[sel_2m].mean()) / delta_gamma
-    S_21 = (g2[sel_1p].mean() - g2[sel_1m].mean()) / delta_gamma
-    S_22 = (g2[sel_2p].mean() - g2[sel_2m].mean()) / delta_gamma
-
-    # Also save the selection biases as a matrix.
-    S[0, 0] = S_11
-    S[0, 1] = S_12
-    S[1, 0] = S_21
-    S[1, 1] = S_22
-
-    return S
-
-
-def calculate_shear_response(g1_1p, g1_2p, g1_1m, g1_2m, g2_1p, g2_2p, g2_1m, g2_2m, delta_gamma):
-    import numpy as np
-
-    n = len(g1_1p)
-    R = R = np.zeros((n, 2, 2))
-    R_11 = (g1_1p - g1_1m) / delta_gamma
-    R_12 = (g1_2p - g1_2m) / delta_gamma
-    R_21 = (g2_1p - g2_1m) / delta_gamma
-    R_22 = (g2_2p - g2_2m) / delta_gamma
-
-    R[:, 0, 0] = R_11
-    R[:, 0, 1] = R_12
-    R[:, 1, 0] = R_21
-    R[:, 1, 1] = R_22
-
-    R = np.mean(R, axis=0)
-    return R
-
-
-def apply_metacal_response(R, S, g1, g2):
-    # The values of R are assumed to already
-    # have had appropriate weights included
-    from numpy.linalg import pinv
-    import numpy as np
-
-    mcal_g = np.stack([g1, g2], axis=1)
-
-    R_total = R + S
-
-    # Invert the responsivity matrix
-    Rinv = pinv(R_total)
-    mcal_g = Rinv @ mcal_g.T
-
-    return mcal_g[0], mcal_g[1]
-
+from ..utils import in_place_reduce
+from .names import META_VARIANTS
 
 class _DataWrapper:
     """
@@ -372,13 +281,12 @@ class MetaDetectCalculator(CalibrationCalculator):
             Keyword arguments to be passed to the selection function
 
         """
-
-        prefixes = ["00/", "1p/", "1m/", "2p/", "2m/"]
+        selections = []
+        prefixes = [m + "/" for m in META_VARIANTS]
         for i, p in enumerate(prefixes):
             data_p = _DataWrapper(data, prefix=p)
             sel = self.selector(data_p, *args, **kwargs)
-            if p == "00/":
-                sel_00 = sel
+            selections.append(sel)
             w = data_p["weight"][sel]
             if w.size == 0:
                 continue
@@ -390,7 +298,7 @@ class MetaDetectCalculator(CalibrationCalculator):
             self.sum_weights[i] += np.sum(w)
             self.sum_sq_weights[i] += np.sum(w**2)
 
-        return sel_00
+        return selections
 
     def collect(self, comm=None, allgather=False):
         """
@@ -846,138 +754,3 @@ class MockCalculator(CalibrationCalculator):
         return count, sum_weights**2 / sum_weights_sq
 
 
-class MeanShearInBins:
-    def __init__(
-        self, x_name, limits, delta_gamma, cut_source_bin=False, shear_catalog_type="metacal", psf_unit_conv=False
-    ):
-        from parallel_statistics import ParallelMeanVariance, ParallelMean
-
-        self.x_name = x_name
-        self.limits = limits
-        self.delta_gamma = delta_gamma
-        self.cut_source_bin = cut_source_bin
-        self.shear_catalog_type = shear_catalog_type
-        self.psf_unit_conv = psf_unit_conv
-        self.size = len(self.limits) - 1
-        # We have to work out the mean g1, g2
-        self.g1 = ParallelMeanVariance(self.size)
-        self.g2 = ParallelMeanVariance(self.size)
-        self.x = ParallelMean(self.size)
-
-        if shear_catalog_type == "metacal":
-            self.calibrators = [MetacalCalculator(self.selector, delta_gamma) for i in range(self.size)]
-        elif shear_catalog_type == "metadetect":
-            self.calibrators = [MetaDetectCalculator(self.selector, delta_gamma) for i in range(self.size)]
-        elif shear_catalog_type == "lensfit":
-            print("for i in range ", self.size)
-            self.calibrators = [LensfitCalculator(self.selector) for i in range(self.size)]
-        elif shear_catalog_type == "hsc":
-            self.calibrators = [HSCCalculator(self.selector) for i in range(self.size)]
-        else:
-            raise ValueError(f"Please specify metacal, metadetect, lensfit or hsc for shear_catalog in config.")
-
-    def selector(self, data, i):
-        x = data[self.x_name]
-        if (self.shear_catalog_type == "lensfit") & (self.psf_unit_conv == True) & ("T" in self.x_name):
-            pix2arcsec = 0.214
-            x = x * pix2arcsec**2
-        w = (x > self.limits[i]) & (x < self.limits[i + 1])
-        if self.cut_source_bin:
-            w &= data["bin"] != -1
-        return np.where(w)
-
-    def add_data(self, data):
-        for i in range(self.size):
-            w = self.calibrators[i].add_data(data, i)
-            if self.shear_catalog_type == "metacal":
-                weight = data["weight"][w]
-                self.g1.add_data(i, data["mcal_g1"][w], weight)
-                self.g2.add_data(i, data["mcal_g2"][w], weight)
-            elif self.shear_catalog_type == "metadetect":
-                weight = data["00/weight"][w]
-                self.g1.add_data(i, data["00/g1"][w], weight)
-                self.g2.add_data(i, data["00/g2"][w], weight)
-            elif self.shear_catalog_type in ["lensfit", "metadetect"]:
-                weight = data["weight"][w]
-                self.g1.add_data(i, data["g1"][w], weight)
-                self.g2.add_data(i, data["g2"][w], weight)
-            elif self.shear_catalog_type == "hsc":
-                weight = data["weight"][w]
-                self.g1.add_data(i, data["g1"][w] - data["c1"][w], weight)
-                self.g2.add_data(i, data["g2"][w] - data["c2"][w], weight)
-            self.x.add_data(i, data[self.x_name][w], weight)
-
-    def collect(self, comm=None):
-        count1, g1, var1 = self.g1.collect(comm, mode="gather")
-        count2, g2, var2 = self.g2.collect(comm, mode="gather")
-
-        _, mu = self.x.collect(comm, mode="gather")
-        # Now we have the complete sample we can get the calibration matrix
-        # to apply to it.
-        R = []
-        K = []
-        C_N = []
-        C_S = []
-        N = []
-        Neff = []
-        for i in range(self.size):
-            if self.shear_catalog_type == "metacal":
-                # Tell the Calibrators to work out the responses
-                r, s, n, neff = self.calibrators[i].collect(comm)
-                # and record the total (a 2x2 matrix)
-                R.append(r + s)
-                N.append(n)
-                Neff.append(neff)
-            elif self.shear_catalog_type == "metadetect":
-                # Tell the Calibrators to work out the responses
-                r, n, neff = self.calibrators[i].collect(comm)
-                # and record the total (a 2x2 matrix)
-                R.append(r)
-                N.append(n)
-                Neff.append(neff)
-            elif self.shear_catalog_type == "lensfit":
-                k, c_n, c_s, n, neff = self.calibrators[i].collect(comm)
-                K.append(k)
-                C_N.append(c_n)
-                C_S.append(c_s)
-                N.append(n)
-                Neff.append(neff)
-            else:
-                r, k, n, neff = self.calibrators[i].collect(comm)
-                K.append(k)
-                R.append(r)
-                N.append(n)
-                Neff.append(neff)
-
-        # Only the root processor does the rest
-        if (comm is not None) and (comm.Get_rank() != 0):
-            return None, None, None, None, None
-
-        sigma1 = np.zeros(self.size)
-        sigma2 = np.zeros(self.size)
-        for i in range(self.size):
-            # Get the shears and the errors on their means
-            g = [g1[i], g2[i]]
-            sigma = np.sqrt([var1[i] / Neff[i], var2[i] / Neff[i]])
-
-            if self.shear_catalog_type in ["metacal", "metadetect"]:
-                # Get the inverse response matrix to apply
-                R_inv = np.linalg.inv(R[i])
-
-                # Apply the matrix in full to the shears and errors
-                g1[i], g2[i] = R_inv @ g
-                sigma1[i], sigma2[i] = R_inv @ sigma
-            elif self.shear_catalog_type == "lensfit":
-                g1[i] = g1[i] * (1.0 / (1 + K[i]))
-                g2[i] = g2[i] * (1.0 / (1 + K[i]))
-
-                sigma1[i] = (1.0 / (1 + K[i])) * (sigma[0])
-                sigma2[i] = (1.0 / (1 + K[i])) * (sigma[1])
-            else:
-                g1[i] = (g1[i] / (2 * R[i])) / (1 + K[i])
-                g2[i] = (g2[i] / (2 * R[i])) / (1 + K[i])
-
-                sigma1[i] = (sigma[0] / (2 * R[i])) / (1 + K[i])
-                sigma2[i] = (sigma[1] / (2 * R[i])) / (1 + K[i])
-
-        return mu, g1, g2, sigma1, sigma2

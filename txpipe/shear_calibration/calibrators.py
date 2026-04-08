@@ -7,7 +7,7 @@ class Calibrator:
     Base class for classes which calibrate shear measurements.
 
     These classes do not calculate the calibration factors - that is
-    done by the Calculator classes in calibration_tools.py. Instead
+    done by the Calculator classes in calibration_calculators.py. Instead
     they apply the calibrations after they have been calculated.
 
     Subclasses do the actual work.  The base classis only useful for
