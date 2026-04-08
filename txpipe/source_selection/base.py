@@ -1,7 +1,7 @@
 from ..base_stage import PipelineStage
 from ..data_types import ShearCatalog, TomographyCatalog, HDFFile
 from .utils import SourceNumberDensityStats
-from ..utils.calibration_tools import read_shear_catalog_type
+from ..utils import read_shear_catalog_type
 from ..binning import build_tomographic_classifier, apply_classifier, read_training_data
 from ceci.config import StageParameter
 import numpy as np

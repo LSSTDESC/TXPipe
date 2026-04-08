@@ -1,7 +1,6 @@
 from .base import TXSourceSelectorBase
 from .base import select_weak_lensing_sample
-from ..utils.calibration_tools import band_variants, HSCCalculator
-from ..utils.calibrators import HSCCalibrator
+from ..shear_calibration import band_variants, HSCCalculator, HSCCalibrator
 import numpy as np
 from .base import BinStats
 from ceci.config import StageParameter

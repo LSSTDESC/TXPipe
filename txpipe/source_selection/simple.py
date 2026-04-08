@@ -1,7 +1,6 @@
 from .base import TXSourceSelectorBase
 from .base import select_weak_lensing_sample, select_tomographic_weak_lensing_sample
-from ..utils.calibration_tools import band_variants, MockCalculator
-from ..utils.calibrators import NullCalibrator
+from ..shear_calibration import NullCalibrator, band_variants, MockCalculator
 import numpy as np
 from .base import BinStats
 

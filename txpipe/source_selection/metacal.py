@@ -1,7 +1,6 @@
 from .base import TXSourceSelectorBase, BinStats
 from .base import select_weak_lensing_sample, select_tomographic_weak_lensing_sample
-from ..utils.calibrators import MetaCalibrator
-from ..utils.calibration_tools import metacal_variants, MetacalCalculator, band_variants
+from ..shear_calibration import MetaCalibrator, metacal_variants, MetacalCalculator, band_variants
 import numpy as np
 from ceci.config import StageParameter
 

@@ -12,10 +12,10 @@ import numpy as np
 from .utils.mpi_utils import mpi_reduce_large
 from .utils import (
     choose_pixelization,
-    Calibrator,
     read_shear_catalog_type,
     rename_iterated,
 )
+from .shear_calibration import Calibrator
 from ceci.config import StageParameter
 
 

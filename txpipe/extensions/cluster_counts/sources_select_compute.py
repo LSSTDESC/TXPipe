@@ -3,7 +3,7 @@ import gc
 import numpy as np
 from ...base_stage import PipelineStage
 from ...data_types import ShearCatalog, HDFFile, PhotozPDFFile, FiducialCosmology, TomographyCatalog, ShearCatalog
-from ...utils.calibrators import Calibrator
+from ...shear_calibration import Calibrator
 from collections import defaultdict
 import yaml
 import ceci
