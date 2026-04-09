@@ -37,6 +37,60 @@ class _DataWrapper:
 
 
 class CalibrationCalculator:
+    """The CalibrationCalculator subclasses are used to compute calibration
+    and other statistics of weak lensing catalogs, potentially in parallel on
+    chunks of data at a time.
+
+    One CalibrationCalculator should be used for each tomographic bin.
+    Or for any other sub-selection, like bins in magnitude or size for null tests.
+
+    The life-cycle of a CalibrationCalculator is as follows:
+    - Create a CalibrationCalculator for each object using a function that selects your WL
+      sample from input dictionaries (or similar) of data.
+    - Add chunks of data to each calculator using the add_data method, which applies the
+      selection function to each chunk, accumulates statistics, and returns the index of the selected objects
+    - When all data has been added, call the collect method to finalize the statistics and return the results
+
+    The data that is added to the calculator should contain shear columns appropriate to
+    the specific type of calibrationn used. For example, the metadetect calculator expects
+    columns 00/g1, 00/g2, etc.
+
+    The selection function does not need to know about all these variants. The calculator
+    will wrap the data dictionary passed in in a special class that chooses variant
+    columns when they are looked up. So your selection function can just ask for, e.g.,
+    "T", "s2n", or "mag_r", and the calculator will make sure it gets the right variant of 
+    that column for each selection.
+
+    The final results are in the form of a BinStats object, which contains:
+    - source_count: the raw number of objects
+    - N_eff: the effective number of objects, accounting for weights
+    - mean_e: the mean ellipticity values in the bin
+    - sigma_e: the mean ellipticity dispersion per component
+    - sigma: the standard deviation for the mean e1 and e2 separately in the bin
+    - calibrator: a Calibrator subclass instance that calibrates this bin
+
+    The attributes below apply to most of the subclasses, but the MetadetectCalculator has
+    different types for them because it has to keep track of 5 variants separately.
+    In that case the scalar attributes below are replaced by arrays of length 5, one for each variant,
+    and the shear_stats keeps track of the mean and std dev of all of the variants.
+
+    Attributes
+    ----------
+    selector: function
+        A function that takes a chunk of data and selects objects to be used for
+        calibration from it.  This is supplied by the user when initializing the
+        class, and is used to select objects from each chunk of data as it is
+        added.
+
+    count: int
+        The total number of objects selected across all chunks of data added so far
+    sum_weights: float
+        The sum of the weights of the selected objects across all chunks of data added so far
+    sum_sq_weights: float
+        The sum of the squares of the weights of the selected objects across all chunks of data added so far
+    shear_stats: ParallelMeanVariance
+        An accumulator to calculate the mean and variance of the selected shears, in g1 and g2 separately.
+    """
     def __init__(self, selector):
         from parallel_statistics import ParallelMeanVariance
         self.selector = selector
@@ -47,16 +101,9 @@ class CalibrationCalculator:
 
 
 class MetacalCalculator(CalibrationCalculator):
-    """
-    This class builds up the total response and selection calibration
-    factors for Metacalibration from each chunk of data it is given.
-    At the end an MPI communicator can be supplied to collect together
-    the results from the different processes.
+    """Calibration and stats calculator for metacalibration catalogs.
 
-    To do this we need the function used to select the data, and the instance
-    this function to each of the metacalibrated variants automatically by
-    wrapping the data object passed in to it and modifying the names of columns
-    that are looked up.
+    See the CalibrationCalculator class for the use and contents of this class.
     """
 
     def __init__(self, selector, delta_gamma, resp_mean_diag=False):
@@ -66,7 +113,7 @@ class MetacalCalculator(CalibrationCalculator):
         the chunk of data to select on.  It should look up the original
         names of the columns to select on, without the metacal suffix.
 
-        The MetacalCalculator will then wrap the data passed to it so that
+        The MetacalCalculator will wrap the data passed to it so that
         when a metacalibrated column is used for selection then the appropriate
         variant column is selected instead.
 
@@ -79,6 +126,9 @@ class MetacalCalculator(CalibrationCalculator):
             Function that selects objects
         delta_gamma: float
             The difference in applied g between 1p and 1m metacal variants
+        resp_mean_diag: bool
+            If True, the mean response is forced to be a scalar multiple of the identity matrix, as in DES-Y3.
+            If False (the default), the full response matrix is used.
         """
         from parallel_statistics import ParallelMean
         super().__init__(selector)
@@ -99,6 +149,12 @@ class MetacalCalculator(CalibrationCalculator):
             Positional arguments to be passed to the selection function
         **kwargs
             Keyword arguments to be passed to the selection function
+
+        Returns
+        ----------
+        sel_00: array
+            The indices of the objects selected from this chunk of data using the baseline selection
+            (i.e. no shear applied)
 
         """
         # These all wrap the catalog such that lookups find the variant
@@ -177,24 +233,21 @@ class MetacalCalculator(CalibrationCalculator):
 
     def collect(self, comm=None, allgather=False) -> BinStats:
         """
-        Finalize and sum up all the response values, returning separate
-        R (estimator response) and S (selection bias) 2x2 matrices
+        Finalize and sum up all the response values, and return a BinStats
+        obejct that collections calibration and statistics.
 
         Parameters
         ----------
         comm: MPI Communicator
             If supplied, all processors response values will be combined together.
             All processes will return the same final value
+        allgather: bool
+            If True, the response values will be returned for all the processors.
 
         Returns
         -------
-        R: 2x2 array
-            Estimator response matrix
-        S: 2x2 array
-            Selection bias matrix
-
-        Neff: float
-            Sum(weights)**2 / Sum(weights**2)
+        bin_stats: BinStats
+            An object containing the final calibration and statistics for this bin.
         """
         # collect all the things we need
         if comm is not None:
@@ -258,7 +311,13 @@ class MetacalCalculator(CalibrationCalculator):
 
 
 class MetaDetectCalculator(CalibrationCalculator):
-    """ """
+    """A calibration and stats calculator for metadetect catalogs.
+
+    See the CalibrationCalculator class for the use and contents of this class,
+    but note that the attributes of the class are different because we have to 
+    keep track of 5 variants separately, and the shear_stats keeps track of the 
+    mean and std dev of all of the variants.
+    """
 
     def __init__(self, selector, delta_gamma):
         """
@@ -316,17 +375,21 @@ class MetaDetectCalculator(CalibrationCalculator):
 
     def collect(self, comm=None, allgather=False) -> BinStats:
         """
-        Finalize and sum up all the response values, returning separate
-        R (estimator response) 2x2 matrix
+        Finalize and sum up all the response values, and return a BinStats
+        obejct that collections calibration and statistics.
+
         Parameters
         ----------
         comm: MPI Communicator
             If supplied, all processors response values will be combined together.
             All processes will return the same final value
+        allgather: bool
+            If True, the response values will be returned for all the processors.
+
         Returns
         -------
-        R: 2x2 array
-            Estimator response matrix
+        bin_stats: BinStats
+            An object containing the final calibration and statistics for this bin.
         """
         # collect all the things we need
         mode = "allgather" if allgather else "gather"
@@ -485,27 +548,21 @@ class LensfitCalculator(CalibrationCalculator):
 
     def collect(self, comm=None, allgather=False) -> BinStats:
         """
-        Finalize and sum up all the response values, returning calibration
-        quantities.
+        Finalize and sum up all the response values, and return a BinStats
+        obejct that collections calibration and statistics.
 
         Parameters
         ----------
         comm: MPI Communicator
             If supplied, all processors response values will be combined together.
             All processes will return the same final value
+        allgather: bool
+            If True, the response values will be returned for all the processors.
 
         Returns
         -------
-
-        K: float
-            K = (1+m) calibration
-
-        C: float array
-            c1, c2 additive biases (weighted average of g1 and g2)
-
-        Neff: float
-            Sum(weights)**2 / Sum(weights**2)
-
+        bin_stats: BinStats
+            An object containing the final calibration and statistics for this bin.
         """
         # The total number of objects is just the
         # number from all the processes summed together.
@@ -624,30 +681,21 @@ class HSCCalculator(CalibrationCalculator):
 
     def collect(self, comm=None, allgather=False) -> BinStats:
         """
-        Finalize and sum up all the response values, returning calibration
-        quantities.
+        Finalize and sum up all the response values, and return a BinStats
+        obejct that collections calibration and statistics.
 
         Parameters
         ----------
         comm: MPI Communicator
             If supplied, all processors response values will be combined together.
             All processes will return the same final value
+        allgather: bool
+            If True, the response values will be returned for all the processors.
 
         Returns
         -------
-        R: float
-            R calibration factor
-
-        K: float
-            K = (1+m) calibration
-
-        N: int
-            Total object count
-
-        Neff: float
-            Total effective number of galaxies
-
-
+        bin_stats: BinStats
+            An object containing the final calibration and statistics for this bin.
         """
         # The total number of objects is just the
         # number from all the processes summed together.
@@ -750,24 +798,23 @@ class MockCalculator(CalibrationCalculator):
 
     def collect(self, comm=None, allgather=False) -> BinStats:
         """
-        Finalize and sum up all the response values, returning calibration
-        quantities.
+        Finalize and sum up all the response values, and return a BinStats
+        obejct that collections calibration and statistics.
+
+        In this case the BinStats calibrator will be a NullCalibrator that does not apply any calibration.
 
         Parameters
         ----------
         comm: MPI Communicator
             If supplied, all processors response values will be combined together.
             All processes will return the same final value
+        allgather: bool
+            If True, the response values will be returned for all the processors.
 
         Returns
         -------
-        N: int
-            Total object count
-
-        Neff: float
-            Total effective number of galaxies
-
-
+        bin_stats: BinStats
+            An object containing the final calibration and statistics for this bin.
         """
         # The total number of objects is just the
         # number from all the processes summed together.

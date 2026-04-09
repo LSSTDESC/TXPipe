@@ -13,7 +13,7 @@ class BinStats:
         ----------
         source_count: int
             The raw number of objects
-        N_eff: int
+        N_eff: float
             The effective number of objects
         mean_e: array or list
             Length 2. The mean ellipticity e1 and e2 in the bin
