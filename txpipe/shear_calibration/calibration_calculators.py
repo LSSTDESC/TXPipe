@@ -332,7 +332,8 @@ class MetaDetectCalculator(CalibrationCalculator):
         from parallel_statistics import ParallelMean, ParallelMeanVariance
         # The MetaDetectCalculator is a bit different to the others in that
         # it has to keep track of 5 copies of everything, one for each variant.
-        # so there is no point calling the parent __init__.
+        # so there is no point calling the parent __init__, becuase it would
+        # set up the attributes of this class with the wrong types (scalars instead of arrays).
 
         self.selector = selector
         self.counts = np.zeros(5, dtype=int)
