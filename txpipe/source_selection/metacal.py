@@ -1,6 +1,6 @@
-from .base import TXSourceSelectorBase, BinStats
+from .base import TXSourceSelectorBase
 from .base import select_weak_lensing_sample, select_tomographic_weak_lensing_sample
-from ..shear_calibration import MetaCalibrator, metacal_variants, MetacalCalculator, band_variants
+from ..shear_calibration import metacal_variants, MetacalCalculator, band_variants
 import numpy as np
 from ceci.config import StageParameter
 
@@ -130,25 +130,3 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
             pz_data[f"zbin{v}"] = pz_data_v
 
         return pz_data
-
-    def compute_output_stats(self, calculator, mean, variance):
-        """
-        Collect the per-bin response values, and the shear means and variances.
-        These are calculated in a distributed way across different processes,
-        so here we bring them together.
-
-        We collate these into a BinStats object for clarity.
-        """
-        R, S, N, Neff = calculator.collect(self.comm, allgather=True)
-        calibrator = MetaCalibrator(R, S, mean, mu_is_calibrated=False)
-        mean_e = calibrator.mu.copy()
-
-        Rtot = R + S
-        P = np.diag(np.linalg.inv(Rtot @ Rtot))
-
-        # Apply to the variances to get sigma_e
-        sigma_e = np.sqrt(0.5 * P @ variance)
-
-        # In metacal all weights are unity, so the effective N is the same
-        # as the raw N.
-        return BinStats(N, Neff, mean_e, sigma_e, calibrator)

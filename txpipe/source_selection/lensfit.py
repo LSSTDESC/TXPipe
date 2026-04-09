@@ -1,6 +1,6 @@
-from .base import TXSourceSelectorBase, BinStats
+from .base import TXSourceSelectorBase
 from .base import select_weak_lensing_sample, select_tomographic_weak_lensing_sample
-from ..shear_calibration import LensfitCalibrator, LensfitCalculator, band_variants
+from ..shear_calibration import LensfitCalculator, band_variants
 import numpy as np
 from ceci.config import StageParameter
 
@@ -72,10 +72,3 @@ class TXSourceSelectorLensfit(TXSourceSelectorBase):
 
         return outfile
 
-    def compute_output_stats(self, calculator, mean, variance):
-        K, C_N, C_S, N, Neff = calculator.collect(self.comm, allgather=True)
-        calibrator = LensfitCalibrator(K, C_N, C_S)
-        mean_e = (C_N + C_S) / 2
-        sigma_e = np.sqrt((0.5 * (variance[0] + variance[1]))) / (1 + K)
-
-        return BinStats(N, Neff, mean_e, sigma_e, calibrator)

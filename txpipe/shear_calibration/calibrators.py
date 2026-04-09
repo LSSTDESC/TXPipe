@@ -67,7 +67,8 @@ class Calibrator:
 
 class NullCalibrator:
     """
-    This calibrator subclass does nothing - it's designed
+    This calibrator subclass does nothing - it's designed for pre-calibrated
+    or mock catalogs.
     """
 
     def __init__(self, mu=None):
@@ -105,6 +106,41 @@ class NullCalibrator:
             # for consistency with the other calibrators and cases
             # we return copies here
             return g1.copy(), g2.copy()
+        
+    def calibrate_variance_to_sigma_e(self, var_e):
+        """
+        Convert a variance of ellipticities to a sigma.
+        For the null calibrator this is just a sqrt.
+
+        Parameters
+        ----------
+        var_e: array or list length 2
+            The variance of the ellipticities in the bin
+
+        Returns
+        -------
+        calibrated_var_e: float
+            The calibrated standard deviation of the ellipticities in the sample.
+        """
+        return np.sqrt(var_e.mean())
+
+    def calibrate_sigma(self, sigma):
+        """
+        Calibrate a standard deviation of ellipticties, keeping both components.
+        For this null calibrator this does nothing.
+    
+        Parameters
+        ----------
+        sigma: array or list length 2
+            The standard deviation of the ellipticities in the sample.
+
+        Returns
+        -------
+        calibrated_sigma: array or list length 2
+            The calibrated sigma of the ellipticities in the sample.
+        """
+        return sigma
+
 
     @classmethod
     def load(cls, tomo_file):
@@ -144,6 +180,7 @@ class NullCalibrator:
 
 
 class MetaCalibrator(Calibrator):
+    """Stores information needed to calibrate a metacalibration shear method."""
     def __init__(self, R, S, mu, mu_is_calibrated=True):
         self.R_gamma = R
         self.R_sel = S
@@ -177,6 +214,46 @@ class MetaCalibrator(Calibrator):
         else:
             g1, g2 = self.Rinv @ [g1, g2] - self.mu[:, np.newaxis]
         return g1, g2
+
+    def calibrate_variance_to_sigma_e(self, var_e):
+        """
+        Convert a variance of ellipticities to a sigma.
+        For the metacalibrator this is found by taking the
+        diagonal of inv(R . R) / 2 and taking the dot product
+        of this with the variance of the ellipticities and
+        taking the square root.
+
+        Parameters
+        ----------
+        var_e: array or list length 2
+            The variance of the ellipticities in the bin
+
+        Returns
+        -------
+        sigma_e: float
+            The calibrated standard deviation of the ellipticities in the sample.
+        """
+        P = np.diag(np.linalg.inv(self.R @ self.R))
+        return np.sqrt(0.5 * P @ var_e)
+
+    def calibrate_sigma(self, sigma):
+        """
+        Calibrate a standard deviation of ellipticties, keeping both components.
+
+    
+        Parameters
+        ----------
+        sigma: array or list length 2
+            The standard deviation of the ellipticities in the sample.
+
+        Returns
+        -------
+        calibrated_sigma: array or list length 2
+            The calibrated standard deviation of the ellipticities in the sample.
+        """
+
+        return self.Rinv @ sigma
+ 
 
     @classmethod
     def load(cls, tomo_file):
@@ -234,8 +311,13 @@ class MetaCalibrator(Calibrator):
 
 
 class MetaDetectCalibrator(MetaCalibrator):
-    # This is the same as the metacal one except the names
-    # we load from are different (because S is not separately calculated)
+    """Stores information needed to calibrate a metadetection shear method.
+    
+    This inherits most behaviour from the metacalibrator, which uses the same
+    response matrix, though calculated differently and incorporating the
+    the selection response S and shear response R into the same matrix.
+    
+    """
     def __init__(self, R, mu, mu_is_calibrated=True):
         S = np.zeros_like(R)
         super().__init__(R, S, mu, mu_is_calibrated)
@@ -349,7 +431,7 @@ class LensfitCalibrator(Calibrator):
             outfile["counts/mean_e1"][i] = -99.0
             outfile["counts/mean_e2"][i] = -99.0
 
-    def apply(self, dec, g1, g2, subtract_mean=True):
+    def apply(self, g1, g2, dec=None, subtract_mean=True):
         """
         For KiDS (see Joachimi et al., 2020, arXiv:2007.01844):
         Appendix C, equation C.4 and C.5
@@ -370,7 +452,9 @@ class LensfitCalibrator(Calibrator):
             whether to subtract the constant c term (default True)
         """
         if subtract_mean:
-            if self.dec_cut == True:
+            if self.dec_cut:
+                if dec is None:
+                    raise ValueError("dec_cut and subtract_mean are True but no dec values provided to apply method")
                 Nmask = dec > -25.0
                 Smask = dec <= -25.0
 
@@ -386,6 +470,44 @@ class LensfitCalibrator(Calibrator):
             g1 = g1 / (1 + self.K)
             g2 = g2 / (1 + self.K)
         return g1, g2
+    
+    def calibrate_variance_to_sigma_e(self, var_e):
+        """
+        Calibrate the shear variance.
+        For the lensfit calibrator this is found by taking the mean
+        of the shear variances and dividing by (1 + K), where K is the multiplicative bias.
+
+
+        Parameters
+        ----------
+        var_e: array or list length 2
+            The variance of the ellipticities in the bin
+
+        Returns
+        -------
+        calibrated_var_e: float
+            The calibrated standard deviation of the ellipticities in the sample.
+        """
+        return np.sqrt((0.5 * (var_e[0] + var_e[1]))) / (1 + self.K)
+
+
+    def calibrate_sigma(self, sigma):
+        """
+        Calibrate a standard deviation of ellipticties, keeping both components.
+
+    
+        Parameters
+        ----------
+        sigma: array or list length 2
+            The standard deviation of the ellipticities in the sample.
+
+        Returns
+        -------
+        calibrated_sigma: array or list length 2
+            The calibrated standard deviation of the ellipticities in the sample.
+        """
+        return np.array(sigma) / (1 + self.K)
+
 
 
 class HSCCalibrator(Calibrator):
@@ -435,7 +557,7 @@ class HSCCalibrator(Calibrator):
             outfile["response/R_mean"][i] = self.R
             outfile["response/K"][i] = self.K
 
-    def apply(self, g1, g2, c1, c2, aselepsf1=0, aselepsf2=0, msel=0, subtract_mean=False):
+    def apply(self, g1, g2, c1=0, c2=0, aselepsf1=0, aselepsf2=0, msel=0, subtract_mean=False):
         """
         For HSC (see Mandelbaum et al., 2018, arXiv:1705.06745):
         gi = 1/(1 + mhat)[ei/(2R) - ci] (Eq. (A6) in Mandelbaum et al., 2018)
@@ -469,3 +591,42 @@ class HSCCalibrator(Calibrator):
             g2 = g2 - np.mean(g2)
 
         return g1, g2
+
+    def calibrate_variance_to_sigma_e(self, var_e):
+        """
+        Calibrate the shear variance.
+        For the HSC calibrator this is found by taking the mean
+        of the shear variances and dividing by (1 + K), where K is the multiplicative bias.
+
+        This is the same as the lensfit calibrator, but we repeat it here for clarity.
+
+
+        Parameters
+        ----------
+        var_e: array or list length 2
+            The variance of the ellipticities in the bin
+
+        Returns
+        -------
+        calibrated_var_e: float
+            The calibrated standard deviation of the ellipticities in the sample.
+        """
+        return np.sqrt((0.5 * (var_e[0] + var_e[1]))) / (1 + self.K)
+
+    def calibrate_sigma(self, sigma):
+        """
+        Calibrate a standard deviation of ellipticties, keeping both components.
+
+    
+        Parameters
+        ----------
+        sigma: array or list length 2
+            The standard deviation of the ellipticities in the sample.
+
+        Returns
+        -------
+        calibrated_sigma: array or list length 2
+            The calibrated standard deviation of the ellipticities in the sample.
+        """
+        return np.array(sigma) / (2 * self.R) / (1 + self.K)
+

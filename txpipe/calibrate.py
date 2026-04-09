@@ -182,7 +182,7 @@ class TXShearCalibration(PipelineStage):
                     # In KiDS, the additive bias is calculated and removed per North and South field
                     # therefore, we add dec to split data into these fields.
                     # You can choose not to by setting dec_cut = 90 in the config, for example.
-                    d["g1"], d["g2"] = cal.apply(d["dec"], d["g1"], d["g2"], subtract_mean=subtract_mean_shear)
+                    d["g1"], d["g2"] = cal.apply(d["g1"], d["g2"], d["dec"], subtract_mean=subtract_mean_shear)
                 else:
                     d["g1"], d["g2"] = cal.apply(d["g1"], d["g2"], subtract_mean=subtract_mean_shear)
 

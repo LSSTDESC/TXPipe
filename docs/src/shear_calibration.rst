@@ -16,7 +16,7 @@ If you are doing straightforward analysis on tomographic quantities you may be a
 Calculator Classes
 ------------------
 
-The calculator classes can be found in `txpipe/utils/calibration_tools.py`. There is one for each shear calibration method. Their main use is in the source selection stages, in `txpipe/source_selector.py`. Their output is saved into the :ref:`tomography file<Shear tomography catalogs>` "response" group.
+The calculator classes can be found in `txpipe/shear_calibration/calibration_calculators.py`. There is one for each shear calibration method. Their main use is in the source selection stages, in `txpipe/source_selector.py`. Their output is saved into the :ref:`tomography file<Shear tomography catalogs>` "response" group.
 
 The calculator classes are designed to operate on streamed data (i.e. they do not load the entire catalog at once, but a chunk at a time).  The expected life cycle of a calculator class is:
 
