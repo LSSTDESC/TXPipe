@@ -51,24 +51,36 @@ class TXSourceNoiseMaps(TXBaseMaps):
         with self.open_input("mask", wrapper=True) as maps_file:
             pix_info = maps_file.read_map_info("mask")
 
+        #overwrite nside if it differs from the mask's native nside
+        if self.config['nside'] != pix_info["nside"]:
+            pix_info["nside"] = self.config['nside']
+
         return choose_pixelization(**pix_info)
 
     def prepare_mappers(self, pixel_scheme):
+        import healsparse as hsp 
+
         read_shear_catalog_type(self)
 
         with self.open_input("mask", wrapper=True) as maps_file:
-            mask = maps_file.read_map("mask")
+            mask = maps_file.read_mask("mask", degrade_nside=self.config["nside"])
 
         with self.open_input("shear_tomography_catalog", wrapper=True) as f:
             nbin_source = f.file["tomography"].attrs["nbin"]
 
         # Mapping from 0 .. nhit - 1 to healpix indices
-        reverse_map = np.where(mask > 0)[0]
+        reverse_map = mask.valid_pixels
         # Get a mapping from healpix indices to masked pixel indices
-        # This reduces memory usage.  We could use a healsparse array
-        # here, but I'm not sure how to do that best with our
-        # many realizations.  Possiby a recarray?
-        index_map = np.zeros(pixel_scheme.npix, dtype=np.int64) - 1
+        # This reduces memory usage compared to the full healpix array
+        # We could use the healsparse array itself here
+        # Possiby with a recarray for different realizations
+        # TODO: test and implement this
+        index_map = hsp.HealSparseMap.make_empty(
+            pixel_scheme.nside_coverage, 
+            pixel_scheme.nside,
+            dtype=int,
+            sentinel=-1,
+            )
         index_map[reverse_map] = np.arange(reverse_map.size)
 
         # Number of unmasked pixels
@@ -220,22 +232,34 @@ class TXLensNoiseMaps(TXBaseMaps):
         with self.open_input("mask", wrapper=True) as maps_file:
             pix_info = maps_file.read_map_info("mask")
 
+        #overwrite nside if it differs from the mask's native nside
+        if self.config['nside'] != pix_info["nside"]:
+            pix_info["nside"] = self.config['nside']
+
         return choose_pixelization(**pix_info)
 
     def prepare_mappers(self, pixel_scheme):
+        import healsparse as hsp
+
         with self.open_input("mask", wrapper=True) as maps_file:
-            mask = maps_file.read_map("mask")
+            mask = maps_file.read_mask("mask", degrade_nside=self.config["nside"])
 
         with self.open_input("lens_tomography_catalog", wrapper=True) as f:
             nbin_lens = f.file["tomography"].attrs["nbin"]
 
-        # Mapping from 0 .. nhit - 1  to healpix indices
-        reverse_map = np.where(mask > 0)[0]
+        # Mapping from 0 .. nhit - 1 to healpix indices
+        reverse_map = mask.valid_pixels
         # Get a mapping from healpix indices to masked pixel indices
-        # This reduces memory usage.  We could use a healsparse array
-        # here, but I'm not sure how to do that best with our
-        # many realizations.  Possiby a recarray?
-        index_map = np.zeros(pixel_scheme.npix, dtype=np.int64) - 1
+        # This reduces memory usage compared to the full healpix array
+        # We could use the healsparse array itself here
+        # Possiby with a recarray for different realizations
+        # TODO: test and implement this
+        index_map = hsp.HealSparseMap.make_empty(
+            pixel_scheme.nside_coverage, 
+            pixel_scheme.nside,
+            dtype=int,
+            sentinel=-1,
+            )
         index_map[reverse_map] = np.arange(reverse_map.size)
 
         # Number of unmasked pixels
@@ -672,7 +696,7 @@ class TXNoiseMapsJax(PipelineStage):
 
     def read_inputs(self):
         with self.open_input("mask", wrapper=True) as f:
-            mask = f.read_map("mask")
+            mask = f.read_mask("mask", degrade_nside=self.config["nside"])
             # pixelization etc
             map_info = f.read_map_info("mask")
 

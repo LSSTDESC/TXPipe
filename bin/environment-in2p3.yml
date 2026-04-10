@@ -10,7 +10,7 @@ dependencies:
   - fitsio=1.1.8
   - h5py=3.8.*=mpi_openmpi_*
   - healpy=1.16.*
-  - healsparse=1.6.*
+  - healsparse=1.12.1
   - jax=0.4.8
   - jupyter=1.0.*
   - matplotlib=3.7.*

@@ -32,8 +32,7 @@ launcher:
 
 # Where to run the pipeline: cori-interactive, cori-batch, or local
 site:
-    name: cori-batch
-    image: ghcr.io/lsstdesc/txpipe
+    name: nersc-interactive
 
 # configuration settings
 config: examples/lssweights/des-y1//config_binned.yml
