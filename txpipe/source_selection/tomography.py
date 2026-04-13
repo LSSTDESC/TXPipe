@@ -4,6 +4,15 @@ from ..data_types import HDFFile, PickleFile
 from ..binning import read_training_data, build_tomographic_classifier
 
 class TXSourceTomography(PipelineStage):
+    """Train a random forest classifier to assign source galaxies to tomographic bins based on their photometry.
+
+    The trained classified is saved as a pickle file to be used by the selector stage(s).
+    This was originally merged in with the selector stage, but it can become slow in situations where the spectroscopic 
+    training sample is large, so it has been split out into a separate stage to assist with debugging and re-running
+    the selection stages.
+
+    At some point this might be replaced by RAIL stages.
+    """
     name = "TXSourceTomography"
     inputs = [
         ("spectroscopic_catalog", HDFFile),
@@ -21,6 +30,8 @@ class TXSourceTomography(PipelineStage):
 
     def run(self):
         bands = self.config['bands']
+
+        # Load the data that we need
         with self.open_input("spectroscopic_catalog") as spec_file:
             training_data = read_training_data(
                 spec_file,
@@ -29,7 +40,7 @@ class TXSourceTomography(PipelineStage):
                 self.config["spec_redshift_column"],
             )
 
-
+        # Build the actual classifier.
         classifier, features = build_tomographic_classifier(
             bands,
             training_data,
@@ -38,6 +49,7 @@ class TXSourceTomography(PipelineStage):
             self.comm,
         )
 
+        # Save the classifier.
         with self.open_output("shear_tomography_classifier", wrapper=True) as outfile:
             pickle_data = {
                 "classifier": classifier,
