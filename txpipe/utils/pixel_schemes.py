@@ -9,6 +9,8 @@ class HealpixScheme:
     ----------
     nside: int
         The Healpix resolution parameter
+    nside_coverage: int
+        Healsparse coverage map nside
     npix: int
         The maximum pixel index.
     nest:
@@ -28,7 +30,7 @@ class HealpixScheme:
 
     """
 
-    def __init__(self, nside, nest=False):
+    def __init__(self, nside, nest=True, nside_coverage=32):
         """Make a converter object.
 
         Parameters
@@ -43,6 +45,7 @@ class HealpixScheme:
 
         self.healpy = healpy
         self.nside = nside
+        self.nside_coverage = nside_coverage
         self.nest = nest
         self.npix = self.healpy.nside2npix(self.nside)
 
@@ -518,9 +521,11 @@ def choose_pixelization(**config):
         nside = config["nside"]
         if not healpy.isnsideok(nside):
             raise ValueError(f"nside pixelization parameter must be set to a power of two (used value {nside})")
-        nest = config.get("nest", False)
-        if nest:
-            raise ValueError("Please do not attempt to use the NEST pixelization.  It will only end badly for you.")
+        nest = config.get("nest", True)
+        if not nest:
+            print(
+                "You are using RING ordering, This will be converted to NEST when saving to healsparse"
+            )
         scheme = HealpixScheme(nside, nest=nest)
     elif pixelization == "gnomonic":
         ra_cent = config["ra_cent"]

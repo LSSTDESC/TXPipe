@@ -1,9 +1,7 @@
 from .base import TXSourceSelectorBase
 from .base import select_weak_lensing_sample
-from ..utils.calibration_tools import band_variants, HSCCalculator
-from ..utils.calibrators import HSCCalibrator
+from ..shear_calibration import band_variants, HSCCalculator
 import numpy as np
-from .base import BinStats
 from ceci.config import StageParameter
 
 
@@ -83,12 +81,6 @@ class TXSourceSelectorHSC(TXSourceSelectorBase):
         w_tot = np.sum(data["weight"])
         R = np.array([1.0 - np.sum(data["weight"] * data["sigma_e"]) / w_tot] * len(data["weight"]))
         return R
-
-    def compute_output_stats(self, calculator, mean, variance):
-        R, K, N, Neff = calculator.collect(self.comm, allgather=True)
-        calibrator = HSCCalibrator(R, K)
-        sigma_e = np.sqrt((0.5 * (variance[0] + variance[1]))) / (1 + K)
-        return BinStats(N, Neff, mean, sigma_e, calibrator)
 
     def setup_response_calculators(self, nbin_source):
         calculators = [HSCCalculator(select_hsc_tomographic_weak_lensing_sample) for i in range(nbin_source)]

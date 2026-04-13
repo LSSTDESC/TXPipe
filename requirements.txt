@@ -9,7 +9,7 @@ fitsio
 h5py
 healpix
 healpy
-healsparse
+healsparse>=1.12.1
 jax
 matplotlib
 mpi4py

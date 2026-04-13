@@ -1,67 +1,10 @@
 from ..base_stage import PipelineStage
-from ..data_types import ShearCatalog, TomographyCatalog, HDFFile, PickleFile
-from .utils import SourceNumberDensityStats
-from ..utils.calibration_tools import read_shear_catalog_type
-from ..binning import build_tomographic_classifier, apply_classifier, read_training_data
+from ..data_types import ShearCatalog, TomographyCatalog, HDFFile
+from ..utils import read_shear_catalog_type
+from ..binning import apply_classifier
 from ceci.config import StageParameter
 import numpy as np
 
-
-class BinStats:
-    """
-    This is a small helper class to store and write the statistics of a
-    single tomographic bin. It helps simplify some of the code below.
-    """
-
-    def __init__(self, source_count, N_eff, mean_e, sigma_e, calibrator):
-        """
-        Parameters
-        ----------
-        source_count: int
-            The raw number of objects
-        N_eff: int
-            The effective number of objects
-        mean_e: array or list
-            Length 2. The mean ellipticity e1 and e2 in the bin
-        sigma_e: float
-            The ellipticity dispersion
-        calibrator: Calibrator
-            A Calibrator subclass instance that calibrates this bin
-        """
-        self.source_count = source_count
-        self.N_eff = N_eff
-        self.mean_e = mean_e
-        self.sigma_e = sigma_e
-        self.calibrator = calibrator
-
-    def write_to(self, outfile, i):
-        """
-        Writes the bin statistics to an HDF5 file in the right place
-
-        Parameters
-        ----------
-        outfile: an open HDF5 file object
-            The output file
-        i: int or str
-            The index for this tomographic bin, or "2d"
-        """
-        group = outfile["counts"]
-        if i == "2d":
-            group["counts_2d"][:] = self.source_count
-            group["N_eff_2d"][:] = self.N_eff
-            # This might get saved by the calibrator also
-            # but in case not we do it here.
-            group["mean_e1_2d"][:] = self.mean_e[0]
-            group["mean_e2_2d"][:] = self.mean_e[1]
-            group["sigma_e_2d"][:] = self.sigma_e
-        else:
-            group["counts"][i] = self.source_count
-            group["N_eff"][i] = self.N_eff
-            group["mean_e1"][i] = self.mean_e[0]
-            group["mean_e2"][i] = self.mean_e[1]
-            group["sigma_e"][i] = self.sigma_e
-
-        self.calibrator.save(outfile, i)
 
 
 class TXSourceSelectorBase(PipelineStage):
@@ -153,8 +96,6 @@ class TXSourceSelectorBase(PipelineStage):
         # matrices for each chunk and do a weighted average at the end.
         nbin_source = len(self.config["source_zbin_edges"]) - 1
 
-        number_density_stats = SourceNumberDensityStats(nbin_source, comm=self.comm, shear_type=shear_catalog_type)
-
         calculators = self.setup_response_calculators(nbin_source)
 
         # Loop through the input data, processing it chunk by chunk
@@ -181,13 +122,12 @@ class TXSourceSelectorBase(PipelineStage):
             # only calibrate the entire bin
             tomo_bin, per_object_response = self.calculate_tomography(pz_data, shear_data, calculators)
 
-            # Save the tomography for this chunk and accumulate the number
-            # density information.
-            self.accumulate_statistics(output_file, shear_data, start, end, tomo_bin, per_object_response, number_density_stats)
+            # Save the tomography for this chunk
+            self.write_tomography(output_file, start, end, tomo_bin, per_object_response)
 
 
         # Do the selection bias averaging and output that too.
-        self.write_global_values(output_file, calculators, number_density_stats)
+        self.write_global_values(output_file, calculators)
 
         # Save and complete
         output_file.close()
@@ -195,38 +135,6 @@ class TXSourceSelectorBase(PipelineStage):
         # Restore the original warning settings in case we are being called from a library
         np.seterr(**original_warning_settings)
 
-
-    def accumulate_statistics(self, output_file, shear_data, start, end, tomo_bin, per_object_response, number_density_stats):
-        # Save the tomography for this chunk
-        self.write_tomography(output_file, start, end, tomo_bin, per_object_response)
-
-        # Accumulate information on the number counts and the selection biases.
-        # These will be brought together at the end.
-        number_density_stats.add_data(shear_data, tomo_bin)  # check this
-
-    def read_tomography_classifier(self):
-        # Read the tomography classifier from file
-        with self.open_input("shear_tomography_classifier", wrapper=True) as infile:
-            pickle_data = infile.read()
-
-        # Check that the tomographer used the same configuration
-        # as we have here.
-        if not pickle_data["bands"] == self.config["bands"]:
-            raise ValueError(
-                "Bands used in tomography classifier do not match those "
-                "in source selector configuration."
-            )
-        # Also check bin edges are close enough
-        if not np.allclose(pickle_data["source_zbin_edges"], self.config["source_zbin_edges"]):
-            raise ValueError(
-                "Source redshift bin edges used in tomography classifier do not match those "
-                "in source selector configuration."
-            )
-
-        # This is all that is actually needed in this class
-        classifier = pickle_data["classifier"]
-        features = pickle_data["features"]
-        return classifier, features
 
 
     def apply_simple_redshift_cut(self, shear_data):
@@ -346,7 +254,7 @@ class TXSourceSelectorBase(PipelineStage):
         group = outfile["tomography"]
         group["bin"][start:end] = source_bin
 
-    def write_global_values(self, outfile, calculators, number_density_stats):
+    def write_global_values(self, outfile, calculators):
         """
         Write out overall selection biases
 
@@ -355,17 +263,14 @@ class TXSourceSelectorBase(PipelineStage):
 
         outfile: h5py.File
 
-        S: array of shape (nbin,2,2)
-            Selection bias matrices
+        calculators: list of Calculator objects, one for each tomographic bin and one for the 2D sample,
+                     that have been fed all the data and are ready to have their results collected and written out.
         """
-        nbin_source = len(calculators) - 1
-        means, variances = number_density_stats.collect()
 
-        # Loop through the tomographic calculators.
-        for i in range(nbin_source + 1):
-            stats = self.compute_output_stats(calculators[i], means[i], variances[i])
+        for i, calculator in enumerate(calculators):
+            stats = calculator.collect(self.comm, allgather=True)
             if self.rank == 0:
-                stats.write_to(outfile, i if i < nbin_source else "2d")
+                stats.write_to(outfile, i if i < len(calculators) - 1 else "2d")
 
 
 

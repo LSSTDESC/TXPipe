@@ -293,7 +293,9 @@ class TXLogNormalGlass(PipelineStage):
 
         # load mask
         with self.open_input("mask", wrapper=True) as map_file:
-            mask = map_file.read_map("mask")
+            mask = map_file.read_mask_healpix(
+                "mask", degrade_nside=self.config["nside"]
+            )
             self.mask_map_info = map_file.read_map_info("mask")
         mask[mask == hp.UNSEEN] = 0.0  # set UNSEEN pixels to 0 (GLASS needs this)
         mask_area = np.sum(mask[mask != hp.UNSEEN]) * hp.nside2pixarea(self.nside, degrees=True)
