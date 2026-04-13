@@ -1,5 +1,5 @@
 from ..base_stage import PipelineStage
-from ..data_types import ShearCatalog, TomographyCatalog, HDFFile
+from ..data_types import ShearCatalog, TomographyCatalog, HDFFile, PickleFile
 from ..utils import read_shear_catalog_type
 from ..binning import apply_classifier
 from ceci.config import StageParameter
