@@ -135,6 +135,29 @@ class TXSourceSelectorBase(PipelineStage):
         # Restore the original warning settings in case we are being called from a library
         np.seterr(**original_warning_settings)
 
+    def read_tomography_classifier(self):
+        # Read the tomography classifier from file
+        with self.open_input("shear_tomography_classifier", wrapper=True) as infile:
+            pickle_data = infile.read()
+
+        # Check that the tomographer used the same configuration
+        # as we have here.
+        if not sorted(list(pickle_data["bands"])) == sorted(list(self.config["bands"])):
+            raise ValueError(
+                "Bands used in tomography classifier do not match those "
+                "in source selector configuration."
+            )
+        # Also check bin edges are close enough
+        if not np.allclose(pickle_data["source_zbin_edges"], self.config["source_zbin_edges"]):
+            raise ValueError(
+                "Source redshift bin edges used in tomography classifier do not match those "
+                "in source selector configuration."
+            )
+
+        # This is all that is actually needed in this class
+        classifier = pickle_data["classifier"]
+        features = pickle_data["features"]
+        return classifier, features
 
 
     def apply_simple_redshift_cut(self, shear_data):
