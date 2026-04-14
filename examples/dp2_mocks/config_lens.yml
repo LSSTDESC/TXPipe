@@ -69,8 +69,9 @@ TXTruthLensSelector:
   redshift_column: redshift_true
 
   # Magnitude cut applied before bin selection (use -1 to disable)
-  mag_cut: 25.3
-  mag_band: i          # band to apply the magnitude cut in
+  selection_type: maglim
+  maglim_band: r
+  maglim_limit: 23.5
 
 
 # -----------------------------------------------------------------------------
@@ -184,3 +185,19 @@ TXTwoPointFourier:
 TXFourierNamasterCovariance:
   use_true_shear: False
   scratch_dir: data/temp
+
+# # =============================================================================
+# # TXIngestPlanckLensingMaps
+# # Ingests Planck CMB lensing maps (alm and mask) for cross-correlation.
+# # ============================================================================= 
+# TXIngestPlanckLensingMaps:
+#     alm_file: "data/cmb/planck/PR4_klm_dat_p.fits"
+#     mask_file: "data/cmb/planck/mask.fits.gz"
+
+# # =============================================================================
+# # TXTwoPointFourierCMBLensingCrossDensity
+# # Computes cross-power spectra between the lens density maps and Planck CMB lensing.
+# # =============================================================================
+# TXTwoPointFourierCMBLensingCrossDensity:
+#     bandpower_width: 30
+#     mask_threshold: 0.0

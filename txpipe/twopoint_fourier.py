@@ -765,6 +765,28 @@ class TXTwoPointFourier(PipelineStage):
             ell_full = np.arange(d.win.shape[1])
             win = BandpowerWindow(ell_full, d.win.T)
 
+            # ell_full = np.arange(d.win.shape[1])
+
+            # # FITS TFIELDS limit is 999. sacc writes n_ell_bins columns
+            # # per ell mode stored in the window function, where n_ell_bins
+            # # is the number of bandpower bins. We must subsample the window
+            # # to stay strictly under this limit.
+            # n_ell_bins = len(d.l)
+            # max_ell_modes = (999 // n_ell_bins) - 1  # = 51 for 19 bins
+
+            # if len(ell_full) > max_ell_modes:
+            #     # Uniformly subsample ell modes across the full range
+            #     idx = np.round(
+            #         np.linspace(0, len(ell_full) - 1, max_ell_modes)
+            #     ).astype(int)
+            #     ell_trunc = ell_full[idx]
+            #     win_trunc = d.win[:, idx]
+            # else:
+            #     ell_trunc = ell_full
+            #     win_trunc = d.win
+
+            # win = BandpowerWindow(ell_trunc, win_trunc.T)
+
             if self.config["gaussian_sims_factor"] != [1.0] and "lens" in tracer2:
                 print(
                     "ATTENTION: We are multiplying the measurement and the noise saved in the sacc file by the gaussian sims factor."
@@ -846,7 +868,7 @@ class TXTwoPointFourier(PipelineStage):
         output = self.output_main
         # And we're all done!
         output_filename = self.get_output(output)
-        S.save_fits(output_filename, overwrite=True)
+        S.save_hdf5(output_filename, overwrite=True)
 
 
 class TXTwoPointFourierCatalog(TXTwoPointFourier):
