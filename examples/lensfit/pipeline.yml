@@ -134,6 +134,7 @@ inputs:
     # This is a workaround to make an input to a ceci stage optional;
     # we just have the stage check for the string "none" as an input name.
     # We should be able to do this more cleanly but have not figure it out yet.
+    shear_tomography_classifier: none
     none: none
 
 # if supported by the launcher, restart the pipeline where it left off

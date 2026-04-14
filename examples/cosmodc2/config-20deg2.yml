@@ -116,6 +116,10 @@ TXSourceSelectorMetadetect:
     true_z: false
     shear_prefix: ''
 
+TXSourceTomography:
+    bands: riz #used for selection
+    source_zbin_edges: [0.19285902, 0.40831394, 0.65503818, 0.94499109, 1.2947086, 1.72779632, 2.27855242, 3.]  # 7 bins
+
 TXDiagnosticQuantiles:
     nbins: 20
     psf_prefix: 00/mcal_psf_

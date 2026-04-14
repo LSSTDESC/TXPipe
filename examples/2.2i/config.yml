@@ -66,6 +66,10 @@ TXSourceSelector:
     r_i_cut: 2.0
     # may also need one for r_cpar_cut
 
+TXSourceTomography:
+    bands: riz #used for selection
+    source_zbin_edges: [0.3, 0.5, 0.7, 0.9, 2.0]
+
 TXRandomCat:
     chunk_rows: 100000
     density: 10 # gals per sq arcmin
