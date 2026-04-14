@@ -183,13 +183,20 @@ class TXTwoPointFourier(PipelineStage):
         import pymaster as nmt
         import healpy
 
+        # We will assert that the maps being correlated (density, shear etc)
+        # must have been generated at the config nside
+        # This does not apply to the mask which will be degraded at read
+        nside = self.config["nside"]
+
         # Load the maps from their files.
         # First the mask
         with self.open_input("mask", wrapper=True) as f:
             info = f.read_map_info("mask")
             area = info["area"]
             f_sky = info["f_sky"]
-            mask = f.read_mask(thresh=self.config["mask_threshold"])
+            mask = f.read_mask_healpix(
+                thresh=self.config["mask_threshold"], degrade_nside=nside
+            )
             if self.rank == 0:
                 print("Loaded mask")
 
@@ -201,9 +208,15 @@ class TXTwoPointFourier(PipelineStage):
             # Then the shear maps and weights
             with self.open_input("source_maps", wrapper=True) as f:
                 nbin_source = f.file["maps"].attrs["nbin_source"]
-                g1_maps = [f.read_map(f"g1_{b}") for b in range(nbin_source)]
-                g2_maps = [f.read_map(f"g2_{b}") for b in range(nbin_source)]
-                lensing_weights = [f.read_map(f"lensing_weight_{b}") for b in range(nbin_source)]
+                g1_maps = [f.read_map_healpix(f"g1_{b}") for b in range(nbin_source)]
+                g2_maps = [f.read_map_healpix(f"g2_{b}") for b in range(nbin_source)]
+                lensing_weights = [
+                    f.read_map_healpix(f"lensing_weight_{b}")
+                    for b in range(nbin_source)
+                ]
+                assert all(healpy.npix2nside(len(m)) == nside for m in g1_maps)
+                assert all(healpy.npix2nside(len(m)) == nside for m in g2_maps)
+                assert all(healpy.npix2nside(len(m)) == nside for m in lensing_weights)
                 if self.rank == 0:
                     print(f"Loaded 2 x {nbin_source} shear maps")
                     print(f"Loaded {nbin_source} lensing weight maps")
@@ -215,7 +228,8 @@ class TXTwoPointFourier(PipelineStage):
             # And finally the density maps
             with self.open_input("density_maps", wrapper=True) as f:
                 nbin_lens = f.file["maps"].attrs["nbin_lens"]
-                d_maps = [f.read_map(f"delta_{b}") for b in range(nbin_lens)]
+                d_maps = [f.read_map_healpix(f"delta_{b}") for b in range(nbin_lens)]
+                assert all(healpy.npix2nside(len(m)) == nside for m in d_maps)
                 print(f"Loaded {nbin_lens} overdensity maps")
         else:
             d_maps = []
@@ -515,7 +529,9 @@ class TXTwoPointFourier(PipelineStage):
 
         # Load mask for calculation of cl_guess and (optionally) analytic noise calculation.
         with self.open_input("mask", wrapper=True) as f:
-            mask = f.read_mask(thresh=self.config["mask_threshold"])
+            mask = f.read_mask_healpix(
+                thresh=self.config["mask_threshold"], degrade_nside=self.config["nside"]
+            )
             if self.rank == 0:
                 print("Loaded mask")
 
@@ -624,11 +640,11 @@ class TXTwoPointFourier(PipelineStage):
             # downweight them
             w = weight.copy()
             if k == SHEAR_SHEAR:
-                realization = noise_maps.read_rotation(r, i)
+                realization = noise_maps.read_rotation_healpix(r, i)
                 w[realization[0] == healpy.UNSEEN] = 0
                 w[realization[1] == healpy.UNSEEN] = 0
             else:
-                rho1, rho2 = noise_maps.read_density_split(r, i)
+                rho1, rho2 = noise_maps.read_density_split_healpix(r, i)
                 realization = [rho1 - rho2]
                 w[realization[0] == healpy.UNSEEN] = 0
 
@@ -659,7 +675,7 @@ class TXTwoPointFourier(PipelineStage):
         # This bit only works with healpix maps but it's checked beforehand so that's fine
         if k == SHEAR_SHEAR:
             with self.open_input("source_maps", wrapper=True) as f:
-                var_map = f.read_map(f"var_e_{i}")
+                var_map = f.read_map_healpix(f"var_e_{i}")
             print("i, j", i, j)
             var_map[var_map == hp.UNSEEN] = 0.0
             nside = hp.get_nside(var_map)
@@ -675,7 +691,7 @@ class TXTwoPointFourier(PipelineStage):
         if k == POS_POS:
             ### New method ###
             with self.open_input("lens_maps", wrapper=True) as f:
-                lens_map = f.read_map(f"ngal_{i}")
+                lens_map = f.read_map_healpix(f"ngal_{i}")
             lens_map[lens_map == hp.UNSEEN] = 0.0
             nside = hp.get_nside(lens_map)
             pxarea = hp.nside2pixarea(nside)
@@ -901,12 +917,14 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
             nbin_source = f.file["shear"].attrs["nbin_source"]
 
         # We will obtain nside from somewhere if needed, but for now set to None
-        nside = None
+        nside = self.config["nside"]
         # Load mask for galaxy clustering
         if self.config["deproject_syst_clustering"] or not self.config["use_randoms_clustering"]:
             with self.open_input("mask", wrapper=True) as f:
                 info = f.read_map_info("mask")
-                mask_gc = f.read_mask(thresh=self.config["mask_threshold"])
+                mask_gc = f.read_mask_healpix(
+                    thresh=self.config["mask_threshold"], degrade_nside=nside
+                )
                 if self.rank == 0:
                     print("Loaded mask")
         else:

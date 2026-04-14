@@ -1,8 +1,7 @@
 from .base import TXSourceSelectorBase
-from ..utils.calibration_tools import band_variants, MockCalculator
-from ..utils.calibrators import NullCalibrator
+from .base import select_weak_lensing_sample, select_tomographic_weak_lensing_sample
+from ..shear_calibration import band_variants, MockCalculator
 import numpy as np
-from .base import BinStats
 
 
 class TXSourceSelectorSimple(TXSourceSelectorBase):
@@ -40,14 +39,6 @@ class TXSourceSelectorSimple(TXSourceSelectorBase):
         return self.iterate_hdf("shear_catalog", "shear", shear_cols, chunk_rows)
 
     def setup_response_calculators(self, nbin_source):
-        calculators = [MockCalculator(self.select) for i in range(nbin_source)]
-        calculators.append(MockCalculator(self.select_2d))
+        calculators = [MockCalculator(select_tomographic_weak_lensing_sample) for i in range(nbin_source)]
+        calculators.append(MockCalculator(select_weak_lensing_sample))
         return calculators
-
-    def compute_output_stats(self, calculator, mean, variance):
-        # Collate calibration values
-        N, Neff = calculator.collect(self.comm, allgather=True)
-        calibrator = NullCalibrator(mean)
-        mean_e = mean.copy()
-        sigma_e = np.sqrt(0.5 * (variance[0] + variance[1]))
-        return BinStats(N, Neff, mean_e, sigma_e, calibrator)

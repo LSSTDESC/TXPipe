@@ -1,8 +1,7 @@
 from .base import TXSourceSelectorBase
-from ..utils.calibration_tools import band_variants, HSCCalculator
-from ..utils.calibrators import HSCCalibrator
+from .base import select_weak_lensing_sample
+from ..shear_calibration import band_variants, HSCCalculator
 import numpy as np
-from .base import BinStats
 from ceci.config import StageParameter
 
 
@@ -83,31 +82,47 @@ class TXSourceSelectorHSC(TXSourceSelectorBase):
         R = np.array([1.0 - np.sum(data["weight"] * data["sigma_e"]) / w_tot] * len(data["weight"]))
         return R
 
-    def compute_output_stats(self, calculator, mean, variance):
-        R, K, N, Neff = calculator.collect(self.comm, allgather=True)
-        calibrator = HSCCalibrator(R, K)
-        sigma_e = np.sqrt((0.5 * (variance[0] + variance[1]))) / (1 + K)
-        return BinStats(N, Neff, mean, sigma_e, calibrator)
-
     def setup_response_calculators(self, nbin_source):
-        calculators = [HSCCalculator(self.select) for i in range(nbin_source)]
-        calculators.append(HSCCalculator(self.select_2d))
+        calculators = [HSCCalculator(select_hsc_tomographic_weak_lensing_sample) for i in range(nbin_source)]
+        calculators.append(HSCCalculator(select_hsc_weak_lensing_sample))
         return calculators
+    
+def select_hsc_tomographic_weak_lensing_sample(data, config, bin_index):
+    """
+    Select which objects are to be chosen in this tomographic bin.
+    We do this by calling out to the 2D selector, which does the
+    cuts on size and SNR, and then combining this with a cut on tomographic bin.
 
-    def select_2d(self, data, calling_from_select=False):
-        """
-        Add an additional cut to the parent class, if specified, on the max shear.
-        HSM DP0.2 catalogs seem to contain occasional very large shears that skew peaks.
-        This removes those. This is only really for testing.
-        """
-        sel = super().select_2d(data, calling_from_select=calling_from_select)
-        shear_cut = self.config["max_shear_cut"]
-        if shear_cut:
-            g = np.sqrt(data["g1"] ** 2 + data["g2"] ** 2)
-            cut = g < shear_cut
-            p = 100 * (1 - (cut.sum() / cut.size))
-            print(f" shear cut removes {p:.2f}% of objects")
-            sel &= cut
-            p = sel.sum() / sel.size * 100
-            print(f" after shear cut retain {p:.2f}% of objects")
-        return sel
+    This is is the same as the baseline selection function but uses
+    the HSC main (non-tomographically-dependent) selection below.
+    """
+    zbin = data["zbin"]
+    verbose = config["verbose"]
+
+    sel = select_hsc_weak_lensing_sample(data, config, calling_from_select=True)
+    sel &= zbin == bin_index
+    f4 = sel.sum() / sel.size
+
+    if verbose:
+        print(f"{f4:.2%} z for bin {bin_index}")
+        print("total tomo", sel.sum())
+
+    return sel
+
+def select_hsc_weak_lensing_sample(data, config, calling_from_select=False):
+    """
+    Add an additional cut to the parent class, if specified, on the max shear.
+    HSM DP0.2 catalogs seem to contain occasional very large shears that skew peaks.
+    This removes those. This is only really for testing.
+    """
+    sel = select_weak_lensing_sample(data, config, calling_from_select=calling_from_select)
+    shear_cut = config["max_shear_cut"]
+    if shear_cut:
+        g = np.sqrt(data["g1"] ** 2 + data["g2"] ** 2)
+        cut = g < shear_cut
+        p = 100 * (1 - (cut.sum() / cut.size))
+        print(f" shear cut removes {p:.2f}% of objects")
+        sel &= cut
+        p = sel.sum() / sel.size * 100
+        print(f" after shear cut retain {p:.2f}% of objects")
+    return sel
