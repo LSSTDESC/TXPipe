@@ -182,7 +182,7 @@ class TXIngestMetaDetect(PipelineStage):
 
     def file_run(self):
         file_path = self.config("file_path")
-        if file_path == None:
+        if file_path is None:
             raise RuntimeError("You must either use a butler, or specify a file_path to your metadetect catalog.")
 
         if not os.path.exists(file_path):
@@ -274,14 +274,14 @@ class TXIngestMetaDetect(PipelineStage):
             "gauss_flags",
             "pgauss_flags",
             "gauss_shape_flags",
-            
+ 
         ]
         return input_columns
 
     def setup_output(self, tag, group, first_chunk):
         f = self.open_output(tag)
         g = f.create_group(group)
-        variants =  {
+        variants = {
             "ns": len(first_chunk["ns"]),
             "1p": len(first_chunk["1p"]),
             "1m": len(first_chunk["1m"]),
@@ -302,7 +302,8 @@ class TXIngestMetaDetect(PipelineStage):
                 # replace masked values with nans
                 if np.ma.isMaskedArray(col):
                     col = col.filled(np.nan)
-                k[name].append(col) #NOT SURE THIS WORKS EITHER TBD
+                k[name].append(col)  #NOT SURE THIS WORKS EITHER TBD
+
 
 def sanitize(data):
     """
