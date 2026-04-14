@@ -53,7 +53,7 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         elif self.config["true_z"]:
             shear_cols += metadetect_variants("redshift_true")
 
-        for prefix in ["00", "1p", "1m", "2p", "2m"]:
+        for prefix in ["ns", "1p", "1m", "2p", "2m"]:
             renames[f"{prefix}/mcal_psf_T_mean"] = f"{prefix}/psf_T_mean"
 
         # This is a parent ceci.PipelineStage method.
@@ -85,7 +85,7 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
 
         # Otherwise we have to do it once for each variant
         pz_data = {}
-        variants = ["00/", "1p/", "2p/", "1m/", "2m/"]
+        variants = ["ns/", "1p/", "2p/", "1m/", "2m/"]
         for v in variants:
             if self.config["true_z"]:
                 zz = data[f"{v}redshift_true"]
@@ -123,7 +123,7 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
                 n = infile[f"shear/{v}/ra"].size
                 outfile["tomography"].create_dataset(f"bin_{v}", (n,), dtype=np.int32)
         # Link the 00 variant to the base tomography/bin dataset 
-        outfile["tomography/bin_00"] = outfile["tomography/bin"]
+        outfile["tomography/bin_ns"] = outfile["tomography/bin"]
 
         # There is only global calibration information for metadetect, nothing
         # per-bin.

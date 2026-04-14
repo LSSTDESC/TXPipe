@@ -1,4 +1,4 @@
-META_VARIANTS = ["00", "1p", "1m", "2p", "2m"]
+META_VARIANTS = ["ns", "1p", "1m", "2p", "2m"]
 
 
 def metacal_variants(*names):
