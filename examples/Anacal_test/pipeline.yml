@@ -18,3 +18,5 @@ config: examples/Anacal_test/config.yml
 
 inputs:
     anacal_catalog: /pscratch/sd/x/xiangchl/data/DP1/catalogs/anacal_catalog_a360.fits
+
+resume: False
