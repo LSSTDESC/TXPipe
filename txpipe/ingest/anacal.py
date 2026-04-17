@@ -95,8 +95,8 @@ class TXIngestAnacal(TXIngestCatalogFits):
                   "m2": data[f"{prefix}_m2"][:],
                   }
         for delta in ["de1", "de2", "dm0", "dm2"]:
-            output[f"{delta}_dg1"] = data[f"{prefix}_{delta}_dg1"]
-            output[f"{delta}_dg2"] = data[f"{prefix}_{delta}_dg2"]
+            output[f"{delta}_dg1"] = data[f"{prefix}_{delta}_dg1"][:]
+            output[f"{delta}_dg2"] = data[f"{prefix}_{delta}_dg2"][:]
         for band in bands:
             f = data[f"{band}_flux_{s}"][:]
             f_err = data[f"{band}_flux_{s}_err"][:]
