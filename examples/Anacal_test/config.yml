@@ -3,3 +3,7 @@ global:
     sparse: true  # Generate sparse maps - faster if using small areas
     pixelization: healpix
     nside: 512
+
+TXIngestAnacal:
+    bands: griz
+    
