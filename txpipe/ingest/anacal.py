@@ -89,8 +89,8 @@ class TXIngestAnacal(TXIngestCatalogFits):
                   "weight_detection": data["wdet"][:],
                   "weight_dg1": data["dwsel_dg1"][:],
                   "weight_dg2": data["dwsel_dg2"][:],
-                  "g1": data[f"{prefix}_e1"][:],
-                  "g2": data[f"{prefix}_e2"][:],
+                  "e1": data[f"{prefix}_e1"][:],
+                  "e2": data[f"{prefix}_e2"][:],
                   "m0": data[f"{prefix}_m0"][:],
                   "m2": data[f"{prefix}_m2"][:],
                   }
