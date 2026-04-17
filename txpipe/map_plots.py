@@ -44,6 +44,9 @@ class TXMapPlots(PipelineStage):
         "projection": StageParameter(str, "cart", msg="Projection type for map plots (e.g., cart, moll)"),
         "rot180": StageParameter(bool, False, msg="Whether to rotate the map by 180 degrees"),
         "debug": StageParameter(bool, False, msg="Enable debug mode for plotting"),
+        "mask_threshold": StageParameter(
+            float, 0.0, msg="Threshold for masking pixels"
+        ),
     }
 
     def run(self):
@@ -73,6 +76,11 @@ class TXMapPlots(PipelineStage):
                 sys.stderr.write(f"Failed to make maps with method {m.__name__}")
 
     def aux_source_plots(self):
+        """
+        Plot source auxiliary maps
+
+        Auxiliary maps are at their native Nside so we typically degrade with reduction='mean'
+        """
         import matplotlib.pyplot as plt
 
         if self.get_input("aux_source_maps") == "none":
@@ -96,7 +104,13 @@ class TXMapPlots(PipelineStage):
         for i in range(flag_max):
             plt.subplot(1, flag_max, i + 1)
             f = 2**i
-            m.plot(f"flags/flag_{f}", view=self.config["projection"], rot180=self.config["rot180"])
+            m.plot(
+                f"flags/flag_{f}",
+                view=self.config["projection"],
+                nside=self.config["nside"],
+                reduction="sum",
+                rot180=self.config["rot180"],
+            )
         fig.close()
 
         # PSF plots - 2 x n, for g1 and g2
@@ -104,12 +118,29 @@ class TXMapPlots(PipelineStage):
         _, axes = plt.subplots(2, nbin_source, squeeze=False, num=fig.file.number)
         for i in range(nbin_source):
             plt.sca(axes[0, i])
-            m.plot(f"psf/g1_{i}", view=self.config["projection"], rot180=self.config["rot180"])
+            m.plot(
+                f"psf/g1_{i}",
+                view=self.config["projection"],
+                nside=self.config["nside"],
+                reduction="mean",
+                rot180=self.config["rot180"],
+            )
             plt.sca(axes[1, i])
-            m.plot(f"psf/g2_{i}", view=self.config["projection"], rot180=self.config["rot180"])
+            m.plot(
+                f"psf/g2_{i}",
+                view=self.config["projection"],
+                nside=self.config["nside"],
+                reduction="mean",
+                rot180=self.config["rot180"],
+            )
         fig.close()
 
     def aux_lens_plots(self):
+        """
+        Plot lens auxiliary maps
+
+        Auxiliary maps are at their native Nside so we typically degrade with reduction='mean'
+        """
         import matplotlib.pyplot as plt
 
         if self.get_input("aux_lens_maps") == "none":
@@ -122,13 +153,31 @@ class TXMapPlots(PipelineStage):
 
         # Depth plots
         with self.open_output("depth_map", wrapper=True, figsize=(5, 5)) as fig:
-            m.plot("depth/depth", view=self.config["projection"], rot180=self.config["rot180"])
+            m.plot(
+                "depth/depth",
+                view=self.config["projection"],
+                nside=self.config["nside"],
+                reduction="mean",
+                rot180=self.config["rot180"],
+            )
 
         # Bright objects
         with self.open_output("bright_object_map", wrapper=True, figsize=(5, 5)) as fig:
-            m.plot("bright_objects/count", view=self.config["projection"], rot180=self.config["rot180"])
+            m.plot(
+                "bright_objects/count",
+                view=self.config["projection"],
+                nside=self.config["nside"],
+                reduction="mean",
+                rot180=self.config["rot180"],
+            )
 
     def source_plots(self):
+        """
+        Plot source maps
+
+        These maps were constructed using the mask but are not neccesarily at the same Nide as the mask
+        so we typically degrade with reduction='weightedmean'
+        """
         import matplotlib.pyplot as plt
 
         if self.get_input("source_maps") == "none":
@@ -138,6 +187,14 @@ class TXMapPlots(PipelineStage):
             return
 
         m = self.open_input("source_maps", wrapper=True)
+
+        # If the maps require a degrade the reduction will be a weighted mean
+        # so we load the mask here at the same nside as the map (to be used as weights)
+        nside = m.read_map_info("g1_0")["nside"]
+        with self.open_input("mask", wrapper=True) as f:
+            mask = f.read_mask(
+                "mask", thresh=self.config["mask_threshold"], degrade_nside=nside
+            )
 
         nbin_source = m.file["maps"].attrs["nbin_source"]
 
@@ -149,14 +206,38 @@ class TXMapPlots(PipelineStage):
         for i in range(nbin_source):
             # g1
             plt.sca(axes[0, i])
-            m.plot(f"g1_{i}", view=self.config["projection"], rot180=self.config["rot180"], min=-0.1, max=0.1)
+            m.plot(
+                f"g1_{i}",
+                view=self.config["projection"],
+                nside=self.config["nside"],
+                reduction="weightedmean",
+                weight_map=mask,
+                rot180=self.config["rot180"],
+                min=-0.1,
+                max=0.1,
+            )
 
             # g2
             plt.sca(axes[1, i])
-            m.plot(f"g2_{i}", view=self.config["projection"], rot180=self.config["rot180"], min=-0.1, max=0.1)
+            m.plot(
+                f"g2_{i}",
+                view=self.config["projection"],
+                nside=self.config["nside"],
+                reduction="weightedmean",
+                weight_map=mask,
+                rot180=self.config["rot180"],
+                min=-0.1,
+                max=0.1,
+            )
         fig.close()
 
     def lens_plots(self):
+        """
+        Plot lens maps
+
+        These maps were constructed using the mask but are not neccesarily at the same Nide as the mask
+        so we typically degrade with reduction='weightedmean'
+        """
         import matplotlib.pyplot as plt
 
         if self.get_input("lens_maps") == "none":
@@ -169,18 +250,42 @@ class TXMapPlots(PipelineStage):
         rho = self.open_input("density_maps", wrapper=True)
         nbin_lens = m.file["maps"].attrs["nbin_lens"]
 
+        # If the maps require a degrade the reduction will be a weighted mean
+        # so we load the mask here at the same nside as the map (to be used as weights)
+        nside = rho.read_map_info("delta_0")["nside"]
+        with self.open_input("mask", wrapper=True) as f:
+            mask = f.read_mask(
+                "mask", thresh=self.config["mask_threshold"], degrade_nside=nside
+            )
+
         # Plot both density and ngal as 2 x n
         fig = self.open_output("lens_map", wrapper=True, figsize=(5 * nbin_lens, 5))
         _, axes = plt.subplots(2, nbin_lens, squeeze=False, num=fig.file.number)
 
         for i in range(nbin_lens):
             plt.sca(axes[0, i])
-            m.plot(f"ngal_{i}", view=self.config["projection"], rot180=self.config["rot180"])
+            m.plot(
+                f"ngal_{i}",
+                view=self.config["projection"],
+                nside=self.config["nside"],
+                reduction="sum",
+                rot180=self.config["rot180"],
+            )
             plt.sca(axes[1, i])
-            rho.plot(f"delta_{i}", view=self.config["projection"], rot180=self.config["rot180"])
+            rho.plot(
+                f"delta_{i}",
+                view=self.config["projection"],
+                nside=self.config["nside"],
+                reduction="weightedmean",
+                weight_map=mask,
+                rot180=self.config["rot180"],
+            )
         fig.close()
 
     def mask_plots(self):
+        """
+        Plot Mask maps
+        """
         import matplotlib.pyplot as plt
 
         if self.get_input("mask") == "none":
@@ -192,7 +297,13 @@ class TXMapPlots(PipelineStage):
         m = self.open_input("mask", wrapper=True)
 
         fig = self.open_output("mask_map", wrapper=True, figsize=(5, 5))
-        m.plot("mask", view=self.config["projection"], rot180=self.config["rot180"])
+        m.plot(
+            "mask",
+            view=self.config["projection"],
+            nside=self.config["nside"],
+            reduction="mask",
+            rot180=self.config["rot180"],
+        )
         fig.close()
 
 
@@ -255,12 +366,30 @@ class TXMapPlotsSSI(TXMapPlots):
 
         # Depth plots (measured magnitude)
         with self.open_output("depth_ssi_meas_map", wrapper=True, figsize=(5, 5)) as fig:
-            m.plot("depth_meas/depth", view=self.config["projection"], rot180=self.config["rot180"])
+            m.plot(
+                "depth_meas/depth",
+                view=self.config["projection"],
+                nside=self.config["nside"],
+                reduction="mean",
+                rot180=self.config["rot180"],
+            )
 
         # Depth plots (true magnitude)
         with self.open_output("depth_ssi_true_map", wrapper=True, figsize=(5, 5)) as fig:
-            m.plot("depth_true/depth", view=self.config["projection"], rot180=self.config["rot180"])
+            m.plot(
+                "depth_true/depth",
+                view=self.config["projection"],
+                nside=self.config["nside"],
+                reduction="mean",
+                rot180=self.config["rot180"],
+            )
 
         # Depth plots (true magnitude)
         with self.open_output("depth_ssi_det_prob_map", wrapper=True, figsize=(5, 5)) as fig:
-            m.plot("depth_det_prob/depth", view=self.config["projection"], rot180=self.config["rot180"])
+            m.plot(
+                "depth_det_prob/depth",
+                view=self.config["projection"],
+                nside=self.config["nside"],
+                reduction="mean",
+                rot180=self.config["rot180"],
+            )

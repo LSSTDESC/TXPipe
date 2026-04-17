@@ -17,6 +17,8 @@ stages:
   - name: TXSourceSelectorMetacal
     nprocess: 64
     nodes: 2
+  - name: TXSourceTomography
+    threads_per_process: 4
   - name: TXShearCalibration
     nprocess: 7
     nodes: 1

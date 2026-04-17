@@ -2,6 +2,18 @@ import hashlib
 import string
 import numpy as np
 
+def read_shear_catalog_type(stage):
+    """
+    Determine the type of shear catalog a stage is using as input.
+    Returns a string, e.g. metacal, lensfit.
+    Also sets shear_catalog_type in the stage's configuration
+    so that it is available later and is saved in output.
+    """
+    with stage.open_input("shear_catalog", wrapper=True) as f:
+        shear_catalog_type = f.catalog_type
+        stage.config["shear_catalog_type"] = shear_catalog_type
+    return shear_catalog_type
+
 
 def array_hash(x):
     b = x.tobytes()

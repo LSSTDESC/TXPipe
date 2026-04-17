@@ -3,6 +3,9 @@
 stages:
     - name: TXTruthLensCatalogSplitter  # Split the lens sample tomographically
     - name: TXLSSDensityNullTests
+      threads_per_process: 64
+      nprocess: 1
+      nodes: 1
     - name: TXLSSWeightsLinBinned     # compute LSS weights
       threads_per_process: 64
       nprocess: 1
@@ -29,8 +32,7 @@ launcher:
 
 # Where to run the pipeline: cori-interactive, cori-batch, or local
 site:
-    name: cori-batch
-    image: ghcr.io/lsstdesc/txpipe
+    name: nersc-interactive
 
 # configuration settings
 config: examples/lssweights/des-y1//config_binned.yml

@@ -22,6 +22,8 @@ python_paths: []
 stages:
   - name: TXSourceSelectorMetadetect
     nprocess: 30
+  - name: TXSourceTomography
+    threads_per_process: 4
   - name: BPZliteInformer
     nprocess: 1
     aliases:

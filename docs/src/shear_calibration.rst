@@ -16,7 +16,7 @@ If you are doing straightforward analysis on tomographic quantities you may be a
 Calculator Classes
 ------------------
 
-The calculator classes can be found in `txpipe/utils/calibration_tools.py`. There is one for each shear calibration method. Their main use is in the source selection stages, in `txpipe/source_selector.py`. Their output is saved into the :ref:`tomography file<Shear tomography catalogs>` "response" group.
+The calculator classes can be found in `txpipe/shear_calibration/calibration_calculators.py`. There is one for each shear calibration method. Their main use is in the source selection stages, in `txpipe/source_selector.py`. Their output is saved into the :ref:`tomography file<Shear tomography catalogs>` "response" group.
 
 The calculator classes are designed to operate on streamed data (i.e. they do not load the entire catalog at once, but a chunk at a time).  The expected life cycle of a calculator class is:
 
@@ -32,7 +32,9 @@ The **selector** function is used because in some cases we need to calculate a s
 
 The `data` argument is a dictionary of numpy arrays, where the keys are the column names and the values are the data. The function should return something we can use to index the data, such as a boolean array or an integer array.  The extra arguments are passed in from the `add_data` method, and can be anything used in the selection, such the index of the tomographic bin being selected. They will be passed in when calling `add_data`.
 
-The **add_data** method should be called with each chunk of data loaded in one-by-one. Its `data` argument is the same as the `selector` function, and the `args` and `kwargs` are passed to the `selector` function. The 
+The **add_data** method should be called with each chunk of data loaded in one-by-one. Its `data` argument is the same as the `selector` function, and the `args` and `kwargs` are passed to the `selector` function. 
+
+The calculator classes return an instance of `BinStats`, a little class that just contains statistics about the bin (means, variances, counts, etc), and, most importantly, an instance of a `Calibrator` subclass that actually does the calibration.
 
 Calibrator Classes
 ------------------
@@ -41,13 +43,9 @@ The calibrator classes read the data from the tomography file response group and
 
 The base class, `Calibrator`, has a `load` method which takes the name of the tomography file to load from, and then determines which shear catalog type it is and returns a `Calibrator` sub-class appropriate for that type. This method also takes a "null" keyword which you can use to tell it to ignore the calibration factors and return a dummy calibrator that does nothing. This is useful when you have true shear values for testing.
 
-All the subclasses then have an `apply` method which takes `g1` and `g2` arrays/floats and returns calibrated values. By default a mean shear value is also subtracted.
+All the subclasses then have an `apply` method which takes `g1` and `g2` arrays/floats and returns calibrated values. By default a mean shear value is also subtracted. They have several other methods that calibrate variances etc.
 
 MeanShearInBins
 ---------------
 
-
-
-Roadmap
--------
-It would make more sense for the calculator classes to return a Calibrator object, and for the calibrator objects to be responsible for saving themselves to the tomography files where they end up.
+The `MeanShearInBin` class is designed to simplify null tests in which the the mean shear is calculated in different bins of some quantity, such as signal-to-noise or size. It calculates the shear calibration factors for each bin and applies them to the mean shear in that bin. It is used for null testing.

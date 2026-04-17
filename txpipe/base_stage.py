@@ -71,7 +71,7 @@ class PipelineStage(PipelineStageBase):
         print(f"{t}: Process {self.rank}:{tag} Remaining memory on {host} {avail:.1f} GB / {total:.1f} GB")
         sys.stdout.flush()
 
-    def combined_iterators(self, rows, *inputs, parallel=True):
+    def combined_iterators(self, rows, *inputs, parallel=True, longest=False):
         """
         Iterate through multiple files at the same time.
 
@@ -110,7 +110,7 @@ class PipelineStage(PipelineStageBase):
             tag = inputs[3 * i]
             section = inputs[3 * i + 1]
             cols = inputs[3 * i + 2]
-            iterators.append(self.iterate_hdf(tag, section, cols, rows, parallel=parallel))
+            iterators.append(self.iterate_hdf(tag, section, cols, rows, parallel=parallel, longest=longest))
 
         for it in zip(*iterators):
             data = {}
