@@ -53,16 +53,18 @@ class TXIngestAnacal(TXIngestCatalogFits):
         cols = (
             [
                 "ra",
-                "dec", 
+                "dec",
                 "wsel",
                 "wdet",
                 f"{prefix}_e1",
                 f"{prefix}_e2",
+                f"{prefix}_m0",
+                f"{prefix}_m2"
             ])
         cols += ["dwsel"+ suffix for suffix in ["_dg1", "_dg2"]]
         cols += [
                  prefix +delta + suffix 
-                 for delta in ["_de1", "_de2"]
+                 for delta in ["_de1", "_de2", "_dm0", "_dm2"]
                  for suffix in ["_dg1", "_dg2"]
                  ]
         bands = self.config["bands"]
@@ -79,6 +81,7 @@ class TXIngestAnacal(TXIngestCatalogFits):
     def process_anacal_shear_data(self, data):
         bands = self.config["bands"]
         s = self.config["scale"]
+        prefix = self.config["prefix"]
         output = {
                   "ra": data["ra"][:],
                   "dec": data["dec"][:],
@@ -86,7 +89,14 @@ class TXIngestAnacal(TXIngestCatalogFits):
                   "weight_detection": data["wdet"][:],
                   "weight_dg1": data["dwsel_dg1"][:],
                   "weight_dg2": data["dwsel_dg2"][:],
+                  "g1": data[f"{prefix}_e1"][:],
+                  "g2": data[f"{prefix}_e2"][:],
+                  "m0": data[f"{prefix}_m0"][:],
+                  "m2": data[f"{prefix}_m2"][:],
                   }
+        for delta in ["de1", "de2", "dm0", "dm2"]:
+            output[f"{delta}_dg1"] = data[f"{prefix}_{delta}_dg1"]
+            output[f"{delta}_dg2"] = data[f"{prefix}_{delta}_dg2"]
         for band in bands:
             f = data[f"{band}_flux_{s}"][:]
             f_err = data[f"{band}_flux_{s}_err"][:]
