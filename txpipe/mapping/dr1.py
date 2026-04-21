@@ -235,3 +235,53 @@ def make_dask_depth_map_det_prob(
         "det_frac_by_mag_thres": det_frac_by_mag_thres,
         "mag_edges": mag_edges,
     }
+
+
+def make_dask_selection_function(
+        ra, dec, det, pixel_scheme, cov_map
+    ):
+    """
+    Generate map of selection function from SSI catalogues.
+
+    Maps the selection function in regions containing synthetically injected
+    sources. In a given pixel, the selection function is estimated as the number
+    of detected injections versus the total number of injections.
+    TODO: Add functionality for more sophisticated estimates, e.g. including
+    removal of blended injections.
+
+    Parameters
+    ----------
+    ra : dask.array
+        Right Ascension coordinates in degrees for injected sources.
+    dec : dask.array
+        Declination coordinates in degrees for injected sources.
+    det : dask.array
+        Whether or not the source has been detected.
+    pixel_scheme : PixelScheme
+        An object that provides pixelization scheme with methods `npix` and `ang2pix`.
+    cov_map : HealSparseCoverage
+        coverage map corresponding to these sources (or a superset of them)
+
+    Returns
+    -------
+    dict
+        A dict containing:
+        - pix (dask.array): Unique pixel indices.
+        - sel_func_map (dask.array): Selection function measured from injected sources.
+    """
+    _, da = import_dask()
+    pix = pixel_scheme.ang2pix(ra, dec)
+
+    # get the sparse map index for each of these pixel (is dask aware)
+    sparse_index, npix_sparse = pix2sparseindex(pix, cov_map)
+
+    # Count detected and total injections per pixel
+    ndet = da.bincount(sparse_index, weights=det, minlength=npix_sparse)
+    ntot = da.bincount(sparse_index, minlength=npix_sparse)
+    # Selection function (N_det / N_tot)
+    sel_func_map = da.where(ntot != 0, ndet / ntot, np.nan)
+
+    return {
+        "pix": pix,
+        "sel_func_map": sel_func_map
+    }
