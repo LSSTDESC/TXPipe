@@ -8,10 +8,10 @@ from .mapping import (
     make_dask_bright_object_map,
     make_dask_depth_map,
     make_dask_depth_map_det_prob,
+    make_dask_selection_function,
 )
 from .data_types import MapsFile, HDFFile, ShearCatalog
 from .utils import choose_pixelization, import_dask
-from .maps import map_config_options
 from ceci.config import StageParameter
 
 
@@ -459,3 +459,65 @@ class TXAuxiliarySSIMaps(TXBaseMaps):
             for map_name, m in hsp_maps.items():
                 out.write_map(map_name, m, metadata)
             out.file["maps"].attrs.update(metadata)
+
+
+class TXSelectionFunctionSSIMaps(TXBaseMaps):
+    """
+    Generate map of the selection function from SSI catalogs.
+
+    TODO: More detailed description.
+    """
+
+    name = "TXSelectionFunctionSSIMaps"
+    dask_parallel = True  # TODO: change if not actually necessary
+    inputs = [
+        ("matched_ssi_photometry_catalog", HDFFile),  # injected objects that were detected
+        ("injection_catalog", HDFFile),  # injection locations
+        ("ssi_detection_catalog", HDFFile),  # detection info on each injection
+    ]
+    outputs = [
+        ("sel_func_ssi_maps", MapsFile),
+    ]
+
+    config_options = {
+        "block_size": StageParameter(int, 0, msg="Block size for dask processing (0 means auto)."),
+        **map_config_options
+    }
+
+    def run(self):
+        # Import dask and alias it as 'da'
+        _, da = import_dask()
+        import healsparse as hsp
+
+        # Retrieve configuration parameters
+        block_size = self.config["block_size"]
+        if block_size == 0:
+            block_size = "auto"
+
+        # Open the input catalog files
+        # We can't use "with" statements because we need to keep the file open
+        # while we're using dask.
+        f_matched = self.open_input("matched_ssi_photometry_catalog", wrapper=True)
+        f_inj = self.open_input("injection_catalog", wrapper=True)
+        f_det = self.open_input("ssi_detection_catalog", wrapper=True)
+
+        # Load matched catalog data into dask arrays.
+        # This is lazy in dask, so we're not actually loading the data here.
+        ra = da.from_array(f_matched.file["photometry/ra"], block_size)
+        block_size = ra.chunksize
+        dec = da.from_array(f_matched.file["photometry/dec"], block_size)
+
+        # Choose the pixelization scheme based on the configuration.
+        # Might need to review this to make sure we use the same scheme everywhere
+        pixel_scheme = choose_pixelization(**self.config)
+
+        # Load detection catalog data into dask arrays.
+        # This is lazy in dask, so we're not actually loading the data here.
+        ra_inj = da.from_array(f_inj.file["photometry/ra"], block_size)
+        dec_inj = da.from_array(f_inj.file["photometry/dec"], block_size)
+        det = da.from_array(f_det.file[f"photometry/detected"], block_size)
+
+        # Make coverage map for these ra,dec
+        cov_map = make_coverage_map(ra_inj, dec_inj, pixel_scheme)
+
+    
