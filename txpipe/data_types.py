@@ -1,12 +1,11 @@
 """
 This file contains TXPipe-specific file types, subclassing the more
-generic types in base.py
+generic types in ceci.
 """
-
-from .base import HDFFile, DataFile, YamlFile
+from ceci.file_types import HDFFile, DataFile, YamlFile, TextFile, FitsFile, Directory, FileCollection, PickleFile, ParquetFile, PNGFile, FileValidationError
+from .mapping import degrade_healsparse
 import yaml
 import numpy as np
-
 
 def metacalibration_names(names):
     """
@@ -202,10 +201,11 @@ class MapsFile(HDFFile):
         def visit(name, obj):
             if isinstance(obj, h5py.Group):
                 keys = obj.keys()
-                # we save maps with these two data sets,
-                # so if they are both there then this will
+                # legacy maps have datasets "pixel", "value"
+                # healsparse maps have sub-group "healsparse"
+                # so if one of these is there then this will
                 # be a map
-                if "pixel" in keys and "value" in keys:
+                if ("pixel" in keys and "value" in keys) or ("healsparse" in keys):
                     maps.append(name)
 
         # Now actually run this
@@ -214,21 +214,42 @@ class MapsFile(HDFFile):
         # return the accumulated list
         return maps
 
-    def read_healpix(self, map_name, return_all=False):
+    def _read_healsparse(self, map_name, **kwargs):
+        """
+        Read healsparse map from hdf5
+
+        All keyword arguments are forwarded to HealSparseMap.read
+        """
+        import healsparse as hsp
+
+        return hsp.HealSparseMap.read(
+            self.path, hdf5_group=f"maps/{map_name}/healsparse", **kwargs
+        )
+
+    def _check_is_legacy(self, map_name):
+        """
+        Returns True if map was saved using an old TXPipe file format
+        i.e. is not a healsparse file
+        """
+        keys = self.file[f"maps/{map_name}"].keys()
+        return ("pixel" in keys) and ("value" in keys)
+
+    def _read_healpix_legacy(self, map_name):
+        import healsparse as hsp
         import healpy
-        import numpy as np
 
         group = self.file[f"maps/{map_name}"]
         nside = group.attrs["nside"]
-        npix = healpy.nside2npix(nside)
-        m = np.repeat(healpy.UNSEEN, npix)
-        pix = group["pixel"][:]
-        val = group["value"][:]
-        m[pix] = val
-        if return_all:
-            return m, pix, nside
+        
+        # Legacy files don't have an nside_coverage so we default to 32
+        nside_coverage = 32
+        m = hsp.HealSparseMap.make_empty(nside_coverage, nside, dtype=type(group["value"][0]))
+        if group.attrs["nest"]:
+            pix = group["pixel"][:]
         else:
-            return m
+            pix = healpy.ring2nest(nside, group["pixel"][:])
+        m.update_values_pix(pix, group["value"][:])
+        return m
 
     def read_map_info(self, map_name):
         group = self.file[f"maps/{map_name}"]
@@ -238,49 +259,142 @@ class MapsFile(HDFFile):
         return info
 
     def read_map(self, map_name):
+        """
+        Read map and return as a healsparse map
+
+        Parameters
+        ----------
+
+        map_name: `str`
+            The name of this map
+        """
         info = self.read_map_info(map_name)
         pixelization = info["pixelization"]
         if pixelization == "gnomonic":
             m = self.read_gnomonic(map_name)
         elif pixelization == "healpix":
-            m = self.read_healpix(map_name)
+            is_legacy = self._check_is_legacy(map_name)
+
+            if is_legacy:
+                m = self._read_healpix_legacy(map_name)
+            else:
+                m = self._read_healsparse(map_name)
         else:
             raise ValueError(f"Unknown map pixelization type {pixelization}")
         return m
 
-    def read_mask(self, mask_name=None, thresh=0):
-        if mask_name is None:
-            mask_name = "mask"
-        mask = self.read_map(mask_name)
-        mask[mask <= thresh] = 0
-        return mask
-
-    def read_healsparse(self, map_name, return_all=True):
-        import healpy
-        import healsparse as hsp
-        import numpy as np
-
-        group = self.file[f"maps/{map_name}"]
-        nside = group.attrs["nside"]
-        m = hsp.HealSparseMap.make_empty(32, nside, dtype=type(group["value"][0]), sentinel=healpy.UNSEEN)
-        m.update_values_pix(group["pixel"][:], group["value"][:])
-        if return_all:
-            return m, nside
-        else:
-            return m
-
-    def write_map(self, map_name, pixel, value, metadata):
+    def read_map_healpix(
+        self, map_name, nside=None, reduction="mean", key=None, nest=True
+    ):
         """
-        Save an output map to an HDF5 subgroup.
-
-        The pixel numbering and the metadata are also saved.
+        Read map and return as a healpix array
 
         Parameters
         ----------
 
-        group: H5Group
-            The h5py Group object in which to store maps
-        name: str
+        map_name: `str`
+            The name of this map
+        nside : `int` (healsparse argument)
+            Output nside resolution parameter (should be a multiple of 2). If
+            not specified the output resolution will be equal to the parent's
+            sparsemap nside_sparse
+        reduction : `str` (healsparse argument)
+            If a change in resolution is requested, this controls the method to
+            reduce the map computing the "mean", "median", "std", "max", "min",
+            "sum" or "prod" (product)  of the neighboring pixels to compute the
+            "degraded" map.
+        key : `str` (healsparse argument)
+            If the parent HealSparseMap contains recarrays, key selects the
+            field that will be transformed into a HEALPix map.
+        nest : `bool`, optional (healsparse argument)
+            Output healpix map should be in nest format?
+        """
+        hsp_map = self.read_map(map_name)
+        m = hsp_map.generate_healpix_map(
+            nside=nside, reduction=reduction, key=key, nest=nest
+        )
+        return m
+
+    def read_mask(
+        self, mask_name=None, thresh=0.0, degrade_nside=None, returnbool=False
+    ):
+        """
+        Read the mask and return as a healsparse map
+
+        Parameters
+        ----------
+
+        map_name: str or None  (optional)
+            The name of this mask, if None wil load the default "mask"
+        thresh: float (optional)
+            minimum fractional coverage of a pixel (at native nside)
+        degrade_nside: int
+            if required, degrade the mask to this nside
+        returnbool: bool
+            if True, will return a binary map where any pixel with mask > 0 is True
+            if mask was already boolean, return unchanged
+        """
+        import healsparse as hsp
+
+        if mask_name is None:
+            mask_name = "mask"
+        mask_in = self.read_map(mask_name)
+
+        if thresh > 0.0:
+            # Remove any pixels below the threshold
+            # Setting pixels to the sentinel can be buggy in healsparse
+            # so we'll make a copy of the mask with the < thresh pixels removed
+            mask = hsp.HealSparseMap.make_empty_like(mask_in)
+            pix_to_keep = mask.valid_pixels[mask[mask.valid_pixels] > thresh]
+            mask.update_values_pix(pix_to_keep, mask[pix_to_keep])
+        else:
+            mask = mask_in
+
+        # degrade if requested and nessesary
+        if (degrade_nside is not None) and (degrade_nside != mask.nside_sparse):
+            mask = degrade_healsparse(
+                mask, reduction="mask", degrade_nside=degrade_nside
+            )
+
+        if returnbool and not np.issubdtype(mask.dtype, np.bool_):
+            # make a boolean mask from a frac map
+            bool_mask = hsp.HealSparseMap.make_empty(
+                mask.nside_coverage, mask.nside_sparse, bool
+            )
+            bool_mask[mask.valid_pixels] = True
+            mask = bool_mask
+
+        return mask
+
+    def read_mask_healpix(self, mask_name=None, thresh=0.0, degrade_nside=None):
+        """
+        Read the mask and return as a healpix array
+
+        Parameters
+        ----------
+
+        map_name: str or None  (optional)
+            The name of this mask, if None wil load the default "mask"
+        thresh: float (optional)
+            minimum fractional coverage of a pixel (at native nside)
+        degrade_nside : int or None  (optional)
+            degrade the mask to this nside before converting to healpix array
+        """
+        import healsparse as hsp
+
+        mask_out = self.read_mask(
+            mask_name=mask_name, thresh=thresh, degrade_nside=degrade_nside
+        )
+        return mask_out.generate_healpix_map()
+
+    def write_map(self, map_name, hsp_map, metadata):
+        """
+        Save an output healsparse map to an HDF5 subgroup in healsparse format
+
+        Parameters
+        ----------
+
+        map_name: str
             The name of this map, used as the name of a subgroup in the group where the data is stored.
         pixel: array
             Array of indices of observed pixels
@@ -289,6 +403,43 @@ class MapsFile(HDFFile):
         metadata: mapping
             Dict or other mapping of metadata to store along with the map
         """
+        if not "maps" in self.file:
+            self.file.create_group("maps")
+
+        hsp_map.write(
+            self.path,
+            format="hdf5",
+            clobber=True,
+            hdf5_group=f"maps/{map_name}/healsparse",
+        )
+
+        # also add any extra metadata
+        subgroup = self.file[f"maps/{map_name}"]
+        subgroup.attrs.update(metadata)
+
+    def write_map_pixval(self, map_name, pixel, value, metadata, nside_coverage=32):
+        """
+        Save an array of pixel indices and values to an HDF5 subgroup in healsparse format
+
+        The metadata is also saved.
+
+        Parameters
+        ----------
+
+        map_name: str
+            The name of this map, used as the name of a subgroup in the group where the data is stored.
+        pixel: array
+            Array of indices of observed pixels
+        value: array
+            Array of values of observed pixels
+        metadata: mapping
+            Dict or other mapping of metadata to store along with the map
+        nside_coverage: int
+            nside of the healsparse coverage map
+        """
+        import healsparse as hsp
+        import healpy
+
         if not "maps" in self.file:
             self.file.create_group("maps")
         if not "pixelization" in metadata:
@@ -301,23 +452,99 @@ class MapsFile(HDFFile):
             if not pixel.shape == value.shape:
                 raise pixerr
 
-        if not "maps" in self.file.keys():
-            self.file.create_group("maps")
         subgroup = self.file["maps"].create_group(map_name)
         subgroup.attrs.update(metadata)
-        subgroup.create_dataset("pixel", data=pixel)
-        subgroup.create_dataset("value", data=value)
 
-    def plot_healpix(self, map_name, view="cart", rot180=False, **kwargs):
+        # convert pixels and values into a healsparse map and save
+        if (
+            value.ndim == 2
+        ):  # input values are a stack of maps. save as recarray (labels 0, 1, 2 etc)
+            dtypes = [(str(i), value.dtype) for i in range(value.shape[0])]
+            value = np.rec.fromarrays(value, dtype=dtypes)
+            hsp_map = hsp.HealSparseMap.make_empty(
+                nside_coverage=nside_coverage,
+                nside_sparse=metadata["nside"],
+                dtype=dtypes,
+                primary="0",
+            )
+        else:
+            hsp_map = hsp.HealSparseMap.make_empty(
+                nside_coverage=nside_coverage,
+                nside_sparse=metadata["nside"],
+                dtype=value.dtype,
+            )
+        if metadata["nest"]:
+            hsp_pix = pixel
+        else:
+            hsp_pix = healpy.ring2nest(metadata["nside"], pixel)
+
+        hsp_map.update_values_pix(hsp_pix, value)
+
+        hsp_map.write(
+            self.path,
+            format="hdf5",
+            clobber=True,
+            hdf5_group=f"maps/{map_name}/healsparse",
+        )
+
+    def plot_healpix(
+        self,
+        map_name,
+        view="cart",
+        rot180=False,
+        nside=None,
+        reduction="mean",
+        key=None,
+        weight_map=None,
+        **kwargs,
+    ):
+        """
+        Plots healpix map using healpy tools
+
+        The map is read as a HealSparse map, optionally degraded
+        to a target nside, converted to a Healpix array, and plotted with healpy
+
+        Parameters
+        ----------
+        map_name : str
+            Name of the map to read and plot.
+        view : {"cart", "moll"}, optional
+            Healpy view type: Cartesian ("cart") or Mollweide ("moll").
+        rot180 : bool, optional
+            If True, rotate the map by 180 degrees in longitude before plotting.
+        nside : int, optional
+            Target Healpix nside for visualization. Defaults to the sparse
+            nside of the input map.
+        reduction : str, optional
+            Reduction operation used when generating the Healpix map
+            from the HealSparse representation (e.g. "mean", "sum").
+        key : str, optional
+            Optional key used if healsparse map is a recarray
+        **kwargs
+            Additional keyword arguments passed directly to the underlying
+            healpy plotting function (e.g. ``min``, ``max``, ``cmap``).
+        """
         import healpy
         import numpy as np
 
-        m, pix, nside = self.read_healpix(map_name, return_all=True)
-        lon, lat = healpy.pix2ang(nside, pix, lonlat=True)
+        info = self.read_map_info(map_name)
+        assert info["pixelization"] != "gnomonic"
+
+        hsp_map = self.read_map(map_name)
+
+        if nside is None:
+            nside = hsp_map.nside_sparse
+        
+        if nside is not None:  # degrade (including custom reductions)
+            hsp_map = degrade_healsparse(hsp_map, nside, reduction, weight_map)
+        
+        m = hsp_map.generate_healpix_map()
+        pix = hsp_map.valid_pixels
+        lon, lat = healpy.pix2ang(nside, pix, lonlat=True, nest=True)
         if rot180:  # (optional) rotate 180 degrees in the lon direction
             lon += 180
             lon[lon > 360.0] -= 360.0
-            pix_rot = healpy.ang2pix(nside, lon, lat, lonlat=True)
+            pix_rot = healpy.ang2pix(nside, lon, lat, lonlat=True, nest=True)
             m_rot = np.ones(healpy.nside2npix(nside)) * healpy.UNSEEN
             m_rot[pix_rot] = m[pix]
             m = m_rot
@@ -334,14 +561,21 @@ class MapsFile(HDFFile):
         lat_range = [lat[w].min() - 0.1, lat[w].max() + 0.1]
         lat_range = np.clip(lat_range, -90, 90)
         lon_range = np.clip(lon_range, 0, 360.0)
-        m[m == 0] = healpy.UNSEEN
         title = kwargs.pop("title", map_name)
         if view == "cart":
-            healpy.cartview(m, lonra=lon_range, latra=lat_range, title=title, hold=True, **kwargs)
+            healpy.cartview(
+                m,
+                lonra=lon_range,
+                latra=lat_range,
+                title=title,
+                hold=True,
+                nest=True,
+                **kwargs,
+            )
         elif view == "moll":
-            healpy.mollview(m, title=title, hold=True, **kwargs)
+            healpy.mollview(m, title=title, hold=True, nest=True, **kwargs)
         else:
-            raise ValueError(f"Unknown Healpix view mode {mode}")
+            raise ValueError(f"Unknown Healpix view mode {view}")
 
     def read_gnomonic(self, map_name):
         import numpy as np
@@ -407,6 +641,12 @@ class LensingNoiseMaps(MapsFile):
 
         return g1, g2
 
+    def read_rotation_healpix(self, realization_index, bin_index):
+        g1, g2 = self.read_rotation(realization_index, bin_index)
+        g1_hp = g1.generate_healpix_map()
+        g2_hp = g2.generate_healpix_map()
+        return g1_hp, g2_hp
+
     def number_of_realizations(self):
         info = self.file["maps"].attrs
         lensing_realizations = info["lensing_realizations"]
@@ -420,6 +660,12 @@ class ClusteringNoiseMaps(MapsFile):
         rho1 = self.read_map(rho1_name)
         rho2 = self.read_map(rho2_name)
         return rho1, rho2
+
+    def read_density_split_healpix(self, realization_index, bin_index):
+        rho1, rho2 = self.read_density_split(realization_index, bin_index)
+        rho1_hp = rho1.generate_healpix_map()
+        rho2_hp = rho2.generate_healpix_map()
+        return rho1_hp, rho2_hp
 
     def number_of_realizations(self):
         info = self.file["maps"].attrs

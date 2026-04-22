@@ -1,16 +1,14 @@
 from .base_stage import PipelineStage
 from .data_types import Directory, ShearCatalog, HDFFile, PNGFile, TomographyCatalog, TextFile
-from .utils.calibrators import Calibrator
-from .utils.calibration_tools import (
-    calculate_selection_response,
-    calculate_shear_response,
+from .shear_calibration import (
+    Calibrator,
     MeanShearInBins,
-    read_shear_catalog_type,
     metadetect_variants,
     band_variants,
 )
 from .utils.fitting import fit_straight_line
-from .utils import import_dask
+from .utils import import_dask, read_shear_catalog_type
+
 from .plotting import manual_step_histogram
 import numpy as np
 from ceci.config import StageParameter
@@ -260,6 +258,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
             "tomography",
             shear_tomo_cols,
             *more_iters,
+            longest=True,
         )
 
         # Now loop through each chunk of input data, one at a time.
@@ -745,7 +744,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 # In KiDS, the additive bias is calculated and removed per North and South field
                 # therefore, we add dec to split data into these fields.
                 # You can choose not to by setting dec_cut = 90 in the config, for example.
-                g1, g2 = cal.apply(dec, g1, g2)
+                g1, g2 = cal.apply(g1, g2, dec)
             else:
                 g1, g2 = cal.apply(g1, g2, c1, c2)
 

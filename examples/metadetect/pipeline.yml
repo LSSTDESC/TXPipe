@@ -47,6 +47,7 @@ stages:
         photoz_stack: shear_photoz_stack
         photoz_realizations: source_photoz_realizations
   - name: TXSourceSelectorMetadetect    # select and split objects into source bins
+  - name: TXSourceTomography
   - name: NZDirInformerSource       # Prepare the DIR method inputs for the source sample
     classname: NZDirInformer
     aliases:
@@ -117,6 +118,7 @@ stages:
   - name: TXApertureMass          # Compute aperture-mass statistics
     threads_per_process: 2
   - name: TXTwoPointFourier      # Compute power spectra C_ell
+  - name: TXTwoPointFourierCatalog
   - name: HOSFSB
     # Disabled since not yet synchronised with new Treecorr MPI
   - name: TXTwoPointSCIA   # Self-calibration intrinsic alignments of galaxies

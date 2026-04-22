@@ -48,7 +48,7 @@ class TXLogNormalGlass(PipelineStage):
     ]
 
     config_options = {
-        "num_dens": StageParameter(float, required=True, msg="Number density of galaxies per square arcmin"),
+        "num_dens": StageParameter(list, required=True, msg="Number density of galaxies per square arcmin"),
         "zmin": StageParameter(float, 0.0, msg="Minimum redshift for the simulation"),
         "zmax": StageParameter(float, 2.0, msg="Maximum redshift for the simulation"),
         "dx": StageParameter(int, 100, msg="Comoving distance spacing for redshift shells in Mpc"),
@@ -65,6 +65,7 @@ class TXLogNormalGlass(PipelineStage):
         "ell_binned_max": StageParameter(float, 5.0e5, msg="Maximum ell for binned C(l) output"),
         "ell_binned_nbins": StageParameter(int, 100, msg="Number of ell bins for binned C(l) output"),
         "output_density_shell_maps": StageParameter(bool, False, msg="Whether to output density maps for each shell"),
+        "density_shell_nest":  StageParameter(bool, False, msg="Whether output density maps be in nest ordering"),
     }
 
     def run(self):
@@ -292,14 +293,17 @@ class TXLogNormalGlass(PipelineStage):
 
         # load mask
         with self.open_input("mask", wrapper=True) as map_file:
-            mask = map_file.read_map("mask")
+            mask = map_file.read_mask_healpix(
+                "mask", degrade_nside=self.config["nside"]
+            )
             self.mask_map_info = map_file.read_map_info("mask")
         mask[mask == hp.UNSEEN] = 0.0  # set UNSEEN pixels to 0 (GLASS needs this)
         mask_area = np.sum(mask[mask != hp.UNSEEN]) * hp.nside2pixarea(self.nside, degrees=True)
 
         # get number density arcmin^-2 for each z bin from config
         target_num_dens = np.array(self.config["num_dens"])
-        assert len(target_num_dens) == len(nzs)
+        if not len(target_num_dens) == len(nzs):
+            raise ValueError(f"num_dens config option length ({len(target_num_dens)}) does not match number of tomographic bins ({len(nzs)})")
         self.nbin_lens = len(nzs)
 
         # prepare the Lognormal C(l)
@@ -366,14 +370,14 @@ class TXLogNormalGlass(PipelineStage):
                 gal_lon[gal_lon < 0] += 360  # keeps 0 < ra < 360
 
                 if self.config["contaminate"]:
-                    obj_pixel = hp.ang2pix(
+                    obj_pixel_nest = hp.ang2pix(
                         self.mask_map_info["nside"],
                         gal_lon,
                         gal_lat,
                         lonlat=True,
                         nest=True,
                     )
-                    obj_weight = self.get_obj_weight(ibin, obj_pixel)
+                    obj_weight = self.get_obj_weight(ibin, obj_pixel_nest)
                     prob_accept = (1.0 / obj_weight) / max_inv_w[ibin]
                     obj_accept_contaminated = np.random.rand(len(gal_lon)) < prob_accept
                     gal_lon = gal_lon[obj_accept_contaminated]
@@ -412,13 +416,15 @@ class TXLogNormalGlass(PipelineStage):
         group = tomo_output.create_group("tomography")
         group.create_dataset("bin", (self.est_max_n,), maxshape=self.est_max_n, dtype="i")
         group.create_dataset("lens_weight", (self.est_max_n,), maxshape=self.est_max_n, dtype="f")
-        group.create_dataset("counts", (self.nbin_lens,), dtype="i")
-        group.create_dataset("counts_2d", (1,), dtype="i")
+        group_counts = tomo_output.create_group("counts")
+        group_counts.create_dataset("counts", (self.nbin_lens,), dtype="i")
+        group_counts.create_dataset("counts_2d", (1,), dtype="i")
         self.tomo_output = tomo_output
 
         density_shell_output = self.open_output("density_shells")
         if self.config["output_density_shell_maps"]:
             group = density_shell_output.create_group("density_shell_maps")
+            group.attrs["nest"] = self.config["density_shell_nest"]
             fullsky_npix = hp.nside2npix(self.nside)
             for ishell in range(self.nshells):
                 group.create_dataset(f"shell{ishell}", (fullsky_npix,), dtype="f")
@@ -431,9 +437,20 @@ class TXLogNormalGlass(PipelineStage):
         """
         write a single density shell to output
         """
+        import healpy as hp
         if self.config["output_density_shell_maps"]:
             group = self.density_shell_output["density_shell_maps"]
-            group[f"shell{ishell}"][:] = delta_i
+            if self.config["density_shell_nest"]:
+                #convert output shell maps to nest ordering
+                nside = hp.get_nside(delta_i)
+                npix = hp.nside2npix(hp.get_nside(delta_i))
+                pix_ring = np.arange(npix)
+                pix_nest = hp.ring2nest(nside, pix_ring)
+                delta_i_nest = np.empty_like(delta_i)
+                delta_i_nest[pix_nest] = delta_i[pix_ring]
+                group[f"shell{ishell}"][:] = delta_i_nest
+            else:
+                group[f"shell{ishell}"][:] = delta_i
 
         group = self.density_shell_output["num_dens_shell"]
         group["num_dens_shell"][:, ishell] = ngal_in_shell
@@ -474,8 +491,9 @@ class TXLogNormalGlass(PipelineStage):
         group["lens_weight"].resize((total_count,))
         counts = np.bincount(group["bin"][:])
         assert total_count == np.sum(counts)
-        group["counts"][:] = counts
-        group["counts_2d"][:] = np.array([total_count])
+        group_counts = self.tomo_output["counts"]
+        group_counts["counts"][:] = counts
+        group_counts["counts_2d"][:] = np.array([total_count])
         group.attrs["nbin"] = self.nbin_lens
 
         # close everything
@@ -495,13 +513,19 @@ class TXLogNormalGlass(PipelineStage):
             assert f["maps"].attrs["nside"] == self.mask_map_info["nside"]
         return max_inv_w
 
-    def get_obj_weight(self, tomobin, obj_pix):
+    def get_obj_weight(self, tomobin, obj_pix_nest):
         """
         Returns the weight for each object in a given tomographic bin
         """
+        import healpy as hp
         with self.open_input("input_lss_weight_maps", wrapper=True) as f:
             wmap = f.read_map(f"weight_map_bin_{tomobin}")
-        return wmap[obj_pix]
+            input_weight_map_is_nest = f.file[f"maps/weight_map_bin_{tomobin}"].attrs["nest"]
+            nside = self.mask_map_info["nside"]
+        if input_weight_map_is_nest:
+            return wmap[obj_pix_nest]
+        else:
+            return wmap[hp.nest2ring(nside, obj_pix_nest)]
 
 
 def camb_tophat_weight(z):

@@ -7,8 +7,12 @@ global:
     chunk_rows: 100000
     # These mapping options are also read by a range of stages
     pixelization: healpix
-    nside: 64
     sparse: true  # Generate sparse maps - faster if using small areas
+
+_nsides:
+  nside_high: &nside_high 256    # nside used for aux maps and mask
+  nside_mid:  &nside_mid  128    # nside used for making source and lens maps
+  nside_low:  &nside_low  64     # nside used for plotting
 
 TXGCRTwoCatalogInput:
     metacal_dir: /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/metacal_table_summary
@@ -19,7 +23,6 @@ TXMetacalGCRInput:
 
 TXExposureInfo:
     dc2_name: 1.2p
-
 
 TXCosmoDC2Mock:
     cat_name: cosmoDC2_v1.1.4_image
@@ -138,6 +141,11 @@ TXSourceSelectorMetadetect:
     delta_gamma: 0.02
     source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
     shear_prefix: ''
+
+TXSourceTomography:
+    bands: riz #used for selection
+    source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
+
 TXTruthLensSelector:
     # Mag cuts
     input_pz: false
@@ -244,9 +252,28 @@ TXDiagnosticMaps:
 
 TXSourceMaps:
     sparse: true  # Generate sparse maps - faster if using small areas
+    nside: *nside_mid
 
 TXLensMaps:
     sparse: true  # Generate sparse maps - faster if using small areas
+    nside: *nside_mid
+
+TXDensityMaps:
+    sparse: true  # Generate sparse maps - faster if using small areas
+    nside: *nside_mid
+
+TXSourceNoiseMaps:
+    nside: *nside_mid
+
+TXLensNoiseMaps:
+    nside: *nside_mid
+
+TXMapPlots:
+    nside: *nside_low
+    debug: True
+
+TXLSSWeightsUnit:
+    nside: *nside_high
 
 # For redmagic mapping
 TXExternalLensMaps:
@@ -260,6 +287,7 @@ TXExternalLensMaps:
 TXAuxiliarySourceMaps:
     flag_exponent_max: 8
     psf_prefix: psf_
+    nside: *nside_high
 
 TXAuxiliaryLensMaps:
     flag_exponent_max: 8
@@ -267,6 +295,7 @@ TXAuxiliaryLensMaps:
     depth_band: i
     snr_threshold: 10.0  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)
     snr_delta: 1.0  # The range threshold +/- delta is used for finding objects at the boundary
+    nside: *nside_high
 
 TXRealGaussianCovariance:
     min_sep: 2.5
@@ -291,6 +320,21 @@ TXTwoPointFourier:
     do_shear_pos: true
     do_pos_pos: true
     compute_theory: true
+    nside: *nside_mid
+
+TXTwoPointFourierCatalog:
+    flip_g2: true
+    ell_min: 30
+    ell_max: 100
+    bandwidth: 20
+    cache_dir: ./cache/workspaces
+    do_shear_shear: true
+    do_shear_pos: true
+    do_pos_pos: true
+    compute_theory: true
+    calc_noise_dp_bias: true
+    use_randoms_clustering: false
+    nside: *nside_mid
 
 TXSimpleMaskFrac:
     supreme_map_file: data/example/inputs/supreme_dc2_dr6d_v2_g_nexp_sum_1deg2.hs
@@ -380,3 +424,4 @@ HOSFSB:
     ells_per_bin: 10
     nfilters: 5
     include_n32: false
+    nside: *nside_mid

@@ -157,23 +157,27 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-14]
-        pipeline: [metadetect, metacal, redmagic, lensfit, metadetect_source_only, mock_shear]
         include:
           - os: ubuntu-latest
-            INSTALL_DEPS: echo nothing to do
+            pipeline: metadetect
+          - os: ubuntu-latest
+            pipeline: metacal
+          - os: ubuntu-latest
+            pipeline: redmagic
+          - os: ubuntu-latest
+            pipeline: lensfit
+          - os: ubuntu-latest
+            pipeline: metadetect_source_only
+          - os: ubuntu-latest
+            pipeline: mock_shear
           - os: macos-14
-            INSTALL_DEPS: brew update-reset && brew install --cask basictex && eval "$(/usr/libexec/path_helper)" && pdflatex --version
+            pipeline: metadetect
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
         submodules: true
-
-    - name: Install dependencies
-      run: |
-        ${{ matrix.INSTALL_DEPS }}
 
     - name: Restore conda environment
       id: restore-conda
@@ -215,6 +219,23 @@ jobs:
           test -f data/example/outputs_${{ matrix.pipeline }}/shear_xi_plus.png
         fi
 
+    - name: Run metadetect with multi-length data
+      if: ${{ matrix.pipeline == 'metadetect' }}
+      run: |
+        source ./conda/bin/activate
+
+        # remove the old target file
+        rm -f data/example/outputs_${{ matrix.pipeline }}/shear_xi_plus.png
+
+        # Generate the new data file
+        python bin/make_metadetect_file_different_lengths.py
+
+        # Run the pipeline with the new file
+        ceci examples/metadetect/pipeline.yml resume=restart inputs.shear_catalog=data/example/inputs/metadetect_shear_catalog_different_lengths.hdf5
+
+        test -f data/example/outputs_${{ matrix.pipeline }}/shear_xi_plus.png
+
+
     - name: Dry run DP1
       run: |
         source ./conda/bin/activate
@@ -226,18 +247,3 @@ jobs:
       run: |
         # always run
         cat data/example/logs_${{ matrix.pipeline }}/*
-
-    - name: Create output report
-      if: matrix.os == 'macos-14'
-      run: |
-          source ./conda/bin/activate
-          eval "$(/usr/libexec/path_helper)"
-          python bin/make_output_report.py data/example/outputs_${{ matrix.pipeline }} ${{ matrix.pipeline }}-report.md
-          pandoc ${{ matrix.pipeline }}-report.md -o ${{ matrix.pipeline }}-report.pdf
-
-    - name: Upload output report
-      if: matrix.os == 'macos-14'
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ matrix.pipeline }}-report
-        path: ${{ matrix.pipeline }}-report.pdf

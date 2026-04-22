@@ -63,7 +63,6 @@ class TXRandomCat(PipelineStage):
             scheme = choose_pixelization(**info)
 
         # Load the input mask
-        # TODO: add option to use higher resolution healsparse map to draw randoms from
         with self.open_input("mask", wrapper=True) as maps_file:
             mask = maps_file.read_map("mask")
 
@@ -78,7 +77,7 @@ class TXRandomCat(PipelineStage):
             cosmo = f.to_ccl()
 
         # Cut down to pixels that have any objects in
-        pixel = np.where(mask > 0)[0]
+        pixel = mask.valid_pixels
         depth = depth[pixel]
         frac = mask[pixel]
         npix = depth.size

@@ -23,6 +23,8 @@ python_paths: []
 stages:
   - name: TXSourceSelectorMetadetect
     nprocess: 30
+  - name: TXSourceTomography
+    threads_per_process: 4
   - name: BPZliteInformer
     nprocess: 1
     aliases:
@@ -39,7 +41,7 @@ stages:
   - name: CLClusterShearCatalogs
     nprocess: 30   #>1 does not work with mpi
   - name: CLClusterEnsembleProfiles
-    nprocess: 10
+    nprocess: 1
   - name: CLClusterSACC
     nprocess: 1
     aliases:
