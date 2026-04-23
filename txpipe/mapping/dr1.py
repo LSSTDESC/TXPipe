@@ -248,6 +248,7 @@ def make_dask_selection_function(
     of detected injections versus the total number of injections.
     TODO: Add functionality for more sophisticated estimates, e.g. including
     removal of blended injections.
+    TODO: Avoid the normal approximation for estimating the uncertainties.
 
     Parameters
     ----------
@@ -268,6 +269,7 @@ def make_dask_selection_function(
         A dict containing:
         - pix (dask.array): Unique pixel indices.
         - sel_func_map (dask.array): Selection function measured from injected sources.
+        - err_sel_func_map (dask.array): Uncertainty on selection function.
     """
     _, da = import_dask()
     pix = pixel_scheme.ang2pix(ra, dec)
@@ -279,9 +281,16 @@ def make_dask_selection_function(
     ndet = da.bincount(sparse_index, weights=det, minlength=npix_sparse)
     ntot = da.bincount(sparse_index, minlength=npix_sparse)
     # Selection function (N_det / N_tot)
-    sel_func_map = da.where(ntot != 0, ndet / ntot, np.nan)
+    selfunc = da.where(ntot != 0, ndet / ntot, np.nan)
+    # Uncertainty on sel. func. (normal approximation)
+    err_selfunc = da.where(
+        ntot != 0,
+        da.sqrt(selfunc * (1 - selfunc) / ntot),
+        np.nan
+    )
 
     return {
         "pix": pix,
-        "sel_func_map": sel_func_map
+        "sel_func_map": selfunc,
+        "err_sel_func_map": err_selfunc
     }
