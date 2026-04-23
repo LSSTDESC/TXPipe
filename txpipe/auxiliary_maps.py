@@ -465,11 +465,13 @@ class TXSelectionFunctionSSIMaps(TXBaseMaps):
     """
     Generate map of the selection function from SSI catalogs.
 
-    TODO: More detailed description.
+    This class generates maps of:
+        - the selection function (in regions where SSI has been done)
+        - the uncertainty on the measured selection function
     """
 
     name = "TXSelectionFunctionSSIMaps"
-    dask_parallel = True  # TODO: change if not actually necessary
+    dask_parallel = True
     inputs = [
         ("matched_ssi_photometry_catalog", HDFFile),  # injected objects that were detected
         ("injection_catalog", HDFFile),  # injection locations
@@ -520,4 +522,40 @@ class TXSelectionFunctionSSIMaps(TXBaseMaps):
         # Make coverage map for these ra,dec
         cov_map = make_coverage_map(ra_inj, dec_inj, pixel_scheme)
 
-    
+        # Initialize a dictionary to store the maps.
+        # To start with this is all lazy too, until we call compute
+        maps = {}
+
+        # Create selection function map using injection catalog
+        sel_func_results = make_dask_selection_function(
+            ra_inj,
+            dec_inj,
+            det,
+            pixel_scheme,
+            cov_map
+        )
+
+        maps["selection_function"] = sel_func_results["sel_func_map"]
+        maps["err_selection_function"] = sel_func_results["err_sel_func_map"]
+
+        (maps,) = da.compute(maps)
+
+        # convert sparse_map arrays into healsparse map objects
+        hsp_maps = {}
+        for name, map in maps.items():
+            hsp_maps[name] = hsp.HealSparseMap(
+                cov_map=cov_map,
+                sparse_map=map,
+                nside_sparse=cov_map.nside_sparse,
+            )
+
+        # Prepare metadata for the maps. Copy the pixelization-related
+        # configuration options only here
+        metadata = {key: self.config[key] for key in map_config_options if key in self.config}
+        metadata.update(pixel_scheme.metadata)
+
+        # Write the output maps to the output file
+        with self.open_output("sel_func_ssi_maps", wrapper=True) as out:
+            for map_name, m in hsp_maps.items():
+                out.write_map(map_name, m, metadata)
+            out.file["maps"].attrs.update(metadata)
