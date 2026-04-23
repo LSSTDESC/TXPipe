@@ -4,7 +4,33 @@ import numpy as np
 
 
 class TXCMBLensingCrossMonteCarloCorrection(PipelineStage):
-    """Compute equation 23 in https://arxiv.org/pdf/2407.04607"""
+    """
+    Compute the Monte Carlo normalization correction for the
+    CMB lensing x galaxy density cross-correlation.
+
+    Implements equation C.1 in https://arxiv.org/pdf/2407.04607 :
+
+        (MC correction)_L =
+            sum_ell W_Lell sum_i sum_m { M^kappa * kappa^i }_{lm} { M^g * kappa^i }*_{lm}
+          / sum_ell W_Lell sum_i sum_m { M^kappa * kappa_hat^i }_{lm} { M^g * kappa^i }*_{lm}
+
+    where:
+      - kappa^i   = input CMB lensing convergence for simulation i
+                    (from e.g. Planck FFP10 sky_klm_{i}.fits alm files)
+      - kappa_hat^i = reconstructed CMB lensing convergence for simulation i
+                    (from the CMB lensing reconstruction pipeline applied to sim i)
+      - M^kappa   = CMB lensing mask
+      - M^g       = galaxy survey mask
+      - W_Lell    = NaMaster bandpower window function
+
+    The numerator uses the input (true) kappa, the denominator uses the
+    reconstructed kappa. Their ratio corrects for the bias introduced by
+    the reconstruction pipeline (mode-couplings from masking and
+    anisotropic filtering that MASTER does not forward-model).
+
+    The output is a two-column text file (L_eff, MC_correction_L) to be
+    read by TXTwoPointFourierCMBLensingCrossDensity.
+    """
 
     name = "TXCMBLensingCrossMonteCarloCorrection"
     inputs = [
@@ -17,29 +43,269 @@ class TXCMBLensingCrossMonteCarloCorrection(PipelineStage):
     config_options = {
         "cmb_redshift": 1100.0,
         "nside": 512,
-        "nsim": 1000,
+        "nsim": 300,
         "mask_threshold": 0.0,
+        "bandpower_width": 30,
+        "lmax": 0,                    # 0 = use 3*nside - 1
+        # Paths to simulation files.
+        # input_kappa_alm_template : path with {i} placeholder for sim index
+        #   e.g. "/path/to/COM_Lensing-SimMap-inputs/sky_klm_{i:04d}.fits"
+        # recon_kappa_map_template : path with {i} placeholder
+        #   e.g. "/path/to/recon_sims/kappa_recon_{i:04d}.fits"
+        # sim_index_start : first simulation index (default 0)
+        "input_phi_alm_template": str,
+        "recon_kappa_alm_template": str,
+        "sim_index_start": 0,
+        "ffp10_offset": 200, # the FFP10 simulations correspond to the reconstruction with simidx+200
     }
 
     def run(self):
-        raise ValueError(
-            "This stage is not yet implemented. It needs CMB kappa reconstruction realizations."
+        import pymaster as nmt
+        import healpy as hp
+
+        nside = self.config["nside"]
+        nsim  = self.config["nsim"]
+        lmax  = self.config["lmax"] or (3 * nside - 1)
+        i0    = self.config["sim_index_start"]
+
+        print(f"TXCMBLensingCrossMonteCarloCorrection")
+        print(f"  nside={nside}, nsim={nsim}, lmax={lmax}")
+
+        # ---- 1. Load masks ----
+        kappa_mask, galaxy_mask = self.load_masks()
+        print(f"  Loaded masks")
+
+        # ---- 2. Build NaMaster ell binning ----
+        ell_bins  = self.make_ell_bins(nside, lmax)
+        ell_eff   = ell_bins.get_effective_ells()
+        n_ell     = len(ell_eff)
+        print(f"  {n_ell} ell bins, ell_eff: [{ell_eff[0]:.0f}, {ell_eff[-1]:.0f}]")
+
+        # ---- 3. Build the galaxy field (fixed across all sims) ----
+        # The galaxy field is a unit map within the galaxy mask.
+        # Its mask M^g is used in both numerator and denominator.
+        galaxy_map = np.ones(hp.nside2npix(nside))
+        galaxy_map[galaxy_mask == 0] = 0.0
+        g_field = nmt.NmtField(galaxy_mask, [galaxy_map], n_iter=0)
+        print(f"  Built galaxy NaMaster field")
+
+        # ---- 4. Monte Carlo loop ----
+        # Accumulate numerator and denominator sums over simulations.
+        # For each sim i we need:
+        #   numerator   += C_ell( M^kappa * kappa^i,     M^g * kappa^i )   [input x input]
+        #   denominator += C_ell( M^kappa * kappa_hat^i, M^g * kappa^i )   [recon x input]
+        #
+        # NaMaster's compute_coupled_cell + decouple_cell computes the
+        # windowed sum sum_ell W_Lell sum_m {A}_{lm} {B}*_{lm} in one call,
+        # which is exactly the numerator/denominator structure of eq. C.1.
+
+        num_sum = np.zeros(n_ell)
+        den_sum = np.zeros(n_ell)
+
+        for idx in range(nsim):
+            i = i0 + idx
+            if idx % 10 == 0:
+                print(f"  Processing simulation {idx+1}/{nsim}  (index {i})")
+
+            # Load input kappa^i and reconstructed kappa_hat^i
+            kappa_input = self.load_input_kappa_map(self.config["ffp10_offset"] + i, nside, lmax)
+            kappa_recon = self.load_recon_kappa_map(i, nside, lmax)
+
+            # Pre-apply masks — the {AB}_{lm} notation in eq. C.1 means
+            # the spherical harmonic transform of the masked map
+            kappa_input_cmb = kappa_mask  * kappa_input   # M^kappa * kappa^i
+            kappa_input_gal = galaxy_mask * kappa_input   # M^g     * kappa^i
+            kappa_recon_cmb = kappa_mask  * kappa_recon   # M^kappa * kappa_hat^i
+
+            # Numerator:   C_ell( M^kappa * kappa^i,     M^g * kappa^i )
+            num_cl = self.compute_binned_cl(
+                kappa_input_cmb, kappa_input_gal, ell_bins, lmax
+            )
+            num_sum += num_cl
+
+            # Denominator: C_ell( M^kappa * kappa_hat^i, M^g * kappa^i )
+            den_cl = self.compute_binned_cl(
+                kappa_recon_cmb, kappa_input_gal, ell_bins, lmax
+            )
+            den_sum += den_cl
+
+        # ---- 5. Compute the MC correction ----
+        # MC_correction_L = numerator_L / denominator_L
+        # Guard against division by zero
+        mc_correction = np.where(
+            np.abs(den_sum) > 0,
+            num_sum / den_sum,
+            1.0,
         )
-        # ell, c_ell = self.compute_fiducial_cmb_kappa()
-        # cmb_mask, galaxy_mask = self.load_masks()
+
+        print(f"  MC correction range: [{mc_correction.min():.4f}, {mc_correction.max():.4f}]")
+
+        # ---- 6. Write output ----
+        output_path = self.get_output("cmb_cross_montecarlo_correction")
+        header = (
+            "Monte Carlo normalization correction (MC correction)_L\n"
+            "Equation C.1 of https://arxiv.org/pdf/2407.04607\n"
+            "numerator   = C_L( M^kappa * kappa^i,     M^g * kappa^i )  averaged over sims\n"
+            "denominator = C_L( M^kappa * kappa_hat^i, M^g * kappa^i )  averaged over sims\n"
+            f"nsim={nsim}, nside={nside}, lmax={lmax}\n"
+            "Columns: L_eff   MC_correction"
+        )
+        np.savetxt(
+            output_path,
+            np.column_stack([ell_eff, mc_correction]),
+            header=header,
+        )
+        print(f"  Written: {output_path}")
+
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
 
     def load_masks(self):
-        with self.open_input("cmb_lensing_map") as f:
-            kappa_cmb_mask = f.read_map("kappa_mask")
+        """Load the CMB lensing mask and the galaxy survey mask."""
+        import healpy as hp
+        import pymaster as nmt
+
+        with self.open_input("cmb_lensing_map", wrapper=True) as f:
+            kappa_mask = f.read_map("kappa_mask")
+        kappa_mask[kappa_mask == hp.UNSEEN] = 0.0
+        # Rotate from Galactic to Celestial coordinates
+        rot = hp.Rotator(coord=["G", "C"])
+        kappa_mask = rot.rotate_map_pixel(kappa_mask)
+
+        # Apodize. The size is the scale in degrees.
+        # The type means the definition listed here:
+        # https://namaster.readthedocs.io/en/latest/api/pymaster.utils.html#pymaster.utils.mask_apodization
+        kappa_mask = nmt.mask_apodization(kappa_mask, aposize=0.2, apotype="C1")
+
+        # Convert to a binary mask
+        kappa_mask[kappa_mask > 0.5] = 1
+        kappa_mask[kappa_mask <= 0.5] = 0
 
         with self.open_input("mask", wrapper=True) as f:
             galaxy_mask = f.read_mask(thresh=self.config["mask_threshold"])
+        galaxy_mask[galaxy_mask == hp.UNSEEN] = 0.0
 
-        return kappa_cmb_mask, galaxy_mask
+        return kappa_mask, galaxy_mask
 
-    def simulate_kappa(self):
-        # for each pair of maps in the reconstruction
-        pass
+    def make_ell_bins(self, nside, lmax):
+        """Build a uniform NaMaster ell binning."""
+        import pymaster as nmt
+
+        bpw   = self.config["bandpower_width"]
+        ells  = np.arange(0, lmax + 1, dtype=int)
+        # Build edges: bins of width bpw starting from ell=2
+        ell_ini = np.arange(2, lmax, bpw, dtype=int)
+        ell_end = np.minimum(ell_ini + bpw, lmax + 1)
+        b = nmt.NmtBin.from_edges(ell_ini, ell_end)
+        return b
+
+    def load_recon_kappa_map(self, sim_index, nside, lmax_out):
+        """
+        Load the lensing convergence kappa^i from an alm FITS file.
+        Both for the input kappa^i and the reconstructed kappa_hat^i.
+
+        Planck stores kappa_LM = ½ L(L+1) phi_LM as alm coefficients.
+        We convert to a map at the requested nside.
+        """
+        import healpy as hp
+
+        template = self.config["recon_kappa_alm_template"]
+        
+        path     = template.format(i=sim_index)
+
+        # Read in the CMB lensing alms
+        alms, lmax_in = hp.read_alm(path, return_mmax=True)
+
+        # correct for the monopole
+        alms[0] = 0 + 0j
+        fl = np.ones(lmax_in+1)
+        fl[lmax_out+1:] = 0
+        alms = hp.almxfl(alms, fl, lmax_in)
+
+        # rotate alms from Galactic to Celestial coordinates, since the Planck lensing sims are in Galactic 
+        # but our pipeline is in Celestial. 
+  
+        rot = hp.Rotator(coord=["G", "C"]) 
+        alms = rot.rotate_alm(alms)
+
+        # Convert alm → map at nside
+        kappa_map = hp.alm2map(alms, nside=nside, verbose=False)
+
+        return kappa_map
+
+    def load_input_kappa_map(self, sim_index, nside, lmax_out):
+        """
+        Load the input lensing potential phi^i from an alm FITS file,
+        convert to kappa^i, and return a map at the requested nside.
+
+        Planck FFP10 simulations store phi_LM as alm coefficients.
+        We convert to kappa_LM = ½ L(L+1) phi_LM and then to a map.
+        """
+        import healpy as hp
+
+        template = self.config["input_phi_alm_template"]
+        
+        path     = template.format(i=sim_index)
+
+        # Read in the CMB lensing alms
+        phi_alm, lmax_in = hp.read_alm(path, hdu=4, return_mmax=True)
+
+        # Convert phi_LM → kappa_LM = ½ L(L+1) phi_LM
+        ll = np.arange(lmax_in + 1)
+        fl = ll * (ll + 1) / 2
+        fl[lmax_out+1:] = 0
+        kappa_alm = hp.almxfl(phi_alm, fl, lmax_in)
+
+        # rotate alms from Galactic to Celestial coordinates, since the Planck lensing sims are in Galactic 
+        # but our pipeline is in Celestial
+
+        rot = hp.Rotator(coord=["G", "C"]) 
+        kappa_alm = rot.rotate_alm(kappa_alm)
+
+        # Convert alm → map at nside
+        kappa_map = hp.alm2map(kappa_alm, nside=nside, verbose=False)
+
+        return kappa_map
+
+    def compute_binned_cl(self, map_a_masked, map_b_masked, ell_bins, lmax):
+            """
+            Compute the pseudo-C_ell between two masked maps using anafast,
+            then bin to bandpowers using the NaMaster window function W_{Lell}.
+
+            This implements the windowed sum:
+                sum_ell W_{Lell} sum_m {A}_{lm} {B}*_{lm}
+
+            which appears in both the numerator and denominator of eq. C.1.
+
+            Parameters
+            ----------
+            map_a_masked : np.ndarray
+                Map A with its mask already applied (M^kappa * kappa or M^kappa * kappa_hat).
+            map_b_masked : np.ndarray
+                Map B with its mask already applied (M^g * kappa).
+            ell_bins : nmt.NmtBin
+                NaMaster bandpower binning object — provides the window W_{Lell}.
+            lmax : int
+                Maximum multipole for anafast.
+
+            Returns
+            -------
+            cl_binned : np.ndarray, shape (n_ell,)
+                Pseudo-C_ell binned to bandpowers via W_{Lell}.
+            """
+            import healpy as hp
+
+            # Compute pseudo-C_ell: sum_m {A}_{lm} {B}*_{lm}
+            # anafast returns C_ell from ell=0 to lmax
+            pcl = hp.anafast(map_a_masked, map_b_masked, lmax=lmax)
+
+            # Bin using the NaMaster window function W_{Lell}
+            # ell_bins.bin_cell expects shape (1, lmax+1) and returns (1, n_bands)
+            ell = np.arange(len(pcl))
+            cl_binned = ell_bins.bin_cell(pcl[np.newaxis, :])[0]
+
+            return cl_binned
 
 
 class TXTwoPointFourierCMBLensingCrossDensity(PipelineStage):

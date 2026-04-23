@@ -190,14 +190,37 @@ TXFourierNamasterCovariance:
 # # TXIngestPlanckLensingMaps
 # # Ingests Planck CMB lensing maps (alm and mask) for cross-correlation.
 # # ============================================================================= 
-# TXIngestPlanckLensingMaps:
-#     alm_file: "data/cmb/planck/PR4_klm_dat_p.fits"
-#     mask_file: "data/cmb/planck/mask.fits.gz"
+TXIngestPlanckLensingMaps:
+    # kappa_file: "/pscratch/sd/a/anicola/DP2/data/cmb/COM_Lensing_4096_R3.00/MV/dat_klm.fits"
+    # mask_file: "/pscratch/sd/a/anicola/DP2/data/cmb/COM_Lensing_4096_R3.00/mask.fits"
+    kappa_file: "/global/cfs/cdirs/cmb/data/planck2020/PR4_lensing/PR4_klm_dat_p.fits"
+    mask_file: "/global/cfs/cdirs/cmb/data/planck2020/PR4_lensing/mask.fits.gz"
+    experiment: "Planck"  # Planck or ACT
+
+## =============================================================================
+# TXCMBLensingCrossMonteCarloCorrection
+# Computes the Monte Carlo correction for the CMB lensing cross-correlation.
+## This accounts for mode-coupling effects due to the mask and noise.
+## Requires the Planck lensing maps and the lens density maps to be ingested first.
+## The correction is applied to the cross-power spectra computed by TXTwoPointFourierCMBLensingCrossDensity.
+## =============================================================================
+TXCMBLensingCrossMonteCarloCorrection:
+    nside: 512
+    nsim: 2
+    bandpower_width: 30
+    mask_threshold: 0.0
+    lmax: 0       # 0 means use 3*nside-1 = 1535
+    sim_index_start: 60
+    ffp10_offset: 200 # the FFP10 simulations correspond to the reconstruction with simidx+200
+    # Planck FFP10 input phi alm files
+    input_phi_alm_template: /global/cfs/cdirs/cmb/data/generic/cmb/ffp10/mc/scalar/ffp10_unlensed_scl_cmb_000_tebplm_mc_{i:04d}.fits
+    # Reconstructed kappa maps from your reconstruction pipeline
+    recon_kappa_alm_template: /global/cfs/cdirs/cmb/data/planck2020/PR4_lensing/PR4_sims/klm_sim_{i:04d}_p.fits
 
 # # =============================================================================
 # # TXTwoPointFourierCMBLensingCrossDensity
 # # Computes cross-power spectra between the lens density maps and Planck CMB lensing.
 # # =============================================================================
-# TXTwoPointFourierCMBLensingCrossDensity:
-#     bandpower_width: 30
-#     mask_threshold: 0.0
+TXTwoPointFourierCMBLensingCrossDensity:
+    bandpower_width: 30
+    mask_threshold: 0.0

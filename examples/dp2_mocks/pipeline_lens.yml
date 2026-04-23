@@ -35,39 +35,39 @@ stages:
 
   - name: TXLSSWeightsUnit # compute large-scale structure weights to mitigate density fluctuations from systematics 
 
-  # # --------------------------------------------------------------------------
+  # --------------------------------------------------------------------------
   # Maps
   # --------------------------------------------------------------------------
   - name: TXLensMaps               # n_gal maps per lens tomographic bin
   # - name: TXSimpleMask             # binary mask from n_gal coverage
   - name: TXDensityMaps            # overdensity maps δ = (n - <n>) / <n>
 
-  # # --------------------------------------------------------------------------
-  # # Metadata & null tests
-  # # --------------------------------------------------------------------------
+  # --------------------------------------------------------------------------
+  # Metadata & null tests
+  # --------------------------------------------------------------------------
   - name: TXTracerMetadata         # effective number densities, n(z) info
   - name: TXLSSDensityNullTests    # density field null / systematics tests
 
-  # # --------------------------------------------------------------------------
-  # # Noise maps
-  # # --------------------------------------------------------------------------
+  # --------------------------------------------------------------------------
+  # Noise maps
+  # --------------------------------------------------------------------------
   # - name: TXLensNoiseMaps          # shot-noise realisations for C_ell errors
 
-  # # --------------------------------------------------------------------------
-  # # Two-point statistics
-  # # --------------------------------------------------------------------------
+  # --------------------------------------------------------------------------
+  # Two-point statistics
+  # --------------------------------------------------------------------------
   - name: TXTwoPointFourier        # angular power spectra via NaMaster
     threads_per_process: 2
 
   - name: TXFourierNamasterCovariance
 
-  # - name: TXIngestPlanckLensingMaps
-  #   threads_per_process: 4
+  - name: TXIngestPlanckLensingMaps
+    threads_per_process: 4
 
-  # - name: TXCMBLensingCrossMonteCarloCorrection
+  - name: TXCMBLensingCrossMonteCarloCorrection
 
-  # - name: TXTwoPointFourierCMBLensingCrossDensity
-  #   threads_per_process: 4
+  - name: TXTwoPointFourierCMBLensingCrossDensity
+    threads_per_process: 4
 
 # =============================================================================
 # Python modules that define the pipeline stages
@@ -120,8 +120,9 @@ inputs:
   # Cosmological parameter file (bundled with TXPipe)
   fiducial_cosmology: data/fiducial_cosmology.yml
 
-  mask: /pscratch/sd/a/anicola/DP2/data/masks/dp2_23p5_mask.hdf5
-  density_masks: /pscratch/sd/a/anicola/DP2/data/masks/dp2_23p5_mask.hdf5
+  mask: /pscratch/sd/a/anicola/DP2/data/masks/dp2_23p5_combined_mask_nside=512.hdf5
+  density_masks: /pscratch/sd/a/anicola/DP2/data/masks/dp2_23p5_combined_mask_nside=512.hdf5
+  # density_maps: /pscratch/sd/a/anicola/DP2/code/TXPipe/data/outputs/dp2_23p5_combined_mask/density_maps.hdf5
 
   # Pre-computed photoz n(z) stacks.
   # If you run TXPhotozStack these will be produced automatically; otherwise
