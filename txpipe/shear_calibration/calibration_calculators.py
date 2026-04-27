@@ -849,4 +849,145 @@ class MockCalculator(CalibrationCalculator):
 
         return bin_stats
 
+class AnaCalCalculator(CalibrationCalculator):
+    """Calibration and stats calculator for AnaCal catalogs
+    
+    See the CalibrationCalculator class for the use and contents of this class
+    """
+
+    def __init__(self, selectora):
+        """
+        Initialize the Calibrator using the funtion you will use to select
+        objects. That function should take at least one argument, 
+        the chunk of data to select on. It should look up the original
+        names of the columns to select on.
+        
+        The selector can take further *args and **kwargs, passed in when adding
+        data.
+        
+        Parameters
+        ----------
+        selector: function
+            Function that selects objects
+        delta_gamma: float
+            The difference in applied g between 1p and 1m variants
+        """
+        from parallel_statistics import ParallelMean
+        super().__init__(selector)
+
+        self.cal_bias_means = ParallelMean(size=5)
+        #self.sel_bias_means = ParallelMean(size=8)
+
+    def add_data(self, data, *args, **kwargs):
+        """Select objects from a new chunk of data and tally their responses
+        
+        Parameters
+        ----------
+        data: dict
+            Dictionary of data columns to select on and add
+        *args
+            Positional arguments to be passed to the selection function
+        **kwargs
+            Keyword arguments to be passed to the selection function.
+        
+        Returns
+        -------
+        sel: array
+            The indicies of the objects selected from this chunk of data
+        """
+
+        select = self.selector(data, *args, **kwargs)
+
+
+        e1 = data["e1"]
+        e2 = data["e2"]
+        weight = data["weight"]
+        weight_dg1 = data["weight_dg1"]
+        weight_dg2 = data["weight_dg2"]
+        de1_dg1 = data["de1_dg1"]
+        de1_dg2 = data["de1_dg2"]
+        de2_dg1 = data["de2_dg1"]
+        de2_dg2 = data["de2_dg2"]
+
+        n = e1[select].size
+
+        self.count += n 
+        self.sum_weights += np.sum(weight[select])
+        self.sum_sq_weights += np.sum(weight[select]**2)
+
+        w00 = weight[select]
+        R00 = weight_dg1[select] * e1[select] + weight[select] * de1_dg1[select]
+        R01 = weight_dg2[select] * e1[select] + weight[select] * de1_dg2[select]
+        R10 = weight_dg1[select] * e2[select] + weight[select] * de2_dg1[select]
+        R11 = weight_dg2[select] * e2[select] + weight[select] * de2_dg2[select]
+
+        self.cal_bias_means.add_data(0, R00, w00)
+        self.cal_bias_means.add_data(1, R01, w00)
+        self.cal_bias_means.add_data(2, R10, w00)
+        self.cal_bias_means.add_data(3, R11, w00)
+        self.cal_bias_means.add_data(4, w00, w00)
+
+        self.shear_stats.add_data(0, e1[select], w00)
+        self.shear_stats.add_data(1, e2[select], w00)
+
+        return select
+
+    def collect(self, comm=None, allgather=False) -> BinStats:
+        """
+        Finalize and sum up all the response values, and return a BinStats
+        obejct that collections calibration and statistics.
+
+        Parameters
+        ----------
+        comm: MPI Communicator
+            If supplied, all processors response values will be combined together.
+            All processes will return the same final value
+        allgather: bool
+            If True, the response values will be returned for all the processors.
+
+        Returns
+        -------
+        bin_stats: BinStats
+            An object containing the final calibration and statistics for this bin.
+        """
+        # collect all the things we need
+        if comm is not None:
+            if allgather:
+                count = comm.allreduce(self.count)
+                sum_weights = comm.allreduce(self.sum_weights)
+                sum_sq_weights = comm.allreduce(self.sum_sq_weights)
+            else:
+                count = comm.reduce(self.count)
+                sum_weights = comm.reduce(self.sum_weights)
+                sum_sq_weights = comm.reduce(self.sum_sq_weights)
+        else:
+            count = self.count
+            sum_weights = self.sum_weights
+            sum_sq_weights = self.sum_sq_weights
+
+        # Collect the mean values we need
+        mode = "allgather" if allgather else "gather"
+        _, R = self.cal_bias_means.collect(comm, mode)
+        _, mean_e, var_e = self.shear_stats.collect(comm, mode)
+
+        # Unpack the flat mean R:
+        R_mean = np.zeros((2, 2))
+        R_mean[0, 0] = R[0]
+        R_mean[0, 1] = R[1]
+        R_mean[1, 0] = R[2]
+        R_mean[1, 1] = R[3]
+        w00 = R[4]
+        
+        if sum_weights is None:
+            Neff = None
+        else:
+            Neff = sum_weights**2 / sum_sq_weights
+        
+        calibrator = AnaCalibrator(R_mean, mean_e, w00, mu_is_weighted=False)
+        sigma_e = calibrator.calibrate_variance_to_sigma_e(var_e)
+        sigma = calibrator.calibrate_sigma(np.sqrt(var_e))
+        bin_stats = BinStats(count, Neff, calibrator.mu, sigma_e, sigma, calibrator)
+        return bin_stats
+
+
 
