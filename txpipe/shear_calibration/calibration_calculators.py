@@ -855,7 +855,7 @@ class AnaCalCalculator(CalibrationCalculator):
     See the CalibrationCalculator class for the use and contents of this class
     """
 
-    def __init__(self, selectora):
+    def __init__(self, selector):
         """
         Initialize the Calibrator using the funtion you will use to select
         objects. That function should take at least one argument, 
@@ -875,7 +875,7 @@ class AnaCalCalculator(CalibrationCalculator):
         from parallel_statistics import ParallelMean
         super().__init__(selector)
 
-        self.cal_bias_means = ParallelMean(size=5)
+        self.response_means = ParallelMean(size=4)
         #self.sel_bias_means = ParallelMean(size=8)
 
     def add_data(self, data, *args, **kwargs):
@@ -905,8 +905,6 @@ class AnaCalCalculator(CalibrationCalculator):
         weight_dg1 = data["weight_dg1"]
         weight_dg2 = data["weight_dg2"]
         de1_dg1 = data["de1_dg1"]
-        de1_dg2 = data["de1_dg2"]
-        de2_dg1 = data["de2_dg1"]
         de2_dg2 = data["de2_dg2"]
 
         n = e1[select].size
@@ -915,17 +913,17 @@ class AnaCalCalculator(CalibrationCalculator):
         self.sum_weights += np.sum(weight[select])
         self.sum_sq_weights += np.sum(weight[select]**2)
 
-        w00 = weight[select]
-        R00 = weight_dg1[select] * e1[select] + weight[select] * de1_dg1[select]
-        R01 = weight_dg2[select] * e1[select] + weight[select] * de1_dg2[select]
-        R10 = weight_dg1[select] * e2[select] + weight[select] * de2_dg1[select]
-        R11 = weight_dg2[select] * e2[select] + weight[select] * de2_dg2[select]
+        wsel = weight[select]
+        de1_dg1_sub = de1_dg1[select]
+        de2_dg2_sub = de2_dg2[select]
+        dwsel_dg1 = weight_dg1[select] 
+        dwsel_dg2 = weight_dg2[select]
 
-        self.cal_bias_means.add_data(0, R00, w00)
-        self.cal_bias_means.add_data(1, R01, w00)
-        self.cal_bias_means.add_data(2, R10, w00)
-        self.cal_bias_means.add_data(3, R11, w00)
-        self.cal_bias_means.add_data(4, w00, w00)
+        self.response_means.add_data(0, de1_dg1_sub, wsel)
+        self.response_means.add_data(1, de2_dg2_sub, wsel)
+        self.response_means.add_data(2, dwsel_dg1, wsel)
+        self.response_means.add_data(3, dwsel_dg2, wsel)
+
 
         self.shear_stats.add_data(0, e1[select], w00)
         self.shear_stats.add_data(1, e2[select], w00)
