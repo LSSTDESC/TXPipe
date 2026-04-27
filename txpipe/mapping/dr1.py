@@ -281,7 +281,7 @@ def make_dask_selection_function(
     ndet = da.bincount(sparse_index, weights=det, minlength=npix_sparse)
     ntot = da.bincount(sparse_index, minlength=npix_sparse)
     # Selection function (N_det / N_tot)
-    selfunc = da.where(ntot != 0, ndet / ntot, np.nan)
+    selfunc = da.where(ntot != 0, ndet / ntot, hp.UNSEEN)
     # Uncertainty on sel. func. (normal approximation)
     err_selfunc = da.where(
         ntot != 0,
