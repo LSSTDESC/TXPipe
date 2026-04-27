@@ -1,6 +1,7 @@
 from ...base_stage import PipelineStage
 from ...data_types import MapsFile, SACCFile, TextFile, FiducialCosmology, PNGFile, QPNOfZFile
 import numpy as np
+import os
 
 
 class TXCMBLensingCrossMonteCarloCorrection(PipelineStage):
@@ -71,8 +72,12 @@ class TXCMBLensingCrossMonteCarloCorrection(PipelineStage):
         print(f"TXCMBLensingCrossMonteCarloCorrection")
         print(f"  nside={nside}, nsim={nsim}, lmax={lmax}")
 
+        # Define rotation from Galactic to Celestial coordinates, since the Planck lensing sims are in Galactic
+        # but our pipeline is in Celestial coordinates. We will apply this rotation to the alms and the mask
+        rot = hp.Rotator(coord=["G", "C"])
+
         # ---- 1. Load masks ----
-        kappa_mask, galaxy_mask = self.load_masks()
+        kappa_mask, galaxy_mask = self.load_masks(rot)
         print(f"  Loaded masks")
 
         # ---- 2. Build NaMaster ell binning ----
@@ -107,9 +112,17 @@ class TXCMBLensingCrossMonteCarloCorrection(PipelineStage):
             if idx % 10 == 0:
                 print(f"  Processing simulation {idx+1}/{nsim}  (index {i})")
 
+            try:
+                # Check that the input files for this sim exist before doing any heavy computation.
+                self.check_input_exists("input_phi_alm_template", self.config["ffp10_offset"] + i)
+                self.check_input_exists("recon_kappa_alm_template", i)
+            except FileNotFoundError as e:
+                print(f"  Warning: {e}. Skipping simulation {i}.")
+                continue
+
             # Load input kappa^i and reconstructed kappa_hat^i
-            kappa_input = self.load_input_kappa_map(self.config["ffp10_offset"] + i, nside, lmax)
-            kappa_recon = self.load_recon_kappa_map(i, nside, lmax)
+            kappa_input = self.load_input_kappa_map(self.config["ffp10_offset"] + i, nside, lmax, rot=rot)
+            kappa_recon = self.load_recon_kappa_map(i, nside, lmax, rot=rot)
 
             # Pre-apply masks — the {AB}_{lm} notation in eq. C.1 means
             # the spherical harmonic transform of the masked map
@@ -161,7 +174,18 @@ class TXCMBLensingCrossMonteCarloCorrection(PipelineStage):
     # Helpers
     # ------------------------------------------------------------------
 
-    def load_masks(self):
+    def check_input_exists(self, template_key, sim_index):
+        """
+        Check that the input file for a given simulation index exists.
+        Raises FileNotFoundError if not found.
+        """
+        template = self.config[template_key]
+        path = template.format(i=sim_index)
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"Input file not found: {path}")    
+        
+
+    def load_masks(self, rot=None):
         """Load the CMB lensing mask and the galaxy survey mask."""
         import healpy as hp
         import pymaster as nmt
@@ -169,9 +193,10 @@ class TXCMBLensingCrossMonteCarloCorrection(PipelineStage):
         with self.open_input("cmb_lensing_map", wrapper=True) as f:
             kappa_mask = f.read_map("kappa_mask")
         kappa_mask[kappa_mask == hp.UNSEEN] = 0.0
-        # Rotate from Galactic to Celestial coordinates
-        rot = hp.Rotator(coord=["G", "C"])
-        kappa_mask = rot.rotate_map_pixel(kappa_mask)
+
+        # If rot is provided, rotate the mask. 
+        if rot is not None:
+            kappa_mask = rot.rotate_map_pixel(kappa_mask)
 
         # Apodize. The size is the scale in degrees.
         # The type means the definition listed here:
@@ -200,7 +225,7 @@ class TXCMBLensingCrossMonteCarloCorrection(PipelineStage):
         b = nmt.NmtBin.from_edges(ell_ini, ell_end)
         return b
 
-    def load_recon_kappa_map(self, sim_index, nside, lmax_out):
+    def load_recon_kappa_map(self, sim_index, nside, lmax_out, rot=None):
         """
         Load the lensing convergence kappa^i from an alm FITS file.
         Both for the input kappa^i and the reconstructed kappa_hat^i.
@@ -223,18 +248,16 @@ class TXCMBLensingCrossMonteCarloCorrection(PipelineStage):
         fl[lmax_out+1:] = 0
         alms = hp.almxfl(alms, fl, lmax_in)
 
-        # rotate alms from Galactic to Celestial coordinates, since the Planck lensing sims are in Galactic 
-        # but our pipeline is in Celestial. 
-  
-        rot = hp.Rotator(coord=["G", "C"]) 
-        alms = rot.rotate_alm(alms)
+        # If rot is provided, rotate alms. 
+        if rot is not None:
+            alms = rot.rotate_alm(alms)
 
         # Convert alm → map at nside
         kappa_map = hp.alm2map(alms, nside=nside, verbose=False)
 
         return kappa_map
 
-    def load_input_kappa_map(self, sim_index, nside, lmax_out):
+    def load_input_kappa_map(self, sim_index, nside, lmax_out, rot=None):
         """
         Load the input lensing potential phi^i from an alm FITS file,
         convert to kappa^i, and return a map at the requested nside.
@@ -257,11 +280,9 @@ class TXCMBLensingCrossMonteCarloCorrection(PipelineStage):
         fl[lmax_out+1:] = 0
         kappa_alm = hp.almxfl(phi_alm, fl, lmax_in)
 
-        # rotate alms from Galactic to Celestial coordinates, since the Planck lensing sims are in Galactic 
-        # but our pipeline is in Celestial
-
-        rot = hp.Rotator(coord=["G", "C"]) 
-        kappa_alm = rot.rotate_alm(kappa_alm)
+        # If rot is provided, rotate alms. 
+        if rot is not None:
+            kappa_alm = rot.rotate_alm(kappa_alm)
 
         # Convert alm → map at nside
         kappa_map = hp.alm2map(kappa_alm, nside=nside, verbose=False)
