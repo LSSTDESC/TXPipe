@@ -11,3 +11,4 @@ from .ssi import (
 )
 from .dp1 import TXIngestDataPreview1
 from .legacy import TXIngestDESY3Gold
+from .anacal import TXIngestAnacal

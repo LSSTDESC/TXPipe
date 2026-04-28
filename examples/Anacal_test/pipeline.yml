@@ -1,0 +1,22 @@
+stages:
+  - name: TXIngestAnacal
+
+output_dir: data/example/output_anacal
+
+launcher:
+    name: mini
+    interval: 1.0
+
+site:
+    name: local
+    max_threads: 2
+
+modules: >
+    txpipe
+
+config: examples/Anacal_test/config.yml
+
+inputs:
+    anacal_catalog: /pscratch/sd/x/xiangchl/data/DP1/catalogs/anacal_catalog_a360.fits
+
+resume: False
