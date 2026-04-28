@@ -468,6 +468,7 @@ class TXSelectionFunctionSSIMaps(TXBaseMaps):
     This class generates maps of:
         - the selection function (in regions where SSI has been done)
         - the uncertainty on the measured selection function
+    TODO: Combine with TXAuxiliarySSIMaps?
     """
 
     name = "TXSelectionFunctionSSIMaps"
