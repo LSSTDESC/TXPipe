@@ -286,7 +286,7 @@ def make_dask_selection_function(
     err_selfunc = da.where(
         ntot != 0,
         da.sqrt(selfunc * (1 - selfunc) / ntot),
-        np.nan
+        hp.UNSEEN
     )
 
     return {
