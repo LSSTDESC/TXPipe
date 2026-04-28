@@ -559,3 +559,211 @@ class TXSelectionFunctionSSIMaps(TXBaseMaps):
             for map_name, m in hsp_maps.items():
                 out.write_map(map_name, m, metadata)
             out.file["maps"].attrs.update(metadata)
+
+
+class TXModelSelectionFunction(TXBaseMaps):
+    """
+    Model selection function across footprint using survey property maps.
+
+    Uses the selection measured in a subset of the footprint to model its dependence on
+    survey property maps, then uses that model to predict the selection function across
+    the remainder of the footprint. The model is fit via polynomial regression with
+    respect to the survey property maps, where the degree of the polynomial is specified
+    via the config.
+    TODO: Make dask-compatible
+    TODO: Make it possible to select the degree of the fit for each SP map individually.
+    TODO: Add other options for the form of the model.
+    """
+
+    name = "TXModelSelectionFunction"
+    inputs = [
+        ("sel_func_ssi_maps", MapsFile),  # Measured selection function and uncertainties
+        ("mask", MapsFile)  # Mask defining survey geometry
+
+    ]
+    outputs = [
+        ("sel_func_pred_maps", MapsFile),  # Model prediction of selection function and its uncertainties
+    ]
+
+    config_options = {
+        "systmaps_dir": StageParameter(str, "", msg="Directory containing systematic maps."),
+        "degree": StageParameter(int, 1, msg="Degree of the polynomial fit."),
+        "mask_threshold": StageParameter(float, 0.0, msg="Threshold for masking pixels."),
+        **map_config_options
+    }
+
+    def run(self):
+        import glob
+        import healsparse as hsp
+        
+        pixel_scheme = choose_pixelization(**self.config)
+
+        # Load the map of the measured selection function and its uncertainties
+        with self.open_input("sel_func_ssi_maps", wrapper=True) as f:
+            sel_func_meas = f.read_map("selection_function")
+            err_sel_func_meas = f.read_map("err_selection_function")
+        # Ensure correct resolution
+        sel_func_meas = self.ud_grade(sel_func_meas, pixel_scheme)
+        err_sel_func_meas = self.ud_grade(err_sel_func_meas, pixel_scheme)
+
+        with self.open_input("mask", wrapper=True) as f:
+            mask = f.read_mask(
+                thresh=self.config["mask_threshold"],
+                returnbool=True,
+                degrade_nside=pixel_scheme.nside
+            )
+        mask_pix = mask.valid_pixels
+
+        # For keeping track of valid pixels across all maps
+        goodpix = np.ones(len(mask_pix), dtype=bool)
+
+        # Load survey property maps at the valid pixels
+        spmaps = []
+        root = self.config["systmaps_dir"]
+        sysfiles = glob.glob(f"{root}*.hs")
+        nsys = len(sysfiles)
+        print(f"Found {nsys} total systematic maps")
+        for sm in sysfiles:
+            sm_values = self.read_systematics_map(
+                sm, mask_pix, pixel_scheme
+            )
+            goodpix *= sm_values > -1e-30
+            spmaps.append(sm_values)
+        spmaps = np.stack(spmaps)
+
+        # Select 'training' pixels for computing fit
+        # Want to keep only valid pixels across all maps
+        train = np.zeros(len(mask_pix), dtype=bool)
+        # Pixels where selection function is 0 or 1 have zero uncertainty;
+        # these pixels are removed here
+        # TODO: Remove this step when uncertainty calculation is fixed in
+        # TXSelectionFunctionSSIMaps
+        valid_errs = err_sel_func_meas[err_sel_func_meas.valid_pixels] > 0
+        _, id_train, _ = np.intersect1d(mask_pix, sel_func_meas.valid_pixels[valid_errs], return_indices=True)
+        train[id_train] = True
+        pix_train = goodpix * train
+        sel_func_train = sel_func_meas[mask_pix[pix_train]]
+        err_sel_func_train = err_sel_func_meas[mask_pix[pix_train]]
+        spmaps_train = spmaps[:, pix_train]
+
+        # Get survey property values across remainder of footprint
+        pix_pred = goodpix * ~train
+        spmaps_pred = spmaps[:, pix_pred]
+
+        # Perform polynomial regression and retrieve the following:
+        # - mean prediction on the selection function (in each pixel)
+        # - 1-sigma uncertainty on these predictions (in each pixel)
+        # - best-fit coefficients for each survey property (+ an intercept term)
+        # - covariance matrix for the best-fit parameters
+        # TODO: save alphas and cov mat
+        sel_func_pred, err_sel_func_pred, alphas, cov_alphas = self.polynomial_model(
+            spmaps_train,
+            sel_func_train,
+            err_sel_func_train,
+            spmaps_pred
+        )
+
+        # Combine training data and predictions into single HealSparse maps
+        pix_all = np.concatenate([mask_pix[pix_train], mask_pix[pix_pred]])
+        sel_func_full = np.concatenate([sel_func_train, sel_func_pred])
+        err_sel_func_full = np.concatenate([err_sel_func_train, err_sel_func_pred])
+
+        hsp_maps = {
+            "selection_function": self.make_hsp_map(
+                pix_all, sel_func_full, pixel_scheme
+            ),
+            "err_selection_function": self.make_hsp_map(
+                pix_all, err_sel_func_full, pixel_scheme
+            )
+        }
+
+        # Prepare metadata for the maps. Copy the pixelization-related
+        # configuration options only here
+        metadata = {key: self.config[key] for key in map_config_options if key in self.config}
+        # Then add the other configuration options
+        metadata.update(pixel_scheme.metadata)
+
+        # Write the output maps to the output file
+        with self.open_output("sel_func_pred_maps", wrapper=True) as out:
+            for map_name, hsp_map in hsp_maps.items():
+                out.write_map(map_name, hsp_map, metadata)
+            out.file["maps"].attrs.update(metadata)
+
+        
+    def ud_grade(self, hsp_map, pixel_scheme):
+        """
+        Upgrades or degrades a HealSparseMap according to whether its nside
+        is lower or greater than that of the pixel scheme.
+        """
+        nside_now = hsp_map.nside_sparse
+        nside_target = pixel_scheme.nside
+        if nside_now < pixel_scheme.nside:
+            return hsp_map.upgrade(nside_target)
+        elif nside_now > pixel_scheme.nside:
+            return hsp_map.degrade(nside_target)
+        else:
+            return hsp_map
+
+    def read_systematics_map(self, sysmap, vpix, pixel_scheme):
+        import healsparse as hsp
+        m = hsp.HealSparseMap.read(
+            sysmap,
+            degrade_nside=pixel_scheme.nside
+        )
+        return m[vpix]
+
+    def polynomial_model(self, X_train, y_train, yerr_train, X_pred):
+        """
+        Performs a polynomial regression of y with respect to X_train, then
+        generates predictions at X_pred. In this context, X is an array
+        containing survey property maps in certain pixels, and y is
+        the selection function measured in those pixels.
+        """
+        # Degree of polynomial fit
+        deg = self.config["degree"]
+
+        # Construct inputs matrix for regression
+        A_T = [np.ones((1, len(X_train[0]))), X_train]
+        for n in range(2, deg):
+            A_T.append(np.power(X_train, n))
+        A_T = np.concatenate(A_T, axis=0)
+        A = A_T.T
+
+        # Inverse variance on y
+        W = 1 / (np.power(yerr_train, 2))
+
+        # Explicitly compute necessary array combinations
+        AtWA = (A_T @ (W[:, None] * A))
+        AtWy = (A_T @ (W * y_train))
+
+        # Compute best-fit coeffs (alphas) and their covariance
+        # NOTE: this assumes a diagonal covariance matrix for y,
+        # i.e. cov_y = diag(W)
+        cov_alphas = np.linalg.inv(AtWA)
+        alphas = cov_alphas @ AtWy
+
+        # Now make predictions at X_pred
+        # Construct inputs matrix for regression
+        A_T = [np.ones((1, len(X_pred[0]))), X_pred]
+        for n in range(2, deg):
+            A_T.append(np.power(X_pred, n))
+        A_T = np.concatenate(A_T, axis=0)
+        A = A_T.T
+        y_pred = alphas @ A_T
+        err_y_pred = np.sqrt(np.diag(A @ cov_alphas @ A_T))
+
+        return y_pred, err_y_pred, alphas, cov_alphas
+
+    def make_hsp_map(self, pixels, values, pixel_scheme):
+        """
+        Creates an empty HealSparseMap and populates it at the specified
+        pixels with the corresponding values.
+        """
+        import healsparse as hsp
+        hsp_map = hsp.HealSparseMap.make_empty(
+            nside_coverage=pixel_scheme.nside_coverage,
+            nside_sparse=pixel_scheme.nside,
+            dtype=float
+        )
+        hsp_map[pixels] = values
+        return hsp_map
