@@ -56,6 +56,7 @@ class TXIngestAnacal(TXIngestCatalogFits):
                 "dec",
                 "wsel",
                 "wdet",
+                "mask_value",
                 f"{prefix}_e1",
                 f"{prefix}_e2",
                 f"{prefix}_m0",
@@ -85,16 +86,17 @@ class TXIngestAnacal(TXIngestCatalogFits):
         output = {
                   "ra": data["ra"][:],
                   "dec": data["dec"][:],
-                  "weight":data["wsel"][:], 
+                  "weight": data["wsel"][:],
+                  "mask_value": data["mask_value"][:],
                   "weight_detection": data["wdet"][:],
                   "weight_dg1": data["dwsel_dg1"][:],
                   "weight_dg2": data["dwsel_dg2"][:],
                   "e1": data[f"{prefix}_e1"][:],
                   "e2": data[f"{prefix}_e2"][:],
-                  "m0": data[f"{prefix}_m0"][:],
-                  "m2": data[f"{prefix}_m2"][:],
+                  "m00": data[f"{prefix}_m00"][:],
+                  "m20": data[f"{prefix}_m20"][:],
                   }
-        for delta in ["de1", "de2", "dm0", "dm2"]:
+        for delta in ["de1", "de2", "dm00", "dm20"]:
             output[f"{delta}_dg1"] = data[f"{prefix}_{delta}_dg1"][:]
             output[f"{delta}_dg2"] = data[f"{prefix}_{delta}_dg2"][:]
         for band in bands:

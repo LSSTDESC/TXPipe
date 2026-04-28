@@ -855,7 +855,7 @@ class AnaCalCalculator(CalibrationCalculator):
     See the CalibrationCalculator class for the use and contents of this class
     """
 
-    def __init__(self, selector):
+    def __init__(self, selector, delta_gamma):
         """
         Initialize the Calibrator using the funtion you will use to select
         objects. That function should take at least one argument, 
@@ -874,8 +874,13 @@ class AnaCalCalculator(CalibrationCalculator):
         """
         from parallel_statistics import ParallelMean
         super().__init__(selector)
-
+        
+        self.delta_gamma = delta_gamma
         self.response_means = ParallelMean(size=4)
+        self.sel_response_e1p1 = 0
+        self.sel_response_e1m1 = 0
+        self.sel_response_e2p2 = 0
+        self.sel_response_e2m2 = 0
         #self.sel_bias_means = ParallelMean(size=8)
 
     def add_data(self, data, *args, **kwargs):
@@ -898,7 +903,6 @@ class AnaCalCalculator(CalibrationCalculator):
 
         select = self.selector(data, *args, **kwargs)
 
-
         e1 = data["e1"]
         e2 = data["e2"]
         weight = data["weight"]
@@ -907,16 +911,41 @@ class AnaCalCalculator(CalibrationCalculator):
         de1_dg1 = data["de1_dg1"]
         de2_dg2 = data["de2_dg2"]
 
+        m00 = data["m00"]
+        m20 = data["m20"]
+
+        dm00_dg1 = data["dm00_dg1"]
+        dm00_dg2 = data["dm00_dg2"]
+        dm20_dg1 = data["dm20_dg1"]
+        dm20_dg2 = data["dm20_dg2"]
+        mask_value = data["mask_value"]
+
         n = e1[select].size
 
+        # Record the count for this chunk, for summation later
         self.count += n 
         self.sum_weights += np.sum(weight[select])
         self.sum_sq_weights += np.sum(weight[select]**2)
 
+        # Next we calculate the cuts per variation masks
         wsel = weight[select]
+        mask = mask_value[select] < 40
+
+        mask_p1 = mask & self.get_submask(m00, m20, dm00_dg1, dm20_dg1, +1)
+        mask_m1 = mask & self.get_submask(m00, m20, dm00_dg1, dm20_dg1, -1)
+        mask_p2 = mask & self.get_submask(m00, m20, dm00_dg2, dm20_dg2, +1)
+        mask_m2 = mask & self.get_submask(m00, m20, dm00_dg2, dm20_dg2, -1)
+
+        self.sel_response_e1p1 += np.sum(weight[mask_p1]*e1[mask_p1])
+        self.sel_response_e1m1 += np.sum(weight[mask_m1]*e1[mask_m1])
+        self.sel_response_e2p2 += np.sum(weight[mask_p2]*e2[mask_p2])
+        self.sel_response_e2m2 += np.sum(weight[mask_m2]*e2[mask_m2])
+
+        # Next we find the means part needed for the Shape response,
+        # and the Weight-bias response
         de1_dg1_sub = de1_dg1[select]
         de2_dg2_sub = de2_dg2[select]
-        dwsel_dg1 = weight_dg1[select] 
+        dwsel_dg1 = weight_dg1[select]
         dwsel_dg2 = weight_dg2[select]
 
         self.response_means.add_data(0, de1_dg1_sub, wsel)
@@ -924,11 +953,16 @@ class AnaCalCalculator(CalibrationCalculator):
         self.response_means.add_data(2, dwsel_dg1, wsel)
         self.response_means.add_data(3, dwsel_dg2, wsel)
 
-
-        self.shear_stats.add_data(0, e1[select], w00)
-        self.shear_stats.add_data(1, e2[select], w00)
+        self.shear_stats.add_data(0, e1[select], wsel)
+        self.shear_stats.add_data(1, e2[select], wsel)
 
         return select
+
+    def get_submask(self, m00, m20, dm00_dg, dm20_dg, sign):
+        m0 = m00 + sign * self.delta_gamma * dm00_dg
+        m2 = m20 + sign * self.delta_gamma * dm20_dg
+        return (m0 + m2)/ m0 > 0.1
+        
 
     def collect(self, comm=None, allgather=False) -> BinStats:
         """
@@ -954,34 +988,54 @@ class AnaCalCalculator(CalibrationCalculator):
                 count = comm.allreduce(self.count)
                 sum_weights = comm.allreduce(self.sum_weights)
                 sum_sq_weights = comm.allreduce(self.sum_sq_weights)
+                sum_sel_response_e1p1 = comm.allreduce(self.sel_response_e1p1)
+                sum_sel_response_e1m1 = comm.allreduce(self.sel_response_e1m1)
+                sum_sel_response_e2p2 = comm.allreduce(self.sel_response_e2p2)
+                sum_sel_response_e2m2 = comm.allreduce(self.sel_response_e2m2)
             else:
                 count = comm.reduce(self.count)
                 sum_weights = comm.reduce(self.sum_weights)
                 sum_sq_weights = comm.reduce(self.sum_sq_weights)
+                sum_sel_response_e1p1 = comm.reduce(self.sel_response_e1p1)
+                sum_sel_response_e1m1 = comm.reduce(self.sel_response_e1m1)
+                sum_sel_response_e2p2 = comm.reduce(self.sel_response_e2p2)
+                sum_sel_response_e2m2 = comm.reduce(self.sel_response_e2m2)
         else:
             count = self.count
             sum_weights = self.sum_weights
             sum_sq_weights = self.sum_sq_weights
+            sum_sel_response_e1p1 = self.sel_response_e1p1
+            sum_sel_response_e1m1 = self.sel_response_e1m1
+            sum_sel_response_e2p2 = self.sel_response_e2p2
+            sum_sel_response_e2m2 = self.sel_response_e2m2
 
         # Collect the mean values we need
         mode = "allgather" if allgather else "gather"
-        _, R = self.cal_bias_means.collect(comm, mode)
+        _, R = self.response_means.collect(comm, mode)
         _, mean_e, var_e = self.shear_stats.collect(comm, mode)
 
         # Unpack the flat mean R:
-        R_mean = np.zeros((2, 2))
-        R_mean[0, 0] = R[0]
-        R_mean[0, 1] = R[1]
-        R_mean[1, 0] = R[2]
-        R_mean[1, 1] = R[3]
-        w00 = R[4]
+        mean_de1_dg1 = R[0]
+        mean_de2_dg2 = R[1]
+        mean_dwsel_dg1_e1 = R[2]
+        mean_dwsel_dg2_e2 = R[3]
+        
+        # Reducing down the responses
+        R_shape = 0.5 * (mean_de1_dg1 + mean_de2_dg2)
+        R_weight = 0.5 * (mean_dwsel_dg1_e1 + mean_dwsel_dg2_e2)
+
+        R_sel_1 = (sum_sel_response_e1p1 - sum_sel_response_e1m1) / (2.0 * self.delta_gamma) / count
+        R_sel_2 = (sum_sel_response_e2p2 - sum_sel_response_e2m2) / (2.0 * self.delta_gamma) / count
+        R_sel = 0.5 * (R_sel_1 + R_sel_2)
+
+        R_total = R_shape + R_weight + R_sel
         
         if sum_weights is None:
             Neff = None
         else:
             Neff = sum_weights**2 / sum_sq_weights
         
-        calibrator = AnaCalibrator(R_mean, mean_e, w00, mu_is_weighted=False)
+        calibrator = AnaCalibrator(R_total, mean_e, w00, mu_is_weighted=False)
         sigma_e = calibrator.calibrate_variance_to_sigma_e(var_e)
         sigma = calibrator.calibrate_sigma(np.sqrt(var_e))
         bin_stats = BinStats(count, Neff, calibrator.mu, sigma_e, sigma, calibrator)

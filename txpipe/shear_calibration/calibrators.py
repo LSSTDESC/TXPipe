@@ -631,7 +631,7 @@ class HSCCalibrator(Calibrator):
         return np.array(sigma) / (2 * self.R) / (1 + self.K)
 
 
-def AnaCalibrator(Calibrator):
+class AnaCalibrator(Calibrator):
     """Stores information needed to calibrate a Anacal shear method"""
     def __init__(self, R, mu, weights, mu_is_weigthed=True):
         self.R = R
@@ -640,9 +640,9 @@ def AnaCalibrator(Calibrator):
         if mu_is_weigthed:
             self.mu = np.array(mu)
         else:
-            self.mu = self.Rinv @ (weights * mu )
+            self.mu = self.Rinv @ (weights * mu)
     
-    def apply(self, g1, g2 substract_mean=True):
+    def apply(self, g1, g2, substract_mean=True):
         """
         Calibrate a set of shears using the response matrix and 
         mean shear substraction
@@ -657,4 +657,11 @@ def AnaCalibrator(Calibrator):
         subtract_mean: bool
             whether to subtract mean shear (default True)
         """
-        """
+        if not substract_mean:
+            g1, g2 = self.Rinv @ self.w * [g1, g2]
+        elif np.isscalar(g1):
+            g1, g2 = self.Rinv @ self.w * [g1, g2] - self.mu
+        else:
+            g1, g2 = self.Rinv @ self.w * [g1, g2] - self.mu[:, np.newaxis]
+        return g1, g2
+
