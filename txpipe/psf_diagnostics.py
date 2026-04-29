@@ -1125,8 +1125,8 @@ class TXGalaxyStarShear(PipelineStage):
             dec = g["dec"][:][mask]
 
             if cat_type == "metacal":
-                g1 = g["mcal_g1"][:][mask]
-                g2 = g["mcal_g2"][:][mask]
+                g1 = g["g1"][:][mask]
+                g2 = g["g2"][:][mask]
                 weight = g["weight"][:][mask]
 
             elif cat_type == "metadetect":

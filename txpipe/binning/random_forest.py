@@ -80,7 +80,7 @@ def apply_classifier(classifier, features, bands, shear_catalog_type, shear_data
     """Apply the classifier to the measured magnitudes"""
 
     if shear_catalog_type == "metacal":
-        prefixes = ["mcal_", "mcal_", "mcal_", "mcal_", "mcal_"]
+        prefixes = ["", "", "", "", ""]
         suffixes = ["", "_1p", "_2p", "_1m", "_2m"]
     elif shear_catalog_type == "metadetect":
         prefixes = ["00/", "1p/", "2p/", "1m/", "2m/"]
