@@ -172,8 +172,8 @@ launcher:
     interval: 1.0
     
 site:
-    name: nersc-interactive
-    max_threads: 128
+    name: local 
+    max_threads: 12
 
 modules: >
     txpipe
