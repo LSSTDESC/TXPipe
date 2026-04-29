@@ -579,6 +579,7 @@ class TXModelSelectionFunction(TXBaseMaps):
     """
 
     name = "TXModelSelectionFunction"
+    dask_parallel = True
     inputs = [
         ("sel_func_ssi_maps", MapsFile),  # Measured selection function and uncertainties
         ("mask", MapsFile)  # Mask defining survey geometry
@@ -589,6 +590,7 @@ class TXModelSelectionFunction(TXBaseMaps):
     ]
 
     config_options = {
+        "block_size": StageParameter(int, 0, msg="Block size for dask processing (0 means auto)."),
         "systmaps_dir": StageParameter(str, "", msg="Directory containing systematic maps."),
         "degree": StageParameter(int, 1, msg="Degree of the polynomial fit."),
         "mask_threshold": StageParameter(float, 0.0, msg="Threshold for masking pixels."),
@@ -598,6 +600,15 @@ class TXModelSelectionFunction(TXBaseMaps):
     def run(self):
         import glob
         import healsparse as hsp
+        from functools import reduce
+        # Import dask and alias it as 'da'
+        _, da = import_dask()
+
+        # Retrieve configuration parameters
+        block_size = self.config["block_size"]
+        if block_size == 0:
+            block_size = "auto"
+        print(block_size)
         
         pixel_scheme = choose_pixelization(**self.config)
 
@@ -615,43 +626,52 @@ class TXModelSelectionFunction(TXBaseMaps):
                 returnbool=True,
                 degrade_nside=pixel_scheme.nside
             )
-        mask_pix = mask.valid_pixels
-
-        # For keeping track of valid pixels across all maps
-        goodpix = np.ones(len(mask_pix), dtype=bool)
 
         # Load survey property maps at the valid pixels
-        spmaps = []
         root = self.config["systmaps_dir"]
         sysfiles = glob.glob(f"{root}*.hs")
         nsys = len(sysfiles)
         print(f"Found {nsys} total systematic maps")
-        for sm in sysfiles:
-            sm_values = self.read_systematics_map(
-                sm, mask_pix, pixel_scheme
+        spmaps = [
+            hsp.HealSparseMap.read(
+                sf,
+                degrade_nside=pixel_scheme.nside
             )
-            goodpix *= sm_values > -1e-30
-            spmaps.append(sm_values)
-        spmaps = np.stack(spmaps)
+            for sf in sysfiles 
+        ]
+        
+        # Identfy valid pixels across mask and all SP maps
+        goodpix = reduce(
+            np.intersect1d,
+            [m.valid_pixels for m in [mask, *spmaps]]
+        )
 
         # Select 'training' pixels for computing fit
         # Want to keep only valid pixels across all maps
-        train = np.zeros(len(mask_pix), dtype=bool)
+        pix_train = np.intersect1d(sel_func_meas.valid_pixels, goodpix)
         # Pixels where selection function is 0 or 1 have zero uncertainty;
         # these pixels are removed here
         # TODO: Remove this step when uncertainty calculation is fixed in
         # TXSelectionFunctionSSIMaps
-        valid_errs = err_sel_func_meas[err_sel_func_meas.valid_pixels] > 0
-        _, id_train, _ = np.intersect1d(mask_pix, sel_func_meas.valid_pixels[valid_errs], return_indices=True)
-        train[id_train] = True
-        pix_train = goodpix * train
-        sel_func_train = sel_func_meas[mask_pix[pix_train]]
-        err_sel_func_train = err_sel_func_meas[mask_pix[pix_train]]
-        spmaps_train = spmaps[:, pix_train]
+        valid_errs = err_sel_func_meas[pix_train] != 0.
+        pix_train = pix_train[valid_errs]
+        # Select training data
+        sel_func_train = da.from_array(sel_func_meas[pix_train], block_size)
+        block_size = sel_func_train.chunksize
+        err_sel_func_train = da.from_array(err_sel_func_meas[pix_train], block_size)
+        spmaps_train = da.stack(
+            [
+                da.from_array(m[pix_train], block_size) for m in spmaps
+            ]
+        ).T
 
         # Get survey property values across remainder of footprint
-        pix_pred = goodpix * ~train
-        spmaps_pred = spmaps[:, pix_pred]
+        pix_pred = np.setdiff1d(goodpix, pix_train)
+        spmaps_pred = da.stack(
+            [
+                da.from_array(m[pix_pred], block_size) for m in spmaps
+            ]
+        ).T
 
         # Perform polynomial regression and retrieve the following:
         # - mean prediction on the selection function (in each pixel)
@@ -667,9 +687,9 @@ class TXModelSelectionFunction(TXBaseMaps):
         )
 
         # Combine training data and predictions into single HealSparse maps
-        pix_all = np.concatenate([mask_pix[pix_train], mask_pix[pix_pred]])
-        sel_func_full = np.concatenate([sel_func_train, sel_func_pred])
-        err_sel_func_full = np.concatenate([err_sel_func_train, err_sel_func_pred])
+        pix_all = np.concatenate([pix_train, pix_pred])
+        (sel_func_full,) = da.compute(da.concatenate([sel_func_train, sel_func_pred]))
+        (err_sel_func_full,) = da.compute(da.concatenate([err_sel_func_train, err_sel_func_pred]))
 
         hsp_maps = {
             "selection_function": self.make_hsp_map(
@@ -707,14 +727,6 @@ class TXModelSelectionFunction(TXBaseMaps):
         else:
             return hsp_map
 
-    def read_systematics_map(self, sysmap, vpix, pixel_scheme):
-        import healsparse as hsp
-        m = hsp.HealSparseMap.read(
-            sysmap,
-            degrade_nside=pixel_scheme.nside
-        )
-        return m[vpix]
-
     def polynomial_model(self, X_train, y_train, yerr_train, X_pred):
         """
         Performs a polynomial regression of y with respect to X_train, then
@@ -722,36 +734,40 @@ class TXModelSelectionFunction(TXBaseMaps):
         containing survey property maps in certain pixels, and y is
         the selection function measured in those pixels.
         """
+        _, da = import_dask()
         # Degree of polynomial fit
         deg = self.config["degree"]
 
         # Construct inputs matrix for regression
-        X_T = [np.ones((1, len(X_train[0]))), X_train]
-        for n in range(2, deg):
-            X_T.append(np.power(X_train, n))
-        X_T = np.concatenate(X_T, axis=0)
-        X = X_T.T
+        m = len(X_train[:, 0])
+        ones = da.ones((m, 1), chunks=(X_train.chunks[0], 1))
+        X = da.hstack([ones, X_train])
+        for n in range(2, deg + 1):
+            X = da.hstack([X, da.power(X_train, n)])
+        X_T = X.T
 
         # Inverse variance on y
-        W = 1 / (np.power(yerr_train, 2))
+        W = 1 / (da.power(yerr_train, 2))
 
         # Explicitly compute necessary array combinations
-        XtWX = (X_T @ (W[:, None] * X))
-        XtWy = (X_T @ (W * y_train))
+        (XtWX,) = da.compute(X_T @ (W[:, None] * X))
+        (XtWy,) = da.compute(X_T @ (W * y_train))
 
         # Compute best-fit coeffs (alphas) and their covariance
         # NOTE: this assumes a diagonal covariance matrix for y,
         # i.e. cov_y = diag(W)
+        alphas = np.linalg.solve(XtWX, XtWy)
         cov_alphas = np.linalg.inv(XtWX)
-        alphas = cov_alphas @ XtWy
+        print(alphas)
 
         # Now make predictions at X_pred
         # Construct inputs matrix for regression
-        X_T = [np.ones((1, len(X_pred[0]))), X_pred]
-        for n in range(2, deg):
-            X_T.append(np.power(X_pred, n))
-        X_T = np.concatenate(X_T, axis=0)
-        X = X_T.T
+        m = len(X_pred[:,0])
+        ones = da.ones((m, 1), chunks=(X_pred.chunks[0], 1))
+        X = da.hstack([ones, X_pred])
+        for n in range(2, deg + 1):
+            X = da.hstack([X, da.power(X_pred, n)])
+        X_T = X.T
         y_pred = alphas @ X_T
         err_y_pred = np.sqrt(np.diag(X @ cov_alphas @ X_T))
 
