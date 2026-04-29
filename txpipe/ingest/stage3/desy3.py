@@ -1,6 +1,20 @@
-from ...data_types import HDFFile, MapsFile, FitsFile
-from ..base import TXIngestCatalogH5, TXIngestMapsHsp, TXIngestCatalogFits
+from ...data_types import HDFFile, MapsFile, FitsFile, ShearCatalog
+from ..base import TXIngestCatalogH5, TXIngestMapsHsp, TXIngestCatalogFits, PipelineStage
 from ceci.config import StageParameter
+import numpy as np
+
+def to_native_endian(arr: np.ndarray) -> np.ndarray:
+    """
+    Convert a NumPy array to the machine's native byte order.
+
+    Various downstream stages use NUMBA, which doesn't like
+    non-native endianness, and some of the DES Y3 data files seem
+    to be big-endian.
+    """
+    native_dtype = arr.dtype.newbyteorder('=')
+    # copy=False avoids copying if already correct
+    return arr.astype(native_dtype, copy=False)
+
 
 
 class TXIngestDESY3Gold(TXIngestCatalogH5):
@@ -146,3 +160,106 @@ class TXIngestDESY3SpeczCat(TXIngestCatalogFits):
             column_names,
             dummy_columns,
         )
+
+
+class TXIngestDESY3Shear(PipelineStage):
+    name = "TXIngestDESY3Shear"
+    parallel = False
+    inputs = [
+        ("des_shear_catalog", HDFFile),
+    ]
+
+    outputs = [
+        ("shear_catalog", ShearCatalog),
+    ]
+
+    config_options = {
+        "input_group_name": StageParameter(str, "catalog/", msg="Input group name in the HDF5 file."),
+        "chunk_rows": StageParameter(int, 100_000, msg="Number of rows to process in each chunk."),
+    }
+
+    def des_metacal_flux_to_mag(self, flux, flux_err):
+        # Seems to use a zero-point of 30 based on comparison
+        # to the gold catalog.
+        mag = -2.5 * np.log10(flux) + 30
+        mag_err = 2.5 / np.log(10) * (flux_err / flux)
+        return mag, mag_err
+
+
+    def run(self):
+        """
+        Run the analysis for this stage.
+        """
+        print("Ingesting DES Y3 Metacal catalog from")
+
+
+        subgroups_to_suffixes = {
+            "unsheared": "",
+            "sheared_1p": "_1p",
+            "sheared_1m": "_1m",
+            "sheared_2p": "_2p",
+            "sheared_2m": "_2m",
+        }
+
+        single_columns = {
+            "unsheared/coadd_object_id": "id",
+            "unsheared/ra": "ra",
+            "unsheared/dec": "dec",
+            "unsheared/psf_T": "psf_T_mean",
+            "unsheared/psf_e1": "psf_e1",
+            "unsheared/psf_e2": "psf_e2",
+            "unsheared/flags": "flags",
+        }
+
+        sheared_columns = {
+            "T": "T",
+            "T_err": "T_err",
+            "e_1": "g1",
+            "e_2": "g2",
+            "snr": "s2n",  # we originally called the TXPipe version "s2n" instead of "snr" 
+                           # precisely to be more consistent with metacal, but now apparently
+                           # metacal uses "snr" again. After this PR we should update to use "snr" everywhere.
+            "weight": "weight",
+        }
+
+        fluxes = ["r", "i", "z"]
+
+        # The input and output sections in the files
+        fin = self.open_input("des_shear_catalog")
+        fout = self.open_output("shear_catalog")
+        gin = fin.file["catalog/"]
+        gout = fout.file.create_group("shear")
+        gout.attrs['catalog_type'] = 'metacal'
+
+        # save all the columns that are only measured once, not on all the
+        # sheared versions. In metacal this includes positions and PSF properties.
+        for input_col, output_col in single_columns.items():
+            d = to_native_endian(gin[input_col][:])
+            gout.create_dataset(output_col, data=d, chunks=True, compression="gzip")
+        
+        # Now save the stuff that is different for each sheared version
+        for variant, suffix in subgroups_to_suffixes.items():
+            gin_sub = gin[variant]
+
+            # First handle the ones that are just renamed, including the shears
+            # themselves and the SNR and weight etc.
+            for input_col, output_col in sheared_columns.items():
+                d = to_native_endian(gin_sub[input_col][:])
+                gout.create_dataset(output_col + suffix, data=d, chunks=True, compression="gzip")
+            
+            # Now deal with fluxes, which we have to turn into magnitudes.
+            # Note that we might change our mind on this and at some point
+            # just start storing fluxes.
+            for band in fluxes:
+                # convert fluxes to mags
+                flux = to_native_endian(gin_sub[f"flux_{band}"][:])
+                flux_err = to_native_endian(gin_sub[f"flux_err_{band}"][:])
+
+                flux[flux < 0] = 0
+
+                mag, mag_err = self.des_metacal_flux_to_mag(flux, flux_err)
+
+                # save mags and mag_errs
+                gout.create_dataset(f"mag_{band}{suffix}", data=mag, chunks=True)
+                gout.create_dataset(f"mag_err_{band}{suffix}", data=mag_err, chunks=True)
+
