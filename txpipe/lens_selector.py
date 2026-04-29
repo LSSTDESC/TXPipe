@@ -8,6 +8,7 @@ from .data_types import (
     PhotometryCatalog,
     FitsFile,
     MapsFile,
+    ParquetFile
 )
 from .utils import LensNumberDensityStats, Splitter, rename_iterated
 from .binning import build_tomographic_classifier, apply_classifier, read_training_data
@@ -289,7 +290,7 @@ class TXBaseLensSelector(PipelineStage):
         lens_gals[lens_mask] = 1
 
         return lens_gals
-
+    
     def select_lens_maglim(self, phot_data):
         band = self.config["maglim_band"]
         limit = self.config["maglim_limit"]
@@ -804,6 +805,143 @@ class TXTruthLensCatalogSplitterWeighted(TXTruthLensCatalogSplitter):
         )
 
         return self.add_redshifts(iterator)
+
+class TXDESISelector(PipelineStage):
+    """
+    Select lens galaxies from a DESI spectroscopic catalog.
+
+    Reads a raw DESI FITS catalog and applies:
+    TODO: ADJUST NECESSARY CUTS FOR MOCK AND REAL DATA
+      - ZWARN quality cut (good redshift fits only)
+      - Redshift range cut
+      - SPECTYPE filter (e.g. GALAXY only)
+      - Magnitude cuts (bright/faint limits in a chosen band)
+      - Optional survey mask
+
+    Outputs a standardized HDF5 file with a photometry/ group containing
+    ra, dec, z. This file is consumed by TXIngestDESI.
+    """
+
+    name = "TXDESISelector"
+    parallel = False
+
+
+    outputs = [
+        ("desi_catalog_selected", FitsFile),
+    ]
+
+    # PLACEHOLDERS: WILL UPDATE. 
+    config_options = {
+        "chunk_rows": StageParameter(int, 100_000, msg="Rows per chunk."),
+        "zmin": StageParameter(float, 0.0, msg="Minimum spectroscopic redshift."),
+        "zmax": StageParameter(float, 3.0, msg="Maximum spectroscopic redshift."),
+        "mag_band": StageParameter(str, "r", msg="Band to apply magnitude limits in."),
+        "apply_mask": StageParameter(bool, False, msg="Apply survey mask from the mask input."),
+        "ra_col": StageParameter(str, "ra", msg="RA column name in the DESI catalog."),
+        "dec_col": StageParameter(str, "dec", msg="Dec column name in the DESI catalog."),
+        "z_col": StageParameter(str, "redshift", msg="Spectroscopic redshift column name."),
+        "w_col": StageParameter(str, "weight", msg="Weight column name."),
+        "bands": StageParameter(str, "ugrizy", msg="Band labels for output magnitudes (one char each)."),
+        "mock": StageParameter(bool, False, msg="Whether to use a mock catalog."),
+    }
+
+    # ParquetFile for mock catalogs; swap to FitsFile here if working with real DESI FITS
+    inputs = [
+        ("desi_catalog", ParquetFile),
+        ("mask", MapsFile),
+    ]
+
+    def run(self):
+        chunk_rows = self.config["chunk_rows"]
+        bands = self.config["bands"]
+        ra_col = self.config["ra_col"]
+        dec_col = self.config["dec_col"]
+        z_col = self.config["z_col"]
+        w_col = self.config["w_col"]
+
+        if self.config["apply_mask"]:
+            with self.open_input("mask", wrapper=True) as f:
+                mask, mask_nside = f.read_healsparse("mask", return_all=True)
+        else:
+            mask = mask_nside = None
+
+        if self.config["mock"]:
+            cols = [ra_col, dec_col, z_col] + [f"mag_{b}_lsst" for b in bands]
+        else:
+            cols = [ra_col, dec_col, z_col, w_col] + [f"mag_{b}_lsst" for b in bands]
+
+        # Accumulate selected rows across chunks; write once at the end
+        out_cols = {name: [] for name in ["ra", "dec", "redshift", "weight"] + [f"mag_{b}" for b in bands]}
+
+        n_total = 0
+        n_selected = 0
+
+        iterator = self._iterate_catalog(cols, chunk_rows)
+        for s, e, data in iterator:
+            sel = self._apply_cuts(data, mask, mask_nside)
+            n_chunk = int(sel.sum())
+            n_total += data[ra_col].size
+            n_selected += n_chunk
+
+            print(f"Rows {s:,}-{e:,}: selected {n_chunk:,} / {data[ra_col].size:,}")
+
+            if n_chunk == 0:
+                continue
+
+            out_cols["ra"].append(data[ra_col][sel])
+            out_cols["dec"].append(data[dec_col][sel])
+            out_cols["redshift"].append(data[z_col][sel])
+            if self.config["mock"]:
+                out_cols["weight"].append(np.ones(n_chunk))
+            else:
+                out_cols["weight"].append(data[w_col][sel])
+            for b in bands:
+                out_cols[f"mag_{b}"].append(data[f"mag_{b}_lsst"][sel])
+
+        print(f"Total selected: {n_selected:,} / {n_total:,}")
+
+        from astropy.table import Table
+        table = Table({name: np.concatenate(chunks) for name, chunks in out_cols.items()})
+        table.write(self.get_output("desi_catalog_selected"), overwrite=True)
+
+    def _iterate_catalog(self, cols, chunk_rows):
+        if self.config["mock"]:
+            yield from self._iterate_parquet(cols, chunk_rows)
+        else:
+            yield from self.iterate_fits("desi_catalog", 1, cols, chunk_rows)
+
+    def _iterate_parquet(self, cols, chunk_rows):
+        from pyarrow.parquet import ParquetFile as PQFile
+        fn = self.get_input("desi_catalog")
+        start = 0
+        with PQFile(fn) as f:
+            for batch in f.iter_batches(columns=cols, batch_size=chunk_rows):
+                data = {name: batch[name].to_numpy(zero_copy_only=False)
+                        for name in cols}
+                n = len(data[cols[0]])
+                end = start + n
+                yield start, end, data
+                start = end
+
+    def _apply_cuts(self, data, mask, mask_nside):
+        ra_col = self.config["ra_col"]
+        dec_col = self.config["dec_col"]
+        z_col = self.config["z_col"]
+
+        n = data[ra_col].size
+        sel = np.ones(n, dtype=bool)
+
+        # Redshift range
+        z = data[z_col]
+        sel &= (z >= self.config["zmin"]) & (z < self.config["zmax"])
+        
+        # Survey mask
+        if mask is not None:
+            import healpy as hp
+            pix = hp.ang2pix(mask_nside, data[ra_col], data[dec_col], lonlat=True)
+            sel &= mask[pix] != hp.UNSEEN
+
+        return sel
 
 
 if __name__ == "__main__":
