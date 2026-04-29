@@ -852,7 +852,6 @@ class TXDESISelector(PipelineStage):
     ]
 
     def run(self):
-        chunk_rows = self.config["chunk_rows"]
         bands = self.config["bands"]
         ra_col = self.config["ra_col"]
         dec_col = self.config["dec_col"]
@@ -861,14 +860,9 @@ class TXDESISelector(PipelineStage):
 
         if self.config["apply_mask"]:
             with self.open_input("mask", wrapper=True) as f:
-                mask, mask_nside = f.read_healsparse("mask", return_all=True)
+                self.mask, self.mask_nside = f.read_healsparse("mask", return_all=True)
         else:
-            mask = mask_nside = None
-
-        if self.config["mock"]:
-            cols = [ra_col, dec_col, z_col] + [f"mag_{b}_lsst" for b in bands]
-        else:
-            cols = [ra_col, dec_col, z_col, w_col] + [f"mag_{b}_lsst" for b in bands]
+            self.mask = self.mask_nside = None
 
         # Accumulate selected rows across chunks; write once at the end
         out_cols = {name: [] for name in ["ra", "dec", "redshift", "weight"] + [f"mag_{b}" for b in bands]}
@@ -876,9 +870,8 @@ class TXDESISelector(PipelineStage):
         n_total = 0
         n_selected = 0
 
-        iterator = self._iterate_catalog(cols, chunk_rows)
-        for s, e, data in iterator:
-            sel = self._apply_cuts(data, mask, mask_nside)
+        for s, e, data in self.data_iterator():
+            sel = self._apply_cuts(data)
             n_chunk = int(sel.sum())
             n_total += data[ra_col].size
             n_selected += n_chunk
@@ -904,10 +897,19 @@ class TXDESISelector(PipelineStage):
         table = Table({name: np.concatenate(chunks) for name, chunks in out_cols.items()})
         table.write(self.get_output("desi_catalog_selected"), overwrite=True)
 
-    def _iterate_catalog(self, cols, chunk_rows):
+    def data_iterator(self):
+        chunk_rows = self.config["chunk_rows"]
+        ra_col = self.config["ra_col"]
+        dec_col = self.config["dec_col"]
+        z_col = self.config["z_col"]
+        w_col = self.config["w_col"]
+        bands = self.config["bands"]
+
         if self.config["mock"]:
+            cols = [ra_col, dec_col, z_col] + [f"mag_{b}_lsst" for b in bands]
             yield from self._iterate_parquet(cols, chunk_rows)
         else:
+            cols = [ra_col, dec_col, z_col, w_col] + [f"mag_{b}_lsst" for b in bands]
             yield from self.iterate_fits("desi_catalog", 1, cols, chunk_rows)
 
     def _iterate_parquet(self, cols, chunk_rows):
@@ -916,14 +918,13 @@ class TXDESISelector(PipelineStage):
         start = 0
         with PQFile(fn) as f:
             for batch in f.iter_batches(columns=cols, batch_size=chunk_rows):
-                data = {name: batch[name].to_numpy(zero_copy_only=False)
-                        for name in cols}
+                data = {name: batch[name].to_numpy(zero_copy_only=False) for name in cols}
                 n = len(data[cols[0]])
                 end = start + n
                 yield start, end, data
                 start = end
 
-    def _apply_cuts(self, data, mask, mask_nside):
+    def _apply_cuts(self, data):
         ra_col = self.config["ra_col"]
         dec_col = self.config["dec_col"]
         z_col = self.config["z_col"]
@@ -934,12 +935,12 @@ class TXDESISelector(PipelineStage):
         # Redshift range
         z = data[z_col]
         sel &= (z >= self.config["zmin"]) & (z < self.config["zmax"])
-        
+
         # Survey mask
-        if mask is not None:
+        if self.mask is not None:
             import healpy as hp
-            pix = hp.ang2pix(mask_nside, data[ra_col], data[dec_col], lonlat=True)
-            sel &= mask[pix] != hp.UNSEEN
+            pix = hp.ang2pix(self.mask_nside, data[ra_col], data[dec_col], lonlat=True)
+            sel &= self.mask[pix] != hp.UNSEEN
 
         return sel
 
