@@ -573,7 +573,6 @@ class TXModelSelectionFunction(TXBaseMaps):
     the remainder of the footprint. The model is fit via polynomial regression with
     respect to the survey property maps, where the degree of the polynomial is specified
     via the config.
-    TODO: Make dask-compatible
     TODO: Make it possible to select the degree of the fit for each SP map individually.
     TODO: Add other options for the form of the model.
     """
@@ -619,9 +618,10 @@ class TXModelSelectionFunction(TXBaseMaps):
         with self.open_input("sel_func_ssi_maps", wrapper=True) as f:
             sel_func_meas = f.read_map("selection_function")
             err_sel_func_meas = f.read_map("err_selection_function")
-        # Ensure correct resolution
-        sel_func_meas = self.ud_grade(sel_func_meas, pixel_scheme)
-        err_sel_func_meas = self.ud_grade(err_sel_func_meas, pixel_scheme)
+        # Ensure correct resolution (desired resolution can only be lower than
+        # or equal to the native resolution of the selection function map)
+        sel_func_meas = sel_func_meas.degrade(pixel_scheme.nside)
+        err_sel_func_meas = err_sel_func_meas.degrade(pixel_scheme.nside)
 
         with self.open_input("mask", wrapper=True) as f:
             mask = f.read_mask(
@@ -633,6 +633,7 @@ class TXModelSelectionFunction(TXBaseMaps):
         mask_pix = mask_pix[mask[mask_pix] >= self.config["mask_thresh_coarse"]]
 
         # Load survey property maps at the valid pixels
+        # TODO: Define these as individual inputs rather than glob search?
         root = self.config["systmaps_dir"]
         sysfiles = glob.glob(f"{root}*.hs")
         nsys = len(sysfiles)
@@ -645,7 +646,7 @@ class TXModelSelectionFunction(TXBaseMaps):
             for sf in sysfiles 
         ]
         
-        # Identfy valid pixels across mask and all SP maps
+        # Identify valid pixels across mask and all SP maps
         goodpix = reduce(
             np.intersect1d,
             [
@@ -734,21 +735,6 @@ class TXModelSelectionFunction(TXBaseMaps):
             out.file["model_info"].attrs.update(params_metadata)
             gp.create_dataset("alphas", data=alphas)
             gp.create_dataset("cov_alphas", data=cov_alphas)
-
-        
-    def ud_grade(self, hsp_map, pixel_scheme):
-        """
-        Upgrades or degrades a HealSparseMap according to whether its nside
-        is lower or greater than that of the pixel scheme.
-        """
-        nside_now = hsp_map.nside_sparse
-        nside_target = pixel_scheme.nside
-        if nside_now < pixel_scheme.nside:
-            return hsp_map.upgrade(nside_target)
-        elif nside_now > pixel_scheme.nside:
-            return hsp_map.degrade(nside_target)
-        else:
-            return hsp_map
 
     def polynomial_model(self, X_train, y_train, yerr_train, X_pred):
         """
