@@ -345,8 +345,8 @@ class MapsFile(HDFFile):
             # Setting pixels to the sentinel can be buggy in healsparse
             # so we'll make a copy of the mask with the < thresh pixels removed
             mask = hsp.HealSparseMap.make_empty_like(mask_in)
-            pix_to_keep = mask.valid_pixels[mask[mask.valid_pixels] > thresh]
-            mask.update_values_pix(pix_to_keep, mask[pix_to_keep])
+            pix_to_keep = mask_in.valid_pixels[mask_in[mask_in.valid_pixels] > thresh]
+            mask.update_values_pix(pix_to_keep, mask_in[pix_to_keep])
         else:
             mask = mask_in
 
