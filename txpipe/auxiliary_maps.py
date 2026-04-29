@@ -587,6 +587,7 @@ class TXModelSelectionFunction(TXBaseMaps):
     ]
     outputs = [
         ("sel_func_pred_maps", MapsFile),  # Model prediction of selection function and its uncertainties
+        ("sel_func_model_info", HDFFile),  # Best-fit params and their covariance matrix
     ]
 
     config_options = {
@@ -705,11 +706,26 @@ class TXModelSelectionFunction(TXBaseMaps):
         # Then add the other configuration options
         metadata.update(pixel_scheme.metadata)
 
+        # Prepare metadata for model parameter info
+        params_metadata = {
+            "model": f"polynomial (deg = {self.config['degree']})",
+            "inputs": [
+                sf.split('/')[-1] for sf in sysfiles
+            ]
+        }
+
         # Write the output maps to the output file
         with self.open_output("sel_func_pred_maps", wrapper=True) as out:
             for map_name, hsp_map in hsp_maps.items():
                 out.write_map(map_name, hsp_map, metadata)
             out.file["maps"].attrs.update(metadata)
+
+        # Write the model parameters and covariances to the output file
+        with self.open_output("sel_func_model_info", wrapper=True) as out:
+            gp = out.file.create_group("model_info")
+            out.file["model_info"].attrs.update(params_metadata)
+            gp.create_dataset("alphas", data=alphas)
+            gp.create_dataset("cov_alphas", data=cov_alphas)
 
         
     def ud_grade(self, hsp_map, pixel_scheme):
