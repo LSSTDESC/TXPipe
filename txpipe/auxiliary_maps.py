@@ -608,7 +608,6 @@ class TXModelSelectionFunction(TXBaseMaps):
         block_size = self.config["block_size"]
         if block_size == 0:
             block_size = "auto"
-        print(block_size)
         
         pixel_scheme = choose_pixelization(**self.config)
 
@@ -758,7 +757,6 @@ class TXModelSelectionFunction(TXBaseMaps):
         # i.e. cov_y = diag(W)
         alphas = np.linalg.solve(XtWX, XtWy)
         cov_alphas = np.linalg.inv(XtWX)
-        print(alphas)
 
         # Now make predictions at X_pred
         # Construct inputs matrix for regression
