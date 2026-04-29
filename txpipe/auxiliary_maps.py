@@ -594,12 +594,15 @@ class TXModelSelectionFunction(TXBaseMaps):
         "block_size": StageParameter(int, 0, msg="Block size for dask processing (0 means auto)."),
         "systmaps_dir": StageParameter(str, "", msg="Directory containing systematic maps."),
         "degree": StageParameter(int, 1, msg="Degree of the polynomial fit."),
-        "mask_threshold": StageParameter(float, 0.0, msg="Threshold for masking pixels."),
+        "mask_thresh": StageParameter(float, 0.0, msg="Threshold for masking pixels at native resolution of mask."),
+        "mask_thresh_coarse": StageParameter(float, 0.0, msg="Threshold for masking pixels after mask is degraded."),
+        'inj_count_threshold': StageParameter(int, 1, msg="Exclude pixels containing fewer injections than this number."),
         **map_config_options
     }
 
     def run(self):
         import glob
+        import healpy as hp
         import healsparse as hsp
         from functools import reduce
         # Import dask and alias it as 'da'
@@ -622,10 +625,12 @@ class TXModelSelectionFunction(TXBaseMaps):
 
         with self.open_input("mask", wrapper=True) as f:
             mask = f.read_mask(
-                thresh=self.config["mask_threshold"],
-                returnbool=True,
+                thresh=self.config["mask_thresh"],
                 degrade_nside=pixel_scheme.nside
             )
+        mask_pix = mask.valid_pixels
+        # Remove pixels below specified coverage fraction after degrading
+        mask_pix = mask_pix[mask[mask_pix] >= self.config["mask_thresh_coarse"]]
 
         # Load survey property maps at the valid pixels
         root = self.config["systmaps_dir"]
@@ -643,7 +648,10 @@ class TXModelSelectionFunction(TXBaseMaps):
         # Identfy valid pixels across mask and all SP maps
         goodpix = reduce(
             np.intersect1d,
-            [m.valid_pixels for m in [mask, *spmaps]]
+            [
+                mask_pix,
+                *[m.valid_pixels for m in spmaps]
+            ]
         )
 
         # Select 'training' pixels for computing fit
