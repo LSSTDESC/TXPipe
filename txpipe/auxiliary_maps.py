@@ -724,34 +724,34 @@ class TXModelSelectionFunction(TXBaseMaps):
         deg = self.config["degree"]
 
         # Construct inputs matrix for regression
-        A_T = [np.ones((1, len(X_train[0]))), X_train]
+        X_T = [np.ones((1, len(X_train[0]))), X_train]
         for n in range(2, deg):
-            A_T.append(np.power(X_train, n))
-        A_T = np.concatenate(A_T, axis=0)
-        A = A_T.T
+            X_T.append(np.power(X_train, n))
+        X_T = np.concatenate(X_T, axis=0)
+        X = X_T.T
 
         # Inverse variance on y
         W = 1 / (np.power(yerr_train, 2))
 
         # Explicitly compute necessary array combinations
-        AtWA = (A_T @ (W[:, None] * A))
-        AtWy = (A_T @ (W * y_train))
+        XtWX = (X_T @ (W[:, None] * X))
+        XtWy = (X_T @ (W * y_train))
 
         # Compute best-fit coeffs (alphas) and their covariance
         # NOTE: this assumes a diagonal covariance matrix for y,
         # i.e. cov_y = diag(W)
-        cov_alphas = np.linalg.inv(AtWA)
-        alphas = cov_alphas @ AtWy
+        cov_alphas = np.linalg.inv(XtWX)
+        alphas = cov_alphas @ XtWy
 
         # Now make predictions at X_pred
         # Construct inputs matrix for regression
-        A_T = [np.ones((1, len(X_pred[0]))), X_pred]
+        X_T = [np.ones((1, len(X_pred[0]))), X_pred]
         for n in range(2, deg):
-            A_T.append(np.power(X_pred, n))
-        A_T = np.concatenate(A_T, axis=0)
-        A = A_T.T
-        y_pred = alphas @ A_T
-        err_y_pred = np.sqrt(np.diag(A @ cov_alphas @ A_T))
+            X_T.append(np.power(X_pred, n))
+        X_T = np.concatenate(X_T, axis=0)
+        X = X_T.T
+        y_pred = alphas @ X_T
+        err_y_pred = np.sqrt(np.diag(X @ cov_alphas @ X_T))
 
         return y_pred, err_y_pred, alphas, cov_alphas
 
