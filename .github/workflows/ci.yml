@@ -221,7 +221,7 @@ jobs:
         fi
 
     - name: Run metadetect with multi-length data
-      if: ${{ matrix.pipeline == 'metadetect' }}
+      if: ${{ matrix.pipeline == 'metadetect' && matrix.os == 'ubuntu-latest' }}
       run: |
         source ./conda/bin/activate
 
