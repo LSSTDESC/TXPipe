@@ -289,8 +289,6 @@ class TXSourceSelectorBase(PipelineStage):
         calculators: list of Calculator objects, one for each tomographic bin and one for the 2D sample,
                      that have been fed all the data and are ready to have their results collected and written out.
         """
-        # hard link to bin column. needed for RAIL masked summarizer stages
-        outfile["tomography/class_id"] = outfile["tomography/bin"]
 
         for i, calculator in enumerate(calculators):
             stats = calculator.collect(self.comm, allgather=True)

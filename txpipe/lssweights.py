@@ -156,11 +156,6 @@ class TXLSSDensityBase(TXMapCorrelations):
         nsys = len(sys_files)
         print(f"Found {nsys} total systematic maps")
 
-        if nsys == 0:
-            raise ValueError(f"No systematic maps found in {root} with extension .hs. "
-                             "Please check your config supreme_path_root setting and "
-                             "make sure it points to the right location")
-
         with self.open_input("mask", wrapper=True) as map_file:
             # load *boolean* mask
             mask = map_file.read_mask(
@@ -419,7 +414,6 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
         self.sys_maps, self.sys_names, self.sys_meta = self.prepare_sys_maps()
 
         for ibin in range(self.Ntomo):
-            print("Computed density correlations for lens bin {0}/{1}".format(ibin + 1, self.Ntomo))
             # compute density vs SP map data vector
             density_corrs = self.calculate_1d_density_correlations(ibin)
 

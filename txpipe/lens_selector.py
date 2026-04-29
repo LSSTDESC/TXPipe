@@ -88,11 +88,7 @@ class TXBaseLensSelector(PipelineStage):
         # If we are going to remove lens galaxies that sit outside the mask, load the mask
         if self.config["apply_mask"]:
             with self.open_input("mask", wrapper=True) as f:
-                info = f.read_map_info("mask")
-                print(info)
-                self.mask_nside = info['nside']
-                self.mask_nest = info['nest']
-                self.mask = f.read_mask_healpix("mask")
+                self.mask, self.mask_nside = f.read_healsparse("mask", return_all=True)
 
         # We will collect the selection biases for each bin
         # as a matrix.  We will collect together the different
@@ -338,7 +334,7 @@ class TXBaseLensSelector(PipelineStage):
             # with self.open_input('mask', wrapper=True) as f:
             # mask, nside= f.read_healsparse('mask', return_all=True)
 
-            pix = hp.ang2pix(self.mask_nside, phot_data["ra"], phot_data["dec"], lonlat=True, nest=self.mask_nest)
+            pix = hp.ang2pix(self.mask_nside, phot_data["ra"], phot_data["dec"], lonlat=True)
             s = np.where(self.mask[pix] == hp.UNSEEN, 0, 1)
             print(f"{len(s) - np.sum(s)}/{len(s)} objects removed because they are outside the mask")
             return s

@@ -159,7 +159,7 @@ class HealpixScheme:
         return p, maps
 
     def vertices(self, pix):
-        return self.healpy.boundaries(self.nside, pix, nest=self.nest)
+        return self.healpy.boundaries(self.nside, pix)
 
 
 class GnomonicPixelScheme:
