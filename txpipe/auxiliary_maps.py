@@ -595,7 +595,7 @@ class TXModelSelectionFunction(TXBaseMaps):
         "degree": StageParameter(int, 1, msg="Degree of the polynomial fit."),
         "mask_thresh": StageParameter(float, 0.0, msg="Threshold for masking pixels at native resolution of mask."),
         "mask_thresh_coarse": StageParameter(float, 0.0, msg="Threshold for masking pixels after mask is degraded."),
-        'inj_count_threshold': StageParameter(int, 1, msg="Exclude pixels containing fewer injections than this number."),
+        'inj_count_thresh': StageParameter(int, 1, msg="Exclude pixels containing fewer injections than this number."),
         **map_config_options
     }
 
@@ -618,10 +618,13 @@ class TXModelSelectionFunction(TXBaseMaps):
         with self.open_input("sel_func_ssi_maps", wrapper=True) as f:
             sel_func_meas = f.read_map("selection_function")
             err_sel_func_meas = f.read_map("err_selection_function")
+            ninj = f.read_map("inj_count")
         # Ensure correct resolution (desired resolution can only be lower than
-        # or equal to the native resolution of the selection function map)
+        # or equal to the native resolution of the selection function map).
+        # "sum" reduction used for ninj since this is a counts map
         sel_func_meas = sel_func_meas.degrade(pixel_scheme.nside)
         err_sel_func_meas = err_sel_func_meas.degrade(pixel_scheme.nside)
+        ninj = ninj.degrade(pixel_scheme.nside, reduction="sum")
 
         with self.open_input("mask", wrapper=True) as f:
             mask = f.read_mask(
@@ -629,8 +632,6 @@ class TXModelSelectionFunction(TXBaseMaps):
                 degrade_nside=pixel_scheme.nside
             )
         mask_pix = mask.valid_pixels
-        # Remove pixels below specified coverage fraction after degrading
-        mask_pix = mask_pix[mask[mask_pix] >= self.config["mask_thresh_coarse"]]
 
         # Load survey property maps at the valid pixels
         # TODO: Define these as individual inputs rather than glob search?
@@ -658,6 +659,10 @@ class TXModelSelectionFunction(TXBaseMaps):
         # Select 'training' pixels for computing fit
         # Want to keep only valid pixels across all maps
         pix_train = np.intersect1d(sel_func_meas.valid_pixels, goodpix)
+        # Remove any pixels below specified coverage fraction after degrading
+        pix_train = pix_train[mask[pix_train] >= self.config["mask_thresh_coarse"]]
+        # Also remove pixels with fewer than the specified no. of injections
+        pix_train = pix_train[ninj[pix_train] >= self.config["inj_count_thresh"]]
         # Pixels where selection function is 0 or 1 have zero uncertainty;
         # these pixels are removed here
         # TODO: Remove this step when uncertainty calculation is fixed in
