@@ -2,8 +2,93 @@
 # Stages to run
 stages:
 
-    - name: TXSourceSelectorMetacal # select and split objects into source bins
-    - name: TXShearCalibration   # Calibrate and split the source sample tomographically
+  - name: TXIngestDESY3Gold
+  - name: TXIngestDESY3Footprint
+  - name: TXIngestDESY3SpeczCat
+  - name: TXIngestDESY3Shear
+  - name: TXCustomMask
+  - name: PZPrepareEstimatorLens 
+    classname: DNFInformer 
+    aliases:
+        input: spectroscopic_catalog
+        model: lens_photoz_model
+  - name: PZEstimatorLens 
+    classname: DNFEstimator
+    nprocess: 4
+    threads_per_process: 2
+    aliases:
+        model: lens_photoz_model
+        input: photometry_catalog
+        output: lens_photoz_pdfs
+  - name: TXCustomLensSelector
+  - name: TXLensCatalogSplitter
+  - name: PZRailSummarizeLens     #Run the RAIL PZ summarizer on each tomo bin
+    classname: PZRailPZSummarize
+    nprocess: 4
+    threads_per_process: 2
+    aliases:
+        tomography_catalog: lens_tomography_catalog_unweighted
+        photoz_pdfs: lens_photoz_pdfs
+        model: lens_photoz_model
+        photoz_stack: lens_photoz_stack
+        photoz_realizations: lens_photoz_realizations
+
+  - name: PZPrepareEstimatorSource
+    classname: DNFInformer 
+    aliases:
+        input: spectroscopic_catalog
+        model: source_photoz_model
+
+  - name: PZEstimatorSource
+    classname: DNFEstimator
+    aliases:
+        model: source_photoz_model
+        input: shear_catalog
+        output: source_photoz_pdfs
+  - name: TXLSSDensityNullTests
+  - name: TXLSSWeightsLinBinned
+  - name: TXSourceTomography
+  - name: TXSourceSelectorMetacal
+  - name: TXShearCalibration
+  - name: TXAuxiliarySourceMaps
+  - name: TXRandomCat
+  - name: TXJackknifeCenters
+  - name: TXLensMaps
+  - name: TXDensityMaps
+  - name: TXTracerMetadata
+  - name: TXSourceMaps
+  - name: TXTwoPoint
+
+  - name: PZRailSummarizeSource     #Run the RAIL PZ summarizer on each tomo bin
+    classname: PZRailPZSummarize
+    nprocess: 4
+    threads_per_process: 2
+    aliases:
+        tomography_catalog: shear_tomography_catalog
+        photoz_pdfs: source_photoz_pdfs
+        model: source_photoz_model
+        photoz_stack: shear_photoz_stack
+        photoz_realizations: source_photoz_realizations
+
+  - name: TXPhotozPlotSource          # Plot the bin n(z)
+    classname: TXPhotozPlot
+    aliases:
+        photoz_stack: shear_photoz_stack
+        nz_plot: nz_source
+
+  - name: TXPhotozPlotLens          # Plot the bin n(z)
+    classname: TXPhotozPlot
+    aliases:
+        photoz_stack: lens_photoz_stack
+        nz_plot: nz_lens
+
+  - name: PZRealizationsPlotSource     # Plot n(z) realizations
+    classname: PZRealizationsPlot
+    aliases:
+        photoz_realizations: source_photoz_realizations
+        photoz_realizations_plot: source_photoz_realizations_plot
+
+  
     #- name: TXPhotozPlots
     #- name: TXPhotozSourceStack 
     #- name: TXTruthLensCatalogSplitter
@@ -70,9 +155,15 @@ launcher:
     
 site:
     name: local 
-    max_threads: 128
+    max_threads: 12
 
-modules: txpipe
+modules: >
+    txpipe
+    rail.estimation.algos.dnf
+    rail.estimation.algos.naive_stack
+    rail.estimation.algos.point_est_hist
+    rail.estimation.algos.uniform_binning 
+
 
 # where to find any modules that are not in this repo,
 # and any other code we need.
@@ -88,22 +179,29 @@ config: examples/desy3/config.yml
 
 # These are overall inputs to the whole pipeline, not generated within it
 inputs:
-    shear_catalog: //global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y3/shear_catalog_desy3_unmasked_withfakez_v2.h5
-    photometry_catalog: 
-    #shear_tomography_catalog: /global/cfs/cdirs/desc-wl/projects/txpipe-sys-tests/des-y3/shear_tomography_desy3_unmasked_test.h5
-    lens_tomography_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/lens_tomography_catalog_desy1_RM.h5
-    lens_photoz_stack: 
-    mask: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/mask_desy1.h5
-    star_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y3/DES_psf_y3_catalog.h5
-    calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
+
+    des_photometry_catalog: data/desy3/inputs/DESY3_GOLD_2_2.1_testpatch.h5
+    des_specz_catalog: data/desy3/inputs/y6gold22_trainnov20_matchedtoy3.fits
+    des_shear_catalog: data/desy3/inputs/DESY3_metacal_v03-004_testpatch.h5
     fiducial_cosmology: data/fiducial_cosmology.yml
-    random_cats_source: Null
-    shear_tomography_classifier: none
-    flow: data/example/inputs/example_flow.pkl
+
+
+    # shear_catalog: //global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y3/shear_catalog_desy3_unmasked_withfakez_v2.h5
+    # photometry_catalog: 
+    # #shear_tomography_catalog: /global/cfs/cdirs/desc-wl/projects/txpipe-sys-tests/des-y3/shear_tomography_desy3_unmasked_test.h5
+    # lens_tomography_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/lens_tomography_catalog_desy1_RM.h5
+    # lens_photoz_stack: 
+    # mask: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/mask_desy1.h5
+    # star_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y3/DES_psf_y3_catalog.h5
+    # calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
+    # fiducial_cosmology: data/fiducial_cosmology.yml
+    # random_cats_source: Null
+    # shear_tomography_classifier: none
+    # flow: data/example/inputs/example_flow.pkl
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted
-resume: False
+resume: resume
 
 # where to put output logs for individual stages
 log_dir: data/desy3/logs
