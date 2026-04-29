@@ -20,15 +20,15 @@ stages:
   # Apply the trained DNF model to the photometric sample to get lens photo-z
   - name: PZEstimatorLens 
     classname: DNFEstimator
-    nprocess: 32
-    threads_per_process: 4
+    nprocess: 64
+    threads_per_process: 1
     aliases:
         model: lens_photoz_model
         input: photometry_catalog
         output: lens_photoz_pdfs
 
   # Train the DNF model on the spectroscopic sample. This uses a restricted set of bands
-  # measured under metacalibration
+  # measured under metacalibration
   - name: PZPrepareEstimatorSource
     classname: DNFInformer 
     aliases:
@@ -37,8 +37,8 @@ stages:
 
   # Apply the trained DNF model to the metacalibration photometric sample to get source photo-z
   - name: PZEstimatorSource
-    nprocess: 32
-    threads_per_process: 4
+    nprocess: 64
+    threads_per_process: 1
     classname: DNFEstimator
     aliases:
         model: source_photoz_model
@@ -197,11 +197,10 @@ config: examples/desy3/config.yml
 
 # These are overall inputs to the whole pipeline, not generated within it
 inputs:
-    des_photometry_catalog: data/desy3/inputs/DESY3_GOLD_2_2.1_testpatch.h5
-    des_shear_catalog: data/desy3/inputs/DESY3_metacal_v03-004_testpatch.h5
+    des_photometry_catalog: data/desy3/inputs/DESY3_GOLD_2_2.1.h5
+    des_shear_catalog: data/desy3/inputs/DESY3_metacal_v03-004.h5
     des_specz_catalog: data/desy3/inputs/y6gold22_trainnov20_matchedtoy3.fits
     fiducial_cosmology: data/fiducial_cosmology.yml
-    star_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y3/DES_psf_y3_catalog.h5
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted

@@ -190,7 +190,7 @@ class TXIngestDESY3Shear(PipelineStage):
         """
         Run the analysis for this stage.
         """
-        print("Ingesting DES Y3 Metacal catalog from")
+        print("Ingesting DES Y3 Metacal catalog from ", self.get_input("des_shear_catalog"))
 
 
         subgroups_to_suffixes = {
@@ -231,11 +231,14 @@ class TXIngestDESY3Shear(PipelineStage):
         gout = fout.file.create_group("shear")
         gout.attrs['catalog_type'] = 'metacal'
 
+        compression = None
+
         # save all the columns that are only measured once, not on all the
         # sheared versions. In metacal this includes positions and PSF properties.
         for input_col, output_col in single_columns.items():
             d = to_native_endian(gin[input_col][:])
-            gout.create_dataset(output_col, data=d, chunks=True, compression="gzip")
+            print(f"Copying {input_col} -> {output_col}")
+            gout.create_dataset(output_col, data=d, chunks=True, compression=compression)
         
         # Now save the stuff that is different for each sheared version
         for variant, suffix in subgroups_to_suffixes.items():
@@ -244,8 +247,9 @@ class TXIngestDESY3Shear(PipelineStage):
             # First handle the ones that are just renamed, including the shears
             # themselves and the SNR and weight etc.
             for input_col, output_col in sheared_columns.items():
+                print(f"Copying {variant}/{input_col} -> {output_col}{suffix}")
                 d = to_native_endian(gin_sub[input_col][:])
-                gout.create_dataset(output_col + suffix, data=d, chunks=True, compression="gzip")
+                gout.create_dataset(output_col + suffix, data=d, chunks=True, compression=compression)
             
             # Now deal with fluxes, which we have to turn into magnitudes.
             # Note that we might change our mind on this and at some point
@@ -258,8 +262,9 @@ class TXIngestDESY3Shear(PipelineStage):
                 flux[flux < 0] = 0
 
                 mag, mag_err = self.des_metacal_flux_to_mag(flux, flux_err)
+                print(f"Copying fluxes and errs {variant}/flux_{band} -> mags mag_{band}{suffix}")
 
                 # save mags and mag_errs
-                gout.create_dataset(f"mag_{band}{suffix}", data=mag, chunks=True)
-                gout.create_dataset(f"mag_err_{band}{suffix}", data=mag_err, chunks=True)
+                gout.create_dataset(f"mag_{band}{suffix}", data=mag, chunks=True, compression=compression)
+                gout.create_dataset(f"mag_err_{band}{suffix}", data=mag_err, chunks=True, compression=compression)
 
