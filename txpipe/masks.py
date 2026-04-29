@@ -367,10 +367,10 @@ class TXCustomMask(TXSimpleMaskFrac):
         import operator
 
         OP_MAP = {
-            ">": operator.gt,
             ">=": operator.ge,
-            "<": operator.lt,
             "<=": operator.le,
+            ">": operator.gt,
+            "<": operator.lt,
             "==": operator.eq,
             "!=": operator.ne,
         }
