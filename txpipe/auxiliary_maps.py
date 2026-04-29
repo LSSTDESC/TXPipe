@@ -538,6 +538,8 @@ class TXSelectionFunctionSSIMaps(TXBaseMaps):
 
         maps["selection_function"] = sel_func_results["sel_func_map"]
         maps["err_selection_function"] = sel_func_results["err_sel_func_map"]
+        maps["det_count"] = sel_func_results["det_count_map"]
+        maps["inj_count"] = sel_func_results["inj_count_map"]
 
         (maps,) = da.compute(maps)
 
