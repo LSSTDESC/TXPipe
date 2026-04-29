@@ -692,7 +692,6 @@ class TXModelSelectionFunction(TXBaseMaps):
         # - 1-sigma uncertainty on these predictions (in each pixel)
         # - best-fit coefficients for each survey property (+ an intercept term)
         # - covariance matrix for the best-fit parameters
-        # TODO: save alphas and cov mat
         sel_func_pred, err_sel_func_pred, alphas, cov_alphas = self.polynomial_model(
             spmaps_train,
             sel_func_train,
