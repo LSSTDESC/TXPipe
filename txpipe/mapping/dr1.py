@@ -269,7 +269,6 @@ def make_dask_selection_function(
         A dict containing:
         - pix (dask.array): Unique pixel indices.
         - sel_func_map (dask.array): Selection function measured from injected sources.
-        - err_sel_func_map (dask.array): Uncertainty on selection function.
         - det_count_map (dask.array): Number of detections per pixel.
         - inj_count_map (dask.array): Total number of injections per pixel.
     """
@@ -284,17 +283,10 @@ def make_dask_selection_function(
     ninj = da.bincount(sparse_index, minlength=npix_sparse)
     # Selection function (N_det / N_tot)
     selfunc = da.where(ninj != 0, ndet / ninj, hp.UNSEEN)
-    # Uncertainty on sel. func. (normal approximation)
-    err_selfunc = da.where(
-        ninj != 0,
-        da.sqrt(selfunc * (1 - selfunc) / ninj),
-        hp.UNSEEN
-    )
 
     return {
         "pix": pix,
         "sel_func_map": selfunc,
-        "err_sel_func_map": err_selfunc,
         "det_count_map": ndet,
         "inj_count_map": ninj
     }
