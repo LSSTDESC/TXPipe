@@ -467,7 +467,6 @@ class TXSelectionFunctionSSIMaps(TXBaseMaps):
 
     This class generates maps of:
         - the selection function (in regions where SSI has been done)
-        - the uncertainty on the measured selection function
     TODO: Combine with TXAuxiliarySSIMaps?
     """
 
@@ -537,7 +536,6 @@ class TXSelectionFunctionSSIMaps(TXBaseMaps):
         )
 
         maps["selection_function"] = sel_func_results["sel_func_map"]
-        maps["err_selection_function"] = sel_func_results["err_sel_func_map"]
         maps["det_count"] = sel_func_results["det_count_map"]
         maps["inj_count"] = sel_func_results["inj_count_map"]
 
@@ -595,7 +593,8 @@ class TXModelSelectionFunction(TXBaseMaps):
         "degree": StageParameter(int, 1, msg="Degree of the polynomial fit."),
         "mask_thresh": StageParameter(float, 0.0, msg="Threshold for masking pixels at native resolution of mask."),
         "mask_thresh_coarse": StageParameter(float, 0.0, msg="Threshold for masking pixels after mask is degraded."),
-        'inj_count_thresh': StageParameter(int, 1, msg="Exclude pixels containing fewer injections than this number."),
+        "inj_count_thresh": StageParameter(int, 1, msg="Exclude pixels containing fewer injections than this number."),
+        "sel_func_err_type": StageParameter(str, "none", msg="Type of uncertainty attributed to measured selection function."),
         **map_config_options
     }
 
@@ -617,13 +616,11 @@ class TXModelSelectionFunction(TXBaseMaps):
         # Load the map of the measured selection function and its uncertainties
         with self.open_input("sel_func_ssi_maps", wrapper=True) as f:
             sel_func_meas = f.read_map("selection_function")
-            err_sel_func_meas = f.read_map("err_selection_function")
             ninj = f.read_map("inj_count")
         # Ensure correct resolution (desired resolution can only be lower than
         # or equal to the native resolution of the selection function map).
         # "sum" reduction used for ninj since this is a counts map
         sel_func_meas = sel_func_meas.degrade(pixel_scheme.nside)
-        err_sel_func_meas = err_sel_func_meas.degrade(pixel_scheme.nside)
         ninj = ninj.degrade(pixel_scheme.nside, reduction="sum")
 
         with self.open_input("mask", wrapper=True) as f:
@@ -663,21 +660,22 @@ class TXModelSelectionFunction(TXBaseMaps):
         pix_train = pix_train[mask[pix_train] >= self.config["mask_thresh_coarse"]]
         # Also remove pixels with fewer than the specified no. of injections
         pix_train = pix_train[ninj[pix_train] >= self.config["inj_count_thresh"]]
-        # Pixels where selection function is 0 or 1 have zero uncertainty;
-        # these pixels are removed here
-        # TODO: Remove this step when uncertainty calculation is fixed in
-        # TXSelectionFunctionSSIMaps
-        valid_errs = err_sel_func_meas[pix_train] != 0.
-        pix_train = pix_train[valid_errs]
         # Select training data
         sel_func_train = da.from_array(sel_func_meas[pix_train], block_size)
         block_size = sel_func_train.chunksize
-        err_sel_func_train = da.from_array(err_sel_func_meas[pix_train], block_size)
+        ninj_train = da.from_array(ninj[pix_train], block_size)
         spmaps_train = da.stack(
             [
                 da.from_array(m[pix_train], block_size) for m in spmaps
             ]
         ).T
+        # Get uncertainties on training data
+        err_type = self.config["sel_func_err_type"].lower()
+        err_sel_func_train = self.sel_func_uncertainties(
+            sel_func_train,
+            err_type=err_type,
+            ninj=(None if err_type == "none" else ninj_train)
+        )
 
         # Get survey property values across remainder of footprint
         pix_pred = np.setdiff1d(goodpix, pix_train)
@@ -740,8 +738,41 @@ class TXModelSelectionFunction(TXBaseMaps):
             gp.create_dataset("alphas", data=alphas)
             gp.create_dataset("cov_alphas", data=cov_alphas)
 
+    def sel_func_uncertainties(self, sel_func, err_type="none", ninj=None):
+        """
+        Estimates uncertainties on the measured selection function.
+
+        Currently two values for err_type are accommodated (case-independent):
+        - "none": selection function is treated as exact; zero uncertainty
+        - "gaussian": uncertainties are calculated under a Gaussian approx.
+        TODO: add other options, e.g. Wilson score interval.
+        """
+        _, da = import_dask()
+        if err_type == "none":
+            return da.zeros_like(sel_func)
+        elif err_type == "gaussian":
+            return da.sqrt(sel_func * (1 - sel_func) / ninj)
+        else:
+            raise ValueError(
+                "err_type must be either 'none' or 'gaussian'."
+            )
+
+    def sel_func_weights(self, err_sel_func):
+        """
+        Converts selection function uncertainties into weights for modelling.
+        """
+        _, da = import_dask()
+        if all(err_sel_func == 0):
+            # Return ones if uncertanties are all zero
+            return da.ones(len(err_sel_func))
+        else:
+            # Return inverse of variance
+            return 1 / (da.power(err_sel_func, 2))
+
     def polynomial_model(self, X_train, y_train, yerr_train, X_pred):
         """
+        Polynomial regression and model predictions for test data.
+        
         Performs a polynomial regression of y with respect to X_train, then
         generates predictions at X_pred. In this context, X is an array
         containing survey property maps in certain pixels, and y is
@@ -751,22 +782,28 @@ class TXModelSelectionFunction(TXBaseMaps):
         # Degree of polynomial fit
         deg = self.config["degree"]
 
+        # Weights for each training pixel
+        W = self.sel_func_weights(yerr_train)
+        # If Gaussian approx was used for uncertainty estimation, pixels in
+        # which the selection function is 0 or 1 will have zero uncertainty
+        # (and thus infinite weight); remove these pixels here.
+        (keep,) = da.compute(da.isfinite(W)) 
+        X_train = X_train[keep, :]
+        y_train = y_train[keep]
+        W = W[keep]
+
         # Construct inputs matrix for regression
         m = len(X_train[:, 0])
         ones = da.ones((m, 1), chunks=(X_train.chunks[0], 1))
         X = da.hstack([ones, X_train])
         for n in range(2, deg + 1):
             X = da.hstack([X, da.power(X_train, n)])
-        X_T = X.T
-
-        # Inverse variance on y
-        W = 1 / (da.power(yerr_train, 2))
 
         # Explicitly compute necessary array combinations
         # NOTE: this assumes a diagonal covariance matrix for y,
         # i.e. cov_y = diag(W)
-        (XtWX,) = da.compute(X_T @ (W[:, None] * X))
-        (XtWy,) = da.compute(X_T @ (W * y_train))
+        (XtWX,) = da.compute(X.T @ (W[:, None] * X))
+        (XtWy,) = da.compute(X.T @ (W * y_train))
 
         # Compute best-fit coeffs (alphas) and their covariance
         alphas = np.linalg.solve(XtWX, XtWy)
@@ -778,9 +815,8 @@ class TXModelSelectionFunction(TXBaseMaps):
         X = da.hstack([ones, X_pred])
         for n in range(2, deg + 1):
             X = da.hstack([X, da.power(X_pred, n)])
-        X_T = X.T
-        y_pred = alphas @ X_T
-        err_y_pred = np.sqrt(np.diag(X @ cov_alphas @ X_T))
+        y_pred = alphas @ X.T
+        err_y_pred = np.sqrt(np.diag(X @ cov_alphas @ X.T))
 
         return y_pred, err_y_pred, alphas, cov_alphas
 
