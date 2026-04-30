@@ -8,7 +8,6 @@ from .mapping import (
     make_dask_bright_object_map,
     make_dask_depth_map,
     make_dask_depth_map_det_prob,
-    make_dask_selection_function,
 )
 from .data_types import MapsFile, HDFFile, ShearCatalog
 from .utils import choose_pixelization, import_dask
