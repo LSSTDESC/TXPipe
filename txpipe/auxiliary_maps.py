@@ -421,6 +421,9 @@ class TXAuxiliarySSIMaps(TXBaseMaps):
         maps["depth_det_prob/det_frac_by_mag_thres"] = depth_map_results[
             "det_frac_by_mag_thres"
         ]
+        maps["depth_det_prob/inj_count_by_mag_thres"] = depth_map_results[
+            "inj_count_by_mag_thres"
+        ]
 
         (maps,) = da.compute(maps)
 
