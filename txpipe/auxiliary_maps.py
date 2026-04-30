@@ -507,9 +507,8 @@ class TXModelSelectionFunction(TXBaseMaps):
         from functools import reduce
         # Import dask and alias it as 'da'
         _, da = import_dask()
-        # Assign imports to self to avoid repeated imports later
+        # Assign imports to self to avoid repeated imports in other functions
         self.da = da
-        self.hsp = hsp
 
         # Retrieve configuration parameters
         block_size = self.config["block_size"]
@@ -581,7 +580,6 @@ class TXModelSelectionFunction(TXBaseMaps):
 
             # Remove pixels with fewer than the specified no. of injections
             pix_train_k = pix_train[ninj[k][pix_train] >= self.config["inj_count_thresh"]]
-            print(pix_train_k)
             # Select training data
             sel_func_train = da.from_array(sel_func_meas[k][pix_train_k], block_size)
             block_size = sel_func_train.chunksize
@@ -597,7 +595,6 @@ class TXModelSelectionFunction(TXBaseMaps):
                 err_type=err_type,
                 ninj=(None if err_type == "none" else ninj_train)
             )
-            print(err_sel_func_train)
 
             # Get survey property values across remainder of footprint
             pix_pred = np.setdiff1d(goodpix, pix_train_k)
@@ -627,8 +624,10 @@ class TXModelSelectionFunction(TXBaseMaps):
             inds = pix_all.argsort()
             chunk_sizes = sel_func_full.chunks[0]
             chunk_bounds = np.cumsum([0] + list(chunk_sizes))
-            maps["sel_func"].append(self.dask_sort(sel_func_full, inds, chunk_bounds))
-            maps["err_sel_func"].append(self.dask_sort(err_sel_func_full, inds, chunk_bounds))
+            sel_func_full = self.dask_sort(sel_func_full, inds, chunk_bounds)
+            err_sel_func_full = self.dask_sort(err_sel_func_full, inds, chunk_bounds)
+            maps["sel_func"].append(sel_func_full)
+            maps["err_sel_func"].append(err_sel_func_full)
             # Store model info
             model_info["alphas"].append(alphas)
             model_info["cov_alphas"].append(cov_alphas)
