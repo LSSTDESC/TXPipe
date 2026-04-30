@@ -187,6 +187,7 @@ def make_dask_depth_map_det_prob(
     # loop over mag bins
     # TODO: add option to compute fraction *at* each magnitude, rather than below
     frac_list = []
+    ntot_list = []  # Needed for error estimation on det frac (e.g. as done in TXModelSelectionFunction)
     for mag_thresh in mag_edges:
         above_thresh = mag < mag_thresh
         ntot = da.bincount(sparse_index, weights=above_thresh, minlength=npix_sparse)
@@ -195,7 +196,9 @@ def make_dask_depth_map_det_prob(
         )
         frac_det = da.where(ntot != 0, ndet / ntot, np.nan)
         frac_list.append(frac_det)
+        ntot_list.append(ntot)
     det_frac_by_mag_thres = da.stack(frac_list)
+    inj_count_by_mag_thres = da.stack(ntot_list)
 
     # Optional smoothing of the stacked detection fractions
     if smooth_det_frac:
@@ -233,5 +236,6 @@ def make_dask_depth_map_det_prob(
         "inj_count_map": inj_count_map,
         "depth_map": depth_map,
         "det_frac_by_mag_thres": det_frac_by_mag_thres,
+        "inj_count_by_mag_thres": inj_count_by_mag_thres,
         "mag_edges": mag_edges,
     }

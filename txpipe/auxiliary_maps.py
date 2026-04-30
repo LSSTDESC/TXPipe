@@ -11,7 +11,6 @@ from .mapping import (
 )
 from .data_types import MapsFile, HDFFile, ShearCatalog
 from .utils import choose_pixelization, import_dask
-from .maps import map_config_options
 from ceci.config import StageParameter
 
 
@@ -416,6 +415,9 @@ class TXAuxiliarySSIMaps(TXBaseMaps):
         maps["depth_det_prob/det_frac_by_mag_thres"] = depth_map_results[
             "det_frac_by_mag_thres"
         ]
+        maps["depth_det_prob/inj_count_by_mag_thres"] = depth_map_results[
+            "inj_count_by_mag_thres"
+        ]
 
         (maps,) = da.compute(maps)
 
@@ -454,3 +456,330 @@ class TXAuxiliarySSIMaps(TXBaseMaps):
             for map_name, m in hsp_maps.items():
                 out.write_map(map_name, m, metadata)
             out.file["maps"].attrs.update(metadata)
+
+
+class TXModelSelectionFunction(TXBaseMaps):
+    """
+    Model selection function across footprint using survey property maps.
+
+    Uses the selection measured in a subset of the footprint to model its dependence on
+    survey property maps, then uses that model to predict the selection function across
+    the remainder of the footprint. The model is fit via polynomial regression with
+    respect to the survey property maps, where the degree of the polynomial is specified
+    via the config.
+    TODO: Make it possible to select the degree of the fit for each SP map individually.
+    TODO: Add other options for the form of the model.
+    """
+
+    name = "TXModelSelectionFunction"
+    dask_parallel = True
+    inputs = [
+        ("aux_ssi_maps", MapsFile),  # Measured selection function and uncertainties
+        ("mask", MapsFile)  # Mask defining survey geometry
+
+    ]
+    outputs = [
+        ("sel_func_pred_maps", MapsFile),  # Model prediction of selection function and its uncertainties
+        ("sel_func_model_info", HDFFile),  # Best-fit params and their covariance matrix
+    ]
+
+    config_options = {
+        "block_size": StageParameter(int, 0, msg="Block size for dask processing (0 means auto)."),
+        "systmaps_dir": StageParameter(str, "", msg="Directory containing systematic maps."),
+        "degree": StageParameter(int, 1, msg="Degree of the polynomial fit."),
+        "mask_thresh": StageParameter(float, 0.0, msg="Threshold for masking pixels at native resolution of mask."),
+        "mask_thresh_coarse": StageParameter(float, 0.0, msg="Threshold for masking pixels after mask is degraded."),
+        "inj_count_thresh": StageParameter(int, 1, msg="Exclude pixels containing fewer injections than this number."),
+        "sel_func_err_type": StageParameter(str, "none", msg="Type of uncertainty attributed to measured selection function."),
+        **map_config_options
+    }
+
+    def run(self):
+        import glob
+        import healpy as hp
+        import healsparse as hsp
+        from functools import reduce
+        # Import dask and alias it as 'da'
+        _, da = import_dask()
+        # Assign imports to self to avoid repeated imports in other functions
+        self.da = da
+
+        # Retrieve configuration parameters
+        block_size = self.config["block_size"]
+        if block_size == 0:
+            block_size = "auto"
+        
+        # Type of uncertainty estimate to use
+        err_type = self.config["sel_func_err_type"].lower()
+        
+        pixel_scheme = choose_pixelization(**self.config)
+
+        # Load the map of the measured selection function and its uncertainties
+        with self.open_input("aux_ssi_maps", wrapper=True) as f:
+            sel_func_meas = f.read_map("depth_det_prob/det_frac_by_mag_thres")
+            ninj = f.read_map("depth_det_prob/inj_count_by_mag_thres")
+        # Ensure correct resolution (desired resolution can only be lower than
+        # or equal to the native resolution of the selection function map).
+        # "sum" reduction used for ninj since this is a counts map
+        sel_func_meas = sel_func_meas.degrade(pixel_scheme.nside)
+        ninj = ninj.degrade(pixel_scheme.nside, reduction="sum")
+
+        with self.open_input("mask", wrapper=True) as f:
+            mask = f.read_mask(
+                thresh=self.config["mask_thresh"],
+                degrade_nside=pixel_scheme.nside
+            )
+        mask_pix = mask.valid_pixels
+
+        # Load survey property maps at the valid pixels
+        # TODO: Define these as individual inputs rather than glob search?
+        root = self.config["systmaps_dir"]
+        sysfiles = glob.glob(f"{root}*.hs")
+        nsys = len(sysfiles)
+        print(f"Found {nsys} total systematic maps")
+        spmaps = [
+            hsp.HealSparseMap.read(
+                sf,
+                degrade_nside=pixel_scheme.nside
+            )
+            for sf in sysfiles 
+        ]
+        
+        # Identify valid pixels across mask and all SP maps
+        goodpix = reduce(
+            np.intersect1d,
+            [
+                mask_pix,
+                *[m.valid_pixels for m in spmaps]
+            ]
+        )
+
+        # Training pixels must also be valid in the selection function
+        pix_train = np.intersect1d(sel_func_meas.valid_pixels, goodpix)
+        # Remove any pixels below specified coverage fraction after degrading
+        pix_train = pix_train[mask[pix_train] >= self.config["mask_thresh_coarse"]]
+
+        # Cycle through the samples for which selection functions have been measured
+        samples = sel_func_meas.dtype.names
+        maps = {
+            "sel_func": [],
+            "err_sel_func": []
+        }
+        model_info = {
+            "alphas": [],
+            "cov_alphas": []
+        }
+        for k in samples:
+            print(f"Modelling selection function for sample {k}")
+
+            # Remove pixels with fewer than the specified no. of injections
+            pix_train_k = pix_train[ninj[k][pix_train] >= self.config["inj_count_thresh"]]
+            # Select training data
+            sel_func_train = da.from_array(sel_func_meas[k][pix_train_k], block_size)
+            block_size = sel_func_train.chunksize
+            ninj_train = da.from_array(ninj[k][pix_train_k], block_size)
+            spmaps_train = da.stack(
+                [
+                    da.from_array(m[pix_train_k], block_size) for m in spmaps
+                ]
+            ).T
+            # Get uncertainties on training data
+            err_sel_func_train = self.sel_func_uncertainties(
+                sel_func_train,
+                err_type=err_type,
+                ninj=(None if err_type == "none" else ninj_train)
+            )
+
+            # Get survey property values across remainder of footprint
+            pix_pred = np.setdiff1d(goodpix, pix_train_k)
+            spmaps_pred = da.stack(
+                [
+                    da.from_array(m[pix_pred], block_size) for m in spmaps
+                ]
+            ).T
+
+            # Perform polynomial regression and retrieve the following:
+            # - mean prediction on the selection function (in each pixel)
+            # - 1-sigma uncertainty on these predictions (in each pixel)
+            # - best-fit coefficients for each survey property (+ an intercept term)
+            # - covariance matrix for the best-fit parameters
+            sel_func_pred, err_sel_func_pred, alphas, cov_alphas = self.polynomial_model(
+                spmaps_train,
+                sel_func_train,
+                err_sel_func_train,
+                spmaps_pred
+            )
+
+            # Combine training data and predictions into single HealSparse maps
+            pix_all = np.concatenate([pix_train_k, pix_pred])
+            sel_func_full = da.concatenate([sel_func_train, sel_func_pred])
+            err_sel_func_full = da.concatenate([err_sel_func_train, err_sel_func_pred])
+            # Sort by pixel number (will make saving to HealSparse format easier)
+            inds = pix_all.argsort()
+            chunk_sizes = sel_func_full.chunks[0]
+            chunk_bounds = np.cumsum([0] + list(chunk_sizes))
+            sel_func_full = self.dask_sort(sel_func_full, inds, chunk_bounds)
+            err_sel_func_full = self.dask_sort(err_sel_func_full, inds, chunk_bounds)
+            maps["sel_func"].append(sel_func_full)
+            maps["err_sel_func"].append(err_sel_func_full)
+            # Store model info
+            model_info["alphas"].append(alphas)
+            model_info["cov_alphas"].append(cov_alphas)
+
+        (maps,) = da.compute(maps)
+        
+        # Convert maps to healsparse map objects
+        hsp_maps = {}
+        dtypes = [(k, float) for k in samples]
+        for n, m in maps.items():
+            # Both sel_func and err_sel_func are 2D; save as recarrays
+            primary = "bin0"
+            m_hsp =  hsp.HealSparseMap.make_empty(
+                pixel_scheme.nside_coverage,
+                pixel_scheme.nside,
+                dtypes,
+                primary=primary
+            )
+            m_hsp.update_values_pix(
+                goodpix,
+                np.zeros(len(goodpix), dtype=dtypes)
+            )
+            for i,k in enumerate(samples):
+                m_hsp[k][goodpix] = m[i]
+            hsp_maps[n] = m_hsp
+
+        # Prepare metadata for the maps. Copy the pixelization-related
+        # configuration options only here
+        metadata = {key: self.config[key] for key in map_config_options if key in self.config}
+        # Then add the other configuration options
+        metadata.update(pixel_scheme.metadata)
+
+        # Write the output maps to the output file
+        with self.open_output("sel_func_pred_maps", wrapper=True) as out:
+            for map_name, hsp_map in hsp_maps.items():
+                out.write_map(map_name, hsp_map, metadata)
+            out.file["maps"].attrs.update(metadata)
+
+        # Prepare metadata for model parameter info
+        params_metadata = {
+            "model": f"polynomial (deg = {self.config['degree']})",
+            "inputs": [
+                sf.split('/')[-1] for sf in sysfiles
+            ]
+        }
+
+        # Write the model parameters and covariances to the output file
+        with self.open_output("sel_func_model_info", wrapper=True) as out:
+            mi = out.file.create_group("model_info")
+            out.file["model_info"].attrs.update(params_metadata)
+            gp_alphas = mi.create_group("alphas")
+            gp_cov = mi.create_group("cov_alphas")
+            for i,k in enumerate(samples):
+                gp_alphas.create_dataset(k, data=model_info["alphas"][i])
+                gp_cov.create_dataset(k, data=model_info["cov_alphas"][i])
+
+    def sel_func_uncertainties(self, sel_func, err_type="none", ninj=None):
+        """
+        Estimates uncertainties on the measured selection function.
+
+        Currently two values for err_type are accommodated (case-independent):
+        - "none": selection function is treated as exact; zero uncertainty
+        - "gaussian": uncertainties are calculated under a Gaussian approx.
+        TODO: add other options, e.g. Wilson score interval.
+        """
+        if err_type == "none":
+            return self.da.zeros_like(sel_func)
+        elif err_type == "gaussian":
+            return self.da.sqrt(sel_func * (1 - sel_func) / ninj)
+        else:
+            raise ValueError(
+                "err_type must be either 'none' or 'gaussian'."
+            )
+
+    def sel_func_weights(self, err_sel_func):
+        """
+        Converts selection function uncertainties into weights for modelling.
+        """
+        if all(err_sel_func == 0):
+            # Return ones if uncertanties are all zero
+            return self.da.ones(len(err_sel_func))
+        else:
+            # Return inverse of variance
+            return 1 / (self.da.power(err_sel_func, 2))
+
+    def polynomial_model(self, X_train, y_train, yerr_train, X_pred):
+        """
+        Polynomial regression and model predictions for test data.
+        
+        Performs a polynomial regression of y with respect to X_train, then
+        generates predictions at X_pred. In this context, X is an array
+        containing survey property maps in certain pixels, and y is
+        the selection function measured in those pixels.
+        """
+        da = self.da
+        # Degree of polynomial fit
+        deg = self.config["degree"]
+
+        # Weights for each training pixel
+        W = self.sel_func_weights(yerr_train)
+        # If Gaussian approx was used for uncertainty estimation, pixels in
+        # which the selection function is 0 or 1 will have zero uncertainty
+        # (and thus infinite weight); remove these pixels here.
+        (keep,) = da.compute(da.isfinite(W)) 
+        X_train = X_train[keep, :]
+        y_train = y_train[keep]
+        W = W[keep]
+
+        # Construct inputs matrix for regression
+        m = len(X_train[:, 0])
+        ones = da.ones((m, 1), chunks=(X_train.chunks[0], 1))
+        X = da.hstack([ones, X_train])
+        for n in range(2, deg + 1):
+            X = da.hstack([X, da.power(X_train, n)])
+
+        # Explicitly compute necessary array combinations
+        # NOTE: this assumes a diagonal covariance matrix for y,
+        # i.e. cov_y = diag(W)
+        (XtWX,) = da.compute(X.T @ (W[:, None] * X))
+        (XtWy,) = da.compute(X.T @ (W * y_train))
+
+        # Compute best-fit coeffs (alphas) and their covariance
+        alphas = np.linalg.solve(XtWX, XtWy)
+        cov_alphas = np.linalg.inv(XtWX)
+
+        # Now make predictions at X_pred
+        m = len(X_pred[:,0])
+        ones = da.ones((m, 1), chunks=(X_pred.chunks[0], 1))
+        X = da.hstack([ones, X_pred])
+        for n in range(2, deg + 1):
+            X = da.hstack([X, da.power(X_pred, n)])
+        y_pred = alphas @ X.T
+        err_y_pred = np.sqrt(np.diag(X @ cov_alphas @ X.T))
+
+        return y_pred, err_y_pred, alphas, cov_alphas
+
+    def dask_sort(self, X, inds, chunk_boundaries):
+        """
+        Reorders a dask array using `inds`, without creating more chunks.
+        """
+        n_chunks = len(chunk_boundaries) - 1
+
+        # Assign each index in `inds` to a chunk
+        chunk_ids = np.searchsorted(chunk_boundaries[1:], inds, side='right')
+
+        # Sort inds by chunk, preserving the mapping back to output positions
+        order = np.argsort(chunk_ids, kind='stable')
+        inds_sorted = inds[order]
+
+        # Gather from D one chunk at a time
+        X_sorted = self.da.empty(len(inds), dtype=X.dtype, chunks=X.chunks)
+
+        for c in range(n_chunks):
+            mask = chunk_ids[order] == c
+            if not mask.any():
+                continue
+            local_inds = inds_sorted[mask] - chunk_boundaries[c]
+            chunk_data = X[chunk_boundaries[c]:chunk_boundaries[c+1]]
+            X_sorted[order[mask]] = chunk_data[local_inds]
+        
+        return X_sorted
