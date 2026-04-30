@@ -42,7 +42,8 @@ TXDESISelector:
     dec_col: dec
     z_col: redshift
     w_col: weight
-    apply_mask: false
+    apply_mask: true
+    zmin: 0.5
 
 
 PZPDFMLZ:

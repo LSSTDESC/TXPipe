@@ -99,7 +99,7 @@ inputs:
     # star_catalog: data/example/inputs/star_catalog.hdf5
     desi_catalog: /scratch/gpfs/AAMON/desc_analysis/catalogs/output_select_lsst_obs_cond_dp2_DESI_ELG_flagship.pq
     # mask should be already a combination of source and lens.
-    mask: None # /scratch/gpfs/AAMON/desc_analysis/catalogs/mask_eg.fits
+    mask: /scratch/gpfs/AAMON/desc_analysis/catalogs/dp2_23p5_combined_mask_nmin=500_nside=512.hdf5 # /scratch/gpfs/AAMON/desc_analysis/catalogs/mask_eg.fits
     # This file comes with the code
     # fiducial_cosmology: data/fiducial_cosmology.yml
     # spectroscopic_catalog: data/example/inputs/mock_spectroscopic_catalog.hdf5

@@ -860,7 +860,8 @@ class TXDESISelector(PipelineStage):
 
         if self.config["apply_mask"]:
             with self.open_input("mask", wrapper=True) as f:
-                self.mask, self.mask_nside = f.read_healsparse("mask", return_all=True)
+                self.mask = f.read_mask("mask")
+                self.mask_nside = f.read_map_info("mask")["nside"]
         else:
             self.mask = self.mask_nside = None
 
@@ -939,7 +940,7 @@ class TXDESISelector(PipelineStage):
         # Survey mask
         if self.mask is not None:
             import healpy as hp
-            pix = hp.ang2pix(self.mask_nside, data[ra_col], data[dec_col], lonlat=True)
+            pix = hp.ang2pix(self.mask_nside, data[ra_col], data[dec_col], lonlat=True, nest=True)
             sel &= self.mask[pix] != hp.UNSEEN
 
         return sel
