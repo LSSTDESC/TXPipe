@@ -763,17 +763,16 @@ class TXModelSelectionFunction(TXBaseMaps):
         W = 1 / (da.power(yerr_train, 2))
 
         # Explicitly compute necessary array combinations
+        # NOTE: this assumes a diagonal covariance matrix for y,
+        # i.e. cov_y = diag(W)
         (XtWX,) = da.compute(X_T @ (W[:, None] * X))
         (XtWy,) = da.compute(X_T @ (W * y_train))
 
         # Compute best-fit coeffs (alphas) and their covariance
-        # NOTE: this assumes a diagonal covariance matrix for y,
-        # i.e. cov_y = diag(W)
         alphas = np.linalg.solve(XtWX, XtWy)
         cov_alphas = np.linalg.inv(XtWX)
 
         # Now make predictions at X_pred
-        # Construct inputs matrix for regression
         m = len(X_pred[:,0])
         ones = da.ones((m, 1), chunks=(X_pred.chunks[0], 1))
         X = da.hstack([ones, X_pred])
