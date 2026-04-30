@@ -62,4 +62,5 @@ dependencies:
     - numpy==2.3.*
     # NERSC-specific
     - git+https://github.com/LSSTDESC/dataregistry.git
-    - dsigma=1.1.*
+    - dsigma==1.1.*
+  
