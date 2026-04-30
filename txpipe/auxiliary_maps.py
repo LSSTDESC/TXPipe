@@ -789,17 +789,3 @@ class TXModelSelectionFunction(TXBaseMaps):
             X_sorted[order[mask]] = chunk_data[local_inds]
         
         return X_sorted
-
-    def make_hsp_map(self, pixels, values, pixel_scheme):
-        """
-        Creates an empty HealSparseMap and populates it at the specified
-        pixels with the corresponding values.
-        """
-        import healsparse as hsp
-        hsp_map = hsp.HealSparseMap.make_empty(
-            nside_coverage=pixel_scheme.nside_coverage,
-            nside_sparse=pixel_scheme.nside,
-            dtype=float
-        )
-        hsp_map[pixels] = values
-        return hsp_map
