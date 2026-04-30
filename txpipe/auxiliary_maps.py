@@ -679,10 +679,11 @@ class TXModelSelectionFunction(TXBaseMaps):
         with self.open_output("sel_func_model_info", wrapper=True) as out:
             mi = out.file.create_group("model_info")
             out.file["model_info"].attrs.update(params_metadata)
+            gp_alphas = mi.create_group("alphas")
+            gp_cov = mi.create_group("cov_alphas")
             for i,k in enumerate(samples):
-                gp = mi.create_group(k)
-                gp.create_dataset("alphas", data=model_info["alphas"][i])
-                gp.create_dataset("cov_alphas", data=model_info["cov_alphas"][i])
+                gp_alphas.create_dataset(k, data=model_info["alphas"][i])
+                gp_cov.create_dataset(k, data=model_info["cov_alphas"][i])
 
     def sel_func_uncertainties(self, sel_func, err_type="none", ninj=None):
         """
