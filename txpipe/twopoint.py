@@ -466,26 +466,8 @@ class TXTwoPoint(PipelineStage):
         S2.save_fits(self.get_output("twopoint_gamma_x"), overwrite=True)
 
     def write_metadata(self, S, meta):
-        # We also save the associated metadata to the file
-        for k, v in meta.items():
-            if np.isscalar(v):
-                S.metadata[k] = v
-            else:
-                for i, vi in enumerate(v):
-                    S.metadata[f"{k}_{i}"] = vi
-
-        # Add provenance metadata.  In managed formats this is done
-        # automatically, but because the Sacc library is external
-        # we do it manually here.
         provenance = self.gather_provenance()
-        provenance.update(SACCFile.generate_provenance())
-        for key, value in provenance.items():
-            if isinstance(value, str) and "\n" in value:
-                values = value.split("\n")
-                for i, v in enumerate(values):
-                    S.metadata[f"provenance/{key}_{i}"] = v
-            else:
-                S.metadata[f"provenance/{key}"] = value
+        SACCFile.add_metadata(S, provenance, meta)
 
     def call_treecorr(self, i, j, k):
         """

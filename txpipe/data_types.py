@@ -709,6 +709,29 @@ class SACCFile(DataFile):
 
         return provenance
 
+    @classmethod
+    def add_metadata(cls, sacc_object, provenance, meta):
+        # We also save the associated metadata to the file
+        for k, v in meta.items():
+            if np.isscalar(v):
+                sacc_object.metadata[k] = v
+            else:
+                for i, vi in enumerate(v):
+                    sacc_object.metadata[f"{k}_{i}"] = vi
+
+        # Add provenance metadata.  In managed formats this is done
+        # automatically, but because the Sacc library is external
+        # we do it manually here.
+        provenance.update(SACCFile.generate_provenance())
+        for key, value in provenance.items():
+            if isinstance(value, str) and "\n" in value:
+                values = value.split("\n")
+                for i, v in enumerate(values):
+                    sacc_object.metadata[f"provenance/{key}_{i}"] = v
+            else:
+                sacc_object.metadata[f"provenance/{key}"] = value
+
+
     def close(self):
         pass
 
