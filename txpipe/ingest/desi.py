@@ -85,7 +85,7 @@ class TXIngestDESI(PipelineStage):
         counts_2d = 0
 
         # all cols that might be useful
-        cols = ["ra", "dec", "redshift"]
+        cols = ["ra", "dec", "redshift", "weight"]
 
         for s, e, data in self.iterate_fits("desi_catalog_selected", 1, cols, chunk_rows):
             n = data["ra"].size

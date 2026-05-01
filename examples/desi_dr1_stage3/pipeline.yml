@@ -13,7 +13,7 @@ stages:
   #       weights_catalog: shear_catalog
   #       photoz_stack: shear_photoz_stack
   # - name: TXIngestRedmagic
-  - name: TXDESIMockSelector
+  - name: TXDESISelector
   - name: TXIngestDESI
   # - name: TXTracerMetadata
   # - name: TXSourceMaps
@@ -63,7 +63,7 @@ stages:
     # - name: TXRealGaussianCovariance   # Compute covariance of real-space correlations
 
 # Where to put outputs
-output_dir: data/example/outputs_desi_mocks
+output_dir: data/example/outputs_desi_dr1_stage3
 
 # How to run the pipeline: mini, parsl, or cwl
 launcher:
@@ -85,7 +85,7 @@ python_paths:
   - submodules/WLMassMap/python/desc/
 
 # configuration settings
-config: examples/desi_mocks/config.yml
+config: examples/desi_dr1_stage3/config.yml
 
 # On NERSC, set this before running:
 # export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
@@ -97,7 +97,7 @@ inputs:
     # photoz_trained_model: data/example/inputs/cosmoDC2_trees_i25.3.npy
     # exposures: data/example/inputs/exposures.hdf5
     # star_catalog: data/example/inputs/star_catalog.hdf5
-    desi_catalog: /scratch/gpfs/AAMON/desc_analysis/catalogs/output_select_lsst_obs_cond_dp2_DESI_ELG_flagship.pq
+    desi_catalog: /scratch/gpfs/AAMON/desc_analysis/catalogs/LRG_SGC_clustering.dat.fits
     # mask should be already a combination of source and lens.
     mask: /scratch/gpfs/AAMON/desc_analysis/catalogs/dp2_23p5_combined_mask_nmin=500_nside=512.hdf5 # /scratch/gpfs/AAMON/desc_analysis/catalogs/mask_eg.fits
     # This file comes with the code
@@ -108,6 +108,6 @@ inputs:
 # if interrupted
 resume: true
 # where to put output logs for individual stages
-log_dir: data/example/logs_desi_mocks
+log_dir: data/example/logs_desi_dr1_stage3
 # where to put an overall parsl pipeline log
-pipeline_log: data/example/log_desi_mocks.txt
+pipeline_log: data/example/log_desi_dr1_stage3.txt

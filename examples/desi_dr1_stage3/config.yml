@@ -32,18 +32,17 @@ TXIngestRedmagic:
     lens_zbin_edges: [0.1, 0.3, 0.5]
 
 TXIngestDESI:
-    mock: true
+    mock: false
     lens_zbin_edges: [0.0, 3.0]
     dz: 0.001
 
-TXDESIMockSelector:
-    bands: ugrizy
-    ra_col: ra
-    dec_col: dec
-    z_col: redshift
-    w_col: weight
-    apply_mask: true
-    zmin: 0.5
+TXDESISelector:
+    ra_col: RA
+    dec_col: DEC
+    z_col: Z
+    w_col: WEIGHT
+    apply_mask: false
+    zmin: 0.0
 
 
 PZPDFMLZ:
