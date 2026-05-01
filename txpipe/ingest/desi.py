@@ -1,0 +1,144 @@
+from ..base_stage import PipelineStage
+from ..data_types import HDFFile, FitsFile, QPNOfZFile
+import numpy as np
+from ceci.config import StageParameter
+
+
+class TXIngestDESI(PipelineStage):
+    """
+    Ingest a DESI catalog (mock or real)
+
+    This starts with the FITS file format.
+    """
+
+    name = "TXIngestDESI"
+    parallel = False
+
+    inputs = [
+    ("desi_catalog_selected", FitsFile),  # from stage 1
+]
+
+    outputs = [
+        ("lens_catalog", HDFFile),
+        ("lens_tomography_catalog_unweighted", HDFFile),
+        ("lens_photoz_stack", QPNOfZFile),
+    ]
+
+    # TODO: CHANGE CONFIG OPTIONS
+    config_options = {
+        "lens_zbin_edges": StageParameter(list, [float], msg="Edges of lens redshift bins."),
+        "chunk_rows": StageParameter(int, 100_000, msg="Number of rows to process in each chunk."),
+        "zmin": StageParameter(float, 0.0, msg="Minimum redshift for binning."),
+        "zmax": StageParameter(float, 3.0, msg="Maximum redshift for binning."),
+        "dz": StageParameter(float, 0.01, msg="Redshift bin width."),
+        #"bands": StageParameter(str, "grizy", msg="Bands to use for DESI selection."),
+        "mock": StageParameter(bool, False, msg="Whether to use a mock catalog."),
+    }
+
+
+    def run(self):
+        import qp
+
+        # Count number of objects
+        f = self.open_input("desi_catalog_selected")
+        n = f[1].get_nrows()
+        f.close()
+
+        chunk_rows = self.config["chunk_rows"]
+        # bands = self.config["bands"]
+        zbin_edges = self.config["lens_zbin_edges"]
+        nbin_lens = len(zbin_edges) - 1
+
+        cat = self.open_output("lens_catalog")
+        tomo = self.open_output("lens_tomography_catalog_unweighted")
+
+        # redshift grid
+        zmin = self.config["zmin"]
+        zmax = self.config["zmax"]
+        dz = self.config["dz"]
+        z_grid = np.arange(zmin, zmax, dz)
+        nz_grid = np.zeros((nbin_lens + 1, z_grid.size))
+        nz = len(z_grid)
+
+        # Create space in outputs
+        g = cat.create_group("lens")
+        # g.attrs["bands"] = bands
+        g.create_dataset("ra", (n,), dtype=np.float64)
+        g.create_dataset("dec", (n,), dtype=np.float64)
+        g.create_dataset("redshift", (n,), dtype=np.float64)
+        # for b in bands:
+        #     g.create_dataset(f"mag_{b}", (n,), dtype=np.float64)
+        #     g.create_dataset(f"mag_err_{b}", (n,), dtype=np.float64)
+        # g.attrs["bands"] = bands
+
+        h = tomo.create_group("tomography")
+        h.create_dataset("bin", (n,), dtype=np.int32)
+        h.create_dataset("lens_weight", (n,), dtype=np.float64)
+        h.attrs["nbin"] = nbin_lens
+        h.attrs[f"zbin_edges"] = zbin_edges
+        h_counts = tomo.create_group("counts")
+        h_counts.create_dataset("counts", (nbin_lens,), dtype="i")
+        h_counts.create_dataset("counts_2d", (1,), dtype="i")
+
+        # we keep track of the counts per-bin also
+        counts = np.zeros(nbin_lens, dtype=np.int64)
+        counts_2d = 0
+
+        # all cols that might be useful
+        cols = ["ra", "dec", "redshift"]
+
+        for s, e, data in self.iterate_fits("desi_catalog_selected", 1, cols, chunk_rows):
+            n = data["ra"].size
+            z = data["redshift"]
+            # Unit weight still
+            weight = np.repeat(1.0, n)
+
+            # work out the redshift bin for each object, if any.
+            # do any other selection here
+            zbin = np.digitize(z, zbin_edges) - 1
+            zbin[zbin == nbin_lens] = -1
+
+            # # can select on any other criterion here, e.g.
+            # # mag or chisq.  This is an example
+            # sel = data["chisq"] < 10
+            # # deselect these objects
+            # zbin[~sel] = -1
+
+            # Build up the count of the n(z) histograms per-bin
+            z_grid_index = np.floor((z - zmin) / dz).astype(int)
+            for i, (i_z, b) in enumerate(zip(z_grid_index, zbin)):
+                if b >= 0:
+                    nz_grid[b, i_z] += weight[i]
+
+            # Build up the counts
+            any_bin = zbin >= 0
+            counts += np.bincount(zbin[any_bin], minlength=nbin_lens)
+            counts_2d += any_bin.sum()
+
+            # save data
+            g["ra"][s:e] = data["ra"]
+            g["dec"][s:e] = data["dec"]
+            g["redshift"][s:e] = data["redshift"]
+
+            # # including mags
+            # for i, b in enumerate(bands):
+            #     g[f"mag_{b}"][s:e] = data["mag"][:, i]
+            #     g[f"mag_err_{b}"][s:e] = data["mag_err"][:, i]
+
+            h["bin"][s:e] = zbin
+            if self.config["mock"]:
+                h["lens_weight"][s:e] = 1.0
+            else:
+                h["lens_weight"][s:e] = data["weight"]
+
+        # this is an overall count
+        h_counts["counts"][:] = counts
+        h_counts["counts_2d"][:] = counts_2d
+
+        # Generate and save the 2D n(z) histogram also, just
+        # by summing up all the individual values.
+        nz_grid[-1] = nz_grid[:-1].sum(axis=0)
+
+        stack_object = qp.Ensemble(qp.hist, data={"bins": z_grid, "pdfs": nz_grid[:, :-1]})
+        with self.open_output("lens_photoz_stack", wrapper=True) as stack:
+            stack.write_ensemble(stack_object)
