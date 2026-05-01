@@ -331,11 +331,10 @@ def select_weak_lensing_sample(data, config, calling_from_select=False):
     verbose = config["verbose"]
     variant = data.suffix
 
-    shear_prefix = config["shear_prefix"]
-    s2n = data[f"{shear_prefix}s2n{variant}"]
-    T = data[f"{shear_prefix}T{variant}"]
-    Tpsf = data[f"{shear_prefix}psf_T_mean"]
-    flag = data[f"{shear_prefix}flags{variant}"]
+    s2n = data[f"s2n{variant}"]
+    T = data[f"T{variant}"]
+    Tpsf = data[f"psf_T_mean"]
+    flag = data[f"flags{variant}"]
 
     # Apply our cuts.  We keep track of the number of objects
     # reject by each cut in case it's important.

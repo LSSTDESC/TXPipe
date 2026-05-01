@@ -30,7 +30,6 @@ class TXAuxiliarySourceMaps(PipelineStage):
     config_options = {
         "block_size": StageParameter(int, 0, msg="Block size for dask processing (0 means auto)."),
         "flag_exponent_max": StageParameter(int, 8, msg="Maximum exponent for flag bits (default 8)."),
-        "psf_prefix": StageParameter(str, "psf_", msg="Prefix for PSF column names."),
         **map_config_options,
     }
 
@@ -47,7 +46,6 @@ class TXAuxiliarySourceMaps(PipelineStage):
         block_size = self.config["block_size"]
         if block_size == 0:
             block_size = "auto"
-        psf_prefix = self.config["psf_prefix"]
 
         flag_exponent_max = self.config["flag_exponent_max"]
 
@@ -67,13 +65,10 @@ class TXAuxiliarySourceMaps(PipelineStage):
         # force all columns to use the same block size
         block_size = ra.chunksize
         dec = da.from_array(shear_cat.file[f"{group}/dec"], block_size)
-        psf_g1 = da.from_array(shear_cat.file[f"{group}/{psf_prefix}g1"], block_size)
-        psf_g2 = da.from_array(shear_cat.file[f"{group}/{psf_prefix}g2"], block_size)
+        psf_g1 = da.from_array(shear_cat.file[f"{group}/g1"], block_size)
+        psf_g2 = da.from_array(shear_cat.file[f"{group}/g2"], block_size)
         weight = da.from_array(shear_cat.file[f"{group}/weight"], block_size)
-        if shear_cat.catalog_type == "metacal":
-            flag_name = "mcal_flags"
-        else:
-            flag_name = "flags"
+        flag_name = "flags"
         flag = da.from_array(shear_cat.file[f"{group}/{flag_name}"], block_size)
         b = da.from_array(shear_tomo.file["tomography/bin"], block_size)
 
