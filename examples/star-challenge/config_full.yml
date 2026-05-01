@@ -9,8 +9,11 @@ TXSourceSelectorMetadetect:
     # found approximately to split data into equal number counts
     # for selected objects
     source_zbin_edges: [0.0, 0.34, 0.53, 0.71, 0.96, 3.0]
+
+TXSourceTomography:
+    bands: riz
+    source_zbin_edges: [0.0, 0.34, 0.53, 0.71, 0.96, 3.0]
     random_seed: 6765675
-    shear_prefix: ''
 
 TXRandomForestLensSelector:
     verbose: False
@@ -82,7 +85,6 @@ TXLensNoiseMaps:
 TXAuxiliarySourceMaps:
     chunk_rows:  100000
     sparse:  True
-    psf_prefix:  psf_
 
 TXALensMaps:
     chunk_rows:  100000
@@ -100,8 +102,7 @@ TXRandomCat:
 TXJackknifeCenters:
     npatch: 40
 
-TXSourceDiagnosticPlots:
-    shear_prefix: mcal_
+TXSourceDiagnosticPlots: {}
 
 TXTwoPointTheoryFourier:
     #galaxy_bias: [0.682, 0.907, 1.106, 1.278, 1.572] #from 2x2 fit

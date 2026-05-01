@@ -96,6 +96,7 @@ inputs:
     calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
     fiducial_cosmology: data/fiducial_cosmology.yml
     random_cats_source: Null
+    shear_tomography_classifier: none
     flow: data/example/inputs/example_flow.pkl
 
 # if supported by the launcher, restart the pipeline where it left off

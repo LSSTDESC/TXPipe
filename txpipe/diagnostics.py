@@ -1,16 +1,14 @@
 from .base_stage import PipelineStage
 from .data_types import Directory, ShearCatalog, HDFFile, PNGFile, TomographyCatalog, TextFile
-from .utils.calibrators import Calibrator
-from .utils.calibration_tools import (
-    calculate_selection_response,
-    calculate_shear_response,
+from .shear_calibration import (
+    Calibrator,
     MeanShearInBins,
-    read_shear_catalog_type,
     metadetect_variants,
     band_variants,
 )
 from .utils.fitting import fit_straight_line
-from .utils import import_dask
+from .utils import import_dask, read_shear_catalog_type
+
 from .plotting import manual_step_histogram
 import numpy as np
 from ceci.config import StageParameter
@@ -42,8 +40,6 @@ class TXDiagnosticQuantiles(PipelineStage):
         ("shear_catalog_quantiles", HDFFile),
     ]
     config_options = {
-        "shear_prefix": StageParameter(str, "mcal_", msg="Prefix for shear columns in the catalog."),
-        "psf_prefix": StageParameter(str, "mcal_psf_", msg="Prefix for PSF columns in the catalog."),
         "nbins": StageParameter(int, 20, msg="Number of quantile bins to compute."),
         "chunk_rows": StageParameter(int, 0, msg="Number of rows to process in each chunk (0 means auto)."),
         "bands": StageParameter(str, "riz", msg="Bands to use for diagnostics."),
@@ -53,23 +49,24 @@ class TXDiagnosticQuantiles(PipelineStage):
         _, da = import_dask()
 
         # Configuration parameters
-        psf_prefix = self.config["psf_prefix"]
-        shear_prefix = self.config["shear_prefix"]
         chunk_rows = self.config["chunk_rows"]
         nedge = self.config["nbins"] + 1
         if chunk_rows == 0:
             chunk_rows = "auto"
 
+        with self.open_input("shear_catalog", wrapper=True) as f:
+            group = f.get_primary_catalog_group()
+
         # We canonicalise the names here
         col_names = {
-            "psf_g1": f"{psf_prefix}g1",
-            "psf_T_mean": f"{psf_prefix}T_mean",
-            "s2n": f"{shear_prefix}s2n",
-            "T": f"{shear_prefix}T",
+            "psf_g1": f"{group}/psf_g1",
+            "psf_T_mean": f"{group}/psf_T_mean",
+            "s2n": f"{group}/s2n",
+            "T": f"{group}/T",
         }
 
         for band in self.config["bands"]:
-            col_names[f"mag_{band}"] = f"{shear_prefix}mag_{band}"
+            col_names[f"mag_{band}"] = f"{group}/mag_{band}"
 
         # We ask for quantiles at these points
         quantiles = np.linspace(0, 1, nedge, endpoint=True)
@@ -87,7 +84,7 @@ class TXDiagnosticQuantiles(PipelineStage):
                 # Create dask arrays of the columns. This loads them lazily,
                 # so no data is actually loaded here. Only when the "compute"
                 # method is called below does anything actually happen.
-                col = da.from_array(f[f"shear/{old_name}"], chunks=chunk_rows)
+                col = da.from_array(f[old_name], chunks=chunk_rows)
 
                 # Ask dask to compute the percentiles of this column.
                 # Again, it will not actually do anything until the "compute"
@@ -145,8 +142,6 @@ class TXSourceDiagnosticPlots(PipelineStage):
     config_options = {
         "chunk_rows": StageParameter(int, 100000, msg="Number of rows to process in each chunk."),
         "delta_gamma": StageParameter(float, 0.02, msg="Delta gamma value for metacal response calculation."),
-        "shear_prefix": StageParameter(str, "mcal_", msg="Prefix for shear columns in the catalog."),
-        "psf_prefix": StageParameter(str, "mcal_psf_", msg="Prefix for PSF columns in the catalog."),
         "nbins": StageParameter(int, 20, msg="Number of bins for histograms."),
         "g_min": StageParameter(float, -0.03, msg="Minimum g value for plots."),
         "g_max": StageParameter(float, 0.05, msg="Maximum g value for plots."),
@@ -184,48 +179,46 @@ class TXSourceDiagnosticPlots(PipelineStage):
         # This method automatically splits up data among the processes,
         # so the plotters should handle this.
         chunk_rows = self.config["chunk_rows"]
-        psf_prefix = self.config["psf_prefix"]
-        shear_prefix = self.config["shear_prefix"]
         bands = self.config["bands"]
         if self.rank == 0:
             print("Catalog type = ", cat_type)
 
         if cat_type == "metacal":
             shear_cols = [
-                f"{psf_prefix}g1",
-                f"{psf_prefix}g2",
-                f"{psf_prefix}T_mean",
-                "mcal_g1",
-                "mcal_g1_1p",
-                "mcal_g1_2p",
-                "mcal_g1_1m",
-                "mcal_g1_2m",
-                "mcal_g2",
-                "mcal_g2_1p",
-                "mcal_g2_2p",
-                "mcal_g2_1m",
-                "mcal_g2_2m",
-                "mcal_s2n",
-                "mcal_T",
-                "mcal_T_1p",
-                "mcal_T_2p",
-                "mcal_T_1m",
-                "mcal_T_2m",
-                "mcal_s2n_1p",
-                "mcal_s2n_2p",
-                "mcal_s2n_1m",
-                "mcal_s2n_2m",
+                f"psf_g1",
+                f"psf_g2",
+                f"psf_T_mean",
+                "g1",
+                "g1_1p",
+                "g1_2p",
+                "g1_1m",
+                "g1_2m",
+                "g2",
+                "g2_1p",
+                "g2_2p",
+                "g2_1m",
+                "g2_2m",
+                "s2n",
+                "T",
+                "T_1p",
+                "T_2p",
+                "T_1m",
+                "T_2m",
+                "s2n_1p",
+                "s2n_2p",
+                "s2n_1m",
+                "s2n_2m",
                 "weight",
-            ] + [f"mcal_mag_{b}" for b in bands]
+            ] + [f"mag_{b}" for b in bands]
         elif cat_type == "metadetect":
             # g1, g2, T, psf_g1, psf_g2, T, s2n, weight, magnitudes
             shear_cols = metadetect_variants(
                 "g1",
                 "g2",
                 "T",
-                "mcal_psf_g1",
-                "mcal_psf_g2",
-                "mcal_psf_T_mean",
+                "psf_g1",
+                "psf_g2",
+                "psf_T_mean",
                 "s2n",
                 "weight",
             )
@@ -242,7 +235,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 "T",
                 "weight",
                 "m",
-            ] + [f"{shear_prefix}mag_{b}" for b in self.config["bands"]]
+            ] + [f"mag_{b}" for b in self.config["bands"]]
 
         shear_tomo_cols = ["bin"]
 
@@ -260,6 +253,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
             "tomography",
             shear_tomo_cols,
             *more_iters,
+            longest=True,
         )
 
         # Now loop through each chunk of input data, one at a time.
@@ -285,7 +279,6 @@ class TXSourceDiagnosticPlots(PipelineStage):
         """
         Get the bin edges for a given column from the quantiles file
         """
-        col = col.removeprefix(self.config["shear_prefix"])
         with self.open_input("shear_catalog_quantiles") as f:
             edges = f[f"quantiles/{col}"][:]
         return edges
@@ -296,20 +289,20 @@ class TXSourceDiagnosticPlots(PipelineStage):
         import matplotlib.pyplot as plt
         from scipy import stats
 
-        psf_prefix = self.config["psf_prefix"]
         delta_gamma = self.config["delta_gamma"]
 
         psf_g_edges = self.get_bin_edges("psf_g1")
+        shear_prefix = "00/" if self.config["shear_catalog_type"] == "metadetect" else ""
 
         p1 = MeanShearInBins(
-            f"{psf_prefix}g1",
+            f"{shear_prefix}psf_g1",
             psf_g_edges,
             delta_gamma,
             cut_source_bin=True,
             shear_catalog_type=self.config["shear_catalog_type"],
         )
         p2 = MeanShearInBins(
-            f"{psf_prefix}g2",
+            f"{shear_prefix}psf_g2",
             psf_g_edges,
             delta_gamma,
             cut_source_bin=True,
@@ -395,13 +388,13 @@ class TXSourceDiagnosticPlots(PipelineStage):
         import matplotlib.pyplot as plt
         from scipy import stats
 
-        psf_prefix = self.config["psf_prefix"]
         delta_gamma = self.config["delta_gamma"]
 
         psf_T_edges = self.get_bin_edges("psf_T_mean")
+        shear_prefix = "00/" if self.config["shear_catalog_type"] == "metadetect" else ""
 
         binnedShear = MeanShearInBins(
-            f"{psf_prefix}T_mean",
+            f"{shear_prefix}psf_T_mean",
             psf_T_edges,
             delta_gamma,
             cut_source_bin=True,
@@ -457,7 +450,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
         from scipy import stats
 
         # Parameters of the binning in SNR
-        shear_prefix = self.config["shear_prefix"]
+        shear_catalog_type = self.config["shear_catalog_type"]
+        shear_prefix = "00/" if shear_catalog_type == "metadetect" else ""
         delta_gamma = self.config["delta_gamma"]
 
         snr_edges = self.get_bin_edges("s2n")
@@ -469,7 +463,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
             snr_edges,
             delta_gamma,
             cut_source_bin=True,
-            shear_catalog_type=self.config["shear_catalog_type"],
+            shear_catalog_type=shear_catalog_type,
         )
         while True:
             # This happens when we have loaded a new data chunk
@@ -521,7 +515,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
         import matplotlib.pyplot as plt
         from scipy import stats
 
-        shear_prefix = self.config["shear_prefix"]
+        shear_catalog_type = self.config["shear_catalog_type"]
+        shear_prefix = "00/" if shear_catalog_type == "metadetect" else ""
         delta_gamma = self.config["delta_gamma"]
 
         T_edges = self.get_bin_edges("T")
@@ -531,7 +526,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
             T_edges,
             delta_gamma,
             cut_source_bin=True,
-            shear_catalog_type=self.config["shear_catalog_type"],
+            shear_catalog_type=shear_catalog_type,
             psf_unit_conv=self.config["psf_unit_conv"],
         )
 
@@ -584,14 +579,15 @@ class TXSourceDiagnosticPlots(PipelineStage):
         import matplotlib.pyplot as plt
         from scipy import stats
 
-        shear_prefix = self.config["shear_prefix"]
+        shear_catalog_type = self.config["shear_catalog_type"]
+        shear_prefix = "00/" if shear_catalog_type == "metadetect" else ""
         delta_gamma = self.config["delta_gamma"]
         nbins = self.config["nbins"]
 
         stat = {}
         binnedShear = {}
         for band in self.config["bands"]:
-            m_edges = self.get_bin_edges(f"{shear_prefix}mag_{band}")
+            m_edges = self.get_bin_edges(f"mag_{band}")
 
             binnedShear[f"{band}"] = MeanShearInBins(
                 f"{shear_prefix}mag_{band}",
@@ -719,8 +715,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
             qual_cut = data["bin"] != -1
 
             if cat_type == "metacal":
-                g1 = data["mcal_g1"]
-                g2 = data["mcal_g2"]
+                g1 = data["g1"]
+                g2 = data["g2"]
                 w = data["weight"]
             elif cat_type == "metadetect":
                 g1 = data["00/g1"]
@@ -745,7 +741,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 # In KiDS, the additive bias is calculated and removed per North and South field
                 # therefore, we add dec to split data into these fields.
                 # You can choose not to by setting dec_cut = 90 in the config, for example.
-                g1, g2 = cal.apply(dec, g1, g2)
+                g1, g2 = cal.apply(g1, g2, dec)
             else:
                 g1, g2 = cal.apply(g1, g2, c1, c2)
 
@@ -793,7 +789,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
         import matplotlib.pyplot as plt
 
         delta_gamma = self.config["delta_gamma"]
-        shear_prefix = self.config["shear_prefix"]
+        shear_catalog_type = self.config["shear_catalog_type"]
+        shear_prefix = "00/" if shear_catalog_type == "metadetect" else ""
         bins = 10
         edges = np.logspace(1, 3, bins + 1)
         mids = 0.5 * (edges[1:] + edges[:-1])
@@ -973,7 +970,6 @@ class TXSourceDiagnosticPlots(PipelineStage):
             import mpi4py.MPI
         # mean shear in bins of PSF
         print("Making mag histogram")
-        prefix = self.config["shear_prefix"]
         import matplotlib.pyplot as plt
 
         size = 10
@@ -983,7 +979,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         mid = 0.5 * (edges[1:] + edges[:-1])
         width = edges[1] - edges[0]
         bands = self.config["bands"]
-        shear_prefix = self.config["shear_prefix"]
+        shear_prefix = "00/" if self.config["shear_catalog_type"] == "metadetect" else ""
         nband = len(bands)
         full_hists = [np.zeros(size, dtype=int) for b in bands]
         source_hists = [np.zeros(size, dtype=int) for b in bands]

@@ -1,8 +1,12 @@
 import numpy as np
+import healpy as hp
 from ..utils import import_dask
+from .basic_maps import pix2sparseindex
 
 
-def make_dask_bright_object_map(ra, dec, mag, extended, threshold, pixel_scheme):
+def make_dask_bright_object_map(
+    ra, dec, mag, extended, threshold, pixel_scheme, cov_map
+):
     """
     Create a map of bright objects using Dask.
 
@@ -20,24 +24,31 @@ def make_dask_bright_object_map(ra, dec, mag, extended, threshold, pixel_scheme)
         Magnitude threshold to classify objects as bright.
     pixel_scheme : PixelScheme
         Pixelization scheme object with methods `npix` and `ang2pix`.
-
+    cov_map : HealSparseCoverage
+        coverage map corresponding to these sources (or a superset of them)
     Returns
     -------
-    tuple
-        A tuple containing:
-        - pix (dask.array): Unique pixel indices containing bright objects.
-        - bright_object_count_map (dask.array): Count map of bright objects per pixel.
+    dict
+        A dict containing
+        "count" (dask.array): Sparse count map of bright objects per pixel.
     """
     _, da = import_dask()
-    npix = pixel_scheme.npix
-    pix = pixel_scheme.ang2pix(ra, dec)
     bright = da.where((mag < threshold) & (extended == 0), 1, 0)
-    bright_object_count_map = da.bincount(pix, weights=bright, minlength=npix).astype(int)
-    pix = da.unique(pix)
-    return pix, bright_object_count_map
+    pix = pixel_scheme.ang2pix(ra, dec)
+
+    # get the sparse map index for each of these pixel (is dask aware)
+    sparse_index, npix_sparse = pix2sparseindex(pix, cov_map)
+
+    bright_object_count_map = da.bincount(
+        sparse_index, weights=bright, minlength=npix_sparse
+    ).astype(int)
+
+    return {"count": bright_object_count_map}
 
 
-def make_dask_depth_map(ra, dec, mag, snr, threshold, delta, pixel_scheme):
+def make_dask_depth_map(
+    ra, dec, mag, snr, threshold, delta, pixel_scheme, cov_map, sentinel=hp.UNSEEN
+):
     """
     Generate a depth map using Dask, by finding the mean magnitude of
     objects with a signal-to-noise ratio close to a given threshold.
@@ -58,26 +69,29 @@ def make_dask_depth_map(ra, dec, mag, snr, threshold, delta, pixel_scheme):
         Tolerance value for signal-to-noise ratio.
     pixel_scheme : PixelScheme
         An object that provides pixelization scheme with methods `npix` and `ang2pix`.
-
+    cov_map : HealSparseCoverage
+        coverage map corresponding to these sources (or a superset of them)
     Returns
     -------
-    tuple
-        A tuple containing:
+    dict
+        A dict containing:
         - pix (dask.array): Unique pixel indices.
         - count_map (dask.array): Count of objects per pixel.
         - depth_map (dask.array): Mean depth per pixel.
         - depth_var (dask.array): Variance of depth per pixel.
     """
     _, da = import_dask()
-    npix = pixel_scheme.npix
     pix = pixel_scheme.ang2pix(ra, dec)
     hit = da.where(abs(snr - threshold) < delta, 1, 0)
     depth = da.where(abs(snr - threshold) < delta, mag, 0)
 
+    # get the sparse map index for each of these pixel (is dask aware)
+    sparse_index, npix_sparse = pix2sparseindex(pix, cov_map)
+
     # get the count and sum of the depth and depth^2
-    count_map = da.bincount(pix, weights=hit, minlength=npix)
-    depth_map = da.bincount(pix, weights=depth, minlength=npix)
-    depth2_map = da.bincount(pix, weights=depth**2, minlength=npix)
+    count_map = da.bincount(sparse_index, weights=hit, minlength=npix_sparse)
+    depth_map = da.bincount(sparse_index, weights=depth, minlength=npix_sparse)
+    depth2_map = da.bincount(sparse_index, weights=depth**2, minlength=npix_sparse)
 
     # convert to means
     depth_map /= count_map
@@ -86,9 +100,11 @@ def make_dask_depth_map(ra, dec, mag, snr, threshold, delta, pixel_scheme):
     # get the variance from the mean depth
     depth_var = depth2_map - depth_map**2
 
-    pix = da.unique(pix)
+    # set pixels with 0 counts to sentinel value
+    depth_map = da.where(count_map != 0, depth_map, sentinel)
+    depth_var = da.where(count_map != 0, depth_var, sentinel)
+
     return {
-        "pix": pix,
         "count_map": count_map,
         "depth_map": depth_map,
         "depth_var": depth_var,
@@ -105,6 +121,7 @@ def make_dask_depth_map_det_prob(
     min_depth,
     max_depth,
     pixel_scheme,
+    cov_map,
     smooth_det_frac=False,
     smooth_window=0.5,
 ):
@@ -133,6 +150,8 @@ def make_dask_depth_map_det_prob(
         maximum magnitude at which to compute detection fraction
     pixel_scheme : PixelScheme
         An object that provides pixelization scheme with methods `npix` and `ang2pix`.
+    cov_map : HealSparseCoverage
+        coverage map corresponding to these sources (or a superset of them)
     smooth_det_frac: bool
         if True apply a savgol filtering to the individual detection frac vs magnitude cut signals
     smooth_window: float
@@ -140,8 +159,8 @@ def make_dask_depth_map_det_prob(
 
     Returns
     -------
-    tuple
-        A tuple containing:
+    dict
+        A dict containing:
         - pix (dask.array): Unique pixel indices.
         - det_count_map (dask.array): Count of detected objects per pixel.
         - inj_count_map (dask.array): Count of injected objects per pixel.
@@ -155,8 +174,11 @@ def make_dask_depth_map_det_prob(
     npix = pixel_scheme.npix
     pix = pixel_scheme.ang2pix(ra, dec)
 
-    det_count_map = da.bincount(pix, weights=det, minlength=npix)
-    inj_count_map = da.bincount(pix, minlength=npix)
+    # get the sparse map index for each of these pixel (is dask aware)
+    sparse_index, npix_sparse = pix2sparseindex(pix, cov_map)
+
+    det_count_map = da.bincount(sparse_index, weights=det, minlength=npix_sparse)
+    inj_count_map = da.bincount(sparse_index, minlength=npix_sparse)
 
     # Make array of magnitude bins
     mag_edges = da.arange(min_depth, max_depth, mag_delta)
@@ -167,8 +189,10 @@ def make_dask_depth_map_det_prob(
     frac_list = []
     for mag_thresh in mag_edges:
         above_thresh = mag < mag_thresh
-        ntot = da.bincount(pix, weights=above_thresh, minlength=npix)
-        ndet = da.bincount(pix, weights=above_thresh * det, minlength=npix)
+        ntot = da.bincount(sparse_index, weights=above_thresh, minlength=npix_sparse)
+        ndet = da.bincount(
+            sparse_index, weights=above_thresh * det, minlength=npix_sparse
+        )
         frac_det = da.where(ntot != 0, ndet / ntot, np.nan)
         frac_list.append(frac_det)
     det_frac_by_mag_thres = da.stack(frac_list)
@@ -202,11 +226,9 @@ def make_dask_depth_map_det_prob(
     thres_index = da.nanmin(masked, axis=0)  # the index of the magnitude where det frac drops below threshold
 
     depth_map = mag_edges[thres_index]
-    depth_map[~valid_pix_mask] = np.nan
+    depth_map[~valid_pix_mask] = hp.UNSEEN
 
-    pix = da.unique(pix)
     return {
-        "pix": pix,
         "det_count_map": det_count_map,
         "inj_count_map": inj_count_map,
         "depth_map": depth_map,

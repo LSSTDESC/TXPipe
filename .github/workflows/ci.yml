@@ -10,7 +10,7 @@ on:
     - cron: '0 12 * * 1'
 
 env:
-  EXAMPLE_DATA_FILE_VERSION: v7
+  EXAMPLE_DATA_FILE_VERSION: v9
 
 jobs:
   # Run a download step first so that it is in
@@ -34,8 +34,9 @@ jobs:
 
     - name: Download test data
       if: steps.cache-example.outputs.cache-hit != 'true'
+      # when ready to merge update the NERSC main file and then change this next line back
       run: |
-        wget -O example.tar.gz  "https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz"
+        wget -O example.tar.gz  "https://portal.nersc.gov/cfs/lsst/txpipe/data/example-${{ env.EXAMPLE_DATA_FILE_VERSION }}.tar.gz"
         wget -O example-cmb-lensing.tar.gz "https://portal.nersc.gov/cfs/lsst/txpipe/data/example-cmb-lensing.tar.gz"
 
         
@@ -157,23 +158,27 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-14]
-        pipeline: [metadetect, metacal, redmagic, lensfit, metadetect_source_only, mock_shear]
         include:
           - os: ubuntu-latest
-            INSTALL_DEPS: echo nothing to do
+            pipeline: metadetect
+          - os: ubuntu-latest
+            pipeline: metacal
+          - os: ubuntu-latest
+            pipeline: redmagic
+          - os: ubuntu-latest
+            pipeline: lensfit
+          - os: ubuntu-latest
+            pipeline: metadetect_source_only
+          - os: ubuntu-latest
+            pipeline: mock_shear
           - os: macos-14
-            INSTALL_DEPS: echo nothing to do
+            pipeline: metadetect
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
         submodules: true
-
-    - name: Install dependencies
-      run: |
-        ${{ matrix.INSTALL_DEPS }}
 
     - name: Restore conda environment
       id: restore-conda
@@ -214,6 +219,23 @@ jobs:
         else
           test -f data/example/outputs_${{ matrix.pipeline }}/shear_xi_plus.png
         fi
+
+    - name: Run metadetect with multi-length data
+      if: ${{ matrix.pipeline == 'metadetect' && matrix.os == 'ubuntu-latest' }}
+      run: |
+        source ./conda/bin/activate
+
+        # remove the old target file
+        rm -f data/example/outputs_${{ matrix.pipeline }}/shear_xi_plus.png
+
+        # Generate the new data file
+        python bin/make_metadetect_file_different_lengths.py
+
+        # Run the pipeline with the new file
+        ceci examples/metadetect/pipeline.yml resume=restart inputs.shear_catalog=data/example/inputs/metadetect_shear_catalog_different_lengths.hdf5
+
+        test -f data/example/outputs_${{ matrix.pipeline }}/shear_xi_plus.png
+
 
     - name: Dry run DP1
       run: |

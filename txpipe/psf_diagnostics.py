@@ -4,9 +4,9 @@ from .data_types import Directory, ShearCatalog, HDFFile, PNGFile, TomographyCat
 import numpy as np
 import sys
 import os
-from .utils.calibration_tools import read_shear_catalog_type
+from .utils import read_shear_catalog_type
 from .plotting import manual_step_histogram
-from .utils.calibrators import Calibrator
+from .shear_calibration import Calibrator
 
 
 STAR_PSF_USED = 0
@@ -1125,8 +1125,8 @@ class TXGalaxyStarShear(PipelineStage):
             dec = g["dec"][:][mask]
 
             if cat_type == "metacal":
-                g1 = g["mcal_g1"][:][mask]
-                g2 = g["mcal_g2"][:][mask]
+                g1 = g["g1"][:][mask]
+                g2 = g["g2"][:][mask]
                 weight = g["weight"][:][mask]
 
             elif cat_type == "metadetect":
@@ -1152,7 +1152,7 @@ class TXGalaxyStarShear(PipelineStage):
             # In KiDS, the additive bias is calculated and removed per North and South field
             # therefore, we add dec to split data into these fields.
             # You can choose not to by setting dec_cut = 90 in the config, for example.
-            g1, g2 = cal.apply(dec, g1, g2)
+            g1, g2 = cal.apply(g1, g2, dec)
         else:
             print("Shear calibration type not recognized.")
 

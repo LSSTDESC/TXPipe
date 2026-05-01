@@ -106,11 +106,13 @@ class TXLSSDensityBase(TXMapCorrelations):
         import healpy as hp
         import healsparse as hsp
 
+        nside = self.config["nside"]
+        
         with self.open_input("mask", wrapper=True) as map_file:
             mask_map_info = map_file.read_map_info("mask")
-            mask = map_file.read_map("mask")
-        nside = mask_map_info["nside"]
-        nest = mask_map_info["nest"]
+            mask = map_file.read_mask("mask", degrade_nside=self.config["nside"])
+
+        maskpix = mask.valid_pixels
 
         # TO DO: Parallelize this
         # load the ra and dec of this lens bins
@@ -122,29 +124,22 @@ class TXLSSDensityBase(TXMapCorrelations):
         # pixel ID for each lens galaxy
         obj_pix = hp.ang2pix(nside, ra, dec, lonlat=True, nest=True)
 
+        #this is not healsparsed yet
         Ncounts_bincount = np.bincount(obj_pix, weights=weight)
         pixels_bincount = np.arange(len(Ncounts_bincount))
 
+        #only select the occupied pixels
         pixel = pixels_bincount[Ncounts_bincount != 0.0]
         Ncounts = Ncounts_bincount[Ncounts_bincount != 0.0]
 
-        if nest:
-            maskpix = np.where(mask != hp.UNSEEN)[0]
-        else:
-            maskpix = hp.ring2nest(nside, np.where(mask != hp.UNSEEN)[0])
-
-        # fractional coverage
-        frac = hsp.HealSparseMap.make_empty(self.config["nside_coverage"], nside, dtype=np.float64)
-        frac.update_values_pix(maskpix, mask[np.where(mask != hp.UNSEEN)[0]])
-
         deltag = hsp.HealSparseMap.make_empty(self.config["nside_coverage"], nside, dtype=np.float64)
-        deltag.update_values_pix(maskpix, 0.0)
-        deltag.update_values_pix(pixel, Ncounts)
-        n = deltag[maskpix] / frac[maskpix]
-        nmean = np.average(n, weights=frac[maskpix])
+        deltag.update_values_pix(maskpix, 0.0) #initially set all valid pixels to 0
+        deltag.update_values_pix(pixel, Ncounts) #then set the occupied values to their ncount
+        n = deltag[maskpix] / mask[maskpix]
+        nmean = np.average(n, weights=mask[maskpix])
         deltag.update_values_pix(maskpix, n / nmean - 1.0)  # overdenity map
 
-        return deltag, frac
+        return deltag, mask
 
     def load_and_mask_sysmaps(self):
         """
@@ -162,17 +157,12 @@ class TXLSSDensityBase(TXMapCorrelations):
         print(f"Found {nsys} total systematic maps")
 
         with self.open_input("mask", wrapper=True) as map_file:
-            mask = map_file.read_map("mask")
-            mask_map_info = map_file.read_map_info("mask")
-            mask_nest = mask_map_info["nest"]
-            mask = hsp.HealSparseMap(
-                nside_coverage=self.config["nside_coverage"],
-                healpix_map=(mask == hp.UNSEEN).astype("int"),
-                nest=mask_nest,
-                sentinel=1,
-            )  # in this mask, 1 = bad pixel!
+            # load *boolean* mask
+            mask = map_file.read_mask(
+                "mask", degrade_nside=self.config["nside"], returnbool=True
+            )
 
-        nside = mask_map_info["nside"]
+        nside = mask.nside_sparse
 
         sys_maps = []
         sys_names = []
@@ -198,9 +188,8 @@ class TXLSSDensityBase(TXMapCorrelations):
                     f"Found {n_missing}/{mask.n_valid} mask pixels with missing {sys_name} values, and fill_missing_pix was False"
                 )
 
-            sys_map.apply_mask(mask, mask_bits=1)
-
-            # apply mask
+            # mask is boolean so this should return a map with just the valid sys_map pixels
+            sys_map = hsp.operations.product_intersection([sys_map, mask])
             sys_maps.append(sys_map)
 
         f = time.time()
@@ -404,6 +393,7 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
 
         pixel_scheme = choose_pixelization(**self.config)
         self.pixel_metadata = pixel_scheme.metadata
+        self.pixel_metadata["nest"] = True #This stage uses healsparse maps which always use nested ordering
 
         # check the metadata nside matches the mask (might not be true if you use an external mask)
         with self.open_input("mask", wrapper=True) as map_file:
@@ -466,6 +456,7 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
             density_correlation.plot1d_singlemap(
                 filepath,
                 imap,
+                plot_hist=True,
             )
 
         filepath = output_dir.path_for_file(f"chi2_hist_lens{ibin}.png")
@@ -773,6 +764,8 @@ class TXLSSWeights(TXLSSDensityBase):
 
         pixel_scheme = choose_pixelization(**self.config)
         self.pixel_metadata = pixel_scheme.metadata
+        self.pixel_metadata["nest"] = True #This stage uses healsparse maps which always use nested ordering
+
 
         # check the metadata nside matches the mask (might not be true of you use an external mask)
         with self.open_input("mask", wrapper=True) as map_file:
@@ -821,14 +814,14 @@ class TXLSSWeights(TXLSSDensityBase):
 
         #these config options current have to be the same between density Null calls and LSS weights calls
         config_asserts = [
-            'equal_area_bins',
-            'fill_missing_pix',
-            'nbin',
-            'nside',
-            'nside_coverage',
-            'outlier_fraction',
-            'pixelization',
-            'supreme_path_root',
+            "equal_area_bins",
+            "fill_missing_pix",
+            "nbin",
+            "nside",
+            "nside_coverage",
+            "outlier_fraction",
+            "pixelization",
+            "supreme_path_root",
         ]
 
         with self.open_input("unweighted_density_correlation") as f:
@@ -866,9 +859,10 @@ class TXLSSWeights(TXLSSDensityBase):
         map_output_file.file["maps"].attrs.update(self.config)
 
         for ibin, mean_density_map in enumerate(mean_density_map_list):
-            pix = mean_density_map.valid_pixels
-            map_data = 1.0 / mean_density_map[pix]
-            map_output_file.write_map(f"weight_map_bin_{ibin}", pix, map_data, self.pixel_metadata)
+            weight_map = mean_density_map**-1
+            map_output_file.write_map(
+                f"weight_map_bin_{ibin}", weight_map, self.pixel_metadata
+            )
 
         #### save the binned lens samples
         # There is probably a better way to do this using the batch writer
@@ -1391,15 +1385,13 @@ class TXLSSWeightsUnit(TXLSSWeights):
 
         with self.open_input("mask", wrapper=True) as map_file:
             mask = map_file.read_map("mask")
-            nside = map_file.read_map_info("mask")["nside"]
-            nest = map_file.read_map_info("mask")["nest"]
+            metadata = map_file.read_map_info("mask")
+            nside = metadata["nside"]
 
         nside_coverage = self.config["nside_coverage"]
         nside_sparse = nside
 
-        validpixels = np.where(mask != hp.UNSEEN)[0]
-        if nest == False:
-            validpixels = hp.ring2nest(nside, validpixels)
+        validpixels = mask.valid_pixels
 
         mean_density_map = hsp.HealSparseMap.make_empty(
             nside_coverage, nside_sparse, dtype=np.float64, sentinel=hp.UNSEEN

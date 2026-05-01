@@ -102,6 +102,7 @@ inputs:
     # For the self-calibration extension we are not using Random_cat_source for now
     # So it is set to Null, so the yaml intepreter returns a None value to python. 
     random_cats_source: Null
+    shear_tomography_classifier: none
     mask: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/mask_desy1.h5
     #random_cats: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/randoms_desy1_RM.hdf5
     #binned_random_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/binned_randoms_desy1_RM.hdf5

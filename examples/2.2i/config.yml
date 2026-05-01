@@ -66,6 +66,10 @@ TXSourceSelector:
     r_i_cut: 2.0
     # may also need one for r_cpar_cut
 
+TXSourceTomography:
+    bands: riz #used for selection
+    source_zbin_edges: [0.3, 0.5, 0.7, 0.9, 2.0]
+
 TXRandomCat:
     chunk_rows: 100000
     density: 10 # gals per sq arcmin
@@ -97,7 +101,6 @@ TXLensMaps:
 TXAuxiliarySourceMaps:
     chunk_rows: 100000
     sparse: true
-    psf_prefix: psf_
 
 TXAuxiliaryLensMaps:
     chunk_rows: 100000
@@ -109,7 +112,6 @@ TXSimpleMask:
     bright_object_max: 30
 
 TXSourceDiagnosticPlots:
-    psf_prefix: mcal_psf_
 
 TXLensDiagnosticPlots: {}
 

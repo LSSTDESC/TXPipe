@@ -1,6 +1,6 @@
-from .base import TXSourceSelectorBase, BinStats
-from ..utils.calibrators import MetaCalibrator
-from ..utils.calibration_tools import metacal_variants, MetacalCalculator, band_variants
+from .base import TXSourceSelectorBase
+from .base import select_weak_lensing_sample, select_tomographic_weak_lensing_sample
+from ..shear_calibration import metacal_variants, MetacalCalculator, band_variants
 import numpy as np
 from ceci.config import StageParameter
 
@@ -41,9 +41,9 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
         just choosing which columns to read.
         """
         bands = self.config["bands"]
-        shear_cols = metacal_variants("mcal_T", "mcal_s2n", "mcal_g1", "mcal_g2", "mcal_flags", "weight")
-        shear_cols += ["ra", "dec", "mcal_psf_T_mean"]
-        shear_cols += band_variants(bands, "mcal_mag", "mcal_mag_err", shear_catalog_type="metacal")
+        shear_cols = metacal_variants("T", "s2n", "g1", "g2", "flags", "weight")
+        shear_cols += ["ra", "dec", "psf_T_mean"]
+        shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="metacal")
 
         if self.config["input_pz"]:
             shear_cols += metacal_variants("mean_z")
@@ -84,8 +84,8 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
     def setup_response_calculators(self, nbin_source):
         delta_gamma = self.config["delta_gamma"]
         use_diagonal_response = self.config["use_diagonal_response"]
-        calculators = [MetacalCalculator(self.select, delta_gamma, use_diagonal_response) for i in range(nbin_source)]
-        calculators.append(MetacalCalculator(self.select_2d, delta_gamma, use_diagonal_response))
+        calculators = [MetacalCalculator(select_tomographic_weak_lensing_sample, delta_gamma, use_diagonal_response) for i in range(nbin_source)]
+        calculators.append(MetacalCalculator(select_weak_lensing_sample, delta_gamma, use_diagonal_response))
         return calculators
 
     def write_tomography(self, outfile, start, end, source_bin, R):
@@ -97,12 +97,12 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
 
     def compute_per_object_response(self, data):
         delta_gamma = self.config["delta_gamma"]
-        n = data["mcal_g1_1p"].size
+        n = data["g1_1p"].size
         R = np.zeros((n, 2, 2))
-        R[:, 0, 0] = (data["mcal_g1_1p"] - data["mcal_g1_1m"]) / delta_gamma
-        R[:, 0, 1] = (data["mcal_g1_2p"] - data["mcal_g1_2m"]) / delta_gamma
-        R[:, 1, 0] = (data["mcal_g2_1p"] - data["mcal_g2_1m"]) / delta_gamma
-        R[:, 1, 1] = (data["mcal_g2_2p"] - data["mcal_g2_2m"]) / delta_gamma
+        R[:, 0, 0] = (data["g1_1p"] - data["g1_1m"]) / delta_gamma
+        R[:, 0, 1] = (data["g1_2p"] - data["g1_2m"]) / delta_gamma
+        R[:, 1, 0] = (data["g2_1p"] - data["g2_1m"]) / delta_gamma
+        R[:, 1, 1] = (data["g2_2p"] - data["g2_2m"]) / delta_gamma
         return R
 
     def apply_simple_redshift_cut(self, data):
@@ -130,25 +130,3 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
             pz_data[f"zbin{v}"] = pz_data_v
 
         return pz_data
-
-    def compute_output_stats(self, calculator, mean, variance):
-        """
-        Collect the per-bin response values, and the shear means and variances.
-        These are calculated in a distributed way across different processes,
-        so here we bring them together.
-
-        We collate these into a BinStats object for clarity.
-        """
-        R, S, N, Neff = calculator.collect(self.comm, allgather=True)
-        calibrator = MetaCalibrator(R, S, mean, mu_is_calibrated=False)
-        mean_e = calibrator.mu.copy()
-
-        Rtot = R + S
-        P = np.diag(np.linalg.inv(Rtot @ Rtot))
-
-        # Apply to the variances to get sigma_e
-        sigma_e = np.sqrt(0.5 * P @ variance)
-
-        # In metacal all weights are unity, so the effective N is the same
-        # as the raw N.
-        return BinStats(N, Neff, mean_e, sigma_e, calibrator)

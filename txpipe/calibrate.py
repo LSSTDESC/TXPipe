@@ -1,6 +1,7 @@
 from .base_stage import PipelineStage
 from .data_types import ShearCatalog, TomographyCatalog, FiducialCosmology
-from .utils import read_shear_catalog_type, Calibrator, Splitter, rename_iterated
+from .utils import read_shear_catalog_type, Splitter, rename_iterated
+from .shear_calibration import Calibrator
 from ceci.config import StageParameter
 import numpy as np
 
@@ -46,7 +47,6 @@ class TXShearCalibration(PipelineStage):
         "shear_catalog_type": StageParameter(
             str, "", msg="Type of shear catalog (e.g., metadetect, metacal, lensfit, hsc)"
         ),
-        "shear_prefix": StageParameter(str, "", msg="Prefix for shear-related columns in the input catalog"),
     }
 
     def run(self):
@@ -59,13 +59,12 @@ class TXShearCalibration(PipelineStage):
         copy_redshift = self.config["copy_redshift"]
         z_name = self.config["redshift_name"]
 
-        shear_prefix = self.config["shear_prefix"]
         with self.open_input("shear_catalog", wrapper=True) as f:
-            bands = f.get_bands(shear_prefix)
+            bands = f.get_bands()
 
         # this is the names of the columns in the input catalog
         mag_cols_out = [f"mag_{b}" for b in bands] + [f"mag_err_{b}" for b in bands]
-        mag_cols_in = [f"{shear_prefix}{c}" for c in mag_cols_out]
+        mag_cols_in = mag_cols_out
 
         if self.rank == 0:
             print("Copying extra columns: ", extra_cols)
@@ -181,7 +180,7 @@ class TXShearCalibration(PipelineStage):
                     # In KiDS, the additive bias is calculated and removed per North and South field
                     # therefore, we add dec to split data into these fields.
                     # You can choose not to by setting dec_cut = 90 in the config, for example.
-                    d["g1"], d["g2"] = cal.apply(d["dec"], d["g1"], d["g2"], subtract_mean=subtract_mean_shear)
+                    d["g1"], d["g2"] = cal.apply(d["g1"], d["g2"], d["dec"], subtract_mean=subtract_mean_shear)
                 else:
                     d["g1"], d["g2"] = cal.apply(d["g1"], d["g2"], subtract_mean=subtract_mean_shear)
 
@@ -233,7 +232,7 @@ class TXShearCalibration(PipelineStage):
         if "true_g1" in d:
             prefix = "true"
         elif "mcal_g1" in d:
-            prefix = "mcal"
+            raise ValueError("The mcal_ prefix should have been removed in input catalogs by strip_mcal.py.")
         else:
             return
 

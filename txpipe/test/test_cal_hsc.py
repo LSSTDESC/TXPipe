@@ -1,5 +1,4 @@
-from ..utils.calibration_tools import MeanShearInBins, HSCCalculator
-from ..utils import HSCCalibrator, NullCalibrator
+from ..shear_calibration import MeanShearInBins, HSCCalculator, HSCCalibrator
 import numpy as np
 import mockmpi
 
@@ -39,34 +38,36 @@ def core_hsc(comm):
         "m": m,
         "sigma_e": sigma_e,
         "weight": weight,
+        "c1": np.zeros_like(g[0]),
+        "c2": np.zeros_like(g[1])
     }
 
     # test each type of selector
     for sel in [select_all_bool, select_all_where, select_all_index]:
         cal = HSCCalculator(select_all_bool)
         cal.add_data(data)
-        R, K, n, _ = cal.collect(comm, allgather=True)
+        stats = cal.collect(comm, allgather=True)
         print("K_true", K_true)
-        print("K", K)
+        print("K", stats.calibrator.K)
         print("R_true", R_true)
-        print("R", R)
-        assert np.allclose(R, R_true)
-        assert np.allclose(K, K_true)
-        assert n == N * nproc
+        print("R", stats.calibrator.R)
+        assert np.allclose(stats.calibrator.R, R_true)
+        assert np.allclose(stats.calibrator.K, K_true)
+        assert stats.source_count == N * nproc
 
     # test each type of selector
     for sel in [select_all_bool, select_all_where, select_all_index]:
         cal = HSCCalculator(sel)
         cal.add_data(data)
-        R, K, n, _ = cal.collect(comm, allgather=True)
+        stats = cal.collect(comm, allgather=True)
         print("K_true", K_true)
-        print("K", K)
+        print("K", stats.calibrator.K)
         print("R_true", R_true)
-        print("R", R)
+        print("R", stats.calibrator.R)
 
-        assert np.allclose(R, R_true)
-        assert np.allclose(K, K_true)
-        assert n == N * nproc
+        assert np.allclose(stats.calibrator.R, R_true)
+        assert np.allclose(stats.calibrator.K, K_true)
+        assert stats.source_count == N * nproc
 
 
 def test_hsc_serial():
@@ -78,7 +79,7 @@ def test_hsc_parallel():
     mockmpi.mock_mpiexec(10, core_hsc)
 
 
-def test_mean_shear():
+def test_hsc_mean_shear_no_weights():
     name = "x"
     limits = [-1.0, 0.0, 1.0]
     delta_gamma = 0.02
@@ -117,7 +118,7 @@ def test_mean_shear():
     assert np.allclose(sigma2, expected_sigma2)
 
 
-def test_mean_shear_weights():
+def test_hsc_mean_shear_weights():
     name = "x"
     limits = [-1.0, 0.0, 1.0]
     delta_gamma = 0.02
@@ -205,7 +206,7 @@ def test_hsc_array():
 
 
 if __name__ == "__main__":
-    test_hsccalibrator_serial()
+    test_hsc_calibrator_serial()
     test_hsc_parallel()
-    test_mean_shear()
-    test_mean_shear_weights()
+    test_hsc_mean_shear()
+    test_hsc_mean_shear_weights()

@@ -8,12 +8,9 @@ TXLSSWeightsUnit:
     pixelization: healpix
 
 TXDiagnosticQuantiles:
-    psf_prefix: mcal_psf_
-    shear_prefix: mcal_
     nbins: 20
 
-TXShearCalibration:
-    shear_prefix: mcal_
+TXShearCalibration: {}
 
 TXCosmoDC2Mock:
     cat_name: cosmoDC2_v1.1.4_image
@@ -63,7 +60,6 @@ TXExternalLensNoiseMaps:
 
 TXAuxiliarySourceMaps:
     sparse: true
-    psf_prefix: psf_
 
 TXAuxiliaryLensMaps:
     sparse: true
@@ -87,7 +83,6 @@ TXSourceSelectorMetacal:
     source_zbin_edges: [0.19285902, 0.40831394, 0.65503818, 0.94499109, 1.2947086, 1.72779632, 2.27855242, 3.]  # 7 bins
     # source_zbin_edges: [0.25588604, 0.55455363, 0.91863365, 1.38232001, 2.] # 4 bins
     true_z: false
-    shear_prefix: mcal_
 
 TXSourceSelectorMetadetect:
     input_pz: false
@@ -99,8 +94,11 @@ TXSourceSelectorMetadetect:
     source_zbin_edges: [0.19285902, 0.40831394, 0.65503818, 0.94499109, 1.2947086, 1.72779632, 2.27855242, 3.]  # 7 bins
     # source_zbin_edges: [0.25588604, 0.55455363, 0.91863365, 1.38232001, 2.] # 4 bins
     true_z: false
-    shear_prefix: ''
 
+
+TXSourceTomography:
+    bands: riz #used for selection
+    source_zbin_edges: [0.19285902, 0.40831394, 0.65503818, 0.94499109, 1.2947086, 1.72779632, 2.27855242, 3.]  # 7 bins
 
 TXRandomCat:
     density: 10 # gals per sq arcmin
@@ -108,8 +106,7 @@ TXRandomCat:
 TXJackknifeCenters:
     npatch: 40
 
-TXSourceDiagnosticPlots:
-    shear_prefix: mcal_
+TXSourceDiagnosticPlots: {}
 
 TXFourierGaussianCovariance:
     galaxy_bias: [1.404, 1.458, 1.693, 1.922, 2.133] # Tinker bias values
