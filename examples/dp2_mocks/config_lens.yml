@@ -204,18 +204,45 @@ TXIngestPlanckLensingMaps:
 ## Requires the Planck lensing maps and the lens density maps to be ingested first.
 ## The correction is applied to the cross-power spectra computed by TXTwoPointFourierCMBLensingCrossDensity.
 ## =============================================================================
+## Planck PR4
+# TXCMBLensingCrossMonteCarloCorrection:
+#     nside: 512
+#     nsim: 540
+#     bandpower_width: 30
+#     mask_threshold: 0.0
+#     lmax: 0       # 0 means use 3*nside-1 = 1535
+#     sim_index_start: 60
+#     ffp10_offset: 200 # the FFP10 simulations correspond to the reconstruction with simidx+200
+#     # Planck FFP10 input phi alm files
+#     input_phi_alm_template: /global/cfs/cdirs/cmb/data/generic/cmb/ffp10/mc/scalar/ffp10_unlensed_scl_cmb_000_tebplm_mc_{i:04d}.fits
+#     input_phi_alm_hdu: 4  # the FFP10 files have the lensing potential in HDU 4, but some other sims may have it in HDU 1 (the default)
+#     # Reconstructed kappa maps from your reconstruction pipeline
+#     recon_kappa_alm_template: /global/cfs/cdirs/cmb/data/planck2020/PR4_lensing/PR4_sims/klm_sim_{i:04d}_p.fits
+
+## ACT DR6
 TXCMBLensingCrossMonteCarloCorrection:
     nside: 512
-    nsim: 2
+    nsim: 400
     bandpower_width: 30
     mask_threshold: 0.0
     lmax: 0       # 0 means use 3*nside-1 = 1535
-    sim_index_start: 60
-    ffp10_offset: 200 # the FFP10 simulations correspond to the reconstruction with simidx+200
-    # Planck FFP10 input phi alm files
-    input_phi_alm_template: /global/cfs/cdirs/cmb/data/generic/cmb/ffp10/mc/scalar/ffp10_unlensed_scl_cmb_000_tebplm_mc_{i:04d}.fits
-    # Reconstructed kappa maps from your reconstruction pipeline
-    recon_kappa_alm_template: /global/cfs/cdirs/cmb/data/planck2020/PR4_lensing/PR4_sims/klm_sim_{i:04d}_p.fits
+    ### Planck PR4
+    # experiment: "PR4"
+    # sim_index_start: 60
+    # ffp10_offset: 200 # the FFP10 simulations correspond to the reconstruction with simidx+200
+    # # Planck FFP10 input phi alm files
+    # input_alm_template: /global/cfs/cdirs/cmb/data/generic/cmb/ffp10/mc/scalar/ffp10_unlensed_scl_cmb_000_tebplm_mc_{i:04d}.fits
+    # input_alm_hdu: 4  # the FFP10 files have the lensing potential in HDU 4
+    # # Reconstructed kappa maps from reconstruction pipeline
+    # recon_alm_template: /global/cfs/cdirs/cmb/data/planck2020/PR4_lensing/PR4_sims/klm_sim_{i:04d}_p.fits
+    ### ACT DR6
+    experiment: "ACT_DR6"
+    sim_index_start: 0
+    ffp10_offset: 0 # not applicable for ACT DR6 sims
+    input_alm_template: /global/cfs/projectdirs/act/www/dr6_lensing_v1/sim_inputs/kappa_alm/input_kappa_alm_sim_{i:04d}.fits
+    input_alm_hdu: 1  # the ACT DR6 input kappa alm files have the lensing potential in HDU 1
+    # Reconstructed kappa maps from reconstruction pipeline
+    recon_alm_template: /global/cfs/projectdirs/act/www/dr6_lensing_v1/maps/baseline/simulations/kappa_alm_sim_act_dr6_lensing_v1_baseline_{i:04d}.fits
 
 # # =============================================================================
 # # TXTwoPointFourierCMBLensingCrossDensity

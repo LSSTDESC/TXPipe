@@ -61,13 +61,13 @@ stages:
 
   - name: TXFourierNamasterCovariance
 
-  - name: TXIngestPlanckLensingMaps
-    threads_per_process: 4
+  # - name: TXIngestPlanckLensingMaps
+  #   threads_per_process: 4
 
-  - name: TXCMBLensingCrossMonteCarloCorrection
+  # - name: TXCMBLensingCrossMonteCarloCorrection
 
-  - name: TXTwoPointFourierCMBLensingCrossDensity
-    threads_per_process: 4
+  # - name: TXTwoPointFourierCMBLensingCrossDensity
+  #   threads_per_process: 4
 
 # =============================================================================
 # Python modules that define the pipeline stages
@@ -85,7 +85,7 @@ modules: >
 # =============================================================================
 # Output directory  (created automatically if absent)
 # =============================================================================
-output_dir: data/outputs/dp2_23p5_combined_mask
+output_dir: data/outputs/dp2_23p5_nmin500_combined_mask
 
 # =============================================================================
 # Launcher  –  "mini" is the simplest single-machine scheduler
@@ -120,14 +120,13 @@ inputs:
   # Cosmological parameter file (bundled with TXPipe)
   fiducial_cosmology: data/fiducial_cosmology.yml
 
-  mask: /pscratch/sd/a/anicola/DP2/data/masks/dp2_23p5_combined_mask_nside=512.hdf5
-  density_masks: /pscratch/sd/a/anicola/DP2/data/masks/dp2_23p5_combined_mask_nside=512.hdf5
-  # density_maps: /pscratch/sd/a/anicola/DP2/code/TXPipe/data/outputs/dp2_23p5_combined_mask/density_maps.hdf5
+  mask: /pscratch/sd/a/anicola/DP2/data/masks/dp2_23p5_combined_mask_nmin=500_nside=512.hdf5
+  density_masks: /pscratch/sd/a/anicola/DP2/code/TXPipe/data/outputs/dp2_23p5_nmin500_combined_mask/density_masks.hdf5
 
   # Pre-computed photoz n(z) stacks.
   # If you run TXPhotozStack these will be produced automatically; otherwise
   # supply them from a previous run or from an external source.
-  lens_photoz_stack:   data/outputs/dp2_23p5_combined_mask/lens_photoz_stack.hdf5
+  lens_photoz_stack:   data/outputs/dp2_23p5_nmin500_combined_mask/lens_photoz_stack.hdf5
   shear_photoz_stack:  data/inputs/shear_photoz_stack.hdf5
 
   shear_tomography_catalog: none

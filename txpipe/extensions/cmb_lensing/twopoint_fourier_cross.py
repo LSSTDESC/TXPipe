@@ -54,10 +54,12 @@ class TXCMBLensingCrossMonteCarloCorrection(PipelineStage):
         # recon_kappa_map_template : path with {i} placeholder
         #   e.g. "/path/to/recon_sims/kappa_recon_{i:04d}.fits"
         # sim_index_start : first simulation index (default 0)
-        "input_phi_alm_template": str,
-        "recon_kappa_alm_template": str,
+        "input_alm_template": str,
+        "input_alm_hdu": int, # the HDU in the input alm FITS file where the alms are stored
+        "recon_alm_template": str,
         "sim_index_start": 0,
         "ffp10_offset": 200, # the FFP10 simulations correspond to the reconstruction with simidx+200
+        "experiment": "PR4", # or "ACT_DR6" 
     }
 
     def run(self):
@@ -72,9 +74,14 @@ class TXCMBLensingCrossMonteCarloCorrection(PipelineStage):
         print(f"TXCMBLensingCrossMonteCarloCorrection")
         print(f"  nside={nside}, nsim={nsim}, lmax={lmax}")
 
-        # Define rotation from Galactic to Celestial coordinates, since the Planck lensing sims are in Galactic
-        # but our pipeline is in Celestial coordinates. We will apply this rotation to the alms and the mask
-        rot = hp.Rotator(coord=["G", "C"])
+        # Define potential rotation to apply to masks and maps. 
+        if self.config["experiment"] == "PR4":
+            # For Planck PR4, the FFP10 simulations are in Galactic coordinates
+            rot = hp.Rotator(coord=["G", "C"])
+
+        elif self.config["experiment"] == "ACT_DR6":
+            # The ACT DR6 sims are already in Equatorial coordinates, so no rotation is needed.
+            rot = None
 
         # ---- 1. Load masks ----
         kappa_mask, galaxy_mask = self.load_masks(rot)
@@ -114,8 +121,9 @@ class TXCMBLensingCrossMonteCarloCorrection(PipelineStage):
 
             try:
                 # Check that the input files for this sim exist before doing any heavy computation.
-                self.check_input_exists("input_phi_alm_template", self.config["ffp10_offset"] + i)
-                self.check_input_exists("recon_kappa_alm_template", i)
+
+                self.check_input_exists("input_alm_template", self.config["ffp10_offset"] + i)
+                self.check_input_exists("recon_alm_template", i)
             except FileNotFoundError as e:
                 print(f"  Warning: {e}. Skipping simulation {i}.")
                 continue
@@ -235,7 +243,7 @@ class TXCMBLensingCrossMonteCarloCorrection(PipelineStage):
         """
         import healpy as hp
 
-        template = self.config["recon_kappa_alm_template"]
+        template = self.config["recon_alm_template"]
         
         path     = template.format(i=sim_index)
 
@@ -267,18 +275,29 @@ class TXCMBLensingCrossMonteCarloCorrection(PipelineStage):
         """
         import healpy as hp
 
-        template = self.config["input_phi_alm_template"]
+        template = self.config["input_alm_template"]
         
         path     = template.format(i=sim_index)
 
         # Read in the CMB lensing alms
-        phi_alm, lmax_in = hp.read_alm(path, hdu=4, return_mmax=True)
+        if self.config["experiment"] == "PR4":
+            # Planck FFP10 simulations store phi_LM as alm coefficients.
+            phi_alm, lmax_in = hp.read_alm(path, hdu=self.config["input_alm_hdu"], return_mmax=True)
 
-        # Convert phi_LM → kappa_LM = ½ L(L+1) phi_LM
-        ll = np.arange(lmax_in + 1)
-        fl = ll * (ll + 1) / 2
-        fl[lmax_out+1:] = 0
-        kappa_alm = hp.almxfl(phi_alm, fl, lmax_in)
+            # Convert phi_LM → kappa_LM = ½ L(L+1) phi_LM
+            ll = np.arange(lmax_in + 1)
+            fl = ll * (ll + 1) / 2
+            fl[lmax_out+1:] = 0
+            kappa_alm = hp.almxfl(phi_alm, fl, lmax_in)
+
+        elif self.config["experiment"] == "ACT_DR6":
+            # ACT DR6 simulations already store kappa_LM as alm coefficients.
+            kappa_alm, lmax_in = hp.read_alm(path, hdu=self.config["input_alm_hdu"], return_mmax=True)
+
+            # Just apply the lmax_out cutoff
+            fl = np.ones(lmax_in+1)
+            fl[lmax_out+1:] = 0
+            kappa_alm = hp.almxfl(kappa_alm, fl, lmax_in)
 
         # If rot is provided, rotate alms. 
         if rot is not None:
