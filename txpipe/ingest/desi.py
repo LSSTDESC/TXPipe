@@ -20,7 +20,9 @@ class TXIngestDESI(PipelineStage):
 
     outputs = [
         ("lens_catalog", HDFFile),
+        ("binned_lens_catalog", HDFFile),
         ("lens_tomography_catalog_unweighted", HDFFile),
+        ("lens_tomography_catalog", HDFFile),
         ("lens_photoz_stack", QPNOfZFile),
     ]
 
@@ -50,7 +52,9 @@ class TXIngestDESI(PipelineStage):
         nbin_lens = len(zbin_edges) - 1
 
         cat = self.open_output("lens_catalog")
-        tomo = self.open_output("lens_tomography_catalog_unweighted")
+        cat_binned = self.open_output("binned_lens_catalog")
+        tomo_uw = self.open_output("lens_tomography_catalog_unweighted")
+        tomo_w = self.open_output("lens_tomography_catalog")
 
         # redshift grid
         zmin = self.config["zmin"]
@@ -65,20 +69,38 @@ class TXIngestDESI(PipelineStage):
         # g.attrs["bands"] = bands
         g.create_dataset("ra", (n,), dtype=np.float64)
         g.create_dataset("dec", (n,), dtype=np.float64)
-        g.create_dataset("redshift", (n,), dtype=np.float64)
+        g.create_dataset("z", (n,), dtype=np.float64)
         # for b in bands:
         #     g.create_dataset(f"mag_{b}", (n,), dtype=np.float64)
         #     g.create_dataset(f"mag_err_{b}", (n,), dtype=np.float64)
         # g.attrs["bands"] = bands
 
-        h = tomo.create_group("tomography")
-        h.create_dataset("bin", (n,), dtype=np.int32)
-        h.create_dataset("lens_weight", (n,), dtype=np.float64)
-        h.attrs["nbin"] = nbin_lens
-        h.attrs[f"zbin_edges"] = zbin_edges
-        h_counts = tomo.create_group("counts")
-        h_counts.create_dataset("counts", (nbin_lens,), dtype="i")
-        h_counts.create_dataset("counts_2d", (1,), dtype="i")
+        gb = cat_binned.create_group("lens")
+        gb.attrs["nbin_lens"] = nbin_lens
+        for bn in range(nbin_lens):
+            gb_ = gb.create_group(f"bin_{bn}")
+            gb_.create_dataset("ra", (n,), dtype=np.float64)
+            gb_.create_dataset("dec", (n,), dtype=np.float64)
+            gb_.create_dataset("z", (n,), dtype=np.float64)
+            gb_.create_dataset("w_sys", (n,), dtype=np.float64)
+
+        h_uw = tomo_uw.create_group("tomography")
+        h_uw.create_dataset("bin", (n,), dtype=np.int32)
+        h_uw.create_dataset("lens_weight", (n,), dtype=np.float64)
+        h_uw.attrs["nbin"] = nbin_lens
+        h_uw.attrs["zbin_edges"] = zbin_edges
+        h_counts_uw = tomo_uw.create_group("counts")
+        h_counts_uw.create_dataset("counts", (nbin_lens,), dtype="i")
+        h_counts_uw.create_dataset("counts_2d", (1,), dtype="i")
+
+        h_w = tomo_w.create_group("tomography")
+        h_w.create_dataset("bin", (n,), dtype=np.int32)
+        h_w.create_dataset("lens_weight", (n,), dtype=np.float64)
+        h_w.attrs["nbin"] = nbin_lens
+        h_w.attrs["zbin_edges"] = zbin_edges
+        h_counts_w = tomo_w.create_group("counts")
+        h_counts_w.create_dataset("counts", (nbin_lens,), dtype="i")
+        h_counts_w.create_dataset("counts_2d", (1,), dtype="i")
 
         # we keep track of the counts per-bin also
         counts = np.zeros(nbin_lens, dtype=np.int64)
@@ -115,25 +137,39 @@ class TXIngestDESI(PipelineStage):
             counts += np.bincount(zbin[any_bin], minlength=nbin_lens)
             counts_2d += any_bin.sum()
 
-            # save data
+            # save data to tomography catalog
             g["ra"][s:e] = data["ra"]
             g["dec"][s:e] = data["dec"]
-            g["redshift"][s:e] = data["redshift"]
+            g["z"][s:e] = data["redshift"]
 
             # # including mags
             # for i, b in enumerate(bands):
             #     g[f"mag_{b}"][s:e] = data["mag"][:, i]
             #     g[f"mag_err_{b}"][s:e] = data["mag_err"][:, i]
 
-            h["bin"][s:e] = zbin
+            h_uw["bin"][s:e] = zbin
+            h_uw["lens_weight"][s:e] = 1.0
+
+            h_w["bin"][s:e] = zbin
             if self.config["mock"]:
-                h["lens_weight"][s:e] = 1.0
+                h_w["lens_weight"][s:e] = 1.0
             else:
-                h["lens_weight"][s:e] = data["weight"]
+                h_w["lens_weight"][s:e] = data["weight"]
+
+        # save data to binned lens catalog
+        for bn in range(nbin_lens):
+            sel = h_w["bin"][:] == bn
+            gb_ = gb[f"bin_{bn}"]
+            gb_["ra"][:] = g["ra"][:][sel]
+            gb_["dec"][:] = g["dec"][:][sel]
+            gb_["z"][:] = g["z"][:][sel]
+            gb_["w_sys"][:] = h_w["lens_weight"][:][sel]
 
         # this is an overall count
-        h_counts["counts"][:] = counts
-        h_counts["counts_2d"][:] = counts_2d
+        h_counts_uw["counts"][:] = counts
+        h_counts_uw["counts_2d"][:] = counts_2d
+        h_counts_w["counts"][:] = counts
+        h_counts_w["counts_2d"][:] = counts_2d
 
         # Generate and save the 2D n(z) histogram also, just
         # by summing up all the individual values.

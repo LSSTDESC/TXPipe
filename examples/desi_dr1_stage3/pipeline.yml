@@ -1,6 +1,7 @@
 # Stages to run
 stages:
   # - name: TXSourceSelectorMetacal
+  # - name: TXSourceSelectorMetadetect
   # - name: TXSourceTomography
   # - name: TXShearCalibration
   # - name: TXExternalLensCatalogSplitter
@@ -15,7 +16,7 @@ stages:
   # - name: TXIngestRedmagic
   - name: TXDESISelector
   - name: TXIngestDESI
-  # - name: TXTracerMetadata
+  - name: TXTracerMetadata
   # - name: TXSourceMaps
   # - name: TXExternalLensMaps
   # - name: TXAuxiliarySourceMaps
@@ -25,17 +26,19 @@ stages:
   # - name: TXDensityMaps
   # - name: TXMapPlots
   # - name: TXRandomCat
-  # - name: TXJackknifeCenters
-  # - name: TXTwoPoint
-  #   threads_per_process: 2
+  - name: TXJackknifeCenters
+  - name: TXTwoPoint
+    threads_per_process: 2
+  - name: TXDeltaSigma
+  - name: TXDeltaSigmaPlots
   # - name: TXBlinding             # Blind the data following Muir et al
   #   threads_per_process: 2
   # - name: TXTwoPointTheoryReal   # compute theory using CCL to save in sacc file and plot later
-  # - name: TXPhotozPlotSource          # Plot the bin n(z)
-  #   classname: TXPhotozPlot
-  #   aliases:
-  #       photoz_stack: shear_photoz_stack
-  #       nz_plot: nz_source
+  - name: TXPhotozPlotSource          # Plot the bin n(z)
+    classname: TXPhotozPlot
+    aliases:
+        photoz_stack: shear_photoz_stack
+        nz_plot: nz_source
   - name: TXPhotozPlotLens          # Plot the bin n(z)
     classname: TXPhotozPlot
     aliases:
@@ -92,16 +95,27 @@ config: examples/desi_dr1_stage3/config.yml
 
 inputs:
     # See README for paths to download these files
-    # shear_catalog: data/example/inputs/shear_catalog.hdf5
+    # shear_catalog: /scratch/gpfs/AAMON/desc_analysis/catalogs/txpipe_allfield_shear.h5
+    shear_tomography_classifier: none
+    shear_catalog: /scratch/gpfs/AAMON/desc_analysis/catalogs/metadetect_desy6.hdf5
+    shear_tomography_catalog: /scratch/gpfs/AAMON/desc_analysis/catalogs/tomography_metadetect_desy6.hdf5
+    binned_shear_catalog: /scratch/gpfs/AAMON/desc_analysis/catalogs/binned_metadetect_desy6.hdf5
+    shear_photoz_stack: /scratch/gpfs/AAMON/desc_analysis/catalogs/shear_photoz_stack_metadetect_desy6.hdf5
+
     # photometry_catalog: data/example/inputs/photometry_catalog.hdf5
     # photoz_trained_model: data/example/inputs/cosmoDC2_trees_i25.3.npy
     # exposures: data/example/inputs/exposures.hdf5
     # star_catalog: data/example/inputs/star_catalog.hdf5
+    random_cats: /scratch/gpfs/AAMON/desc_analysis/catalogs/random_cats.hdf5
+    binned_random_catalog: /scratch/gpfs/AAMON/desc_analysis/catalogs/random_cats.hdf5
+    binned_random_catalog_sub: /scratch/gpfs/AAMON/desc_analysis/catalogs/random_cats.hdf5
+
+    spectroscopic_catalog: None
     desi_catalog: /scratch/gpfs/AAMON/desc_analysis/catalogs/LRG_SGC_clustering.dat.fits
     # mask should be already a combination of source and lens.
-    mask: /scratch/gpfs/AAMON/desc_analysis/catalogs/dp2_23p5_combined_mask_nmin=500_nside=512.hdf5 # /scratch/gpfs/AAMON/desc_analysis/catalogs/mask_eg.fits
+    mask: /scratch/gpfs/AAMON/desc_analysis/catalogs/dp2_23p5_combined_mask_nmin=500_nside=512.hdf5
     # This file comes with the code
-    # fiducial_cosmology: data/fiducial_cosmology.yml
+    fiducial_cosmology: data/fiducial_cosmology.yml
     # spectroscopic_catalog: data/example/inputs/mock_spectroscopic_catalog.hdf5
 
 # if supported by the launcher, restart the pipeline where it left off
