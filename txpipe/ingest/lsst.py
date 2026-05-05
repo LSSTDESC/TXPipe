@@ -87,12 +87,12 @@ def process_metadetect_data(data):
             "T": var_data["gauss_T"],
             "s2n": var_data["gauss_snr"],
             "T_err": var_data["gauss_TErr"],
-            "psf_g1": var_data["psfOriginal_e1"],
-            "psf_g2": var_data["psfOriginal_e2"],
-            "psf_T_mean": var_data["psfOriginal_T"],
-            "mcal_psf_g1": var_data["gauss_psfReconvolved_g1"],
-            "mcal_psf_g2": var_data["gauss_psfReconvolved_g1"],
-            "mcal_psf_T_mean": var_data["gauss_psfReconvolved_T"],
+            "psf_g1_original": var_data["psfOriginal_e1"],
+            "psf_g2_original": var_data["psfOriginal_e2"],
+            "psf_T_mean_original": var_data["psfOriginal_T"],
+            "psf_g1": var_data["gauss_psfReconvolved_g1"],
+            "psf_g2": var_data["gauss_psfReconvolved_g1"],
+            "psf_T_mean": var_data["gauss_psfReconvolved_T"],
             "flags": var_data["gauss_shape_flags"], # TO BE ADDRESSED!
         }
         for band in "gri": # For DP2, we only expect 4 bands
