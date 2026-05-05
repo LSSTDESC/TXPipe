@@ -49,6 +49,14 @@ TXDESISelector:
     apply_mask: false
     zmin: 0.0
 
+TXDeltaSigma:
+    lens_bins: [0]
+    lens_source_sep: 0.1
+    photoz: True
+    lower_bin_edge: [0.0, 0.358, 0.631, 0.872]
+    source_cat_w_col: w
+    lens_cat_w_col: w_sys
+
 TXSourceSelectorHSC:
     input_pz: true
     true_z: false

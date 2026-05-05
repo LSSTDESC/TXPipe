@@ -34,6 +34,11 @@ class TXDeltaSigma(TXTwoPoint):
         "r_min": StageParameter(float, 0.1, msg="Minimum radius to use in Mpc"),
         "r_max": StageParameter(float, 10.0, msg="Maximum radius to use in Mpc"),
         "nbins": StageParameter(int, 10, msg="Number of radial bins"),
+        "photoz": StageParameter(bool, False, msg="Whether or not objects have point photo-z estimate"),
+        "lens_source_sep": StageParameter(float, 0.1, msg="Minimum redshift separation between lens and source bins to use for dSigma measurement"),
+        "lower_bin_edge": StageParameter(list, [0.0, 0.358, 0.631, 0.872], msg="Lower edge of the source redshift bins to use for dSigma measurement, only used if photoz=True"),
+        "source_cat_w_col": StageParameter(str, "weight", msg="Source catalog weight column name."),
+        "lens_cat_w_col": StageParameter(str, "weight", msg="Lens catalog weight column name."),
     }
 
     def run(self):
@@ -47,6 +52,7 @@ class TXDeltaSigma(TXTwoPoint):
         with self.open_input("fiducial_cosmology", wrapper=True) as cosmo_file:
             cosmo = cosmo_file.to_astropy()
         source_n_of_z = self.load_redshift_distribution("shear_photoz_stack")
+        print(source_n_of_z['z'])
 
         # The lens n_of_z is only used when saving at the end
         lens_n_of_z = self.load_redshift_distribution("lens_photoz_stack")
@@ -71,6 +77,11 @@ class TXDeltaSigma(TXTwoPoint):
             lens_table = self.load_lens_table(lens_bin)
             randoms_table = self.load_random_table(lens_bin)
 
+            if self.config["photoz"]:
+                # if we do not have point photo-z estimates for the sources then we use the lower edge of the tomographic bins to make z column
+                source_table['z'] = np.array(self.config["lower_bin_edge"])[source_table['z_bin']]
+
+
             # Add columns to two tables in-place to do most of the pre-computation work.
             # We should look at using the n_jobs multiprocessing option here
             # but I don't know if it will play well with MPI on NERSC that we are
@@ -79,8 +90,9 @@ class TXDeltaSigma(TXTwoPoint):
                 f"Computing excess surface density for source = {source_bin}, lens = {lens_bin}, "
                 f"with {len(source_table)} sources, {len(lens_table)} lenses, {len(randoms_table)} randoms"
             )
-            dsigma.precompute.precompute(lens_table, source_table, table_n=source_n_of_z, bins=bins, cosmology=cosmo)
-            dsigma.precompute.precompute(randoms_table, source_table, table_n=source_n_of_z, bins=bins, cosmology=cosmo)
+            print(np.amax(source_n_of_z['z'][source_n_of_z['n'][:, 0] > 0]))
+            dsigma.precompute.precompute(lens_table, source_table, table_n=source_n_of_z, bins=bins, cosmology=cosmo, lens_source_cut=self.config["lens_source_sep"])
+            dsigma.precompute.precompute(randoms_table, source_table, table_n=source_n_of_z, bins=bins, cosmology=cosmo, lens_source_cut=self.config["lens_source_sep"])
 
             # stack to get the excess surface density Delta(Sigma)
             result = dsigma.stacking.excess_surface_density(
@@ -164,12 +176,14 @@ class TXDeltaSigma(TXTwoPoint):
             "ra": "ra",
             "dec": "dec",
             "z": "z",
-            "w": "weight",
+            "w": self.config["source_cat_w_col"],
             "e_1": "g1",
             "e_2": "g2",
         }
         with self.open_input("binned_shear_catalog") as shear_file:
             group = shear_file[f"shear/bin_{bin_index}"]
+            if self.config["photoz"]:
+                del names["z"]
             table = self.load_table(group, names)
             nbin = shear_file["shear"].attrs["nbin_source"]
 
@@ -240,7 +254,7 @@ class TXDeltaSigma(TXTwoPoint):
             "ra": "ra",
             "dec": "dec",
             "z": "z",
-            "w_sys": "weight",
+            "w_sys": self.config["lens_cat_w_col"],
         }
         with self.open_input("binned_lens_catalog") as lens_file:
             group = lens_file[f"lens/bin_{bin_index}"]

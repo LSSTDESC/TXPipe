@@ -95,19 +95,19 @@ config: examples/desi_dr1_stage3/config.yml
 
 inputs:
     # See README for paths to download these files
-    # shear_catalog: /scratch/gpfs/AAMON/desc_analysis/catalogs/txpipe_allfield_shear.h5
-    shear_tomography_classifier: none
-    shear_catalog: /scratch/gpfs/AAMON/desc_analysis/catalogs/metadetect_desy6.hdf5
-    shear_tomography_catalog: /scratch/gpfs/AAMON/desc_analysis/catalogs/tomography_metadetect_desy6.hdf5
-    binned_shear_catalog: /scratch/gpfs/AAMON/desc_analysis/catalogs/binned_metadetect_desy6.hdf5
-    shear_photoz_stack: /scratch/gpfs/AAMON/desc_analysis/catalogs/shear_photoz_stack_metadetect_desy6.hdf5
+    # shear_catalog: /scratch/gpfs/AAMON/desc_analysis/TXPipe/data/shear_catalog_desy3_unmasked_withfakez_v2.h5
+    # shear_tomography_classifier: none
+    shear_catalog: /scratch/gpfs/AAMON/desc_analysis/catalogs/metacal_desy3.hdf5
+    shear_tomography_catalog: none
+    binned_shear_catalog: /scratch/gpfs/AAMON/desc_analysis/catalogs/binned_metacal_desy3.hdf5
+    shear_photoz_stack: /scratch/gpfs/AAMON/desc_analysis/catalogs/shear_photoz_stack_metacal_desy3.hdf5
 
     # photometry_catalog: data/example/inputs/photometry_catalog.hdf5
     # photoz_trained_model: data/example/inputs/cosmoDC2_trees_i25.3.npy
     # exposures: data/example/inputs/exposures.hdf5
     # star_catalog: data/example/inputs/star_catalog.hdf5
     random_cats: /scratch/gpfs/AAMON/desc_analysis/catalogs/random_cats.hdf5
-    binned_random_catalog: /scratch/gpfs/AAMON/desc_analysis/catalogs/random_cats.hdf5
+    binned_random_catalog: /scratch/gpfs/AAMON/desc_analysis/catalogs/binned_randoms_bin0.hdf5
     binned_random_catalog_sub: /scratch/gpfs/AAMON/desc_analysis/catalogs/random_cats.hdf5
 
     spectroscopic_catalog: None
