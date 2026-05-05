@@ -477,7 +477,7 @@ class TXNoiseMapsJax(PipelineStage):
         clustering_realizations = self.config["clustering_realizations"]
 
         # The columns we will need
-        shear_cols = ["ra", "dec", "weight", "mcal_g1", "mcal_g2"]
+        shear_cols = ["ra", "dec", "weight", "g1", "g2"]
 
         # Make the iterators
         chunk_rows = self.config["chunk_rows"]
@@ -556,8 +556,8 @@ class TXNoiseMapsJax(PipelineStage):
             source_bin = device_put(data["bin"])
             lens_bin = device_put(data["bin"])
             weights = device_put(data["weight"])
-            g1 = device_put(data["mcal_g1"]) * weights
-            g2 = device_put(data["mcal_g2"]) * weights
+            g1 = device_put(data["g1"]) * weights
+            g2 = device_put(data["g2"]) * weights
 
             # Compute which pixel each object is in
             ra = data["ra"]

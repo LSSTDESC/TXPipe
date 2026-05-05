@@ -10,5 +10,5 @@ from .ssi import (
     TXIngestSSIDetectionDESBalrog,
 )
 from .dp1 import TXIngestDataPreview1
-from .legacy import TXIngestDESY3Gold
+from .stage3 import TXIngestDESY3Gold
 from .MetaDetect import TXIngestMetaDetect

@@ -59,7 +59,7 @@ class ShearCatalog(HDFFile):
 
         if "catalog_type" in self.file["shear"].attrs:
             t = self.file["shear"].attrs["catalog_type"]
-        elif "mcal_g1" in self.file["shear"].keys():
+        elif "g1_1p" in self.file["shear"].keys():
             t = "metacal"
         elif "1p" in self.file["shear"].keys():
             t = "metadetect"
@@ -100,8 +100,8 @@ class ShearCatalog(HDFFile):
                 rename = {"true_g1": "g1", "true_g2": "g2"}
                 rename = {}
         elif self.catalog_type == "metacal":
-            shear_cols = ["mcal_g1", "mcal_g2", "ra", "dec", "weight"]
-            rename = {"mcal_g1": "g1", "mcal_g2": "g2"}
+            shear_cols = ["g1", "g2", "ra", "dec", "weight"]
+            rename = {}
         elif self.catalog_type == "hsc":
             shear_cols = ["g1", "g2", "c1", "c2", "ra", "dec", "weight"]
             rename = {}
@@ -114,7 +114,7 @@ class ShearCatalog(HDFFile):
 
         return shear_cols, rename
 
-    def get_bands(self, shear_prefix=""):
+    def get_bands(self):
         group = self.file[self.get_primary_catalog_group()]
         if "bands" in group.attrs:
             return group.attrs["bands"]
@@ -123,12 +123,8 @@ class ShearCatalog(HDFFile):
         # messy check. We look for all the columns that start with
         # mag_ and don't have an extra underscore in, which would indicate
         # that they are an error like mag_z_err
-        bands = []
-        nunderscore = shear_prefix.count("_")
-        l = len(shear_prefix + "mag_")
-        for col in group.keys():
-            if col.startswith(f"{shear_prefix}mag_") and (col.count("_") == 1 + nunderscore):
-                bands.append(col[l:])
+        band_cols = [c for c in group.keys() if c.startswith(f"mag_") and c.count("_") == 1]
+        bands = [c[4:] for c in band_cols]
         return bands
 
 

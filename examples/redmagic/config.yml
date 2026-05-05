@@ -20,8 +20,7 @@ TXMetacalGCRInput:
 TXExposureInfo:
     dc2_name: 1.2p
 
-TXShearCalibration:
-    shear_prefix: mcal_
+TXShearCalibration: {}
 
 TXCosmoDC2Mock:
     cat_name: cosmoDC2_v1.1.4_image
@@ -79,7 +78,6 @@ TXSourceSelectorMetacal:
     max_rows: 1000
     delta_gamma: 0.02
     source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
-    shear_prefix: mcal_
 
 TXSourceTomography:
     bands: riz #used for selection
@@ -157,8 +155,6 @@ TXBlinding:
     delete_unblinded: true
 
 TXSourceDiagnosticPlots:
-    psf_prefix: mcal_psf_
-    shear_prefix: mcal_
     nbins: 20
     g_min: -0.01
     g_max: 0.01
@@ -180,7 +176,6 @@ TXDiagnosticMaps:
     npix_x: 60
     npix_y: 60
     depth_cut: 23.0
-    psf_prefix: mcal_psf_
 
 TXSourceMaps:
     sparse: true  # Generate sparse maps - faster if using small areas
@@ -199,7 +194,6 @@ TXExternalLensMaps:
 
 TXAuxiliarySourceMaps:
     flag_exponent_max: 8
-    psf_prefix: psf_
 
 TXAuxiliaryLensMaps:
     flag_exponent_max: 8
