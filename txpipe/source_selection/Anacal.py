@@ -68,3 +68,14 @@ class TXSourceSelectorAnacal(TXSourceSelectorBase):
         group.create_dataset("R", (n, 1, 1), dtype="f")
         return outfile
 
+    def setup_response_calculators(self, nbin_source):
+        delta_gamma = self.config["delta_gamma"]
+        calculators = [AnaCalCalculator(select_tomographic_weak_lensing_sample, delta_gamma) for i in range(nbin_source)]
+        calculators.append(AnaCalCalculator(select_weak_lensing_sample, delta_gamma))
+        return calculators
+    
+    def write_tomography(self, outfile, start, end, source_bin, R):
+        super().write_tomogrpahy(outfile, start, end, source_bin, R)
+        group = outfile["response"]
+        group["R"][start:end] = R
+    
