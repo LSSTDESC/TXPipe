@@ -41,20 +41,16 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         bands = self.config["bands"]
 
         # Core quantities we need
-        shear_cols = metadetect_variants("T", "s2n", "g1", "g2", "ra", "dec", "psfOriginal_T", "weight", "flags")
+        shear_cols = metadetect_variants("T", "s2n", "g1", "g2", "ra", "dec", "psf_T_mean", "weight", "flags")
 
         # Magnitudes and errors
         shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="metadetect")
-        renames = {}
 
         # We need truth shears and/or PZ point-estimates for each shear too
         if self.config["input_pz"]:
             shear_cols += metadetect_variants("mean_z")
         elif self.config["true_z"]:
             shear_cols += metadetect_variants("redshift_true")
-
-        for prefix in ["ns", "1p", "1m", "2p", "2m"]:
-            renames[f"{prefix}/psfOriginal_T"] = f"{prefix}/psf_T_mean"
 
         # This is a parent ceci.PipelineStage method.
         # It returns an iterator we loop through.
@@ -63,7 +59,7 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         # what we want here since the different shear variants have different lengths.
         # The calibration calculation needs to deal with this.
         it = self.iterate_hdf("shear_catalog", "shear", shear_cols, chunk_rows, longest=True)
-        return rename_iterated(it, renames)
+        return it
 
     def setup_response_calculators(self, nbin_source):
         delta_gamma = self.config["delta_gamma"]
