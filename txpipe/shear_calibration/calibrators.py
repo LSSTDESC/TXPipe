@@ -631,18 +631,16 @@ class HSCCalibrator(Calibrator):
         return np.array(sigma) / (2 * self.R) / (1 + self.K)
 
 
-class AnaCalibrator(Calibrator):
+class AnaCalibrator(MetaCalibrator):
     """Stores information needed to calibrate a Anacal shear method"""
-    def __init__(self, R, mu, weights, mu_is_weigthed=True):
+    def __init__(self, R, mu, mu_is_weigthed=True):
         self.R = R
-        self.Rinv = np.linalg.inv(R)
-        self.w = weights
         if mu_is_weigthed:
             self.mu = np.array(mu)
         else:
-            self.mu = self.Rinv @ (weights * mu)
+            assert("Anacal needs an already calibrated mu.")
     
-    def apply(self, g1, g2, substract_mean=True):
+    def apply(self, g1, g2, weights, substract_mean=True):
         """
         Calibrate a set of shears using the response matrix and 
         mean shear substraction
@@ -658,10 +656,45 @@ class AnaCalibrator(Calibrator):
             whether to subtract mean shear (default True)
         """
         if not substract_mean:
-            g1, g2 = self.Rinv @ self.w * [g1, g2]
+            g1, g2 =  weights * [g1, g2] / self.R
         elif np.isscalar(g1):
-            g1, g2 = self.Rinv @ self.w * [g1, g2] - self.mu
+            g1, g2 = weights * [g1, g2] / self.R - self.mu
         else:
-            g1, g2 = self.Rinv @ self.w * [g1, g2] - self.mu[:, np.newaxis]
+            g1, g2 =  weights * [g1, g2] / self.R - self.mu[:, np.newaxis]
         return g1, g2
+    
+    @classmethod
+    def load(cls, tomo_file):
+        """ 
+        Make a set of AnaCal calibrators using the info in a tomography file.
+
+        You can use the parent Calibrator.load to automatically
+        load the correct subclass.
+
+        Parameters
+        ----------
+        tomo_file: str
+            A tomography file name the cal factors are read from
+
+        Returns
+        -------
+        cals: list
+            A set of AnacaltCalibrators, one per bin
+        """
+        import h5py
+
+        with h5py.File(tomo_file, "r") as f:
+            R = f["response/R"][:]
+            n = len(R)
+
+            mu1 = f["counts/mean_e1"][:]
+            mu2 = f["counts/mean_e2"][:]
+
+        calibrators = [cls(R[i], [mu1[i], mu2[i]]) for i in range(n)]
+        return calibrators
+    
+    def save(self, outfile, i):
+        outfile["respponse/R"][i] = self.R
+        outfile["counts/mean_e1"][i] = self.mu[0]
+        outfile["counts/mean_e2"][i] = self.mu[1]
 
