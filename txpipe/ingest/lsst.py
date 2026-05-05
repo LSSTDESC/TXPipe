@@ -64,3 +64,55 @@ def process_shear_data(data):
     output["psf_g2"] = psf_g2
 
     return output
+
+
+def process_metadetect_data(data):
+    output = {}
+    for variant in ["ns", "1p", "1m", "2p", "2m"]:
+        var_data = data[data["metaStep"] == variant]
+        var_data = sanitize(var_data)
+
+        var_output = {
+            "ra": var_data["ra"],
+            "dec": var_data["dec"],
+            "id": var_data["shearObjectId"],
+            "metaStep": var_data["metaStep"].astype("S"), #might not be needed
+            "object_mask_fraction": var_data["mfrac"],
+            #"n_epoch": var_data["nEpochCell"],
+            "g1": var_data["gauss_g1"],
+            "g2": var_data["gauss_g2"],
+            "g1_err": var_data["gauss_g1_g1_Cov"],
+            "g2_err": var_data["gauss_g2_g2_Cov"],
+            "g_cross": var_data["gauss_g1_g2_Cov"],
+            "T": var_data["gauss_T"],
+            "s2n": var_data["gauss_snr"],
+            "T_err": var_data["gauss_TErr"],
+            "psf_g1_original": var_data["psfOriginal_e1"],
+            "psf_g2_original": var_data["psfOriginal_e2"],
+            "psf_T_mean_original": var_data["psfOriginal_T"],
+            "psf_g1": var_data["gauss_psfReconvolved_g1"],
+            "psf_g2": var_data["gauss_psfReconvolved_g1"],
+            "psf_T_mean": var_data["gauss_psfReconvolved_T"],
+            "flags": var_data["gauss_shape_flags"], # TO BE ADDRESSED!
+        }
+        for band in "gri": # For DP2, we only expect 4 bands
+            f = var_data[f"{band}_pgaussFlux"]
+            f_err = var_data[f"{band}_pgaussFluxErr"]
+            var_output[f"mag_{band}"] = nanojansky_to_mag_ab(f)
+            var_output[f"mag_err_{band}"] = nanojansky_err_to_mag_ab(f, f_err)
+        output[f"{variant}"] = var_output
+
+    return output
+
+def sanitize(data):
+    """
+    Convert unicode arrays into types that h5py can save
+    """
+    # convert unicode to strings
+    if data.dtype.kind == "U":
+        data = data.astype("S")
+    # convert dates to integers
+    elif data.dtype.kind == "M":
+        data = data.astype(int)
+
+    return data
