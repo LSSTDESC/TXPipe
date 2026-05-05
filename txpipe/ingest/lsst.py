@@ -89,6 +89,7 @@ def process_metadetect_data(data):
             "T_err": var_data["gauss_TErr"],
             "psf_g1": var_data["psfOriginal_e1"],
             "psf_g2": var_data["psfOriginal_e2"],
+            "psf_T_mean": var_data["psfOriginal_T"],
             "mcal_psf_g1": var_data["gauss_psfReconvolved_g1"],
             "mcal_psf_g2": var_data["gauss_psfReconvolved_g1"],
             "mcal_psf_T_mean": var_data["gauss_psfReconvolved_T"],
