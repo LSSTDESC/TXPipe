@@ -1,7 +1,19 @@
 from ..base_stage import PipelineStage
-from ..data_types import HDFFile, FitsFile, QPNOfZFile
+from ..data_types import HDFFile, FitsFile, QPNOfZFile, RandomsCatalog
 import numpy as np
 from ceci.config import StageParameter
+
+class TXIngestDESIRandoms(PipelineStage):
+    name = "TXIngestDESIRandoms"
+    inputs = [
+        ("desi_random_catalog", FitsFile,)
+    ]
+    outputs = [
+        ("random_cats", RandomsCatalog),
+        ("binned_random_catalog", RandomsCatalog),
+        ("binned_random_catalog_sub", RandomsCatalog),
+        
+    ]
 
 
 class TXIngestDESI(PipelineStage):

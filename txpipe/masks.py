@@ -1,7 +1,7 @@
 import numpy as np
 from .utils import choose_pixelization
 from .base_stage import PipelineStage
-from .data_types import MapsFile
+from .data_types import MapsFile, HDFFile
 from ceci.config import StageParameter
 from .mapping import degrade_healsparse
 
@@ -482,3 +482,25 @@ class TXCustomMask(TXSimpleMaskFrac):
         assert np.round(area_in, 3) == np.round(area_out, 3)
 
         return mask_out, metadata_out
+
+
+class TXDESIJointMask(PipelineStage):
+    name = "TXDESIJointMask"
+    inputs = [
+        ("desi_mask", MapsFile),
+        ("shear_catalog", HDFFile),
+    ]
+    outputs = [
+        ("mask", MapsFile),
+    ]
+
+
+class TXCutCatalog(PipelineStage):
+    name = "TXCutCatalog"
+    inputs = [
+        ("catalog", HDFFile),
+        ("mask", MapsFile),
+    ]
+    outputs = [
+        ("cut_catalog", HDFFile),
+    ]

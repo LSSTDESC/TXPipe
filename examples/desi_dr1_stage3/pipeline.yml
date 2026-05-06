@@ -1,9 +1,25 @@
 # Stages to run
 stages:
+  - name: TXIngestDataPreview2
   # - name: TXSourceSelectorMetacal
   # - name: TXSourceSelectorMetadetect
+  #   aliases:
+  #       shear_catalog: cut_shear_catalog
+  # - name: TXSourceTomography
   # - name: TXSourceTomography
   # - name: TXShearCalibration
+  #   aliases:
+  #       shear_catalog: cut_shear_catalog
+  # - name: TXCustomMask
+  # - name: TXIngestDESIRandoms
+  # - name: PZRailSummarizeSource    # Run the DIR method on the lens sample to find n(z)
+  #   classname: PZRailSummarize
+  #   aliases:
+  #       tomography_catalog: shear_tomography_catalog
+  #       binned_catalog: binned_shear_catalog
+  #       model: source_photoz_model
+  #       photoz_stack: shear_photoz_stack
+  #       photoz_realizations: source_photoz_realizations
   # - name: TXExternalLensCatalogSplitter
   # - name: TXStarCatalogSplitter
   # - name: TXTruePhotozStackSource
@@ -14,9 +30,16 @@ stages:
   #       weights_catalog: shear_catalog
   #       photoz_stack: shear_photoz_stack
   # - name: TXIngestRedmagic
+  # - name: TXDESIJointMask
   - name: TXDESISelector
   - name: TXIngestDESI
   - name: TXTracerMetadata
+  #   aliases: 
+  #       shear_catalog: cut_shear_catalog
+  # - name: TXCutCatalog
+  #   aliases:
+  #       catalog: shear_catalog
+  #       cut_catalog: cut_shear_catalog
   # - name: TXSourceMaps
   # - name: TXExternalLensMaps
   # - name: TXAuxiliarySourceMaps
