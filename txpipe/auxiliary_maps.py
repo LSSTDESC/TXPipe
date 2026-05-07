@@ -689,10 +689,28 @@ class TXModelSelectionFunction(TXBaseMaps):
         """
         Estimates uncertainties on the measured selection function.
 
-        Currently two values for err_type are accommodated (case-independent):
-        - "none": selection function is treated as exact; zero uncertainty
-        - "gaussian": uncertainties are calculated under a Gaussian approx.
-        TODO: add other options, e.g. Wilson score interval.
+        Parameters
+        ----------
+        sel_func: dask.array, shape=(N,)
+            Selection function computed in TXAuxiliarySSIMaps, evaluated at pixels
+            which are valid in the N pixels which have at least the requisite
+            number of injections and are valid in all survey property maps.
+
+        err_type: str, optional (default="none")
+            Determines the treatment of uncertainties on the measured selection
+            function. Currently two values for err_type are accommodated (case-independent):
+            - "none": selection function is treated as exact; zero uncertainty
+            - "gaussian": uncertainties are calculated under a Gaussian approx.
+            TODO: add other options, e.g. Wilson score interval.
+        
+        ninj: dask.array (shape=N,) or None; optional (default=None)
+            Total injected counts in each of the pixels covered by sel_func. Only required
+            if err_type=="gaussian".
+    
+        Returns
+        -------
+        dask.array, shape=(N,)
+            Estimates of the uncertainty on the measured selection function in each pixel.
         """
         if err_type == "none":
             return self.da.zeros_like(sel_func)
@@ -706,6 +724,19 @@ class TXModelSelectionFunction(TXBaseMaps):
     def sel_func_weights(self, err_sel_func):
         """
         Converts selection function uncertainties into weights for modelling.
+
+        Parameters
+        ----------
+        err_sel_func: dask.array, shape=(N,)
+            Uncertainty on the measured selection function in the N pixels which have at
+            least the requisite number of injections and are valid in all survey property
+            maps.
+    
+        Returns
+        -------
+        dask.array, shape=(N,)
+            Weights corresponding to the uncertainty on the measured selection function in
+            each pixel.
         """
         if all(err_sel_func == 0):
             # Return ones if uncertanties are all zero
@@ -722,6 +753,49 @@ class TXModelSelectionFunction(TXBaseMaps):
         generates predictions at X_pred. In this context, X is an array
         containing survey property maps in certain pixels, and y is
         the selection function measured in those pixels.
+
+        Parameters
+        ----------
+        X_train: dask.array, shape=(N_train, N_sys)
+            Survey property maps evaluated at the N_train pixels that have been selected
+            for use as training data for the model.
+        
+        y_train: dask.array, shape=(N_train,)
+            Measured selection function in the N_train training data pixels.
+
+        yerr_train: dask.array, shape=(N_train,)
+            Uncertainties on the measured selection function in the N_train training data
+            pixels.
+
+        X_pred: dask.array, shape=(N_pred, N_sys)
+            Survey property maps evaluated at all pixels in the survey footprint (as defined
+            by the mask) not included in the training set, which are also valid across all
+            survey property maps. I.e. if the footprint comprises N_tot of these valid pixels,
+            then N_pred = N_tot - N_train.
+
+        Returns
+        -------
+        y_pred: dask.array, shape=(N_pred,)
+            Model predictions for the selection function in the N_pred pixels at which the
+            survey property maps were evaluated to construct X_pred.
+
+        yerr_pred: dask.array, shape=(N_pred,)
+            Uncertainties on the model preditions for the selection function.
+    
+        alphas: numpy.array, shape=(deg*N_sys+1,)
+            Best-fit parameters from the model. Shape will depend on the degree of the
+            polynomial (deg) specified in the config file. The first parameter is the bias
+            term; the next N_sys parameters correspond to each survey property map. If
+            deg >= 2, then the following N_sys parameters correspond to the squares of the
+            survey property maps, etc. The indices of the parameters corresponding to
+            the i'th survey property, its square, its cube, etc., can be obtained via:
+            `inds = [1 + i + d * N_sys for d in range(deg)].`
+            The names of the survey property maps are saved in the correct order as part of
+            the outputs of this stage so that they can be associated with their corresponding
+            parameters.
+
+        cov_alphas: numpy.array, shape=(deg*N_sys+1, deg*N_sys+1)
+            Covariance matrix of the best-fit parameters.
         """
         da = self.da
         # Degree of polynomial fit
@@ -761,13 +835,35 @@ class TXModelSelectionFunction(TXBaseMaps):
         for n in range(2, deg + 1):
             X = da.hstack([X, da.power(X_pred, n)])
         y_pred = alphas @ X.T
-        err_y_pred = np.sqrt(np.diag(X @ cov_alphas @ X.T))
+        yerr_pred = np.sqrt(np.diag(X @ cov_alphas @ X.T))
 
-        return y_pred, err_y_pred, alphas, cov_alphas
+        return y_pred, yerr_pred, alphas, cov_alphas
 
     def dask_sort(self, X, inds, chunk_boundaries):
         """
         Reorders a dask array using `inds`, without creating more chunks.
+
+        This is motivated by wanting to order certain dask arrays by their corresponding
+        HEALPix pixel indices, which can result in dask creating many more chunks and
+        slowing down subsequent computations. This function sorts the pixel indices by chunk,
+        and then gathers from the target array one chunk at a time.
+
+        Parameters
+        ----------
+        X: dask.array, shape=(N,)
+            Dask array to be sorted according to `inds`.
+
+        inds: numpy.array, shape=(N,)
+            Array containing the indices of X in order of ascending HEALPix pixel ID.
+
+        chunk_boundaries: numpy.array, shape=(ceil(N/m)+1,)
+            Boundaries of each chunk of size m, including the left edge and excluding the right.
+            E.g. The first chunk will have boundaries [0, m), the next will have [m, 2*m), etc.
+
+        Returns
+        -------
+        X_sorted: dask.array, shape=(N,)
+            Sorted version of the input array
         """
         n_chunks = len(chunk_boundaries) - 1
 
@@ -778,7 +874,7 @@ class TXModelSelectionFunction(TXBaseMaps):
         order = np.argsort(chunk_ids, kind='stable')
         inds_sorted = inds[order]
 
-        # Gather from D one chunk at a time
+        # Gather from X one chunk at a time
         X_sorted = self.da.empty(len(inds), dtype=X.dtype, chunks=X.chunks)
 
         for c in range(n_chunks):
