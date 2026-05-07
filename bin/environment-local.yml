@@ -51,3 +51,4 @@ dependencies:
     # Numpy has to be here to make sure that pypi doesn't
     # try to install a different version
     - numpy==2.3.*
+    - dsigma==1.1.*

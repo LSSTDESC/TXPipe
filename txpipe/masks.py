@@ -1,7 +1,7 @@
 import numpy as np
 from .utils import choose_pixelization
 from .base_stage import PipelineStage
-from .data_types import MapsFile
+from .data_types import MapsFile, HDFFile
 from ceci.config import StageParameter
 from .mapping import degrade_healsparse
 
@@ -482,3 +482,102 @@ class TXCustomMask(TXSimpleMaskFrac):
         assert np.round(area_in, 3) == np.round(area_out, 3)
 
         return mask_out, metadata_out
+
+class TXJointMask(TXBaseMask):
+    """
+    Combine two binary masks into one using AND intersection.
+
+    Currently only supports binary masks.
+
+    Subclasses can override `mask_input_names` to rename the two input tags
+    without duplicating any logic.
+    """
+
+    name = "TXJointMask"
+    inputs = [
+        ("mask1", MapsFile),
+        ("mask2", MapsFile),
+    ]
+    outputs = [("mask", MapsFile)]
+
+    # Subclasses override this tuple to change which input tags are opened.
+    mask_input_names = ("mask1", "mask2")
+
+    def make_binary_mask(self):
+        """
+        Load the two input masks and return their AND intersection.
+
+        TODO: make this more flexible to allow for different types of masks (e.g. fractional coverage maps) and different combination logic (e.g. OR, product, etc.). Currently, we assume shear mask is in healsparse format and lens mask is in HDF5. 
+
+        Returns
+        -------
+        mask : hsp.HealSparseMap
+            Combined boolean mask.
+        pixel_scheme : PixelScheme
+            Pixelization object taken from the first mask's metadata.
+        metadata : dict
+            Metadata from the first input mask.
+        """
+        import healsparse as hsp
+
+        name1, name2 = self.mask_input_names
+
+        with self.open_input(name1, wrapper=True) as f:
+            metadata = dict(f.file["maps"].attrs)
+            nside1 = metadata["nside"]
+            pixel_scheme1 = choose_pixelization(**metadata)
+            mask1 = f.read_mask("mask", returnbool=True)
+
+        with self.open_input(name2, wrapper=True) as f:
+            metadata = dict(f.file["maps"].attrs)
+            nside2 = metadata["nside"]
+            pixel_scheme2 = choose_pixelization(**metadata)
+            mask2 = f.read_mask("mask", returnbool=True)
+
+        if nside1 != nside2:
+            if nside1 < nside2:
+                print(f"Degrading {name2} from Nside {nside2} to {nside1}")
+                mask2 = mask2.degrade(nside1)
+            elif nside2 < nside1:
+                print(f"Degrading {name1} from Nside {nside1} to {nside2}")
+                mask1 = mask1.degrade(nside2)
+            mask = hsp.operations.product_intersection([mask1, mask2])
+        else:
+            mask = hsp.operations.product_intersection([mask1, mask2])
+        nside_out = mask.nside_sparse
+        metadata["nside"] = nside_out
+        pixel_scheme = choose_pixelization(pixelization="healpix", nside=nside_out, nest=True)
+
+        return mask, pixel_scheme, metadata
+
+
+class TXDESIJointMask(TXJointMask):
+    """
+    Combine the DESI lens mask and the shear catalog mask using AND intersection.
+    """
+
+    name = "TXDESIJointMask"
+    inputs = [
+        ("desi_mask", MapsFile),
+        ("shear_mask", MapsFile),
+    ]
+    outputs = [("mask", MapsFile)]
+
+    mask_input_names = ("desi_mask", "shear_mask")
+
+
+class TXCutCatalog(PipelineStage):
+    name = "TXCutCatalog"
+    inputs = [
+        ("catalog", HDFFile),
+        ("mask", MapsFile),
+    ]
+    outputs = [
+        ("cut_catalog", HDFFile),
+    ]
+
+    def run(self):
+
+        with self.open_input("mask", wrapper=True) as f:
+            self.mask = f.read_mask("mask")
+            self.mask_nside = f.read_map_info("mask")["nside"]

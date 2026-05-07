@@ -1,0 +1,150 @@
+# Stages to run
+stages:
+  - name: TXIngestDataPreview2
+  # - name: TXSourceSelectorMetacal
+  # - name: TXSourceSelectorMetadetect
+  #   aliases:
+  #       shear_catalog: cut_shear_catalog
+  # - name: TXSourceTomography
+  # - name: TXSourceTomography
+  # - name: TXShearCalibration
+  #   aliases:
+  #       shear_catalog: cut_shear_catalog
+  # - name: TXCustomMask
+  # - name: TXIngestDESIRandoms
+  # - name: PZRailSummarizeSource    # Run the DIR method on the lens sample to find n(z)
+  #   classname: PZRailSummarize
+  #   aliases:
+  #       tomography_catalog: shear_tomography_catalog
+  #       binned_catalog: binned_shear_catalog
+  #       model: source_photoz_model
+  #       photoz_stack: shear_photoz_stack
+  #       photoz_realizations: source_photoz_realizations
+  # - name: TXExternalLensCatalogSplitter
+  # - name: TXStarCatalogSplitter
+  # - name: TXTruePhotozStackSource
+  #   classname: TXTruePhotozStack
+  #   aliases:
+  #       tomography_catalog: shear_tomography_catalog
+  #       catalog: shear_catalog
+  #       weights_catalog: shear_catalog
+  #       photoz_stack: shear_photoz_stack
+  # - name: TXIngestRedmagic
+  # - name: TXDESIJointMask
+  - name: TXDESISelector
+  - name: TXIngestDESI
+  - name: TXTracerMetadata
+  #   aliases: 
+  #       shear_catalog: cut_shear_catalog
+  # - name: TXCutCatalog
+  #   aliases:
+  #       catalog: shear_catalog
+  #       cut_catalog: cut_shear_catalog
+  # - name: TXSourceMaps
+  # - name: TXExternalLensMaps
+  # - name: TXAuxiliarySourceMaps
+  # - name: TXAuxiliaryLensMaps
+  # - name: TXSimpleMask
+  # - name: TXLSSWeightsUnit
+  # - name: TXDensityMaps
+  # - name: TXMapPlots
+  # - name: TXRandomCat
+  - name: TXJackknifeCenters
+  - name: TXTwoPoint
+    threads_per_process: 2
+  - name: TXDeltaSigma
+  - name: TXDeltaSigmaPlots
+  # - name: TXBlinding             # Blind the data following Muir et al
+  #   threads_per_process: 2
+  # - name: TXTwoPointTheoryReal   # compute theory using CCL to save in sacc file and plot later
+  - name: TXPhotozPlotSource          # Plot the bin n(z)
+    classname: TXPhotozPlot
+    aliases:
+        photoz_stack: shear_photoz_stack
+        nz_plot: nz_source
+  - name: TXPhotozPlotLens          # Plot the bin n(z)
+    classname: TXPhotozPlot
+    aliases:
+        photoz_stack: lens_photoz_stack
+        nz_plot: nz_lens
+  # - name: TXDiagnosticQuantiles
+  # - name: TXSourceDiagnosticPlots      # Make a suite of diagnostic plots
+  # - name: TXGammaTFieldCenters   # Compute and plot gamma_t around center points
+  #   threads_per_process: 2
+  # - name: TXGammaTRandoms        # Compute and plot gamma_t around randoms
+  #   threads_per_process: 2
+  # - name: TXGammaTStars       # Compute and plot gamma_t around dim stars
+  #   threads_per_process: 2
+  # - name: TXRoweStatistics       # Compute and plot Rowe statistics
+  #   threads_per_process: 2
+  # - name: TXPSFDiagnostics       # Compute and plots other PSF diagnostics
+  # - name: TXBrighterFatterPlot   # Make plots tracking the brighter-fatter effect
+  # - name: TXSourceNoiseMaps
+  # - name: TXExternalLensNoiseMaps
+  # - name: TXConvergenceMaps      # Make convergence kappa maps from g1, g2 maps
+  # - name: TXConvergenceMapPlots   # Plot the convergence map
+  # - name: TXTwoPointPlots
+    # - name: TXTwoPointFourier
+      # threads_per_process: 2
+    # - name: TXRealGaussianCovariance   # Compute covariance of real-space correlations
+
+# Where to put outputs
+output_dir: data/example/outputs_desi_dr1_stage3
+
+# How to run the pipeline: mini, parsl, or cwl
+launcher:
+    name: mini
+    interval: 1.0
+
+# Where to run the pipeline: cori-interactive, cori-batch, or local
+site:
+    name: local
+    max_threads: 2
+
+# modules and packages to import that have pipeline
+# stages defined in them
+modules: txpipe
+
+# where to find any modules that are not in this repo,
+# and any other code we need.
+python_paths:
+  - submodules/WLMassMap/python/desc/
+
+# configuration settings
+config: examples/desi_dr1_stage3/config.yml
+
+# On NERSC, set this before running:
+# export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
+
+inputs:
+    # See README for paths to download these files
+    # shear_catalog: /scratch/gpfs/AAMON/desc_analysis/TXPipe/data/shear_catalog_desy3_unmasked_withfakez_v2.h5
+    # shear_tomography_classifier: none
+    shear_catalog: /scratch/gpfs/AAMON/desc_analysis/catalogs/metacal_desy3.hdf5
+    shear_tomography_catalog: none
+    binned_shear_catalog: /scratch/gpfs/AAMON/desc_analysis/catalogs/binned_metacal_desy3.hdf5
+    shear_photoz_stack: /scratch/gpfs/AAMON/desc_analysis/catalogs/shear_photoz_stack_metacal_desy3.hdf5
+
+    # photometry_catalog: data/example/inputs/photometry_catalog.hdf5
+    # photoz_trained_model: data/example/inputs/cosmoDC2_trees_i25.3.npy
+    # exposures: data/example/inputs/exposures.hdf5
+    # star_catalog: data/example/inputs/star_catalog.hdf5
+    random_cats: /scratch/gpfs/AAMON/desc_analysis/catalogs/random_cats.hdf5
+    binned_random_catalog: /scratch/gpfs/AAMON/desc_analysis/catalogs/binned_randoms_bin0.hdf5
+    binned_random_catalog_sub: /scratch/gpfs/AAMON/desc_analysis/catalogs/random_cats.hdf5
+
+    spectroscopic_catalog: None
+    desi_catalog: /scratch/gpfs/AAMON/desc_analysis/catalogs/LRG_SGC_clustering.dat.fits
+    # mask should be already a combination of source and lens.
+    mask: /scratch/gpfs/AAMON/desc_analysis/catalogs/dp2_23p5_combined_mask_nmin=500_nside=512.hdf5
+    # This file comes with the code
+    fiducial_cosmology: data/fiducial_cosmology.yml
+    # spectroscopic_catalog: data/example/inputs/mock_spectroscopic_catalog.hdf5
+
+# if supported by the launcher, restart the pipeline where it left off
+# if interrupted
+resume: true
+# where to put output logs for individual stages
+log_dir: data/example/logs_desi_dr1_stage3
+# where to put an overall parsl pipeline log
+pipeline_log: data/example/log_desi_dr1_stage3.txt
