@@ -526,7 +526,11 @@ class TXModelSelectionFunction(TXBaseMaps):
         # Ensure correct resolution (desired resolution can only be lower than
         # or equal to the native resolution of the selection function map).
         # "sum" reduction used for ninj since this is a counts map
-        sel_func_meas = sel_func_meas.degrade(pixel_scheme.nside)
+        sel_func_meas = sel_func_meas.degrade(
+            pixel_scheme.nside,
+            reduction="wmean",
+            weights=ninj
+        )
         ninj = ninj.degrade(pixel_scheme.nside, reduction="sum")
 
         with self.open_input("mask", wrapper=True) as f:
