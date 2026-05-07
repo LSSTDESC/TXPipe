@@ -538,7 +538,6 @@ class TXModelSelectionFunction(TXBaseMaps):
                 thresh=self.config["mask_thresh"],
                 degrade_nside=pixel_scheme.nside
             )
-        mask_pix = mask.valid_pixels
 
         # Load survey property maps at the valid pixels
         # TODO: Define these as individual inputs rather than glob search?
