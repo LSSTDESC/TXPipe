@@ -555,13 +555,8 @@ class TXModelSelectionFunction(TXBaseMaps):
         ]
         
         # Identify valid pixels across mask and all SP maps
-        goodpix = reduce(
-            np.intersect1d,
-            [
-                mask_pix,
-                *[m.valid_pixels for m in spmaps]
-            ]
-        )
+        goodmap = hsp.operations.product_intersection([mask] + spmaps)
+        goodpix = goodmap.valid_pixels
 
         # Training pixels must also be valid in the selection function
         pix_train = np.intersect1d(sel_func_meas.valid_pixels, goodpix)
