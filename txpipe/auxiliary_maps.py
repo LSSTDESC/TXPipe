@@ -495,7 +495,11 @@ class TXModelSelectionFunction(TXBaseMaps):
         "mask_thresh": StageParameter(float, 0.0, msg="Threshold for masking pixels at native resolution of mask."),
         "mask_thresh_coarse": StageParameter(float, 0.0, msg="Threshold for masking pixels after mask is degraded."),
         "inj_count_thresh": StageParameter(int, 1, msg="Exclude pixels containing fewer injections than this number."),
-        "sel_func_err_type": StageParameter(str, "none", msg="Type of uncertainty attributed to measured selection function."),
+        "sel_func_err_type": StageParameter(
+            str,
+            "none",
+            msg="Type of uncertainty attributed to measured selection function. Can be either 'none' (assumes no "
+                "uncertainty) or 'gaussian' (uses a Gaussian approximation to estimate uncertainties)."),
         **map_config_options
     }
 
