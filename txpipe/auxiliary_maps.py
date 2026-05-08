@@ -578,7 +578,7 @@ class TXModelSelectionFunction(TXBaseMaps):
             samples = sel_func_meas.dtype.names
         else:
             samples = [f"bin{k}" for k in self.config["bins_to_model"]]
-        print(samples)
+
         # Cycle through the samples for which selection functions are to be modelled
         maps = {
             "sel_func": [],
