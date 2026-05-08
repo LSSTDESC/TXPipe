@@ -282,7 +282,7 @@ class TXIngestMapsBase(PipelineStage):
         metadata = {
             "pixelization": "healpix",
             "nside": self.config["input_nside"],
-            "nest": False,  # currently TXPipe defaults to ring format
+            "nest": True,  # currently TXPipe defaults to ring format
         }
         print(f"Input nside {self.config['input_nside']}")
 

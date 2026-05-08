@@ -156,6 +156,11 @@ class TXLSSDensityBase(TXMapCorrelations):
         nsys = len(sys_files)
         print(f"Found {nsys} total systematic maps")
 
+        if nsys == 0:
+            raise ValueError(f"No systematic maps found in {root} with extension .hs. "
+                             "Please check your config supreme_path_root setting and "
+                             "make sure it points to the right location")
+
         with self.open_input("mask", wrapper=True) as map_file:
             # load *boolean* mask
             mask = map_file.read_mask(
@@ -344,7 +349,7 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
     """
 
     name = "TXLSSDensityNullTests"
-    parallel = False
+    parallel = True
     inputs = [
         (
             "binned_lens_catalog_unweighted",
@@ -405,15 +410,16 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
             self.Ntomo = f["lens"].attrs["nbin_lens"]
 
         # output directory for the plots and summary stats
-        output_dir = self.open_output("lss_density_plots", wrapper=True)
+        # open in parallel so that each process can write to it as needed.
+        output_dir = self.open_output("lss_density_plots", wrapper=True, parallel=True)
 
-        # open outdir density correlation file
-        dens_output = self.open_output("unweighted_density_correlation", wrapper=False)
 
         # load the SP maps, apply the mask, normalize the maps (as needed by the method)
         self.sys_maps, self.sys_names, self.sys_meta = self.prepare_sys_maps()
 
-        for ibin in range(self.Ntomo):
+        results = []
+        for ibin in self.split_tasks_by_rank(range(self.Ntomo)):
+            print("Computing density correlations for lens bin {0}/{1}".format(ibin + 1, self.Ntomo))
             # compute density vs SP map data vector
             density_corrs = self.calculate_1d_density_correlations(ibin)
 
@@ -423,10 +429,20 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
             # Add the null model n_dens/<n_dens> = 1 to the
             # DensityCorrelation object and compute its chi2
             density_corrs.add_null_model()
+            results.append(density_corrs)
 
-            # make summary stats and plots
-            self.summarize_density(output_dir, dens_output, density_corrs)
-        dens_output.close()
+        # gather all results on root process
+        if self.comm is not None:
+            results = self.comm.gather(results, root=0)
+
+        if self.rank == 0:
+            # flatten list of lists
+            results = [result for sublist in results for result in sublist]
+            # open outdir density correlation file.
+            # only the root process does any writing.
+            with self.open_output("unweighted_density_correlation", wrapper=False) as dens_output:
+                for density_corrs in results:
+                    self.summarize_density(output_dir, dens_output, density_corrs)
 
     def summarize_density(self, output_dir, dens_output, density_correlation):
         """

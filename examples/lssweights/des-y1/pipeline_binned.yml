@@ -23,7 +23,7 @@ stages:
 modules: txpipe 
 
 # Where to put outputs
-output_dir: examples/lssweights/des-y1/output_binned/
+output_dir: data/desy1/output
 
 # How to run the pipeline: mini, parsl, or cwl
 launcher:
@@ -32,20 +32,20 @@ launcher:
 
 # Where to run the pipeline: cori-interactive, cori-batch, or local
 site:
-    name: nersc-interactive
+    name: local
 
 # configuration settings
-config: examples/lssweights/des-y1//config_binned.yml
+config: examples/lssweights/des-y1/config_binned.yml
 
 inputs:
     # See README for paths to download these files
-    photometry_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/photometry_catalog_desy1_RM.h5
-    lens_tomography_catalog_unweighted: /global/cfs/cdirs/lsst/groups/WL/users/jelvinpo/txpipe-weights/des-y1/lens_tomography_catalog_desy1_RM_unweighted.h5
-    random_cats: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/randoms_desy1_RM.hdf5
-    binned_random_catalog: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/binned_randoms_desy1_RM.hdf5
-    binned_random_catalog_sub: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/binned_randoms_desy1_RM.hdf5
-    mask: /global/cfs/cdirs/lsst/groups/WL/users/jelvinpo/txpipe-weights/des-y1/mask_desy1_4096.h5
-    lens_photoz_stack: /global/cfs/cdirs/lsst/groups/WL/projects/txpipe-sys-tests/des-y1/lens_photoz_stack.hdf5
+    photometry_catalog: data/desy1/photometry_catalog_desy1_RM.h5
+    lens_tomography_catalog_unweighted: data/desy1/lens_tomography_catalog_desy1_RM_unweighted.h5
+    random_cats: data/desy1/randoms_desy1_RM.hdf5
+    binned_random_catalog: data/desy1/binned_randoms_desy1_RM.hdf5
+    binned_random_catalog_sub: data/desy1/binned_randoms_desy1_RM.hdf5
+    mask: data/desy1/mask_desy1_4096.h5
+    lens_photoz_stack: data/desy1/lens_photoz_stack.hdf5
     shear_catalog: none
     shear_tomography_catalog: none
     binned_shear_catalog: none
@@ -62,6 +62,6 @@ inputs:
 # if interrupted
 resume: False
 # where to put output logs for individual stages
-log_dir: examples/lssweights/des-y1/output_binned/logs/
+log_dir: lssweights_logs
 # where to put an overall parsl pipeline log
-pipeline_log: examples/lssweights/des-y1/output_binned/log.txt
+pipeline_log: ./log.txt

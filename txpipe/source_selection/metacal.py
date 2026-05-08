@@ -40,8 +40,19 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
         We call to a parent class method to do the main iteration; the work here is
         just choosing which columns to read.
         """
+        with self.open_input("shear_catalog") as f:
+            if "flags_1p" in f.file["shear"]:
+                flag_mode = "variant"
+            else:
+                flag_mode = "single"
+        if self.rank == 0:
+            print(f"Using {flag_mode} flags")
         bands = self.config["bands"]
-        shear_cols = metacal_variants("T", "s2n", "g1", "g2", "flags", "weight")
+        shear_cols = metacal_variants("T", "s2n", "g1", "g2", "weight")
+        if flag_mode == "variant":
+            shear_cols += metacal_variants("flags")
+        else:
+            shear_cols += ["flags"]
         shear_cols += ["ra", "dec", "psf_T_mean"]
         shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="metacal")
 
@@ -51,7 +62,13 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
             shear_cols += ["redshift_true"]
 
         chunk_rows = self.config["chunk_rows"]
-        return self.iterate_hdf("shear_catalog", "shear", shear_cols, chunk_rows)
+        for s, e, data in  self.iterate_hdf("shear_catalog", "shear", shear_cols, chunk_rows):
+            if flag_mode == "single":
+                data["flags_1p"] = data["flags"]
+                data["flags_1m"] = data["flags"]
+                data["flags_2p"] = data["flags"]
+                data["flags_2m"] = data["flags"]
+            yield s, e, data
 
     def setup_output(self):
         """
@@ -61,7 +78,6 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
             R_gamma: the per-object estimator response
             R_S: the per-bin selection response
             R_gamma_mean: the mean per-bin estimator response
-            R_total: the complete per-bin response
 
         and the 2D versions of the per-bin values.
         """
@@ -75,10 +91,8 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
         group.create_dataset("R_gamma", (n, 2, 2), dtype="f")
         group.create_dataset("R_S", (nbin_source, 2, 2), dtype="f")
         group.create_dataset("R_gamma_mean", (nbin_source, 2, 2), dtype="f")
-        group.create_dataset("R_total", (nbin_source, 2, 2), dtype="f")
         group.create_dataset("R_S_2d", (2, 2), dtype="f")
         group.create_dataset("R_gamma_mean_2d", (2, 2), dtype="f")
-        group.create_dataset("R_total_2d", (2, 2), dtype="f")
         return outfile
 
     def setup_response_calculators(self, nbin_source):

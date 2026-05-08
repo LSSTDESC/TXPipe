@@ -1,4 +1,4 @@
-from ceci import PipelineStage as PipelineStageBase
+from ceci import PipelineStage as PipelineStageBase, file_types
 from .data_types import HDFFile
 from textwrap import dedent
 from .utils.provenance import find_module_versions, git_diff, git_current_revision
@@ -183,13 +183,17 @@ class PipelineStage(PipelineStageBase):
         new_tag = self.get_aliased_tag(tag)
         path = self.get_output(new_tag)
 
-        # HDF files can be opened for parallel writing
+        # HDF files and directory outputs can be opened for parallel writing
         # under MPI.  This checks if:
         # - we have been told to open in parallel
         # - we are actually running under MPI
         # and adds the flags required if all these are true
         run_parallel = kwargs.pop("parallel", False) and self.is_mpi()
-        if run_parallel:
+        if run_parallel and issubclass(output_class, file_types.Directory):
+            kwargs["parallel"] = True
+            kwargs["comm"] = self.comm
+
+        elif run_parallel:
             if not output_class.supports_parallel_write:
                 raise ValueError(
                     f"Tried to open file for parallel output, but not"
