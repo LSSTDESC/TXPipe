@@ -593,6 +593,9 @@ class TXModelSelectionFunction(TXBaseMaps):
 
             # Remove pixels with fewer than the specified no. of injections
             pix_train_k = pix_train[ninj[k][pix_train] >= self.config["inj_count_thresh"]]
+            # Check there is at least one pixel which has survived all cuts
+            errmsg = f"Cannot model selection function for sample {k}; no valid pixels."
+            assert len(pix_train_k) > 0, errmsg
             # Select training data
             sel_func_train = da.from_array(sel_func_meas[k][pix_train_k], block_size)
             block_size = sel_func_train.chunksize
