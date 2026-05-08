@@ -738,7 +738,7 @@ class TXModelSelectionFunction(TXBaseMaps):
             Weights corresponding to the uncertainty on the measured selection function in
             each pixel.
         """
-        if all(err_sel_func == 0):
+        if (err_sel_func == 0).all():
             # Return ones if uncertanties are all zero
             return self.da.ones(len(err_sel_func))
         else:
