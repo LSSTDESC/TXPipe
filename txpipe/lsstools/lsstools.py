@@ -552,6 +552,7 @@ def linear_model(
     sysmap_table=None,
     map_index=None,
     frac=None,
+    do_grid_hist=True,
 ):
     """
     linear contamination model:
@@ -605,6 +606,7 @@ def linear_model(
             map_input=True,
             use_precompute=True,
             frac=frac_vals,
+            do_grid_hist=do_grid_hist,
         )
 
     return F, F_density_corrs
