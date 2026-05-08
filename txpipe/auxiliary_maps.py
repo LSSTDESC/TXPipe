@@ -499,7 +499,14 @@ class TXModelSelectionFunction(TXBaseMaps):
             str,
             "none",
             msg="Type of uncertainty attributed to measured selection function. Can be either 'none' (assumes no "
-                "uncertainty) or 'gaussian' (uses a Gaussian approximation to estimate uncertainties)."),
+                "uncertainty) or 'gaussian' (uses a Gaussian approximation to estimate uncertainties)."
+        ),
+        "bins_to_model": StageParameter(
+            list,
+            [-1],
+            msg="List of depth bins for which the selection function is to be modelled. -1 means selection functions will be "
+                "modelled for every bin for which fracdet maps were created in TXAuxiliarySSIMaps."
+        ),
         **map_config_options
     }
 
@@ -566,8 +573,13 @@ class TXModelSelectionFunction(TXBaseMaps):
         # Remove any pixels below specified coverage fraction after degrading
         pix_train = pix_train[mask[pix_train] >= self.config["mask_thresh_coarse"]]
 
-        # Cycle through the samples for which selection functions have been measured
-        samples = sel_func_meas.dtype.names
+        # Determine which samples are to have their selection functions modelled
+        if self.config["bins_to_model"] == [-1]:
+            samples = sel_func_meas.dtype.names
+        else:
+            samples = [f"bin{k}" for k in self.config["bins_to_model"]]
+        print(samples)
+        # Cycle through the samples for which selection functions are to be modelled
         maps = {
             "sel_func": [],
             "err_sel_func": []
