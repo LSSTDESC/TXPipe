@@ -83,6 +83,9 @@ class TXTwoPointFourier(PipelineStage):
             bool, False, msg="Whether to deproject systematic modes from clustering"
         ),
         "systmaps_clustering_dir": StageParameter(str, "", msg="Directory containing systematic maps for clustering"),
+        "systmaps_healsparse_reduction": StageParameter(
+            str, "mean", msg="Reduction method when degrading a HealSparse systematics map to a lower nside ('mean', 'median', 'std', 'max', 'min', 'sum', 'prod')"
+        ),
         "ell_min": StageParameter(int, 100, msg="Minimum ell value for power spectra"),
         "ell_max": StageParameter(int, 1500, msg="Maximum ell value for power spectra"),
         "n_ell": StageParameter(int, 20, msg="Number of ell bins"),
@@ -309,31 +312,54 @@ class TXTwoPointFourier(PipelineStage):
         for systmap in systmaps_path.iterdir():
             try:
                 if systmap.is_file():
-                    if pathlib.Path(systmap).suffix != ".fits":
+                    suffix = pathlib.Path(systmap).suffix
+                    systmap_file = str(systmap)
+
+                    if suffix == ".fits":
+                        print("Reading clustering systematics map (HEALPix):", systmap_file)
+                        syst_map = hp.read_map(systmap_file, verbose=False)
+                    elif suffix == ".hs":
+                        import healsparse
+                        print("Reading clustering systematics map (HealSparse):", systmap_file)
+                        hs_map = healsparse.HealSparseMap.read(systmap_file)
+                        nside_target = hp.get_nside(mask_gc)
+                        nside_hs = hs_map.nside_sparse
+                        if nside_hs != nside_target:
+                            if nside_hs > nside_target:
+                                reduction = self.config["systmaps_healsparse_reduction"]
+                                print(f"  HealSparse map nside={nside_hs} > input map nside={nside_target}; degrading using reduction='{reduction}'.")
+                                syst_map = hs_map.generate_healpix_map(nside=nside_target, reduction=reduction)
+                            else:
+                                warnings.warn(
+                                    f"HealSparse systematics map nside={nside_hs} is coarser than the "
+                                    f"input map nside={nside_target}. Upgrading via nearest-neighbour "
+                                    f"replication — consider using a higher-resolution systematics map."
+                                )
+                                print(f"  HealSparse map nside={nside_hs} < input map nside={nside_target}; upgrading (nearest-neighbour).")
+                                syst_map = hp.ud_grade(hs_map.generate_healpix_map(), nside_target)
+                        else:
+                            syst_map = hs_map.generate_healpix_map()
+                    else:
                         print(
                             "Warning: Problem reading systematics map file",
                             systmap,
-                            "Not a HEALPix .fits file.",
+                            "Not a HEALPix .fits or HealSparse .hs file.",
                         )
-                        warnings.warn("Systematics map file must be a HEALPix .fits file.")
+                        warnings.warn("Systematics map file must be a HEALPix .fits or HealSparse .hs file.")
                         print("Ignoring", systmap)
-                    else:
-                        systmap_file = str(systmap)
-                        self.config[f"clustering_deproject_{n_systmaps}"] = systmap_file  # for provenance
-                        print("Reading clustering systematics map file:", systmap_file)
-                        syst_map = hp.read_map(systmap_file, verbose=False)
+                        continue
 
-                        # normalize map for Namaster
-                        # calculate the mean, accounting for case where mask isn't binary
-                        unmasked = mask_gc > 0.0
-                        mean = (syst_map[unmasked] * mask_gc[unmasked]).sum() / mask_gc[unmasked].sum()
-                        print("Syst map: mean value = ", mean)
-                        # subtract the mean rather than normalise by it, as some systematics will have ~0 mean
-                        # (other pixels can stay as hp.UNSEEN since they are masked anyway)
-                        syst_map[unmasked] -= mean
-
-                        s_maps.append(syst_map)
-                        n_systmaps += 1
+                    self.config[f"clustering_deproject_{n_systmaps}"] = systmap_file  # for provenance
+                    # normalize map for Namaster
+                    # calculate the mean, accounting for case where mask isn't binary
+                    unmasked = mask_gc > 0.0
+                    mean = (syst_map[unmasked] * mask_gc[unmasked]).sum() / mask_gc[unmasked].sum()
+                    print("Syst map: mean value = ", mean)
+                    # subtract the mean rather than normalise by it, as some systematics will have ~0 mean
+                    # (other pixels can stay as hp.UNSEEN since they are masked anyway)
+                    syst_map[unmasked] -= mean
+                    s_maps.append(syst_map)
+                    n_systmaps += 1
             except:
                 print("Warning: Problem with systematics map file", systmap)
                 print("Ignoring", systmap)
