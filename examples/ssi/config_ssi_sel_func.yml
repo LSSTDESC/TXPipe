@@ -1,0 +1,39 @@
+# Values in this section are accessible to all the different stages.
+# They can be overridden by individual stages though.
+global:
+    # This is read by many stages that read complete
+    # catalog data, and tells them how many rows to read
+    # at once
+    chunk_rows: 100_000
+    # These mapping options are also read by a range of stages
+    pixelization: healpix
+    nside: 256
+    sparse: true  # Generate sparse maps - faster if using small areas
+
+
+TXIngestSSIDetectionDESBalrog:
+    name: TXIngestSSIDetectionDESBalrog
+
+TXIngestSSIMatchedDESBalrog:
+    name: TXIngestSSIMatchedDESBalrog
+
+TXAuxiliarySSIMaps:
+    name: TXAuxiliarySSIMaps
+    mag_delta: 0.5
+    smooth_det_frac: false
+    min_depth: 23
+    max_depth: 24
+    smooth_window: 2.0
+
+
+TXPredictDensitySelectionFunction:
+    name: TXPredictDensitySelectionFunction
+    systmaps_dir: /global/cfs/cdirs/lsst/groups/WLSS/users/tcornish/balrog_txpipe_example/survey_properties/
+    degree: 2
+    mask_thresh: 0.
+    mask_thresh_coarse: 0.
+    inj_count_thresh: 1
+    sel_func_err_type: gaussian
+    block_size: 2_000
+    bins_to_model: [0,1]
+
