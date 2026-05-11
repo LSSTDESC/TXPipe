@@ -463,7 +463,7 @@ class TXAuxiliarySSIMaps(TXBaseMaps):
             out.file["maps"].attrs.update(metadata)
 
 
-class TXModelSelectionFunction(TXBaseMaps):
+class TXPredictDensitySelectionFunction(TXBaseMaps):
     """
     Model selection function across footprint using survey property maps.
 
@@ -476,7 +476,7 @@ class TXModelSelectionFunction(TXBaseMaps):
     TODO: Add other options for the form of the model.
     """
 
-    name = "TXModelSelectionFunction"
+    name = "TXPredictDensitySelectionFunction"
     dask_parallel = True
     inputs = [
         ("aux_ssi_maps", MapsFile),  # Measured selection function and uncertainties
