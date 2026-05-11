@@ -629,7 +629,8 @@ class TXModelSelectionFunction(TXBaseMaps):
                 spmaps_train,
                 sel_func_train,
                 err_sel_func_train,
-                spmaps_pred
+                spmaps_pred,
+                err_type
             )
 
             # Combine training data and predictions into single HealSparse maps
@@ -736,16 +737,22 @@ class TXModelSelectionFunction(TXBaseMaps):
                 "err_type must be either 'none' or 'gaussian'."
             )
 
-    def sel_func_weights(self, err_sel_func):
+    def sel_func_weights(self, err_type="none", err_sel_func=None):
         """
         Converts selection function uncertainties into weights for modelling.
 
         Parameters
         ----------
-        err_sel_func: dask.array, shape=(N,)
+        err_type: str, optional (default="none")
+            Determines the treatment of uncertainties on the measured selection
+            function. Currently two values for err_type are accommodated (case-independent):
+            - "none": selection function is treated as exact; zero uncertainty
+            - "gaussian": uncertainties are calculated under a Gaussian approx.
+
+        err_sel_func: dask.array, shape=(N,) or None; optional (default=None)
             Uncertainty on the measured selection function in the N pixels which have at
             least the requisite number of injections and are valid in all survey property
-            maps.
+            maps. Only required if err_type=="gaussian".
     
         Returns
         -------
@@ -753,14 +760,14 @@ class TXModelSelectionFunction(TXBaseMaps):
             Weights corresponding to the uncertainty on the measured selection function in
             each pixel.
         """
-        if (err_sel_func == 0).all():
-            # Return ones if uncertanties are all zero
+        if err_type == "none":
+            # Return ones if uncertanties are treated as being zero
             return self.da.ones(len(err_sel_func))
         else:
             # Return inverse of variance
             return 1 / (self.da.power(err_sel_func, 2))
 
-    def polynomial_model(self, X_train, y_train, yerr_train, X_pred):
+    def polynomial_model(self, X_train, y_train, yerr_train, X_pred, err_type="none"):
         """
         Polynomial regression and model predictions for test data.
         
@@ -787,6 +794,12 @@ class TXModelSelectionFunction(TXBaseMaps):
             by the mask) not included in the training set, which are also valid across all
             survey property maps. I.e. if the footprint comprises N_tot of these valid pixels,
             then N_pred = N_tot - N_train.
+
+        err_type: str, optional (default="none")
+            Determines the treatment of uncertainties on the measured selection
+            function. Currently two values for err_type are accommodated (case-independent):
+            - "none": selection function is treated as exact; zero uncertainty
+            - "gaussian": uncertainties are calculated under a Gaussian approx.
 
         Returns
         -------
@@ -817,7 +830,7 @@ class TXModelSelectionFunction(TXBaseMaps):
         deg = self.config["degree"]
 
         # Weights for each training pixel
-        W = self.sel_func_weights(yerr_train)
+        W = self.sel_func_weights(err_type, yerr_train)
         # If Gaussian approx was used for uncertainty estimation, pixels in
         # which the selection function is 0 or 1 will have zero uncertainty
         # (and thus infinite weight); remove these pixels here.
