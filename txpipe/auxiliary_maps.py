@@ -863,7 +863,9 @@ class TXModelSelectionFunction(TXBaseMaps):
         for n in range(2, deg + 1):
             X = da.hstack([X, da.power(X_pred, n)])
         y_pred = alphas @ X.T
-        yerr_pred = np.sqrt(np.diag(X @ cov_alphas @ X.T))
+        # The following is a cheaper equivalent of doing
+        # `sqrt(diag(X @ cov_alphas @ X.T))`
+        yerr_pred = (X @ cov_alphas * X).sum(axis=1)
 
         return y_pred, yerr_pred, alphas, cov_alphas
 
