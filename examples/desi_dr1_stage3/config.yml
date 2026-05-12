@@ -66,6 +66,7 @@ TXDeltaSigma:
     lower_bin_edge: [0.0, 0.358, 0.631, 0.872]
     source_cat_w_col: w
     lens_cat_w_col: w_sys
+    n_jobs: 128
 
 TXSourceSelectorHSC:
     input_pz: true

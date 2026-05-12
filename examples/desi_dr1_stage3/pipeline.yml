@@ -57,6 +57,8 @@ stages:
   # - name: TXTwoPoint
   #   threads_per_process: 2
   - name: TXDeltaSigma
+    nprocess: 4
+    threads_per_process: 1
   - name: TXDeltaSigmaPlots
   # - name: TXBlinding             # Blind the data following Muir et al
   #   threads_per_process: 2
@@ -126,23 +128,35 @@ inputs:
     # shear_tomography_classifier: none
     shear_catalog: none #/scratch/gpfs/AAMON/desc_analysis/catalogs/metacal_desy3.hdf5
     shear_tomography_catalog: none
-    binned_shear_catalog: /scratch/gpfs/AAMON/desc_analysis/catalogs/cut_binned_metacal_desy3.hdf5
-    shear_photoz_stack: /scratch/gpfs/AAMON/desc_analysis/catalogs/shear_photoz_stack_metacal_desy3.hdf5
+    #binned_shear_catalog: /scratch/gpfs/AAMON/desc_analysis/catalogs/cut_binned_metacal_desy3.hdf5
+    #shear_photoz_stack: /scratch/gpfs/AAMON/desc_analysis/catalogs/shear_photoz_stack_metacal_desy3.hdf5
+    binned_shear_catalog:
+        name: desy3_binned_shear_catalog
+    shear_photoz_stack:
+        name: desy3_shear_photoz_stack
+    shear_mask:
+        name: desy3_shear_mask
+    desi_mask:
+        name: desi_dr1_mask
+    desi_catalog:
+        name: desi_dr1_catalog
+    desi_random_catalog:
+        name: desi_dr1_random_catalog
 
     # photometry_catalog: data/example/inputs/photometry_catalog.hdf5
     # photoz_trained_model: data/example/inputs/cosmoDC2_trees_i25.3.npy
     # exposures: data/example/inputs/exposures.hdf5
     # star_catalog: data/example/inputs/star_catalog.hdf5
-    desi_random_catalog: /scratch/gpfs/AAMON/desc_analysis/catalogs/BGS_ANY_SGC_0_clustering.ran.fits
+    # desi_random_catalog: /scratch/gpfs/AAMON/desc_analysis/catalogs/BGS_ANY_SGC_0_clustering.ran.fits
     # random_cats: /scratch/gpfs/AAMON/desc_analysis/catalogs/random_cats.hdf5
     # binned_random_catalog: /scratch/gpfs/AAMON/desc_analysis/catalogs/binned_randoms_bin0.hdf5
     # binned_random_catalog_sub: /scratch/gpfs/AAMON/desc_analysis/catalogs/random_cats.hdf5
 
     spectroscopic_catalog: None
-    desi_catalog: /scratch/gpfs/AAMON/desc_analysis/catalogs/BGS_ANY_SGC_clustering.dat.fits
+    # desi_catalog: /scratch/gpfs/AAMON/desc_analysis/catalogs/BGS_ANY_SGC_clustering.dat.fits
     # mask should be already a combination of source and lens.
-    desi_mask: /scratch/gpfs/AAMON/desc_analysis/catalogs/mask_BGS_ANY_SGC_clustering.h5
-    shear_mask: /scratch/gpfs/AAMON/desc_analysis/catalogs/desy3_mask.h5
+    # desi_mask: /scratch/gpfs/AAMON/desc_analysis/catalogs/mask_BGS_ANY_SGC_clustering.h5
+    # shear_mask: /scratch/gpfs/AAMON/desc_analysis/catalogs/desy3_mask.h5
     # This file comes with the code
     fiducial_cosmology: data/fiducial_cosmology.yml
     # spectroscopic_catalog: data/example/inputs/mock_spectroscopic_catalog.hdf5
@@ -154,3 +168,6 @@ resume: true
 log_dir: data/example/logs_desi_dr1_stage3
 # where to put an overall parsl pipeline log
 pipeline_log: data/example/log_desi_dr1_stage3.txt
+registry:
+    owner_type: project
+    owner: wlss-dp2-desi-delta-sigma
