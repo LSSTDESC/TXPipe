@@ -46,13 +46,13 @@ class TXDeltaSigma(TXTwoPoint):
         import sacc
 
         bin_pairs = self.get_bin_pairs()
+        print(bin_pairs)
         source_bin = 3
         lens_bin = 0
 
         with self.open_input("fiducial_cosmology", wrapper=True) as cosmo_file:
             cosmo = cosmo_file.to_astropy()
         source_n_of_z = self.load_redshift_distribution("shear_photoz_stack")
-        print(source_n_of_z['z'])
 
         # The lens n_of_z is only used when saving at the end
         lens_n_of_z = self.load_redshift_distribution("lens_photoz_stack")
@@ -90,7 +90,7 @@ class TXDeltaSigma(TXTwoPoint):
                 f"Computing excess surface density for source = {source_bin}, lens = {lens_bin}, "
                 f"with {len(source_table)} sources, {len(lens_table)} lenses, {len(randoms_table)} randoms"
             )
-            print(np.amax(source_n_of_z['z'][source_n_of_z['n'][:, 0] > 0]))
+
             dsigma.precompute.precompute(lens_table, source_table, table_n=source_n_of_z, bins=bins, cosmology=cosmo, lens_source_cut=self.config["lens_source_sep"])
             dsigma.precompute.precompute(randoms_table, source_table, table_n=source_n_of_z, bins=bins, cosmology=cosmo, lens_source_cut=self.config["lens_source_sep"])
 
@@ -320,6 +320,7 @@ class TXDeltaSigma(TXTwoPoint):
         z = shear_photoz_stack["z"]
         Nz = shear_photoz_stack["n"]
         nbin_source = Nz.shape[1]
+
         for i in range(nbin_source):
             if i == nbin_source - 1:
                 i = "all"

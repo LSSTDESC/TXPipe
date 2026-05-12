@@ -1,6 +1,10 @@
 # Stages to run
 stages:
-  - name: TXIngestDataPreview2
+  # - name: TXIngestDataPreview2
+  # - name: TXCutShearCatalog
+  #   aliases:
+  #       catalog: shear_catalog
+  #       cut_catalog: cut_shear_catalog
   # - name: TXSourceSelectorMetacal
   # - name: TXSourceSelectorMetadetect
   #   aliases:
@@ -11,7 +15,7 @@ stages:
   #   aliases:
   #       shear_catalog: cut_shear_catalog
   # - name: TXCustomMask
-  # - name: TXIngestDESIRandoms
+  - name: TXIngestDESIRandoms
   # - name: PZRailSummarizeSource    # Run the DIR method on the lens sample to find n(z)
   #   classname: PZRailSummarize
   #   aliases:
@@ -30,7 +34,7 @@ stages:
   #       weights_catalog: shear_catalog
   #       photoz_stack: shear_photoz_stack
   # - name: TXIngestRedmagic
-  # - name: TXDESIJointMask
+  - name: TXDESIJointMask
   - name: TXDESISelector
   - name: TXIngestDESI
   - name: TXTracerMetadata
@@ -50,8 +54,8 @@ stages:
   # - name: TXMapPlots
   # - name: TXRandomCat
   - name: TXJackknifeCenters
-  - name: TXTwoPoint
-    threads_per_process: 2
+  # - name: TXTwoPoint
+  #   threads_per_process: 2
   - name: TXDeltaSigma
   - name: TXDeltaSigmaPlots
   # - name: TXBlinding             # Blind the data following Muir et al
@@ -120,23 +124,25 @@ inputs:
     # See README for paths to download these files
     # shear_catalog: /scratch/gpfs/AAMON/desc_analysis/TXPipe/data/shear_catalog_desy3_unmasked_withfakez_v2.h5
     # shear_tomography_classifier: none
-    shear_catalog: /scratch/gpfs/AAMON/desc_analysis/catalogs/metacal_desy3.hdf5
+    shear_catalog: none #/scratch/gpfs/AAMON/desc_analysis/catalogs/metacal_desy3.hdf5
     shear_tomography_catalog: none
-    binned_shear_catalog: /scratch/gpfs/AAMON/desc_analysis/catalogs/binned_metacal_desy3.hdf5
+    binned_shear_catalog: /scratch/gpfs/AAMON/desc_analysis/catalogs/cut_binned_metacal_desy3.hdf5
     shear_photoz_stack: /scratch/gpfs/AAMON/desc_analysis/catalogs/shear_photoz_stack_metacal_desy3.hdf5
 
     # photometry_catalog: data/example/inputs/photometry_catalog.hdf5
     # photoz_trained_model: data/example/inputs/cosmoDC2_trees_i25.3.npy
     # exposures: data/example/inputs/exposures.hdf5
     # star_catalog: data/example/inputs/star_catalog.hdf5
-    random_cats: /scratch/gpfs/AAMON/desc_analysis/catalogs/random_cats.hdf5
-    binned_random_catalog: /scratch/gpfs/AAMON/desc_analysis/catalogs/binned_randoms_bin0.hdf5
-    binned_random_catalog_sub: /scratch/gpfs/AAMON/desc_analysis/catalogs/random_cats.hdf5
+    desi_random_catalog: /scratch/gpfs/AAMON/desc_analysis/catalogs/BGS_ANY_SGC_0_clustering.ran.fits
+    # random_cats: /scratch/gpfs/AAMON/desc_analysis/catalogs/random_cats.hdf5
+    # binned_random_catalog: /scratch/gpfs/AAMON/desc_analysis/catalogs/binned_randoms_bin0.hdf5
+    # binned_random_catalog_sub: /scratch/gpfs/AAMON/desc_analysis/catalogs/random_cats.hdf5
 
     spectroscopic_catalog: None
-    desi_catalog: /scratch/gpfs/AAMON/desc_analysis/catalogs/LRG_SGC_clustering.dat.fits
+    desi_catalog: /scratch/gpfs/AAMON/desc_analysis/catalogs/BGS_ANY_SGC_clustering.dat.fits
     # mask should be already a combination of source and lens.
-    mask: /scratch/gpfs/AAMON/desc_analysis/catalogs/dp2_23p5_combined_mask_nmin=500_nside=512.hdf5
+    desi_mask: /scratch/gpfs/AAMON/desc_analysis/catalogs/mask_BGS_ANY_SGC_clustering.h5
+    shear_mask: /scratch/gpfs/AAMON/desc_analysis/catalogs/desy3_mask.h5
     # This file comes with the code
     fiducial_cosmology: data/fiducial_cosmology.yml
     # spectroscopic_catalog: data/example/inputs/mock_spectroscopic_catalog.hdf5

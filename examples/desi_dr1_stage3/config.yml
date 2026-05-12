@@ -41,6 +41,12 @@ TXIngestDESI:
     lens_zbin_edges: [0.0, 3.0]
     dz: 0.001
 
+TXIngestDESIRandoms:
+    lens_zbin_edges: [0.0, 3.0]
+    ra_col: RA
+    dec_col: DEC
+    z_col: Z
+
 TXDESISelector:
     ra_col: RA
     dec_col: DEC
@@ -50,9 +56,13 @@ TXDESISelector:
     zmin: 0.0
 
 TXDeltaSigma:
+    source_bins: [0,1,2,3] # no non-tomograhpic redshift distribution.
     lens_bins: [0]
     lens_source_sep: 0.1
     photoz: True
+    r_min: 0.35
+    r_max: 70.0
+    nbins: 15
     lower_bin_edge: [0.0, 0.358, 0.631, 0.872]
     source_cat_w_col: w
     lens_cat_w_col: w_sys

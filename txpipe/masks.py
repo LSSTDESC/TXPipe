@@ -567,17 +567,83 @@ class TXDESIJointMask(TXJointMask):
 
 
 class TXCutCatalog(PipelineStage):
+    """
+    Cut a catalog to the footprint defined by an input mask, and write out the cut catalog.
+
+    Subclasses can override `catalog_input_name`, `catalog_output_name`, and the
+    `config_options` defaults to handle different catalog types.
+    """
+
     name = "TXCutCatalog"
     inputs = [
         ("catalog", HDFFile),
         ("mask", MapsFile),
     ]
-    outputs = [
-        ("cut_catalog", HDFFile),
-    ]
+    outputs = [("cut_catalog", HDFFile)]
+    config_options = {
+        "chunk_rows": StageParameter(int, 100000, msg="Number of rows to read per chunk."),
+        "catalog_group": StageParameter(str, "catalog", msg="HDF5 group name in the input catalog."),
+        "ra_col": StageParameter(str, "ra", msg="RA column name."),
+        "dec_col": StageParameter(str, "dec", msg="Dec column name."),
+    }
+
+    catalog_input_name = "catalog"
+    catalog_output_name = "cut_catalog"
 
     def run(self):
+        import healpy as hp
+        import h5py
 
         with self.open_input("mask", wrapper=True) as f:
-            self.mask = f.read_mask("mask")
-            self.mask_nside = f.read_map_info("mask")["nside"]
+            mask = f.read_mask("mask", returnbool=True)
+            nside = f.read_map_info("mask")["nside"]
+
+        group_name = self.config["catalog_group"]
+        ra_col = self.config["ra_col"]
+        dec_col = self.config["dec_col"]
+        chunk_rows = self.config["chunk_rows"]
+
+        in_path = self.get_input(self.catalog_input_name)
+        out_path = self.get_output(self.catalog_output_name)
+
+        with h5py.File(in_path, "r") as f_in, h5py.File(out_path, "w") as f_out:
+            g_in = f_in[group_name]
+            n_total = g_in[ra_col].size
+
+            # First pass: collect indices of objects inside the mask footprint
+            selected = []
+            for start in range(0, n_total, chunk_rows):
+                end = min(start + chunk_rows, n_total)
+                ra = g_in[ra_col][start:end]
+                dec = g_in[dec_col][start:end]
+                pix = hp.ang2pix(nside, ra, dec, lonlat=True, nest=True)
+                sel = mask[pix].astype(bool)
+                selected.append(np.where(sel)[0] + start)
+
+            selected = np.concatenate(selected)
+            print(f"Selected {len(selected)} / {n_total} objects inside mask")
+
+            # Write selected rows for every column in the group
+            g_out = f_out.create_group(group_name)
+            for col in g_in.keys():
+                g_out.create_dataset(col, data=g_in[col][selected])
+
+
+class TXCutShearCatalog(TXCutCatalog):
+    """
+    Cut a shear catalog to the footprint defined by an input mask.
+    """
+
+    name = "TXCutShearCatalog"
+    inputs = [
+        ("shear_catalog", HDFFile),
+        ("mask", MapsFile),
+    ]
+    outputs = [("cut_shear_catalog", HDFFile)]
+    config_options = {
+        **TXCutCatalog.config_options,
+        "catalog_group": StageParameter(str, "shear", msg="HDF5 group name in the input shear catalog."),
+    }
+
+    catalog_input_name = "shear_catalog"
+    catalog_output_name = "cut_shear_catalog"
