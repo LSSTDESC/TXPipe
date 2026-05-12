@@ -308,6 +308,8 @@ class TXDeltaSigma(TXTwoPoint):
         if self.comm is not None:
             # Gather results from all ranks to the root rank
             results = self.comm.gather(results, root=0)
+            # flatten back into a single list. I always forget this
+            results = [r for sublist in results for r in sublist]
 
         # Only the root process saves the output file.
         if self.rank != 0:
