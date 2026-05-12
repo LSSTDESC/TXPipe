@@ -39,6 +39,7 @@ class TXDeltaSigma(TXTwoPoint):
         "lower_bin_edge": StageParameter(list, [0.0, 0.358, 0.631, 0.872], msg="Lower edge of the source redshift bins to use for dSigma measurement, only used if photoz=True"),
         "source_cat_w_col": StageParameter(str, "weight", msg="Source catalog weight column name."),
         "lens_cat_w_col": StageParameter(str, "weight", msg="Lens catalog weight column name."),
+        "n_jobs": StageParameter(int, 1, msg="Number of multiprocessing processes to use"),
     }
 
     def run(self):
@@ -90,9 +91,11 @@ class TXDeltaSigma(TXTwoPoint):
                 f"Computing excess surface density for source = {source_bin}, lens = {lens_bin}, "
                 f"with {len(source_table)} sources, {len(lens_table)} lenses, {len(randoms_table)} randoms"
             )
-
-            dsigma.precompute.precompute(lens_table, source_table, table_n=source_n_of_z, bins=bins, cosmology=cosmo)#, lens_source_cut=self.config["lens_source_sep"])
-            dsigma.precompute.precompute(randoms_table, source_table, table_n=source_n_of_z, bins=bins, cosmology=cosmo)#, lens_source_cut=self.config["lens_source_sep"])
+            progress_bar = self.rank == 0
+            n_jobs = self.config["n_jobs"]
+            
+            dsigma.precompute.precompute(lens_table, source_table, table_n=source_n_of_z, bins=bins, cosmology=cosmo, progress_bar=progress_bar, n_jobs=n_jobs)#, lens_source_cut=self.config["lens_source_sep"])
+            dsigma.precompute.precompute(randoms_table, source_table, table_n=source_n_of_z, bins=bins, cosmology=cosmo, progress_bar=progress_bar, n_jobs=n_jobs)#, lens_source_cut=self.config["lens_source_sep"])
 
             # stack to get the excess surface density Delta(Sigma)
             result = dsigma.stacking.excess_surface_density(
