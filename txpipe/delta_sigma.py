@@ -91,8 +91,8 @@ class TXDeltaSigma(TXTwoPoint):
                 f"with {len(source_table)} sources, {len(lens_table)} lenses, {len(randoms_table)} randoms"
             )
 
-            dsigma.precompute.precompute(lens_table, source_table, table_n=source_n_of_z, bins=bins, cosmology=cosmo, lens_source_cut=self.config["lens_source_sep"])
-            dsigma.precompute.precompute(randoms_table, source_table, table_n=source_n_of_z, bins=bins, cosmology=cosmo, lens_source_cut=self.config["lens_source_sep"])
+            dsigma.precompute.precompute(lens_table, source_table, table_n=source_n_of_z, bins=bins, cosmology=cosmo)#, lens_source_cut=self.config["lens_source_sep"])
+            dsigma.precompute.precompute(randoms_table, source_table, table_n=source_n_of_z, bins=bins, cosmology=cosmo)#, lens_source_cut=self.config["lens_source_sep"])
 
             # stack to get the excess surface density Delta(Sigma)
             result = dsigma.stacking.excess_surface_density(
