@@ -434,6 +434,12 @@ class TXDeltaSigmaPlots(PipelineStage):
         nbin_source = sacc_data.metadata["nbin_source"]
         nbin_lens = sacc_data.metadata["nbin_lens"]
 
+        if sacc_data.has_covariance():
+            cov = sacc_data.covariance.dense
+        else:
+            cov = None
+
+
         # Plot in r coordinates
         nbin_source = sacc_data.metadata["nbin_source"]
         nbin_lens = sacc_data.metadata["nbin_lens"]
@@ -447,5 +453,13 @@ class TXDeltaSigmaPlots(PipelineStage):
                     axes[s, l].grid()
                     x = sacc_data.get_tag("rp", tracers=(f"source_{s}", f"lens_{l}"))
                     y = sacc_data.get_mean(tracers=(f"source_{s}", f"lens_{l}"))
-                    axes[s, l].plot(x, y * np.array(x),'.')
+                    if cov is not None:
+                        index = sacc_data.indices(tracers=(f"source_{s}", f"lens_{l}"))
+                        cov_block = cov[index][:, index]
+                        error = np.sqrt(np.diag(cov_block))
+                        axes[s, l].errorbar(x, y * np.array(x), yerr=error * np.array(x), fmt='.')
+                    else:
+                        axes[s, l].plot(x, y * np.array(x), '.')
+                    axes[s, l].set_ylim(0, None)
+                    axes[s, l].set_xscale("log")
             plt.subplots_adjust(hspace=0.3, wspace=0.3)
