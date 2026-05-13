@@ -40,6 +40,7 @@ class TXDeltaSigma(TXTwoPoint):
         "source_cat_w_col": StageParameter(str, "weight", msg="Source catalog weight column name."),
         "lens_cat_w_col": StageParameter(str, "weight", msg="Lens catalog weight column name."),
         "n_jobs": StageParameter(int, 1, msg="Number of multiprocessing processes to use"),
+        "n_jackknife": StageParameter(int, 0, msg="Number of jackknife regions to use for error estimation, 0 means no jackknife"),
     }
 
     def run(self):
@@ -97,11 +98,31 @@ class TXDeltaSigma(TXTwoPoint):
             dsigma.precompute.precompute(lens_table, source_table, table_n=source_n_of_z, bins=bins, cosmology=cosmo, progress_bar=progress_bar, n_jobs=n_jobs)#, lens_source_cut=self.config["lens_source_sep"])
             dsigma.precompute.precompute(randoms_table, source_table, table_n=source_n_of_z, bins=bins, cosmology=cosmo, progress_bar=progress_bar, n_jobs=n_jobs)#, lens_source_cut=self.config["lens_source_sep"])
 
+
             # stack to get the excess surface density Delta(Sigma)
             result = dsigma.stacking.excess_surface_density(
                 lens_table, table_r=randoms_table, random_subtraction=True, boost_correction=True, return_table=True
             )
-            results.append((source_bin, lens_bin, result))
+
+            # Optionally get the jackknife covariance.
+            # dSigma does this for us too. The stacking is the relatively
+            # fast bit so hopefully this is quite fast.
+            njack = self.config["n_jackknife"]
+            if njack > 0:
+                centers = dsigma.jackknife.compute_jackknife_fields(lens_table, njack)
+                dsigma.jackknife.compute_jackknife_fields(randoms_table, centers)
+
+                # Get the covariance 
+                delta_sigma_cov = dsigma.jackknife.jackknife_resampling(
+                    dsigma.stacking.excess_surface_density,
+                    lens_table,
+                    randoms_table
+                )
+            else:
+                delta_sigma_cov = None
+
+
+            results.append((source_bin, lens_bin, result, delta_sigma_cov))
 
         # restore numpy settings
         np.seterr(**numpy_error_settings)
@@ -345,7 +366,8 @@ class TXDeltaSigma(TXTwoPoint):
 
         # for each bin pair's results, add all the
         # measurements in the output data table
-        for source_bin, lens_bin, result in results:
+        cov_blocks = []
+        for source_bin, lens_bin, result, cov_block in results:
             tracer1 = f"source_{source_bin}"
             tracer2 = f"lens_{lens_bin}"
 
@@ -363,6 +385,12 @@ class TXDeltaSigma(TXTwoPoint):
                     random_subtraction=row["ds_r"],  # the contribution from the randoms that was subtracted off
                     n_pairs=row["n_pairs"],  # the number of pairs in the bin
                 )
+
+            if cov_block is not None:
+                cov_blocks.append(cov_block)
+
+        if cov_blocks:
+            s.add_covariance(cov_blocks)
 
         # Add provenance and potentially other metadata stuff.
         provenance = self.gather_provenance()
@@ -412,5 +440,5 @@ class TXDeltaSigmaPlots(PipelineStage):
                     axes[s, l].grid()
                     x = sacc_data.get_tag("rp", tracers=(f"source_{s}", f"lens_{l}"))
                     y = sacc_data.get_mean(tracers=(f"source_{s}", f"lens_{l}"))
-                    axes[s, l].plot(x, y * np.array(x))
+                    axes[s, l].plot(x, y * np.array(x),'.')
             plt.subplots_adjust(hspace=0.3, wspace=0.3)
