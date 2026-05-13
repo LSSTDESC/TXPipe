@@ -1,4 +1,3 @@
-from .twopoint import TXTwoPoint, TREECORR_CONFIG, SHEAR_POS
 from .base_stage import PipelineStage
 from .data_types import SACCFile, ShearCatalog, HDFFile, QPNOfZFile, FiducialCosmology, TextFile, PNGFile
 import numpy as np
@@ -6,7 +5,7 @@ from ceci.config import StageParameter
 import os
 
 
-class TXDeltaSigma(TXTwoPoint):
+class TXDeltaSigma(PipelineStage):
     """Compute Delta-Sigma, the excess surface density around lenses.
     This version uses the dSigma code.
     """
@@ -41,6 +40,7 @@ class TXDeltaSigma(TXTwoPoint):
         "lens_cat_w_col": StageParameter(str, "weight", msg="Lens catalog weight column name."),
         "n_jobs": StageParameter(int, 1, msg="Number of multiprocessing processes to use"),
         "n_jackknife": StageParameter(int, 0, msg="Number of jackknife regions to use for error estimation, 0 means no jackknife"),
+        "subsample": StageParameter(float, 0.0, msg="If set to non-zero, randomly subsample this fraction of the all the data sets for testing."),
     }
 
     def run(self):
@@ -184,6 +184,13 @@ class TXDeltaSigma(TXTwoPoint):
         table = Table()
         for dsigma_name, txpipe_name in names.items():
             table[dsigma_name] = group[txpipe_name][:]
+
+        # Optionally cut down to a random subsample.
+        # Faster for testing
+        frac = self.config["subsample"]
+        if frac > 0:
+            p = np.random.binomial(1, frac, size=len(table)).astype(bool)
+            table = table[p]
         return table
 
     def load_source_table(self, bin_index):
