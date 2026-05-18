@@ -452,14 +452,20 @@ class TXDeltaSigmaPlots(PipelineStage):
                     axes[s, l].set_ylabel(r"$R \cdot \Delta \Sigma [M_\odot / pc^2]$")
                     axes[s, l].grid()
                     x = sacc_data.get_tag("rp", tracers=(f"source_{s}", f"lens_{l}"))
+                    x = np.array(x)
                     y = sacc_data.get_mean(tracers=(f"source_{s}", f"lens_{l}"))
+                    raw_y = sacc_data.get_tag("raw_value", tracers=(f"source_{s}", f"lens_{l}"))
                     if cov is not None:
                         index = sacc_data.indices(tracers=(f"source_{s}", f"lens_{l}"))
                         cov_block = cov[index][:, index]
                         error = np.sqrt(np.diag(cov_block))
-                        axes[s, l].errorbar(x, y * np.array(x), yerr=error * np.array(x), fmt='.')
+                        axes[s, l].errorbar(x, y * x, yerr=error * x, fmt='+')
+                        # Also plot the raw value with boost/randoms
+                        axes[s, l].plot(x, raw_y * x, 'x')
                     else:
-                        axes[s, l].plot(x, y * np.array(x), '.')
+                        axes[s, l].plot(x, y * x, '+')
+                        axes[s, l].plot(x, raw_y * x, 'x')
                     axes[s, l].set_ylim(0, None)
                     axes[s, l].set_xscale("log")
-            plt.subplots_adjust(hspace=0.3, wspace=0.3)
+            plt.subplots_adjust(hspace=0.05, wspace=0.05)
+            plt.tight_layout()
