@@ -1,6 +1,6 @@
 from ..base_stage import PipelineStage
 from ..data_types import ShearCatalog, PhotometryCatalog, HDFFile, FileCollection
-from .lsst import process_metadetect_data
+from .lsst import process_metadetect_data, sanitize
 from ceci.config import StageParameter
 from ..utils.hdf_tools import h5py_shorten, repack
 from ..utils.splitters import MetaDetectSplitter
@@ -8,7 +8,7 @@ import numpy as np
 import os
 import pyarrow.parquet as pq
 
-# The tract values are listed in table 2 of that paper:
+# All TRACT INFORMATION SHOULD BE MOVED ELSEWHERE
 DP1_COSMOLOGY_FIELDS = [
     "EDFS",
     "ECDFS",
@@ -67,12 +67,12 @@ DP1_SURVEY_PROPERTIES = {
 }
 
 
-class TXIngestMetaDetect(PipelineStage):
+class TXIngestRubinMetaDetect(PipelineStage):
     """
     Initial ingestion of the Rubin MetaDetect catalog
     """
 
-    name = "TXIngestMetaDetect"
+    name = "TXIngestRubinMetaDetect"
     inputs = []
     outputs = [
         ("shear_catalog", ShearCatalog),
@@ -305,18 +305,6 @@ class TXIngestMetaDetect(PipelineStage):
                 k[name].append(col)  #NOT SURE THIS WORKS EITHER TBD
 
 
-def sanitize(data):
-    """
-    Convert unicode arrays into types that h5py can save
-    """
-    # convert unicode to strings
-    if data.dtype.kind == "U":
-        data = data.astype("S")
-    # convert dates to integers
-    elif data.dtype.kind == "M":
-        data = data.astype(int)
-
-    return data
 
 # Outstanding issues! 
 # - 1 we don't have a fixed length on the things we add to the seperate variants, hence try append? need to figure out if it works
