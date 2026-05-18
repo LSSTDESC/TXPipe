@@ -143,7 +143,8 @@ stages:
     threads_per_process: 128
 
   # Plot the correlations functions
-  - name: TXTwoPointPlots
+  - name: TXTwoPointPlotsTheory
+  - name: TXTwoPointTheoryReal   # compute theory using CCL to save in sacc file and plot later
 
   # Pretend to blind the two-point functions
   - name: TXNullBlinding
