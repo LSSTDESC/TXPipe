@@ -8,6 +8,8 @@ from .data_types import (
     PhotometryCatalog,
     FitsFile,
     MapsFile,
+    ParquetFile,
+    DataFile
 )
 from .utils import LensNumberDensityStats, Splitter, rename_iterated
 from .binning import build_tomographic_classifier, apply_classifier, read_training_data
@@ -289,7 +291,7 @@ class TXBaseLensSelector(PipelineStage):
         lens_gals[lens_mask] = 1
 
         return lens_gals
-
+    
     def select_lens_maglim(self, phot_data):
         band = self.config["maglim_band"]
         limit = self.config["maglim_limit"]
@@ -608,7 +610,7 @@ class TXLensCatalogSplitter(PipelineStage):
         extra_cols = [c for c in self.config["extra_cols"] if c]
 
         # Regular columns.
-        cols = ["ra", "dec", "weight", "comoving_distance"]
+        cols = ["ra", "dec", "weight", "comoving_distance", "z"]
 
         # Object we use to make the separate lens bins catalog
         cat_output = self.open_output(self.get_binned_lens_name(), parallel=True)
@@ -683,6 +685,7 @@ class TXLensCatalogSplitter(PipelineStage):
             d = np.zeros(len(a))
             d[z > 0] = pyccl.comoving_radial_distance(cosmo, a[z > 0])
             data["comoving_distance"] = d
+            data["z"] = z
             yield s, e, data
 
 
@@ -804,6 +807,166 @@ class TXTruthLensCatalogSplitterWeighted(TXTruthLensCatalogSplitter):
         )
 
         return self.add_redshifts(iterator)
+
+class TXDESISelector(PipelineStage):
+    """
+    Select lens galaxies from a DESI spectroscopic FITS catalog.
+
+    Reads a raw DESI FITS catalog and applies:
+    TODO: ADJUST NECESSARY CUTS FOR REAL DATA
+      - Redshift range cut
+      - Optional survey mask
+
+    Outputs a standardized FITS file consumed by TXIngestDESI.
+    """
+
+    name = "TXDESISelector"
+    parallel = False
+
+    outputs = [
+        ("desi_catalog_selected", FitsFile),
+    ]
+
+    config_options = {
+        "chunk_rows": StageParameter(int, 100_000, msg="Rows per chunk."),
+        "zmin": StageParameter(float, 0.0, msg="Minimum spectroscopic redshift."),
+        "zmax": StageParameter(float, 3.0, msg="Maximum spectroscopic redshift."),
+        "mag_band": StageParameter(str, "r", msg="Band to apply magnitude limits in."),
+        "apply_mask": StageParameter(bool, False, msg="Apply survey mask from the mask input."),
+        "ra_col": StageParameter(str, "ra", msg="RA column name in the DESI catalog."),
+        "dec_col": StageParameter(str, "dec", msg="Dec column name in the DESI catalog."),
+        "z_col": StageParameter(str, "redshift", msg="Spectroscopic redshift column name."),
+        "w_col": StageParameter(str, "weight", msg="Weight column name."),
+        "bands": StageParameter(str, "", msg="Band labels for output magnitudes (one char each)."),
+    }
+
+    inputs = [
+        ("desi_catalog", FitsFile),
+        ("mask", MapsFile),
+    ]
+
+    def run(self):
+        self.bands = self.config["bands"]
+        ra_col = self.config["ra_col"]
+        dec_col = self.config["dec_col"]
+        z_col = self.config["z_col"]
+        w_col = self.config["w_col"]
+
+        if self.config["apply_mask"]:
+            with self.open_input("mask", wrapper=True) as f:
+                self.mask = f.read_mask("mask")
+                self.mask_nside = f.read_map_info("mask")["nside"]
+                # self.mask_fmt = f.read_map_info("mask")["nest"]
+                # print(self.mask_fmt)
+        else:
+            self.mask = self.mask_nside = None
+
+        if len(self.bands) == 0:
+            out_cols = {name: [] for name in ["ra", "dec", "redshift", "weight"]}
+        else:
+            out_cols = {name: [] for name in ["ra", "dec", "redshift", "weight"] + [f"mag_{b}" for b in self.bands]}
+
+        n_total = 0
+        n_selected = 0
+
+        for s, e, data in self.data_iterator():
+            sel = self._apply_cuts(data)
+            n_chunk = int(sel.sum())
+            n_total += data[ra_col].size
+            n_selected += n_chunk
+
+            print(f"Rows {s:,}-{e:,}: selected {n_chunk:,} / {data[ra_col].size:,}")
+
+            if n_chunk == 0:
+                continue
+
+            out_cols["ra"].append(data[ra_col][sel])
+            out_cols["dec"].append(data[dec_col][sel])
+            out_cols["redshift"].append(data[z_col][sel])
+            out_cols["weight"].append(self._get_weights(data, sel, n_chunk, w_col))
+
+            if len(self.bands) > 0:
+                for b in self.bands:
+                    out_cols[f"mag_{b}"].append(data[f"mag_{b}_lsst"][sel])
+
+        print(f"Total selected: {n_selected:,} / {n_total:,}")
+
+        from astropy.table import Table
+        table = Table({name: np.concatenate(chunks) for name, chunks in out_cols.items()})
+        table.write(self.get_output("desi_catalog_selected"), overwrite=True)
+
+    def _get_weights(self, data, sel, n_selected, w_col):
+        return data[w_col][sel]
+
+    def data_iterator(self):
+        chunk_rows = self.config["chunk_rows"]
+        ra_col = self.config["ra_col"]
+        dec_col = self.config["dec_col"]
+        z_col = self.config["z_col"]
+        w_col = self.config["w_col"]
+        cols = [ra_col, dec_col, z_col, w_col]
+        yield from self.iterate_fits("desi_catalog", 1, cols, chunk_rows)
+
+    def _apply_cuts(self, data):
+        ra_col = self.config["ra_col"]
+        dec_col = self.config["dec_col"]
+        z_col = self.config["z_col"]
+
+        n = data[ra_col].size
+        sel = np.ones(n, dtype=bool)
+
+        z = data[z_col]
+        sel &= (z >= self.config["zmin"]) & (z < self.config["zmax"])
+
+        if self.mask is not None:
+            import healpy as hp
+            pix = hp.ang2pix(self.mask_nside, data[ra_col], data[dec_col], lonlat=True, nest=True)
+            sel &= self.mask[pix] != hp.UNSEEN
+
+        return sel
+
+
+class TXDESIMockSelector(TXDESISelector):
+    """
+    Select lens galaxies from a DESI mock Parquet catalog.
+
+    Identical cuts to TXDESISelector but reads a Parquet file and assigns
+    unit weights (mocks carry no per-object weight column).
+    """
+
+    name = "TXDESIMockSelector"
+
+    inputs = [
+        ("desi_catalog", ParquetFile),
+        ("mask", MapsFile),
+    ]
+
+    config_options = {
+        **TXDESISelector.config_options,
+    }
+    # w_col is unused for mocks; keep it in config_options for compatibility
+    # but override _get_weights to return ones instead.
+
+    def _get_weights(self, data, sel, n_selected, w_col):
+        return np.ones(n_selected)
+
+    def data_iterator(self):
+        chunk_rows = self.config["chunk_rows"]
+        ra_col = self.config["ra_col"]
+        dec_col = self.config["dec_col"]
+        z_col = self.config["z_col"]
+        cols = [ra_col, dec_col, z_col] + [f"mag_{b}_lsst" for b in self.bands]
+
+        from pyarrow.parquet import ParquetFile as PQFile
+        fn = self.get_input("desi_catalog")
+        start = 0
+        with PQFile(fn) as f:
+            for batch in f.iter_batches(columns=cols, batch_size=chunk_rows):
+                data = {name: batch[name].to_numpy(zero_copy_only=False) for name in cols}
+                n = len(data[cols[0]])
+                end = start + n
+                yield start, end, data
+                start = end
 
 
 if __name__ == "__main__":
