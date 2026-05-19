@@ -459,7 +459,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         # This class includes all the cutting and calibration, both for
         # estimator and selection biases
         binnedShear = MeanShearInBins(
-            f"{shear_prefix}s2n",
+            f"s2n",
             snr_edges,
             delta_gamma,
             cut_source_bin=True,
@@ -522,7 +522,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         T_edges = self.get_bin_edges("T")
 
         binnedShear = MeanShearInBins(
-            f"{shear_prefix}T",
+            f"T",
             T_edges,
             delta_gamma,
             cut_source_bin=True,
@@ -590,7 +590,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
             m_edges = self.get_bin_edges(f"mag_{band}")
 
             binnedShear[f"{band}"] = MeanShearInBins(
-                f"{shear_prefix}mag_{band}",
+                f"mag_{band}",
                 m_edges,
                 delta_gamma,
                 cut_source_bin=True,
