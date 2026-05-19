@@ -1119,7 +1119,7 @@ class TXGalaxyStarShear(PipelineStage):
 
             # Get the base catalog for metadetect
             if cat_type == "metadetect":
-                g = g["00"]
+                g = g["ns"]
 
             ra = g["ra"][:][mask]
             dec = g["dec"][:][mask]
