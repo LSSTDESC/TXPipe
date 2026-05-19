@@ -73,7 +73,7 @@ class ShearCatalog(HDFFile):
 
     def get_size(self):
         if self.catalog_type == "metadetect":
-            return self.file["shear/00/ra"].size
+            return self.file["shear/ns/ra"].size
         else:
             return self.file["shear/ra"].size
 
