@@ -55,7 +55,7 @@ class MeanShearInBins:
                 # for all 5 variants. We just want the unsheared on
                 # here.
                 w = w[0]
-                weight = data["00/weight"][w]
+                weight = data["ns/weight"][w]
             else:
                 weight = data["weight"][w]
     
