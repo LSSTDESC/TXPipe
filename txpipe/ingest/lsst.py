@@ -94,6 +94,7 @@ def process_metadetect_data(data):
             "psf_g2": var_data["gauss_psfReconvolved_g1"],
             "psf_T_mean": var_data["gauss_psfReconvolved_T"],
             "flags": var_data["gauss_shape_flags"], # TO BE ADDRESSED!
+            "weight": np.ones_like(var_data["ra"]),
         }
         for band in "gri": # For DP2, we only expect 4 bands
             f = var_data[f"{band}_pgaussFlux"]
