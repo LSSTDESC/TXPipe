@@ -292,7 +292,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         delta_gamma = self.config["delta_gamma"]
 
         psf_g_edges = self.get_bin_edges("psf_g1")
-        shear_prefix = "00/" if self.config["shear_catalog_type"] == "metadetect" else ""
+        shear_prefix = "ns/" if self.config["shear_catalog_type"] == "metadetect" else ""
 
         p1 = MeanShearInBins(
             f"{shear_prefix}psf_g1",
@@ -391,7 +391,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         delta_gamma = self.config["delta_gamma"]
 
         psf_T_edges = self.get_bin_edges("psf_T_mean")
-        shear_prefix = "00/" if self.config["shear_catalog_type"] == "metadetect" else ""
+        shear_prefix = "ns/" if self.config["shear_catalog_type"] == "metadetect" else ""
 
         binnedShear = MeanShearInBins(
             f"{shear_prefix}psf_T_mean",
@@ -451,7 +451,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         # Parameters of the binning in SNR
         shear_catalog_type = self.config["shear_catalog_type"]
-        shear_prefix = "00/" if shear_catalog_type == "metadetect" else ""
+        shear_prefix = "ns/" if shear_catalog_type == "metadetect" else ""
         delta_gamma = self.config["delta_gamma"]
 
         snr_edges = self.get_bin_edges("s2n")
@@ -516,7 +516,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         from scipy import stats
 
         shear_catalog_type = self.config["shear_catalog_type"]
-        shear_prefix = "00/" if shear_catalog_type == "metadetect" else ""
+        shear_prefix = "ns/" if shear_catalog_type == "metadetect" else ""
         delta_gamma = self.config["delta_gamma"]
 
         T_edges = self.get_bin_edges("T")
@@ -580,7 +580,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         from scipy import stats
 
         shear_catalog_type = self.config["shear_catalog_type"]
-        shear_prefix = "00/" if shear_catalog_type == "metadetect" else ""
+        shear_prefix = "ns/" if shear_catalog_type == "metadetect" else ""
         delta_gamma = self.config["delta_gamma"]
         nbins = self.config["nbins"]
 
@@ -719,9 +719,9 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 g2 = data["g2"]
                 w = data["weight"]
             elif cat_type == "metadetect":
-                g1 = data["00/g1"]
-                g2 = data["00/g2"]
-                w = data["00/weight"]
+                g1 = data["ns/g1"]
+                g2 = data["ns/g2"]
+                w = data["ns/weight"]
             elif cat_type == "lensfit":
                 dec = data["dec"]
                 g1 = data["g1"]
@@ -790,7 +790,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         delta_gamma = self.config["delta_gamma"]
         shear_catalog_type = self.config["shear_catalog_type"]
-        shear_prefix = "00/" if shear_catalog_type == "metadetect" else ""
+        shear_prefix = "ns/" if shear_catalog_type == "metadetect" else ""
         bins = 10
         edges = np.logspace(1, 3, bins + 1)
         mids = 0.5 * (edges[1:] + edges[:-1])
@@ -979,7 +979,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         mid = 0.5 * (edges[1:] + edges[:-1])
         width = edges[1] - edges[0]
         bands = self.config["bands"]
-        shear_prefix = "00/" if self.config["shear_catalog_type"] == "metadetect" else ""
+        shear_prefix = "ns/" if self.config["shear_catalog_type"] == "metadetect" else ""
         nband = len(bands)
         full_hists = [np.zeros(size, dtype=int) for b in bands]
         source_hists = [np.zeros(size, dtype=int) for b in bands]
