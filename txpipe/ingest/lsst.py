@@ -76,7 +76,6 @@ def process_metadetect_data(data):
             "ra": var_data["ra"],
             "dec": var_data["dec"],
             "id": var_data["shearObjectId"],
-            "metaStep": var_data["metaStep"].astype("S"), #might not be needed
             "object_mask_fraction": var_data["mfrac"],
             #"n_epoch": var_data["nEpochCell"],
             "g1": var_data["gauss_g1"],
@@ -94,7 +93,7 @@ def process_metadetect_data(data):
             "psf_g2": var_data["gauss_psfReconvolved_g1"],
             "psf_T_mean": var_data["gauss_psfReconvolved_T"],
             "flags": var_data["gauss_shape_flags"], # TO BE ADDRESSED!
-            "weight": np.ones_like(var_data["ra"]),
+            "weight": 1 / (0.5 * (var_data["gauss_g1_g1_Cov"] + var_data["gauss_g2_g2_Cov"])),
         }
         for band in "gri": # For DP2, we only expect 4 bands
             f = var_data[f"{band}_pgaussFlux"]
