@@ -42,7 +42,7 @@ class MeanShearInBins:
         
         # Optionally cut down to the source sample only
         if self.cut_source_bin:
-            if self.config["shear_catalog_type"] == "metaddetect":
+            if self.shear_catalog_type == "metadetect":
                 w & data[f"bin_{self.x_name[:2]}"] != -1
             else:
                 w &= data["bin"] != -1
