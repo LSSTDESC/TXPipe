@@ -39,10 +39,13 @@ class MeanShearInBins:
 
         # select objects in bin i of the x variable.
         w = (x > self.limits[i]) & (x < self.limits[i + 1])
-
+        
         # Optionally cut down to the source sample only
         if self.cut_source_bin:
-            w &= data["bin"] != -1
+            if self.config["shear_catalog_type"] == "metaddetect":
+                w & data[f"bin_{self.x_name[:2]}"] != -1
+            else:
+                w &= data["bin"] != -1
         return np.where(w)[0]
 
     def add_data(self, data):
