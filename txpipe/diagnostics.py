@@ -715,7 +715,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
             if data is None:
                 break
 
-            qual_cut = data["bin"] != -1
+            #qual_cut = data["bin"] != -1
 
             if cat_type == "metacal":
                 g1 = data["g1"]
