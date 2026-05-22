@@ -238,7 +238,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
             ] + [f"mag_{b}" for b in self.config["bands"]]
 
         if self.config["shear_catalog_type"] == "metadetect":
-            shear_tomo_cols = ["bin", "bin_ns", "bin_1p", "bin_1m", "bin_2p", "bin_2m"]
+            shear_tomo_cols = ["bin_ns", "bin_1p", "bin_1m", "bin_2p", "bin_2m"]
         else:
             shear_tomo_cols = ["bin"]
 
@@ -794,6 +794,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         delta_gamma = self.config["delta_gamma"]
         shear_catalog_type = self.config["shear_catalog_type"]
         shear_prefix = "ns/" if shear_catalog_type == "metadetect" else ""
+        bin_type = "bin_ns" if self.config["shear_catalog_type"] == "metadetect" else "bin"
         bins = 10
         edges = np.logspace(1, 3, bins + 1)
         mids = 0.5 * (edges[1:] + edges[:-1])
@@ -805,7 +806,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
             if data is None:
                 break
 
-            qual_cut = data["bin"] != -1
+            qual_cut = data[bin_type] != -1
 
             b1 = np.digitize(data[f"{shear_prefix}s2n"][qual_cut], edges) - 1
 
@@ -983,6 +984,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         width = edges[1] - edges[0]
         bands = self.config["bands"]
         shear_prefix = "ns/" if self.config["shear_catalog_type"] == "metadetect" else ""
+        bin_type = "bin_ns" if self.config["shear_catalog_type"] == "metadetect" else "bin"
         nband = len(bands)
         full_hists = [np.zeros(size, dtype=int) for b in bands]
         source_hists = [np.zeros(size, dtype=int) for b in bands]
@@ -1001,7 +1003,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
                     count = w.sum()
                     h1[i] += count
 
-                    w &= data["bin"] >= 0
+                    w &= data[bin_type] >= 0
                     count = w.sum()
                     h2[i] += count
 
