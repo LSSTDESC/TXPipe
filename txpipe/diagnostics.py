@@ -237,7 +237,10 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 "m",
             ] + [f"mag_{b}" for b in self.config["bands"]]
 
-        shear_tomo_cols = ["bin"]
+        if self.config["shear_catalog_type"] == "metadetect":
+            shear_tomo_cols = ["bin_ns", "bin_1p", "bin_1m", "bin_2p", "bin_2m"]
+        else:
+            shear_tomo_cols = ["bin"]
 
         if self.config["shear_catalog_type"] == "metacal":
             more_iters = ["shear_tomography_catalog", "response", ["R_gamma"]]
