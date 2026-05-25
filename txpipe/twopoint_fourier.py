@@ -754,13 +754,13 @@ class TXTwoPointFourier(PipelineStage):
             with self.open_input("shear_photoz_stack", wrapper=True) as f:
                 for i in range(nbin_source):
                     z, Nz = f.get_bin_n_of_z(i)
-                    sacc_data.add_tracer("NZ", f"source_{i}", z, Nz)
+                    sacc_data.add_tracer("NZ", f"source_{i}", z, Nz, quantity="galaxy_shear")
 
         if nbin_lens > 0:
             with self.open_input("lens_photoz_stack", wrapper=True) as f:
                 for i in range(nbin_lens):
                     z, Nz = f.get_bin_n_of_z(i)
-                    sacc_data.add_tracer("NZ", f"lens_{i}", z, Nz)
+                    sacc_data.add_tracer("NZ", f"lens_{i}", z, Nz, quantity="galaxy_density")
 
         return sacc_data
 
@@ -777,6 +777,10 @@ class TXTwoPointFourier(PipelineStage):
         Cdd = sacc.standard_types.galaxy_density_cl
 
         S = tracer_sacc.copy()
+        # Companion noise SACC: same structure as S but stores the noise N_ell
+        # that was subtracted from each raw bandpower.  Saved as *_noise.sacc
+        # alongside the main output so it can be loaded and inspected directly.
+        S_noise = tracer_sacc.copy()
 
         # We have saved the results in a big list.  Each entry contains a single
         # bin pair and spectrum type, but many data points at different angles.
@@ -820,20 +824,35 @@ class TXTwoPointFourier(PipelineStage):
                     n_ell=noise[i],
                     window_ind=i,
                 )
+                # Mirror into the noise SACC so it can be loaded independently
+                S_noise.add_data_point(
+                    d.corr_type,
+                    (tracer1, tracer2),
+                    noise[i],
+                    ell=d.l[i],
+                    window=win,
+                    i=d.i,
+                    j=d.j,
+                    window_ind=i,
+                )
 
             # Add n_ell_coupled to tracer metadata. This will work as far as
             # the coupled noise is constant
             tr = S.tracers[tracer1]
+            tr_noise = S_noise.tracers[tracer1]
             if (tracer1 == tracer2) and ("n_ell_coupled" not in tr.metadata):
                 if self.config["analytic_noise"] is False:
                     # If computed through simulations, it might be better to
                     # take the mean since, for now, only a float can be passed
                     i = 0 if "lens" in tracer1 else 2
-                    tr.metadata["n_ell_coupled"] = np.mean(d.noise_coupled)
+                    n_ell_coupled_val = np.mean(d.noise_coupled)
                 else:
                     # Save the last element because the first one is zero for
                     # shear
-                    tr.metadata["n_ell_coupled"] = d.noise_coupled[-1]
+                    n_ell_coupled_val = d.noise_coupled[-1]
+
+                tr.metadata["n_ell_coupled"] = n_ell_coupled_val
+                tr_noise.metadata["n_ell_coupled"] = n_ell_coupled_val
 
                 if self.config["gaussian_sims_factor"] != [1.0] and "lens" in tracer1:
                     print(tracer1)
@@ -841,7 +860,9 @@ class TXTwoPointFourier(PipelineStage):
                         "ATTENTION: We are multiplying the coupled noise saved in the sacc file by the gaussian sims factor."
                     )
                     print("Original noise:", d.noise_coupled)
-                    tr.metadata["n_ell_coupled"] *= self.config["gaussian_sims_factor"][int(tracer1[-1])] ** 2
+                    factor2 = self.config["gaussian_sims_factor"][int(tracer1[-1])] ** 2
+                    tr.metadata["n_ell_coupled"] *= factor2
+                    tr_noise.metadata["n_ell_coupled"] *= factor2
 
         # Save provenance information
         provenance = self.gather_provenance()
@@ -873,6 +894,16 @@ class TXTwoPointFourier(PipelineStage):
         # And we're all done!
         output_filename = self.get_output(output)
         S.save_fits(output_filename, overwrite=True)
+
+        # Save companion noise SACC alongside the signal SACC.
+        # The noise values (decoupled N_ell per bandpower) are also stored as
+        # the 'n_ell' tag on each data point in the main SACC, but this
+        # companion file makes them directly loadable as a stand-alone spectrum.
+        noise_filename = output_filename.replace(".sacc", "_noise.sacc")
+        S_noise.metadata["description"] = "Noise N_ell subtracted from raw Cls (same bandpower grid as signal SACC)"
+        S_noise.metadata["analytic_noise"] = self.config["analytic_noise"]
+        S_noise.save_fits(noise_filename, overwrite=True)
+        print(f"Saved noise spectra to {noise_filename}")
 
 
 class TXTwoPointFourierCatalog(TXTwoPointFourier):

@@ -40,14 +40,14 @@ TXIngestParquetCatalog:
 
   # (b) Explicit list of files --------------------------------------------
   parquet_paths:
-    - /pscratch/sd/q/qhang/Flagship/dp2_mock_run_flagship_gold_test/24811/output_deredden_lsst_obs_cond_dp2.pq
-    - /pscratch/sd/q/qhang/Flagship/dp2_mock_run_flagship_gold_test/24812/output_deredden_lsst_obs_cond_dp2.pq
-    - /pscratch/sd/q/qhang/Flagship/dp2_mock_run_flagship_gold_test/24813/output_deredden_lsst_obs_cond_dp2.pq
-    - /pscratch/sd/q/qhang/Flagship/dp2_mock_run_flagship_gold_test/24814/output_deredden_lsst_obs_cond_dp2.pq
-    - /pscratch/sd/q/qhang/Flagship/dp2_mock_run_flagship_gold_test/24815/output_deredden_lsst_obs_cond_dp2.pq
-    - /pscratch/sd/q/qhang/Flagship/dp2_mock_run_flagship_gold_test/24816/output_deredden_lsst_obs_cond_dp2.pq
-    - /pscratch/sd/q/qhang/Flagship/dp2_mock_run_flagship_gold_test/24817/output_deredden_lsst_obs_cond_dp2.pq
-    - /pscratch/sd/q/qhang/Flagship/dp2_mock_run_flagship_gold_test/24818/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/dp2_mock_run_flagship_gold_test/24811/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/dp2_mock_run_flagship_gold_test/24812/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/dp2_mock_run_flagship_gold_test/24813/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/dp2_mock_run_flagship_gold_test/24814/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/dp2_mock_run_flagship_gold_test/24815/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/dp2_mock_run_flagship_gold_test/24816/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/dp2_mock_run_flagship_gold_test/24817/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/dp2_mock_run_flagship_gold_test/24818/output_deredden_lsst_obs_cond_dp2.pq
 
   # (c) Glob pattern (resolved alphabetically) ----------------------------
   # parquet_paths: data/inputs/catalog_*.parquet
@@ -71,7 +71,7 @@ TXTruthLensSelector:
   # Magnitude cut applied before bin selection (use -1 to disable)
   selection_type: maglim
   maglim_band: r
-  maglim_limit: 23.5
+  maglim_limit: 24.5
 
 
 # -----------------------------------------------------------------------------
@@ -149,7 +149,7 @@ TXLensNoiseMaps:
 # -----------------------------------------------------------------------------
 TXTwoPointFourier:
   # ell binning
-  ell_min: 100
+  ell_min: 10
   ell_max: 1500
   n_ell: 20
   ell_spacing: log       # 'log' or 'linear'
