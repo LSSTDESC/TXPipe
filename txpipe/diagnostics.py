@@ -332,7 +332,13 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         # Include a small shift to be able to see the g1 / g2 points on the plot
         dx = 0.1 * (psf_g_edges[1] - psf_g_edges[0])
-        idx = np.where(np.isfinite(mu1))[0]
+        idx = np.where(
+            np.isfinite(mu1) & np.isfinite(mu2) &
+            np.isfinite(mean11) & np.isfinite(mean12) &
+            np.isfinite(mean21) & np.isfinite(mean22) &
+            np.isfinite(std11) & np.isfinite(std12) &
+            np.isfinite(std21) & np.isfinite(std22)
+        )[0]
 
         slope11, intercept11, mc_cov = fit_straight_line(mu1[idx], mean11[idx], std11[idx])
         std_err11 = mc_cov[0, 0] ** 0.5
@@ -419,7 +425,10 @@ class TXSourceDiagnosticPlots(PipelineStage):
             return
 
         dx = 0.05 * (psf_T_edges[1] - psf_T_edges[0])
-        idx = np.where(np.isfinite(mu))[0]
+        idx = np.where(
+            np.isfinite(mu) & np.isfinite(mean1) & np.isfinite(mean2) &
+            np.isfinite(std1) & np.isfinite(std2)
+        )[0]
         slope1, intercept1, cov1 = fit_straight_line(mu[idx], mean1[idx], std1[idx])
         std_err1 = cov1[0, 0] ** 0.5
         line1 = slope1 * mu + intercept1
@@ -485,7 +494,10 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         # Get the error on the mean
         dx = 0.05 * (snr_edges[1] - snr_edges[0])
-        idx = np.where(np.isfinite(mu))[0]
+        idx = np.where(
+            np.isfinite(mu) & np.isfinite(mean1) & np.isfinite(mean2) &
+            np.isfinite(std1) & np.isfinite(std2)
+        )[0]
         slope1, intercept1, mc_cov = fit_straight_line(mu[idx], mean1[idx], std1[idx])
         std_err1 = mc_cov[0, 0] ** 0.5
         line1 = slope1 * mu + intercept1
@@ -548,7 +560,10 @@ class TXSourceDiagnosticPlots(PipelineStage):
             return
 
         dx = 0.05 * (T_edges[1] - T_edges[0])
-        idx = np.where(np.isfinite(mu))[0]
+        idx = np.where(
+            np.isfinite(mu) & np.isfinite(mean1) & np.isfinite(mean2) &
+            np.isfinite(std1) & np.isfinite(std2)
+        )[0]
         slope1, intercept1, mc_cov = fit_straight_line(mu[idx], mean1[idx], y_err=std1[idx])
         std_err1 = mc_cov[0, 0] ** 0.5
         line1 = slope1 * mu + intercept1
