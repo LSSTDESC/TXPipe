@@ -363,8 +363,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.plot(mu1, line12, color="blue", label=r"$m=%.2e \pm %.2e$" % (slope12, std_err12))
         plt.plot(mu1, [0] * len(line11), color="black")
 
-        plt.errorbar(mu1 + dx, mean11, std11, label="g1", fmt="s", markersize=5, color="red")
-        plt.errorbar(mu1 - dx, mean12, std12, label="g2", fmt="o", markersize=5, color="blue")
+        plt.errorbar(mu1[idx] + dx, mean11[idx], std11[idx], label="g1", fmt="s", markersize=5, color="red")
+        plt.errorbar(mu1[idx] - dx, mean12[idx], std12[idx], label="g2", fmt="o", markersize=5, color="blue")
 
         plt.xlabel("PSF g1")
         plt.ylabel("Mean g")
@@ -376,8 +376,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.plot(mu2, line22, color="blue", label=r"$m=%.2e \pm %.2e$" % (slope22, std_err22))
         plt.plot(mu2, [0] * len(line22), color="black")
 
-        plt.errorbar(mu2 + dx, mean21, std21, label="g1", fmt="s", markersize=5, color="red")
-        plt.errorbar(mu2 - dx, mean22, std22, label="g2", fmt="o", markersize=5, color="blue")
+        plt.errorbar(mu2[idx] + dx, mean21[idx], std21[idx], label="g1", fmt="s", markersize=5, color="red")
+        plt.errorbar(mu2[idx] - dx, mean22[idx], std22[idx], label="g2", fmt="o", markersize=5, color="blue")
         plt.xlabel("PSF g2")
         plt.ylabel("Mean g")
         plt.legend()
