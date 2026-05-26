@@ -352,7 +352,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         std_err21 = mc_cov[0, 0] ** 0.5
         line21 = slope21 * (mu2) + intercept21
 
-        slope22, intercept22, mc_cov = fit_straight_line(mu2[idx], mean22[idx], y_err=std22)
+        slope22, intercept22, mc_cov = fit_straight_line(mu2[idx], mean22[idx], y_err=std22[idx])
         std_err22 = mc_cov[0, 0] ** 0.5
         line22 = slope22 * (mu2) + intercept22
 
