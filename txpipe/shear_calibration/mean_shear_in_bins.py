@@ -29,7 +29,10 @@ class MeanShearInBins:
             raise ValueError(f"Please specify metacal, metadetect, lensfit or hsc for shear_catalog in config.")
 
     def selector(self, data, i):
-        x = data[self.x_name]
+        if self.shear_catalog_type == "metadetect" and self.x_name.startswith("ns/"):
+            x = data[self.x_name[3:]]
+        else:
+            x = data[self.x_name]
 
         # Hack to convert from pixel^2 to arcsec^2 for KIDS sizes, which are in pixel^2, but the cuts are in arcsec^2.
         # We should fix this on ingestion
@@ -43,7 +46,7 @@ class MeanShearInBins:
         # Optionally cut down to the source sample only
         if self.cut_source_bin:
             if self.shear_catalog_type == "metadetect":
-                w & data[f"bin_{self.x_name[:2]}"] != -1
+                w & data[f"bin_ns"] != -1
             else:
                 w &= data["bin"] != -1
         return np.where(w)[0]
