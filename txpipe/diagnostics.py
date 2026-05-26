@@ -626,7 +626,13 @@ class TXSourceDiagnosticPlots(PipelineStage):
         for band in self.config["bands"]:
             dx = 0.05 * (m_edges[1] - m_edges[0])
 
-            idx = np.where(np.isfinite(stat[f"mu_{band}"]))[0]
+            idx = np.where(
+                np.isfinite(stat[f"mu_{band}"]) &
+                np.isfinite(stat[f"mean1_{band}"]) &
+                np.isfinite(stat[f"mean2_{band}"]) &
+                np.isfinite(stat[f"std1_{band}"]) &
+                np.isfinite(stat[f"std2_{band}"])
+            )[0]
 
             stat[f"slope1_{band}"], stat[f"intercept1_{band}"], stat[f"mc_cov_{band}"] = fit_straight_line(
                 stat[f"mu_{band}"][idx], stat[f"mean1_{band}"][idx], y_err=stat[f"std1_{band}"][idx]
