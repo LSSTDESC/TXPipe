@@ -10,6 +10,7 @@ from .source_selection import (
     TXSourceSelectorMetacal,
     TXSourceSelectorLensfit,
     TXSourceSelectorMetadetect,
+    TXSourceSelectorAnacal,
 )
 from .lens_selector import TXMeanLensSelector
 from .photoz_stack import TXPhotozStack, TXPhotozPlot, TXTruePhotozStack
