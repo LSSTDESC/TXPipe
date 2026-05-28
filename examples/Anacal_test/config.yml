@@ -6,4 +6,5 @@ global:
 
 TXIngestAnacal:
     bands: griz
-    
+    collections: "u/xiangchl/dp1/a360_anacal"
+    cosmology_tracts_only: False

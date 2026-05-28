@@ -1,7 +1,7 @@
 from .base import TXIngestCatalogFits
 from ..data_types import ShearCatalog, PhotometryCatalog, HDFFile, FileCollection, FitsFile
 from .lsst import process_photometry_data, process_shear_data
-from .dp1_details import DP1_COSMOLOGY_FIELDS, DP1_TRACTS, DP1_COSMOLOGY_TRACTS, DP1_FIELD_CENTERS, DP1_SURVEY_PROPERTIES
+from .dp1_details import DP1_COSMOLOGY_FIELDS, DP1_TRACTS, DP1_COSMOLOGY_TRACTS, DP1_FIELD_CENTERS, DP1_SURVEY_PROPERTIES, ALL_TRACTS
 from ceci.config import StageParameter
 import numpy as np
 from ..utils import nanojansky_err_to_mag_ab, nanojansky_to_mag_ab
