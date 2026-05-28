@@ -153,13 +153,13 @@ class TXIngestAnacal(TXIngestCatalogFits):
                 "mask_value",
                 f"{prefix}_e1",
                 f"{prefix}_e2",
-                f"{prefix}_m0",
-                f"{prefix}_m2"
+                f"{prefix}_m00",
+                f"{prefix}_m20"
             ])
         cols += ["dwsel"+ suffix for suffix in ["_dg1", "_dg2"]]
         cols += [
                  prefix +delta + suffix 
-                 for delta in ["_de1", "_de2", "_dm0", "_dm2"]
+                 for delta in ["_de1", "_de2", "_dm00", "_dm20"]
                  for suffix in ["_dg1", "_dg2"]
                  ]
         bands = self.config["bands"]
