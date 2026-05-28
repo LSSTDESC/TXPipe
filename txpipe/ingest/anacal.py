@@ -72,7 +72,7 @@ class TXIngestAnacal(TXIngestCatalogFits):
         else:
             tracts = ALL_TRACTS
 
-        n = self.get_catalog_size(butler, "ShearObject")
+        n = self.get_catalog_size(butler, "deep_coadd_cell_anacal_merged")
         #shear_outfile = self.open_output("shear_catalog")
         #group = shear_outfile.create_group("shear")
         #shear_outfile["shear"].attrs["catalog_type"] = "Anacal"
@@ -89,7 +89,7 @@ class TXIngestAnacal(TXIngestCatalogFits):
                 print(f"Skipping chunk {i + 1} / {n_chunks} since tract {tract} is not selected")
                 continue
 
-            d = butler.get('object_shear_all',
+            d = butler.get("deep_coadd_cell_anacal_merged", #This name might change, we should double check with Xiangchong / PO
                            dataId=ref.dataId,
                            parameters={"columns": input_columns}
                            )
