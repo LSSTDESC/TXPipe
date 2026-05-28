@@ -99,7 +99,7 @@ class TXIngestAnacal(TXIngestCatalogFits):
                 print(f"Skipping chunk {i + 1} / {n_chunks} since it is empty")
                 continue
 
-            shear_data = self.process_anacal_data(d)
+            shear_data = self.process_anacal_shear_data(d)
             if not created_files:
                 created_files = True
                 shear_outfile = self.setup_output("shear_catalog", "shear",
