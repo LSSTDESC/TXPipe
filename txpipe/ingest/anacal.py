@@ -80,7 +80,7 @@ class TXIngestAnacal(TXIngestCatalogFits):
         created_files = False
         data_set_refs = butler.query_datasets('object_shear_all')
         n_chunks = len(data_set_refs)
-        input_columns = self.get_input_columns()
+        input_columns = self.setup_input()
 
         shear_start = 0
         for i, ref in enumerate(data_set_refs):
