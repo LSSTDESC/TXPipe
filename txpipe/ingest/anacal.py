@@ -1,6 +1,7 @@
 from .base import TXIngestCatalogFits
 from ..data_types import ShearCatalog, PhotometryCatalog, HDFFile, FileCollection, FitsFile
 from .lsst import process_photometry_data, process_shear_data
+from .dp1_details import DP1_COSMOLOGY_FIELDS, DP1_TRACTS, DP1_COSMOLOGY_TRACTS, DP1_FIELD_CENTERS, DP1_SURVEY_PROPERTIES
 from ceci.config import StageParameter
 import numpy as np
 from ..utils import nanojansky_err_to_mag_ab, nanojansky_to_mag_ab
@@ -8,7 +9,7 @@ from ..utils.hdf_tools import h5py_shorten, repack
 
 class TXIngestAnacal(TXIngestCatalogFits):
     """
-    Ingest an anacal catalog!, 
+    Ingest an anacal catalog!,
     """
 
     name = "TXIngestAnacal"
@@ -19,6 +20,14 @@ class TXIngestAnacal(TXIngestCatalogFits):
         ("shear_catalog", ShearCatalog),
     ]
     config_options = {
+        "use_butler": StageParameter(bool, True,
+                                     msg="Should be left on, unless you got an external file, in that case knock yourself out!"),
+        "butler_config_file": StageParameter(str,
+                                             "/global/cfs/cdirs/lsst/production/gen3/rubin/DP1/repo/butler.yaml",
+                                             msg="Path to the LSST butler config file."),
+        "cosmology_tracts_only": StageParameter(bool, True, msg="Use only cosmology tracts."),
+        "select_field": StageParameter(str, "", msg="Field to select (overrides cosmology_tracts_only)."),
+        "collections": StageParameter(str, "LSSTComCam/DP1", msg="Butler collections to use."),
         "tracts": StageParameter(str, "", msg="Comma-separated list of tracts to use (empty for all)."),
         "prefix": StageParameter(str, "fpfs", msg="prefix indicating the method used to calculate the "),
         "bands": StageParameter(str, "grizy", msg="string of flux bands"),
@@ -26,6 +35,93 @@ class TXIngestAnacal(TXIngestCatalogFits):
     }
 
     def run(self):
+        if self.config["use_butler"]:
+            self.butler_run()
+        else:
+            self.file_run()
+        
+        print("repacking files")
+        repack(self.get_output("shear_catalog"))
+
+    def butler_run(self):
+        error_msg = (
+            "The LSST Science Pipelines are not installed in this environment, "
+            "or are not configured correctly to access the data. "
+            "See the note in the file example/dp1/ingest.yml for how to set "
+            "this up on NERSC."
+        )
+        try:
+            from lsst.daf.butler import Butler
+        except:
+            raise ImportError(error_msg)
+        
+        # Configure and create the butler. There are several ways to do this,
+        # Here we use a central collective butler yaml file from NERSC.
+
+        butler_config_file = self.config["butler_config_file"]
+        collections = self.config["collections"]
+        try:
+            butler = Butler(butler_config_file, collections=collections)
+        except:
+            raise RuntimeError(error_msg)
+
+        if self.config["select_field"]:
+            tracts = DP1_TRACTS[self.config["select_field"]]
+        elif self.config["cosmology_tracts_only"]:
+            tracts = DP1_COSMOLOGY_TRACTS
+        else:
+            tracts = ALL_TRACTS
+
+        n = self.get_catalog_size(butler, "ShearObject")
+        #shear_outfile = self.open_output("shear_catalog")
+        #group = shear_outfile.create_group("shear")
+        #shear_outfile["shear"].attrs["catalog_type"] = "Anacal"
+
+        created_files = False
+        data_set_refs = butler.query_datasets('object_shear_all')
+        n_chunks = len(data_set_refs)
+        input_columns = self.get_input_columns()
+
+        shear_start = 0
+        for i, ref in enumerate(data_set_refs):
+            tract = ref.dataId["tract"]
+            if tract not in tracts:
+                print(f"Skipping chunk {i + 1} / {n_chunks} since tract {tract} is not selected")
+                continue
+
+            d = butler.get('object_shear_all',
+                           dataId=ref.dataId,
+                           parameters={"columns": input_columns}
+                           )
+            chunk_size = len(d)
+
+            if chunk_size == 0:
+                print(f"Skipping chunk {i + 1} / {n_chunks} since it is empty")
+                continue
+
+            shear_data = self.process_anacal_data(d)
+            if not created_files:
+                created_files = True
+                shear_outfile = self.setup_output("shear_catalog", "shear",
+                                                  shear_data, n)
+
+                shear_outfile["shear"].attrs["catalog_type"] = "Anacal"
+
+            shear_end = shear_start + len(shear_data["ra"])
+            self.write_output(shear_outfile, "shear", shear_data, shear_start,
+                              shear_end)
+
+            print(f"Processing chunk {i + 1} / {n_chunks} into rows {shear_start:,} - {shear_end:,}")
+            shear_start = shear_end
+
+        print("Trimming shear columns:")
+        for col in shear_data.keys():
+            print("    ", col)
+            h5py_shorten(shear_outfile["shear"], col, shear_end)
+
+        shear_outfile.close()
+
+    def file_run(self):
         tracts = self.config["tracts"]
 
         n, dtypes = self.get_meta("anacal_catalog")
@@ -46,7 +142,6 @@ class TXIngestAnacal(TXIngestCatalogFits):
             h5py_shorten(shear_outfile["shear"], col, len(shear_data["ra"]))
         
         shear_outfile.close()
-
 
     def setup_input(self):
         prefix = self.config["prefix"]
@@ -107,11 +202,11 @@ class TXIngestAnacal(TXIngestCatalogFits):
 
             if band == "i":
                 output["s2n"] = f / f_err
-            
+
             for d in ["_dg1", "_dg2"]:
                 dd = data[f"{band}_dflux_{s}"+d][:]
                 output[f"mag_{band}_{d}"] = nanojansky_to_mag_ab(dd)
-                
+
         return output
 
     def setup_output(self, tag, group, first_chunk, n):
@@ -130,3 +225,14 @@ class TXIngestAnacal(TXIngestCatalogFits):
                 col = col.filled(np.nan)
             g[name][start:end] = col
 
+    def get_catalog_size(self, butler, dataset_type):
+        import pyarrow.parquet
+
+        n = 0
+        for ref in butler.query_datasets(dataset_type):
+            uri = butler.getURI(ref)
+            if not uri.path.endswith(".parq"):
+                raise ValueError(f"Some data in dataset {dataset_type} was not in parquet format: {uri.path}")
+            with pyarrow.parquet.ParquetFile(uri.path) as f:
+                n += f.metadata.num_rows
+        return n
