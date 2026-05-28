@@ -9,3 +9,4 @@ TXIngestAnacal:
     collections: "u/xiangchl/dp1/a360_anacal"
     cosmology_tracts_only: False
     prefix: "fpfs1"
+    scale: "fpfs1"

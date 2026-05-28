@@ -145,6 +145,7 @@ class TXIngestAnacal(TXIngestCatalogFits):
 
     def setup_input(self):
         prefix = self.config["prefix"]
+        scale = self.config["scale"]
         cols = (
             [
                 "ra",
@@ -163,14 +164,18 @@ class TXIngestAnacal(TXIngestCatalogFits):
                  for suffix in ["_dg1", "_dg2"]
                  ]
         bands = self.config["bands"]
-        for i in [0, 2, 4]:
-            cols += [band + "_flux_gauss" + f"{i}" for band in bands]
-            cols += [band + "_flux_gauss" + f"{i}" + "_err" for band in bands]
-            cols += [
-                     band + "_dflux_gauss" + f"{i}" + suffix
-                     for band in bands
-                     for suffix in ["_dg1", "_dg2"]
-                     ]
+        cols += [band + "_flux_" + scale for band in bands]
+        cols += [band + "_flux_" + scale + "_err" for band in bands]
+        cols += [band + "_dflux" + scale + suffix for band in bands for suffix in ["_dg1", "_dg2"]]
+
+        # for i in [0, 2, 4]:
+        #     cols += [band + "_flux_" + scale + f"{i}" for band in bands]
+        #     cols += [band + "_flux_" + scale + f"{i}" + "_err" for band in bands]
+        #     cols += [
+        #              band + "_dflux_" + prefix + f"{i}" + suffix
+        #              for band in bands
+        #              for suffix in ["_dg1", "_dg2"]
+        #              ]
         return cols
     
     def process_anacal_shear_data(self, data):
