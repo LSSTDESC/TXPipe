@@ -63,7 +63,7 @@ class TXSourceSelectorAnacal(TXSourceSelectorBase):
         Prepare the output columns for the response values generated bby Anacal
         """
         outfile = super().setup_output()
-        n = outfile["count/counts"].size
+        n = outfile["tomography/bin"].size
         group = outfile.create_group("response")
         group.create_dataset("R", (n, 1, 1), dtype="f")
         return outfile
