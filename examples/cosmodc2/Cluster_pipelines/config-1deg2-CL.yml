@@ -8,7 +8,6 @@ TXSourceSelectorMetadetect:
     source_zbin_edges: [0.1, 3.0]
     chunk_rows: 100000
     true_z: false
-    shear_prefix: ''
 
     
 TXSourceTomography:

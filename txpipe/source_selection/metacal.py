@@ -41,9 +41,9 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
         just choosing which columns to read.
         """
         bands = self.config["bands"]
-        shear_cols = metacal_variants("mcal_T", "mcal_s2n", "mcal_g1", "mcal_g2", "mcal_flags", "weight")
-        shear_cols += ["ra", "dec", "mcal_psf_T_mean"]
-        shear_cols += band_variants(bands, "mcal_mag", "mcal_mag_err", shear_catalog_type="metacal")
+        shear_cols = metacal_variants("T", "s2n", "g1", "g2", "flags", "weight")
+        shear_cols += ["ra", "dec", "psf_T_mean"]
+        shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="metacal")
 
         if self.config["input_pz"]:
             shear_cols += metacal_variants("mean_z")
@@ -97,12 +97,12 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
 
     def compute_per_object_response(self, data):
         delta_gamma = self.config["delta_gamma"]
-        n = data["mcal_g1_1p"].size
+        n = data["g1_1p"].size
         R = np.zeros((n, 2, 2))
-        R[:, 0, 0] = (data["mcal_g1_1p"] - data["mcal_g1_1m"]) / delta_gamma
-        R[:, 0, 1] = (data["mcal_g1_2p"] - data["mcal_g1_2m"]) / delta_gamma
-        R[:, 1, 0] = (data["mcal_g2_1p"] - data["mcal_g2_1m"]) / delta_gamma
-        R[:, 1, 1] = (data["mcal_g2_2p"] - data["mcal_g2_2m"]) / delta_gamma
+        R[:, 0, 0] = (data["g1_1p"] - data["g1_1m"]) / delta_gamma
+        R[:, 0, 1] = (data["g1_2p"] - data["g1_2m"]) / delta_gamma
+        R[:, 1, 0] = (data["g2_1p"] - data["g2_1m"]) / delta_gamma
+        R[:, 1, 1] = (data["g2_2p"] - data["g2_2m"]) / delta_gamma
         return R
 
     def apply_simple_redshift_cut(self, data):

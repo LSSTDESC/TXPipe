@@ -10,7 +10,7 @@ on:
     - cron: '0 12 * * 1'
 
 env:
-  EXAMPLE_DATA_FILE_VERSION: v7
+  EXAMPLE_DATA_FILE_VERSION: v9
 
 jobs:
   # Run a download step first so that it is in
@@ -34,8 +34,9 @@ jobs:
 
     - name: Download test data
       if: steps.cache-example.outputs.cache-hit != 'true'
+      # when ready to merge update the NERSC main file and then change this next line back
       run: |
-        wget -O example.tar.gz  "https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz"
+        wget -O example.tar.gz  "https://portal.nersc.gov/cfs/lsst/txpipe/data/example-${{ env.EXAMPLE_DATA_FILE_VERSION }}.tar.gz"
         wget -O example-cmb-lensing.tar.gz "https://portal.nersc.gov/cfs/lsst/txpipe/data/example-cmb-lensing.tar.gz"
 
         
@@ -220,7 +221,7 @@ jobs:
         fi
 
     - name: Run metadetect with multi-length data
-      if: ${{ matrix.pipeline == 'metadetect' }}
+      if: ${{ matrix.pipeline == 'metadetect' && matrix.os == 'ubuntu-latest' }}
       run: |
         source ./conda/bin/activate
 

@@ -178,8 +178,8 @@ class MetacalCalculator(CalibrationCalculator):
         sel_2p = self.selector(data_2p, *args, **kwargs)
         sel_2m = self.selector(data_2m, *args, **kwargs)
 
-        g1 = data_00["mcal_g1"]
-        g2 = data_00["mcal_g2"]
+        g1 = data_00["g1"]
+        g2 = data_00["g2"]
         weight = data_00["weight"]
         weight1p = data_1p["weight"]
         weight1m = data_1m["weight"]
@@ -196,10 +196,10 @@ class MetacalCalculator(CalibrationCalculator):
         # We have four components, and want the weighted mean of each, which we use
         # the ParallelMean class to get
         w00 = weight[sel_00]
-        R00 = data_1p["mcal_g1"][sel_00] - data_1m["mcal_g1"][sel_00]
-        R01 = data_2p["mcal_g1"][sel_00] - data_2m["mcal_g1"][sel_00]
-        R10 = data_1p["mcal_g2"][sel_00] - data_1m["mcal_g2"][sel_00]
-        R11 = data_2p["mcal_g2"][sel_00] - data_2m["mcal_g2"][sel_00]
+        R00 = data_1p["g1"][sel_00] - data_1m["g1"][sel_00]
+        R01 = data_2p["g1"][sel_00] - data_2m["g1"][sel_00]
+        R10 = data_1p["g2"][sel_00] - data_1m["g2"][sel_00]
+        R11 = data_2p["g2"][sel_00] - data_2m["g2"][sel_00]
 
         # TODO: if there is a weight per variant would we use that here?
         # Not currently used though.

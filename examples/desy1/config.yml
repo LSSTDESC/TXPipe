@@ -59,7 +59,6 @@ TXSourceSelectorMetacal:
     max_rows: 1000
     delta_gamma: 0.02
     source_zbin_edges: [0.2, 0.43, 0.63, 0.90, 1.30]
-    shear_prefix: mcal_
 
 TXShearCalibration: {}
 TXTruthLensCatalogSplitter: {}
@@ -74,7 +73,6 @@ TXLensMaps:
 
 TXAuxiliarySourceMaps:
     flag_exponent_max: 8
-    psf_prefix: mcal_psf_
     nside: 128
 
 TXAuxiliaryLensMaps:
@@ -123,8 +121,6 @@ TXTwoPointTheoryReal: {}
 TXTwoPointPlots: {}    
     
 TXSourceDiagnosticPlots:
-    psf_prefix: mcal_psf_
-    shear_prefix: mcal_
     psfT_min: 0.04
     psfT_max: 0.36
     T_min: 0.04
@@ -186,7 +182,6 @@ TXDiagnosticMaps:
     npix_x: 60
     npix_y: 60
     depth_cut: 23.0
-    psf_prefix: mcal_psf_
 
 
 TXRealGaussianCovariance:

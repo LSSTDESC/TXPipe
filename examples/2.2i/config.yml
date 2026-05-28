@@ -101,7 +101,6 @@ TXLensMaps:
 TXAuxiliarySourceMaps:
     chunk_rows: 100000
     sparse: true
-    psf_prefix: psf_
 
 TXAuxiliaryLensMaps:
     chunk_rows: 100000
@@ -113,7 +112,6 @@ TXSimpleMask:
     bright_object_max: 30
 
 TXSourceDiagnosticPlots:
-    psf_prefix: mcal_psf_
 
 TXLensDiagnosticPlots: {}
 

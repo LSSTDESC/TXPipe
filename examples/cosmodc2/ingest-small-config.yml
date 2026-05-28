@@ -54,7 +54,6 @@ TXExternalLensNoiseMaps:
 TXAuxiliarySourceMaps:
     chunk_rows:  100000
     sparse:  True
-    psf_prefix:  psf_
 
 TXAuxiliaryLensMaps:
     chunk_rows:  100000
@@ -91,7 +90,6 @@ TXSourceSelectorMetacal:
     # source_zbin_edges: [0.25588604, 0.55455363, 0.91863365, 1.38232001, 2.] # 4 bins
     chunk_rows: 100000
     true_z: False
-    shear_prefix: mcal_
 
 TXSourceSelectorMetadetect:
     input_pz: False
@@ -104,7 +102,6 @@ TXSourceSelectorMetadetect:
     # source_zbin_edges: [0.25588604, 0.55455363, 0.91863365, 1.38232001, 2.] # 4 bins
     chunk_rows: 100000
     true_z: False
-    shear_prefix: ''
 
 
 TXSourceTomography:
@@ -118,8 +115,7 @@ TXRandomCat:
 TXJackknifeCenters:
     npatch: 40
 
-TXSourceDiagnosticPlots:
-    shear_prefix: mcal_
+TXSourceDiagnosticPlots: {}
 
 TXFourierGaussianCovariance:
     galaxy_bias: [1.404, 1.458, 1.693, 1.922, 2.133] # Tinker bias values

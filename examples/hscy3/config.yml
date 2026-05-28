@@ -132,8 +132,8 @@ TXSourceSelectorHSC:
     s2n_cut: 10.0
     max_rows: 10000000000
     source_zbin_edges: [0.5, 1.5, 2.5, 3.5, 4.5]
-    shear_prefix: ''
     shear_catalog_type: hsc
+
 TXSourceSelectorMetacal:
     input_pz: true
     true_z: false
@@ -143,7 +143,6 @@ TXSourceSelectorMetacal:
     max_rows: 10000000000
     delta_gamma: 0.02
     source_zbin_edges: [0.0, 0.2, 0.4, 0.6, 0.8]
-    shear_prefix: mcal_
     use_diagonal_response: true
 
 TXShearCalibration:
@@ -242,8 +241,6 @@ TXBlinding:
     delete_unblinded: true
 
 TXSourceDiagnosticPlots:
-    psf_prefix: mcal_psf_
-    shear_prefix: mcal_
     nbins: 20
     g_min: -0.01
     g_max: 0.01
@@ -267,7 +264,6 @@ TXDiagnosticMaps:
     npix_x: 60
     npix_y: 60
     depth_cut: 23.0
-    psf_prefix: mcal_psf_
 
 TXSourceMaps:
     sparse: true  # Generate sparse maps - faster if using small areas
@@ -291,7 +287,6 @@ TXDensityMaps:
 
 TXAuxiliarySourceMaps:
     flag_exponent_max: 8
-    psf_prefix: psf_
 
 TXAuxiliaryLensMaps:
     flag_exponent_max: 8

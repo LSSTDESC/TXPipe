@@ -47,7 +47,6 @@ class TXShearCalibration(PipelineStage):
         "shear_catalog_type": StageParameter(
             str, "", msg="Type of shear catalog (e.g., metadetect, metacal, lensfit, hsc)"
         ),
-        "shear_prefix": StageParameter(str, "", msg="Prefix for shear-related columns in the input catalog"),
     }
 
     def run(self):
@@ -60,13 +59,12 @@ class TXShearCalibration(PipelineStage):
         copy_redshift = self.config["copy_redshift"]
         z_name = self.config["redshift_name"]
 
-        shear_prefix = self.config["shear_prefix"]
         with self.open_input("shear_catalog", wrapper=True) as f:
-            bands = f.get_bands(shear_prefix)
+            bands = f.get_bands()
 
         # this is the names of the columns in the input catalog
         mag_cols_out = [f"mag_{b}" for b in bands] + [f"mag_err_{b}" for b in bands]
-        mag_cols_in = [f"{shear_prefix}{c}" for c in mag_cols_out]
+        mag_cols_in = mag_cols_out
 
         if self.rank == 0:
             print("Copying extra columns: ", extra_cols)
@@ -234,7 +232,7 @@ class TXShearCalibration(PipelineStage):
         if "true_g1" in d:
             prefix = "true"
         elif "mcal_g1" in d:
-            prefix = "mcal"
+            raise ValueError("The mcal_ prefix should have been removed in input catalogs by strip_mcal.py.")
         else:
             return
 

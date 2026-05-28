@@ -9,7 +9,7 @@ TXSourceSelectorMetadetect:
     # found approximately to split data into equal number counts
     # for selected objects
     source_zbin_edges: [0.0, 0.34, 0.53, 0.71, 0.96, 3.0]
-    shear_prefix: ''
+
 
 TXSourceTomography:
     bands: riz

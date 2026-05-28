@@ -75,6 +75,8 @@ class TXMetacalGCRInput(PipelineStage):
                 bands.append(b)
 
         # Columns that we will need.
+        # These are the input names; we strip off the mcal_ prefix
+        # for the output
         shear_cols = (
             [
                 "id",
@@ -99,7 +101,7 @@ class TXMetacalGCRInput(PipelineStage):
             photo_cols.append(f"snr_{band}_cModel")
 
         # For shear we just add a weight column, and the non-rounded PSF estimates
-        shear_out_cols = shear_cols + ["weight", "psf_g1", "psf_g2"]
+        shear_out_cols = shear_cols + ["weight"]
 
         # We want these in the input but not the output as we construct
         # other values from them instead
@@ -115,6 +117,9 @@ class TXMetacalGCRInput(PipelineStage):
         shear_output = None
         photo_output = None
 
+        # Remove the mcal_ prefix from the output names.
+        shear_out_cols = self.strip_mcal(shear_out_cols)
+
         # Loop through the data, as chunke natively by GCRCatalogs
         single_tract = self.config["single_tract"]
 
@@ -128,6 +133,7 @@ class TXMetacalGCRInput(PipelineStage):
             # Some columns have different names in input than output
             self.rename_columns(data)
             self.add_weight_column(data)
+            data = self.strip_mcal(data)
 
             # First chunk of data we use to set up the output
             # It is easier this way (no need to check types etc)
@@ -146,6 +152,12 @@ class TXMetacalGCRInput(PipelineStage):
         # All done!
         photo_output.close()
         shear_output.close()
+    
+    def strip_mcal(d):
+        if isinstance(d, list):
+            return [col.remove_prefix("mcal_") for col in d]
+        else:
+            return {k.remove_prefix("mcal_"): v for k, v in d.items()}
 
     def rename_columns(self, data):
         for band in "ugrizy":

@@ -45,7 +45,6 @@ TXExternalLensNoiseMaps:
 TXAuxiliarySourceMaps:
     chunk_rows:  100000
     sparse:  True
-    psf_prefix:  psf_
 
 TXAuxiliaryLensMaps:
     chunk_rows:  100000
@@ -76,7 +75,6 @@ TXSourceSelectorMetadetect:
     # these are not the actual bin-edges of the SRD nzs, but it doesnt matter because the input catalogs are assigned using this fake input.
     chunk_rows: 100000
     true_z: True
-    shear_prefix: ''
 
 TXSourceTomography:
     bands: riz #used for selection
@@ -89,8 +87,7 @@ TXRandomCat:
 TXJackknifeCenters:
     npatch: 200
 
-TXSourceDiagnosticPlots:
-    shear_prefix: mcal_
+TXSourceDiagnosticPlots: {}
 
 TXTwoPointTheoryFourier:
     galaxy_bias: [1.229, 1.362, 1.502, 1.648, 1.799]

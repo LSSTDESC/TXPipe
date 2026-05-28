@@ -75,7 +75,6 @@ TXSourceSelectorLensfit:
     max_rows: 1000
     delta_gamma: 0.02
     source_zbin_edges: [0.1, 0.5, 1.0, 2.0]
-    shear_prefix: ''
     input_m_is_weighted: true
 
 TXSourceTomography:
@@ -168,15 +167,11 @@ TXBlinding:
     delete_unblinded: true
 
 TXDiagnosticQuantiles:
-    psf_prefix: psf_
-    shear_prefix: ""
     nbins: 20
     bands: ri
 
 
 TXSourceDiagnosticPlots:
-    psf_prefix: psf_
-    shear_prefix: ''
     nbins: 20
     g_min: -0.5
     g_max: 0.5
@@ -189,8 +184,6 @@ TXSourceDiagnosticPlots:
     bands: ri
 
 TXLensDiagnosticPlots:
-    psf_prefix: psf_
-    shear_prefix: ''
     T_min: 0.5
     T_max: 1.0
     bands: ri
@@ -212,7 +205,6 @@ TXDiagnosticMaps:
     npix_x: 60
     npix_y: 60
     depth_cut: 21.5
-    psf_prefix: mcal_psf_
 
 TXSourceMaps: {}
 
@@ -220,7 +212,6 @@ TXLensMaps: {}
 
 TXAuxiliarySourceMaps:
     flag_exponent_max: 1
-    psf_prefix: psf_
 
 TXAuxiliaryLensMaps:
     bright_obj_threshold: 22.0 # The magnitude threshold for a object to be counted as bright
