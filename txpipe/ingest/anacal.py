@@ -166,7 +166,7 @@ class TXIngestAnacal(TXIngestCatalogFits):
         bands = self.config["bands"]
         cols += [band + "_flux_" + scale for band in bands]
         cols += [band + "_flux_" + scale + "_err" for band in bands]
-        cols += [band + "_dflux" + scale + suffix for band in bands for suffix in ["_dg1", "_dg2"]]
+        cols += [band + "_dflux_" + scale + suffix for band in bands for suffix in ["_dg1", "_dg2"]]
 
         # for i in [0, 2, 4]:
         #     cols += [band + "_flux_" + scale + f"{i}" for band in bands]
