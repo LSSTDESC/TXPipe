@@ -933,10 +933,10 @@ class AnaCalCalculator(CalibrationCalculator):
         e2_sel = e2[select]
         mask = mask_value[select] < 40
 
-        mask_p1 = mask & self.get_submask(m00, m20, dm00_dg1, dm20_dg1, +1)
-        mask_m1 = mask & self.get_submask(m00, m20, dm00_dg1, dm20_dg1, -1)
-        mask_p2 = mask & self.get_submask(m00, m20, dm00_dg2, dm20_dg2, +1)
-        mask_m2 = mask & self.get_submask(m00, m20, dm00_dg2, dm20_dg2, -1)
+        mask_p1 = mask & self.get_submask(m00[select], m20[select], dm00_dg1[select], dm20_dg1[select], +1)
+        mask_m1 = mask & self.get_submask(m00[select], m20[select], dm00_dg1[select], dm20_dg1[select], -1)
+        mask_p2 = mask & self.get_submask(m00[select], m20[select], dm00_dg2[select], dm20_dg2[select], +1)
+        mask_m2 = mask & self.get_submask(m00[select], m20[select], dm00_dg2[select], dm20_dg2[select], -1)
 
         self.sel_response_e1p1 += np.sum(weight[mask_p1] * e1_sel[mask_p1])
         self.sel_response_e1m1 += np.sum(weight[mask_m1] * e1_sel[mask_m1])
