@@ -703,7 +703,12 @@ class AnaCalibrator(MetaCalibrator):
         return calibrators
     
     def save(self, outfile, i):
-        outfile["response/R"][i] = self.R
-        outfile["counts/mean_e1"][i] = self.mu[0]
-        outfile["counts/mean_e2"][i] = self.mu[1]
+        if i == "2d":
+            outfile["response/R_2d"][0] = self.R
+            outfile["counts/mean_e1_2d"][0] = self.mu[0]
+            outfile["counts/mean_e2_2d"][0] = self.mu[1]
+        else:
+            outfile["response/R"][i] = self.R
+            outfile["counts/mean_e1"][i] = self.mu[0]
+            outfile["counts/mean_e2"][i] = self.mu[1]
 
