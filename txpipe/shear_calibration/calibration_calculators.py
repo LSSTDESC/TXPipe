@@ -1,6 +1,6 @@
 import numpy as np
 from .names import META_VARIANTS
-from .calibrators import MetaCalibrator, LensfitCalibrator, HSCCalibrator, MetaDetectCalibrator, NullCalibrator
+from .calibrators import MetaCalibrator, LensfitCalibrator, HSCCalibrator, MetaDetectCalibrator, NullCalibrator, AnaCalibrator
 from .utils import BinStats
 
 class _DataWrapper:
