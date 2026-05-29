@@ -703,7 +703,7 @@ class AnaCalibrator(MetaCalibrator):
         return calibrators
     
     def save(self, outfile, i):
-        outfile["respponse/R"][i] = self.R
+        outfile["response/R"][i] = self.R
         outfile["counts/mean_e1"][i] = self.mu[0]
         outfile["counts/mean_e2"][i] = self.mu[1]
 
