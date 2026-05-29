@@ -78,7 +78,7 @@ class TXSourceSelectorAnacal(TXSourceSelectorBase):
         return calculators
     
     def write_tomography(self, outfile, start, end, source_bin, R):
-        super().write_tomogrpahy(outfile, start, end, source_bin, R)
+        super().write_tomography(outfile, start, end, source_bin, R)
         group = outfile["response"]
         group["R"][start:end] = R
 
