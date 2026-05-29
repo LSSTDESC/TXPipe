@@ -938,10 +938,10 @@ class AnaCalCalculator(CalibrationCalculator):
         mask_p2 = mask & self.get_submask(m00[select], m20[select], dm00_dg2[select], dm20_dg2[select], +1)
         mask_m2 = mask & self.get_submask(m00[select], m20[select], dm00_dg2[select], dm20_dg2[select], -1)
 
-        self.sel_response_e1p1 += np.sum(weight[mask_p1] * e1_sel[mask_p1])
-        self.sel_response_e1m1 += np.sum(weight[mask_m1] * e1_sel[mask_m1])
-        self.sel_response_e2p2 += np.sum(weight[mask_p2] * e2_sel[mask_p2])
-        self.sel_response_e2m2 += np.sum(weight[mask_m2] * e2_sel[mask_m2])
+        self.sel_response_e1p1 += np.sum(wsel[mask_p1] * e1_sel[mask_p1])
+        self.sel_response_e1m1 += np.sum(wsel[mask_m1] * e1_sel[mask_m1])
+        self.sel_response_e2p2 += np.sum(wsel[mask_p2] * e2_sel[mask_p2])
+        self.sel_response_e2m2 += np.sum(wsel[mask_m2] * e2_sel[mask_m2])
 
         # Next we find the means part needed for the Shape response,
         # and the Weight-bias response
