@@ -640,6 +640,7 @@ class AnaCalibrator(MetaCalibrator):
         if mu_is_weighted:
             self.mu = np.array(mu)
         else:
+            self.mu = np.array(mu) / R
             assert("Anacal needs an already calibrated mu.")
     
     def apply(self, g1, g2, weights, substract_mean=True):
@@ -664,6 +665,12 @@ class AnaCalibrator(MetaCalibrator):
         else:
             g1, g2 =  weights * [g1, g2] / self.R - self.mu[:, np.newaxis]
         return g1, g2
+    
+    def calibrate_variance_to_sigma_e(self, var_e):
+        return np.sqrt(0.5 *np.sum(var_e)) / self.R
+    
+    def calibrate_sigma(self, sigma):
+        return np.array(sigma) / self.R
     
     @classmethod
     def load(cls, tomo_file):
