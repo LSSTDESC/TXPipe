@@ -900,7 +900,7 @@ class AnaCalCalculator(CalibrationCalculator):
         sel: array
             The indicies of the objects selected from this chunk of data
         """
-
+        data = _DataWrapper(data, "")
         select = self.selector(data, *args, **kwargs)
 
         e1 = data["e1"]
