@@ -929,6 +929,8 @@ class AnaCalCalculator(CalibrationCalculator):
 
         # Next we calculate the cuts per variation masks
         wsel = weight[select]
+        e1_sel = e1[select]
+        e2_sel = e2[select]
         mask = mask_value[select] < 40
 
         mask_p1 = mask & self.get_submask(m00, m20, dm00_dg1, dm20_dg1, +1)
@@ -936,10 +938,10 @@ class AnaCalCalculator(CalibrationCalculator):
         mask_p2 = mask & self.get_submask(m00, m20, dm00_dg2, dm20_dg2, +1)
         mask_m2 = mask & self.get_submask(m00, m20, dm00_dg2, dm20_dg2, -1)
 
-        self.sel_response_e1p1 += np.sum(weight[mask_p1]*e1[mask_p1])
-        self.sel_response_e1m1 += np.sum(weight[mask_m1]*e1[mask_m1])
-        self.sel_response_e2p2 += np.sum(weight[mask_p2]*e2[mask_p2])
-        self.sel_response_e2m2 += np.sum(weight[mask_m2]*e2[mask_m2])
+        self.sel_response_e1p1 += np.sum(weight[mask_p1] * e1_sel[mask_p1])
+        self.sel_response_e1m1 += np.sum(weight[mask_m1] * e1_sel[mask_m1])
+        self.sel_response_e2p2 += np.sum(weight[mask_p2] * e2_sel[mask_p2])
+        self.sel_response_e2m2 += np.sum(weight[mask_m2] * e2_sel[mask_m2])
 
         # Next we find the means part needed for the Shape response,
         # and the Weight-bias response
