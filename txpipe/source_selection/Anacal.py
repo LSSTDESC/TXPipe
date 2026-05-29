@@ -46,7 +46,8 @@ class TXSourceSelectorAnacal(TXSourceSelectorBase):
                       "dm00_dg1",
                       "dm00_dg2",
                       "dm20_dg1",
-                      "dm20_dg2"
+                      "dm20_dg2",
+                      "s2n"
                       ]
         shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="Anacal")
 
@@ -70,12 +71,41 @@ class TXSourceSelectorAnacal(TXSourceSelectorBase):
 
     def setup_response_calculators(self, nbin_source):
         delta_gamma = self.config["delta_gamma"]
-        calculators = [AnaCalCalculator(select_tomographic_weak_lensing_sample, delta_gamma) for i in range(nbin_source)]
-        calculators.append(AnaCalCalculator(select_weak_lensing_sample, delta_gamma))
+        calculators = [AnaCalCalculator(select_anacal_tomographic_weak_lensing_sample, delta_gamma) for i in range(nbin_source)]
+        calculators.append(AnaCalCalculator(select_anacal_weak_lensing_sample, delta_gamma))
         return calculators
     
     def write_tomography(self, outfile, start, end, source_bin, R):
         super().write_tomogrpahy(outfile, start, end, source_bin, R)
         group = outfile["response"]
         group["R"][start:end] = R
-    
+
+def select_anacal_weak_lensing_sample(data, config, calling_from_select=False):
+    s2n_cut = config["s2n_cut"]
+    verbose = config["verbose"]
+
+    flag = data["mask_value"]
+    s2n = data["s2n"]
+
+    n0 = len(flag)
+    sel = flag == 0
+    f1 = sel.sum() / n0
+
+    sel &= s2n > s2n_cut
+    f2 = sel.sum() / n0
+
+    sel &= data["zbin"] >= 0
+    f3 = sel.sum() / n0
+
+    if verbose and calling_from_select:
+        print(f"Tomo selection {f1:.2%} flag, {f2:.2%} SNR, ", end ="")
+    elif verbose:
+        print(f"2D selection {f1:.2%} flag, {f2:.2%} SNR, {f3:.2%} any z bin")
+        print("total 2D", sel.sum())
+    return sel
+
+def select_anacal_tomographic_weak_lensing_sample(data, config, bin_index):
+    zbin = data["zbin"]
+    sel = select_anacal_weak_lensing_sample(data, config, calling_from_select=True)
+    sel &= zbin == bin_index
+    return sel

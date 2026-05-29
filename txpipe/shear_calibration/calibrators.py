@@ -58,6 +58,8 @@ class Calibrator:
             subcls = LensfitCalibrator
         elif cat_type == "hsc":
             subcls = HSCCalibrator
+        elif cat_type == "Anacal":
+            subcls = AnaCalibrator
         else:
             raise ValueError(f"Unknown catalog type {cat_type} in tomo file")
 
