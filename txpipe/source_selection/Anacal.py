@@ -47,7 +47,9 @@ class TXSourceSelectorAnacal(TXSourceSelectorBase):
                       "dm00_dg2",
                       "dm20_dg1",
                       "dm20_dg2",
-                      "s2n"
+                      "s2n",
+                      "weight_dg1",
+                      "weight_dg2"
                       ]
         shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="Anacal")
 
