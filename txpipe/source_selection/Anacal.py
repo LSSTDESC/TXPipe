@@ -69,6 +69,7 @@ class TXSourceSelectorAnacal(TXSourceSelectorBase):
         n = outfile["tomography/bin"].size
         group = outfile.create_group("response")
         group.create_dataset("R", (n, 1, 1), dtype="f")
+        group.create_dataset("R_2d", (1,), dtype="f")
         return outfile
 
     def setup_response_calculators(self, nbin_source):
