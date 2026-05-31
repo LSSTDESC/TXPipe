@@ -1,5 +1,6 @@
 # =============================================================================
 # TXPipe pipeline: parquet ingestion → density maps → null tests → C_ell
+# Cardinal mock run (54 tiles from dp2_mock_run_cardinal_gold_test)
 # =============================================================================
 #
 # Stages executed (in dependency order, resolved automatically by ceci):
@@ -11,13 +12,11 @@
 #   5. TXDensityMaps            – convert n_gal → overdensity δ maps
 #   6. TXTracerMetadata         – collate n_eff, sigma_e, n(z) metadata
 #   7. TXLSSDensityNullTests    – large-scale structure density null tests
-#   8. TXLensNoiseMaps          – shot-noise realisations for the lens bins
+#   8. TXLensNoiseMaps          – shot-noise realisations for C_ell errors
 #   9. TXTwoPointFourier        – measure all C_ell (pos-pos, shear-pos, shear-shear)
 #
 # NOTE: This pipeline is lens-only (no source/shear bins are selected).
 #       TXTwoPointFourier will therefore only compute the pos-pos (gg) spectra.
-#       Add TXSourceSelector + TXSourceMaps + TXSourceNoiseMaps + a shear
-#       photoz stack to enable shear-shear and galaxy-shear cross-spectra.
 # =============================================================================
 
 stages:
@@ -31,9 +30,9 @@ stages:
   # --------------------------------------------------------------------------
   - name: TXTruthLensSelector      # select lens bins from redshift_true
 
-  - name: TXTruthLensCatalogSplitter   # split photometry_catalog into per-bin lens catalogs 
+  - name: TXTruthLensCatalogSplitter   # split photometry_catalog into per-bin lens catalogs
 
-  - name: TXLSSWeightsUnit # compute large-scale structure weights to mitigate density fluctuations from systematics 
+  - name: TXLSSWeightsUnit # compute large-scale structure weights to mitigate density fluctuations from systematics
 
   # --------------------------------------------------------------------------
   # Maps
@@ -76,16 +75,10 @@ modules: >
     txpipe
     txpipe.extensions
 
-# If TXIngestParquetCatalog lives in a separate file (e.g. txpipe/ingest_parquet.py)
-# and is imported in txpipe/__init__.py, no extra python_paths entry is needed.
-# If you keep it outside the package, add its directory here:
-# python_paths:
-#   - /path/to/your/extra/modules
-
 # =============================================================================
 # Output directory  (created automatically if absent)
 # =============================================================================
-output_dir: data/outputs/dp2_23p5_nmin500_deproj_highz_combined_mask
+output_dir: data/outputs/dp2_23p5_deproj_highz_cardinal
 
 # =============================================================================
 # Launcher  –  "mini" is the simplest single-machine scheduler
@@ -104,7 +97,7 @@ site:
 # =============================================================================
 # Configuration file (stage parameters live there)
 # =============================================================================
-config: examples/dp2_mocks/config_lens.yml
+config: examples/dp2_mocks/config_cardinal.yaml
 
 # =============================================================================
 # Pipeline-level inputs
@@ -120,13 +113,11 @@ inputs:
   # Cosmological parameter file (bundled with TXPipe)
   fiducial_cosmology: data/fiducial_cosmology.yml
 
-  mask: /pscratch/sd/a/anicola/DP2/data/masks/dp2_23p5_combined_mask_nmin=500_nside=512.hdf5
-  density_masks: /pscratch/sd/a/anicola/DP2/code/TXPipe/data/outputs/dp2_23p5_nmin500_deproj_highz_combined_mask/density_masks.hdf5
+  mask: /pscratch/sd/a/anicola/DP2/data/masks/cardinal_mask_m5ext_final_nside512.hdf5
+  density_masks: /pscratch/sd/a/anicola/DP2/code/TXPipe/data/outputs/dp2_23p5_deproj_highz_cardinal/density_masks.hdf5
 
   # Pre-computed photoz n(z) stacks.
-  # If you run TXPhotozStack these will be produced automatically; otherwise
-  # supply them from a previous run or from an external source.
-  lens_photoz_stack:   data/outputs/dp2_23p5_nmin500_deproj_highz_combined_mask/lens_photoz_stack.hdf5
+  lens_photoz_stack:   data/outputs/dp2_23p5_deproj_highz_cardinal/lens_photoz_stack.hdf5
   shear_photoz_stack:  data/inputs/shear_photoz_stack.hdf5
 
   shear_tomography_catalog: none
@@ -139,7 +130,7 @@ inputs:
   source_noise_maps:   data/inputs/source_noise_maps.hdf5
   lens_noise_maps:   data/inputs/source_noise_maps.hdf5
 
-  cmb_lensing_beam: data/cmb/unit_transfer_function.txt 
+  cmb_lensing_beam: data/cmb/unit_transfer_function.txt
 
 # =============================================================================
 # Ceci bookkeeping

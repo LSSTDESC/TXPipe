@@ -11,6 +11,7 @@ from .data_types import (
 )
 import numpy as np
 import glob
+import os
 import time
 from .utils.theory import theory_3x2pt
 from .utils.fitting import calc_chi2
@@ -46,8 +47,13 @@ class TXLSSDensityBase(TXMapCorrelations):
 
     def read_healsparse(self, map_path, nside):
         """
-        returns a healsparse object degraded to nside
+        Returns a HealSparseMap degraded to nside.
+
+        Accepts both HealSparse (.hs) files and plain HEALPix FITS (.fits)
+        files.  FITS maps are converted to HealSparseMap on the fly so that
+        the rest of the pipeline sees a uniform interface.
         """
+        import healpy as hp
         import healsparse
         import os
 
@@ -58,9 +64,31 @@ class TXLSSDensityBase(TXMapCorrelations):
         else:
             real_map_path = map_path
 
-        # Convert to correct res healpix map
-        m = healsparse.HealSparseMap.read(map_path)
-        return m.degrade(nside)
+        ext = os.path.splitext(real_map_path)[1].lower()
+
+        if ext in (".hs", ".hsp"):
+            m = healsparse.HealSparseMap.read(real_map_path)
+        elif ext in (".fits", ".fit", ".fits.gz"):
+            hp_map = hp.read_map(real_map_path)
+            m = healsparse.HealSparseMap(
+                nside_coverage=self.config["nside_coverage"],
+                healpix_map=hp_map.astype(np.float64),
+                nest=False,   # healpy reads FITS in RING order by default
+                sentinel=hp.UNSEEN,
+            )
+        else:
+            raise ValueError(
+                f"Unrecognised systematic map format for {map_path!r}. "
+                "Expected .hs, .hsp, or .fits."
+            )
+
+        map_nside = m.nside_sparse
+        if map_nside > nside:
+            return m.degrade(nside)
+        elif map_nside < nside:
+            return m.upgrade(nside)
+        else:
+            return m
 
     def prepare_sys_maps(self):
         """
@@ -156,8 +184,18 @@ class TXLSSDensityBase(TXMapCorrelations):
         s = time.time()
 
         root = self.config["supreme_path_root"]
-        sys_files = glob.glob(f"{root}*.hs")
-        sys_files = np.sort(sys_files)
+        all_files = sorted(
+            glob.glob(f"{root}*.hs")
+            + glob.glob(f"{root}*.hsp")
+            + glob.glob(f"{root}*.fits")
+            + glob.glob(f"{root}*.fit")
+        )
+        sys_files = []
+        for f in all_files:
+            if "mask" in os.path.basename(f).lower():
+                print(f"Skipping mask file (not a systematic map): {f}")
+            else:
+                sys_files.append(f)
         nsys = len(sys_files)
         print(f"Found {nsys} total systematic maps")
 
@@ -177,8 +215,9 @@ class TXLSSDensityBase(TXMapCorrelations):
         sys_maps = []
         sys_names = []
         for i, map_path in enumerate(sys_files):
-            # strip root, .hs, and underscores to get friendly name
-            sys_name = map_path[len(root) : -3].strip("_")
+            # strip root and extension (.hs, .fits, etc.) to get a friendly name
+            basename = os.path.basename(map_path)
+            sys_name = os.path.splitext(basename)[0].strip("_")
             sys_names.append(sys_name)
 
             # get actual data for this map

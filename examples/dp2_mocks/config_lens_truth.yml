@@ -23,37 +23,35 @@ global:
 # =============================================================================
 
 # -----------------------------------------------------------------------------
-# TXIngestParquetCatalog  (our custom stage from ingest_parquet.py)
+# TXIngestTruthParquetCatalog
+#
+# Ingests noise-free ("truth") Flagship/DP2 parquet files.
+# Magnitude errors are synthesised as zeros; HEALPix pixel indices are
+# computed from (ra, dec) at the resolution set by ``nside``.
 #
 # parquet_paths accepts three formats – pick ONE and delete the others:
-#
 #   (a) Single file
 #   (b) Explicit list of files  ← concatenated in the order listed
 #   (c) Glob pattern            ← resolved alphabetically
-#
-# All files must have the same column schema.
 # -----------------------------------------------------------------------------
-TXIngestParquetCatalog:
+TXIngestTruthParquetCatalog:
 
-  # (a) Single file -------------------------------------------------------
-  # parquet_paths: data/inputs/simulation_catalog.parquet
-
-  # (b) Explicit list of files --------------------------------------------
+  # (b) Explicit list of truth files --------------------------------------
   parquet_paths:
-    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/dp2_mock_run_flagship_gold_test/24811/output_deredden_lsst_obs_cond_dp2.pq
-    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/dp2_mock_run_flagship_gold_test/24812/output_deredden_lsst_obs_cond_dp2.pq
-    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/dp2_mock_run_flagship_gold_test/24813/output_deredden_lsst_obs_cond_dp2.pq
-    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/dp2_mock_run_flagship_gold_test/24814/output_deredden_lsst_obs_cond_dp2.pq
-    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/dp2_mock_run_flagship_gold_test/24815/output_deredden_lsst_obs_cond_dp2.pq
-    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/dp2_mock_run_flagship_gold_test/24816/output_deredden_lsst_obs_cond_dp2.pq
-    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/dp2_mock_run_flagship_gold_test/24817/output_deredden_lsst_obs_cond_dp2.pq
-    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/dp2_mock_run_flagship_gold_test/24818/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/dp2_mock_run_flagship_gold/24811/part-0.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/dp2_mock_run_flagship_gold/24812/part-0.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/dp2_mock_run_flagship_gold/24813/part-0.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/dp2_mock_run_flagship_gold/24814/part-0.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/dp2_mock_run_flagship_gold/24815/part-0.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/dp2_mock_run_flagship_gold/24816/part-0.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/dp2_mock_run_flagship_gold/24817/part-0.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/dp2_mock_run_flagship_gold/24818/part-0.pq
 
   # (c) Glob pattern (resolved alphabetically) ----------------------------
-  # parquet_paths: data/inputs/catalog_*.parquet
+  # parquet_paths: /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/dp2_mock_run_flagship_gold/*/part-0.pq
 
-  # Rows to stream per chunk (can differ from global chunk_rows)
   chunk_rows: 100000
+  nside: 512   # must match the global nside setting above
 
 
 # -----------------------------------------------------------------------------
@@ -63,7 +61,7 @@ TXIngestParquetCatalog:
 TXTruthLensSelector:
   # Tomographic bin edges in redshift.
   # Example: 3 bins covering 0.2 < z < 0.8
-  lens_zbin_edges: [0.4, 0.6, 0.8, 1.0]
+  lens_zbin_edges: [0.2, 0.4, 0.6, 0.8]
 
   # Column name in photometry_catalog that holds the true redshift
   redshift_column: redshift_true
@@ -170,7 +168,7 @@ TXTwoPointFourier:
   true_shear: False
 
   # Optional: systematics deprojection for number counts
-  deproject_syst_clustering: True
+  deproject_syst_clustering: False
   systmaps_clustering_dir: /pscratch/sd/a/anicola/DP2/data/sysmaps/
 
   # Optional NaMaster workspace cache (speeds up repeated runs)

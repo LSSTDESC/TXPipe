@@ -40,6 +40,8 @@ class TXFourierNamasterCovariance(PipelineStage):
         "use_true_shear": StageParameter(bool, False, msg="Whether to use true shear values."),
         "scratch_dir": StageParameter(str, "temp", msg="Directory for temporary files."),
         "nside": StageParameter(int, 1024, msg="HEALPix nside parameter."),
+        "apodize_mask": StageParameter(bool, False, msg="Apply smooth apodization to the mask before computing the covariance."),
+        "apodization_scale": StageParameter(float, 1.0, msg="Apodization scale in degrees (only used when apodize_mask=True)."),
     }
 
     def run(self):
@@ -49,8 +51,9 @@ class TXFourierNamasterCovariance(PipelineStage):
         import scipy
         import pyccl as ccl
         import sacc
-        import tjpcov
-        import threadpoolctl
+        if self.do_xi:
+            import tjpcov
+            import threadpoolctl
 
         comm = self.comm
         size = self.size
@@ -70,6 +73,13 @@ class TXFourierNamasterCovariance(PipelineStage):
         # read the n(z) and f_sky from the source summary stats
         meta = self.read_number_statistics(any_source, any_lens)
 
+        # Read ell bin edges from the SACC file early so they can be used
+        # to define the NaMaster bandpower binning (Fourier case only).
+        if not self.do_xi:
+            ell_edges = self.get_angular_bins(two_point_data)
+        else:
+            ell_edges = None
+
         # read the mask
         with self.open_input("mask", wrapper=True) as f:
             m = f.read_map("mask")
@@ -77,7 +87,15 @@ class TXFourierNamasterCovariance(PipelineStage):
         nside = self.config["nside"]
         m = hp.ud_grade(m, nside)
         msk = 1 * (m == 1)
-        msk = nmt.mask_apodization(msk, 1.0, apotype="Smooth")
+        if self.config["apodize_mask"]:
+            msk = nmt.mask_apodization(msk, self.config["apodization_scale"], apotype="Smooth")
+
+        # Compute f_sky from the mask actually passed to NaMaster.  For an
+        # apodized mask the mean correctly gives the effective sky fraction;
+        # for a binary mask it matches the catalog area.  Stored separately so
+        # that meta["f_sky"] (from the catalog metadata) is left unchanged.
+        meta["f_sky_mask"] = float(np.mean(msk))
+        print(f"f_sky from mask: {meta['f_sky_mask']:.4f}  (catalog f_sky: {meta['f_sky']:.4f})")
 
         # get w-workspace
         if rank == 0:
@@ -90,7 +108,7 @@ class TXFourierNamasterCovariance(PipelineStage):
         else:
             spinlist = comm.scatter(spinlist, root=0)
 
-        self.get_w(msk, spinlist)
+        self.get_w(msk, spinlist, ell_edges=ell_edges)
 
         if comm is not None:
             comm.Barrier()
@@ -114,24 +132,25 @@ class TXFourierNamasterCovariance(PipelineStage):
 
         self.read_cw()
 
-        # Binning choices. The ell binning is a linear piece with all the
-        # integer values up to 500 -- these are from firecrown, might need
-        # to change later
-        meta["ell"] = np.concatenate(
-            (
-                np.linspace(2, 500 - 1, 500 - 2),
-                np.logspace(np.log10(500), np.log10(6e4), 500),
+        if not self.do_xi:
+            # Fourier case: ell arrays span integer values 0..lmax as required by
+            # NaMaster for C_ell inputs to gaussian_covariance.
+            meta["ell_nmt0"] = np.arange(0, self.b.lmax + 1, dtype=float)
+            meta["ell"] = meta["ell_nmt0"]
+        else:
+            # Real-space case: keep the original custom ell arrays and TJP/NMT split.
+            meta["ell"] = np.concatenate(
+                (
+                    np.linspace(2, 500 - 1, 500 - 2),
+                    np.logspace(np.log10(500), np.log10(6e4), 500),
+                )
             )
-        )
-
-        # creating ell arrays for the tjp-block and nmt-block
-        tjp_ell_mask = meta["ell"] > nside * 3
-        meta["ell_tjp"] = meta["ell"][tjp_ell_mask]
-        meta["ell_nmt0"] = np.linspace(0, 3 * nside - 1, 3 * nside)
-        meta["ell_nmt"] = meta["ell"][np.invert(tjp_ell_mask)]
-
-        # Theta binning - log spaced between 1 .. 300 arcmin.
-        meta["theta"] = np.logspace(np.log10(1 / 60), np.log10(300.0 / 60), 3000)
+            tjp_ell_mask = meta["ell"] > nside * 3
+            meta["ell_tjp"] = meta["ell"][tjp_ell_mask]
+            meta["ell_nmt0"] = np.linspace(0, 3 * nside - 1, 3 * nside)
+            meta["ell_nmt"] = meta["ell"][np.invert(tjp_ell_mask)]
+            # Theta binning - log spaced between 1 .. 300 arcmin.
+            meta["theta"] = np.logspace(np.log10(1 / 60), np.log10(300.0 / 60), 3000)
 
         if rank == 0:
             diclist, covsize = self.make_mpi_dict(cosmo, meta, two_point_data=two_point_data)
@@ -257,7 +276,7 @@ class TXFourierNamasterCovariance(PipelineStage):
             spinlist[num].append(spins)
         return spinlist
 
-    def get_w(self, msk, spinlist):
+    def get_w(self, msk, spinlist, ell_edges=None):
         import pymaster as nmt
 
         nside = self.config["nside"]
@@ -265,8 +284,28 @@ class TXFourierNamasterCovariance(PipelineStage):
         self.f0 = nmt.NmtField(msk, [msk], n_iter=0)
         # Spin-2 field
         self.f2 = nmt.NmtField(msk, [msk, msk], n_iter=2)
-        # Binning
-        self.b = nmt.NmtBin.from_nside_linear(nside, 48)
+
+        # Binning: for the Fourier case (ell_edges provided) we define the NmtBin
+        # directly from the SACC ell bin edges so that coupled=False returns the
+        # covariance on exactly the same bins as the data vector.
+        if ell_edges is not None:
+            lmax = 3 * nside - 1
+            ell_ini = np.floor(ell_edges[:-1]).astype(int)
+            # from_edges uses EXCLUSIVE upper bounds: bin i covers [ell_ini[i], ell_end[i]).
+            # bins.lmax = ell_end[-1] - 1, so we need ell_end[-1] = lmax + 1 to match
+            # the NmtField lmax of 3*nside-1.
+            ell_end = np.minimum(np.ceil(ell_edges[1:]).astype(int), lmax + 1)
+            self.n_sacc_bands = len(ell_ini)
+            # NaMaster requires bins.lmax == fields.lmax (3*nside-1).
+            # If the SACC ell range doesn't reach lmax, append a dummy bin covering
+            # the remaining multipoles; it is trimmed off the covariance output.
+            if ell_end[-1] < lmax + 1:
+                ell_ini = np.append(ell_ini, ell_end[-1])
+                ell_end = np.append(ell_end, lmax + 1)
+            self.b = nmt.NmtBin.from_edges(ell_ini, ell_end)
+        else:
+            self.n_sacc_bands = None
+            self.b = nmt.NmtBin.from_nside_linear(nside, 48)
 
         # Workspace
         for spins in spinlist:
@@ -410,9 +449,10 @@ class TXFourierNamasterCovariance(PipelineStage):
         WT=None,
     ):
         import pyccl as ccl
-        from tjpcov.wigner_transform import bin_cov
         import pymaster as nmt
-        import scipy
+        if self.do_xi:
+            from tjpcov.wigner_transform import bin_cov
+            import scipy
 
         cl = {}
 
@@ -427,9 +467,10 @@ class TXFourierNamasterCovariance(PipelineStage):
         }
 
         ell = meta["ell"]
-        ell_tjp = meta["ell_tjp"]
-        ell_nmt = meta["ell_nmt"]  # interpolate nmt covariance to this ell
         ell_nmt0 = meta["ell_nmt0"]  # ell for calculating nmt covariance
+        if self.do_xi:
+            ell_tjp = meta["ell_tjp"]
+            ell_nmt = meta["ell_nmt"]  # interpolate nmt covariance to this ell
 
         # Getting all the C_ell that we need, saving the results in a cache
         # for later re-use
@@ -453,11 +494,7 @@ class TXFourierNamasterCovariance(PipelineStage):
                     cache[cache_key1] = c
                     cl[local_key] = c
 
-        # create cl's for tjp and nmt separately
-        cl_tjp = {}
-        for label in [13, 14, 23, 24]:
-            cl_tjp[label] = np.interp(ell_tjp, ell, cl[label])
-
+        # C_ell arrays interpolated to NaMaster's input ell grid (unbinned, 0..lmax)
         cl_nmt = {}
         for label in [13, 14, 23, 24]:
             cl_nmt[label] = np.interp(ell_nmt0, ell, cl[label])
@@ -470,40 +507,33 @@ class TXFourierNamasterCovariance(PipelineStage):
         SN[14] = tracer_Noise[tracer_comb1[0]] if tracer_comb1[0] == tracer_comb2[1] else 0
         SN[23] = tracer_Noise[tracer_comb1[1]] if tracer_comb1[1] == tracer_comb2[0] else 0
 
-        # The tjp part of the covariance
+        if self.do_xi:
+            # Real-space case: TJP outer-product block at high ell (> 3*nside)
+            cl_tjp = {}
+            for label in [13, 14, 23, 24]:
+                cl_tjp[label] = np.interp(ell_tjp, ell, cl[label])
 
-        # The coupling is an identity matrix at least when we neglect
-        # the mask
-        coupling_mat = {}
-        coupling_mat[1324] = np.eye(len(ell_tjp))
-        coupling_mat[1423] = np.eye(len(ell_tjp))
+            # The coupling is an identity matrix at least when we neglect the mask
+            coupling_mat = {}
+            coupling_mat[1324] = np.eye(len(ell_tjp))
+            coupling_mat[1423] = np.eye(len(ell_tjp))
 
-        # Initial covariance of C_ell components
-        cov_tjp = {}
+            cov_tjp = {}
+            cov_tjp[1324] = np.outer(cl_tjp[13] + SN[13], cl_tjp[24] + SN[24]) * coupling_mat[1324]
+            cov_tjp[1423] = np.outer(cl_tjp[14] + SN[14], cl_tjp[23] + SN[23]) * coupling_mat[1423]
 
-        cov_tjp[1324] = np.outer(cl_tjp[13] + SN[13], cl_tjp[24] + SN[24]) * coupling_mat[1324]
-        cov_tjp[1423] = np.outer(cl_tjp[14] + SN[14], cl_tjp[23] + SN[23]) * coupling_mat[1423]
+            first_is_shear_shear = ("source" in tracer_comb1[0]) and ("source" in tracer_comb1[1])
+            second_is_shear_shear = ("source" in tracer_comb2[0]) and ("source" in tracer_comb2[1])
 
-        # for shear-shear components we also add a B-mode contribution
-        first_is_shear_shear = ("source" in tracer_comb1[0]) and ("source" in tracer_comb1[1])
-        second_is_shear_shear = ("source" in tracer_comb2[0]) and ("source" in tracer_comb2[1])
+            if first_is_shear_shear or second_is_shear_shear:
+                # B-mode shape noise contribution; eq. 29-31 of https://arxiv.org/pdf/0708.0387.pdf
+                Bmode_F = -1 if xi_plus_minus1 != xi_plus_minus2 else 1
+                cov_tjp[1324] += np.outer(cl_tjp[13] * 0 + SN[13], cl_tjp[24] * 0 + SN[24]) * coupling_mat[1324] * Bmode_F
+                cov_tjp[1423] += np.outer(cl_tjp[14] * 0 + SN[14], cl_tjp[23] * 0 + SN[23]) * coupling_mat[1423] * Bmode_F
 
-        if self.do_xi and (first_is_shear_shear or second_is_shear_shear):
-            # this adds the B-mode shape noise contribution.
-            # We assume B-mode power (C_ell) is 0
-            Bmode_F = 1
-            if xi_plus_minus1 != xi_plus_minus2:
-                # in the cross term, this contribution is subtracted.
-                # eq. 29-31 of https://arxiv.org/pdf/0708.0387.pdf
-                Bmode_F = -1
-            # below the we multiply zero to maintain the shape of the Cl array, these are effectively
-            # B-modes
-            cov_tjp[1324] += np.outer(cl_tjp[13] * 0 + SN[13], cl_tjp[24] * 0 + SN[24]) * coupling_mat[1324] * Bmode_F
-            cov_tjp[1423] += np.outer(cl_tjp[14] * 0 + SN[14], cl_tjp[23] * 0 + SN[23]) * coupling_mat[1423] * Bmode_F
+            cov_tjp["final"] = cov_tjp[1423] + cov_tjp[1324]
 
-        cov_tjp["final"] = cov_tjp[1423] + cov_tjp[1324]
-
-        # The nmt part of the covariance:
+        # The NaMaster part of the covariance:
         w1spin, w2spin, nmtspin = self.get_nmt_spin(tracer_comb1, tracer_comb2)
         w1 = getattr(self, "w" + w1spin)
         w2 = getattr(self, "w" + w2spin)
@@ -513,7 +543,11 @@ class TXFourierNamasterCovariance(PipelineStage):
 
         nmt_input = self.get_nmt_input(tracer_comb1, tracer_comb2, cl_nmt, SN)
 
-        nmt_input_bmode = self.get_nmt_input_bmode(tracer_comb1, tracer_comb2, cl_nmt, SN)
+        # For the real-space case: coupled=True so that the output can be
+        # renormalized and interpolated before the Wigner transform.
+        # For the Fourier case: coupled=False so NaMaster handles decoupling
+        # and binning internally, returning Cov[C_b, C_b'] directly.
+        coupled_flag = self.do_xi
 
         nmt_cov = nmt.gaussian_covariance(
             cw,
@@ -527,100 +561,89 @@ class TXFourierNamasterCovariance(PipelineStage):
             nmt_input[24],
             wa=w1,
             wb=w2,
-            coupled=True,
+            coupled=coupled_flag,
         ).reshape(shape)[:, 0, :, 0]
 
-        # for shear-shear components we also add a B-mode contribution
-        first_is_shear_shear = ("source" in tracer_comb1[0]) and ("source" in tracer_comb1[1])
-        second_is_shear_shear = ("source" in tracer_comb2[0]) and ("source" in tracer_comb2[1])
+        # B-mode contribution for shear-shear (real-space case only)
+        if self.do_xi:
+            first_is_shear_shear = ("source" in tracer_comb1[0]) and ("source" in tracer_comb1[1])
+            second_is_shear_shear = ("source" in tracer_comb2[0]) and ("source" in tracer_comb2[1])
 
-        if self.do_xi and (first_is_shear_shear or second_is_shear_shear):
-            Bmode_F = 1
-            if xi_plus_minus1 != xi_plus_minus2:
-                Bmode_F = -1
+            if first_is_shear_shear or second_is_shear_shear:
+                Bmode_F = -1 if xi_plus_minus1 != xi_plus_minus2 else 1
+                nmt_input_bmode = self.get_nmt_input_bmode(tracer_comb1, tracer_comb2, cl_nmt, SN)
+                nmt_cov += (
+                    nmt.gaussian_covariance(
+                        cw,
+                        int(nmtspin[0]),
+                        int(nmtspin[1]),
+                        int(nmtspin[2]),
+                        int(nmtspin[3]),
+                        nmt_input_bmode[13],
+                        nmt_input_bmode[14],
+                        nmt_input_bmode[23],
+                        nmt_input_bmode[24],
+                        wa=w1,
+                        wb=w2,
+                        coupled=True,
+                    ).reshape(shape)[:, 0, :, 0]
+                    * Bmode_F
+                )
 
-            nmt_cov += (
-                nmt.gaussian_covariance(
-                    cw,
-                    int(nmtspin[0]),
-                    int(nmtspin[1]),
-                    int(nmtspin[2]),
-                    int(nmtspin[3]),
-                    nmt_input_bmode[13],
-                    nmt_input_bmode[14],
-                    nmt_input_bmode[23],
-                    nmt_input_bmode[24],
-                    wa=w1,
-                    wb=w2,
-                    coupled=True,
-                ).reshape(shape)[:, 0, :, 0]
-                * Bmode_F
-            )
+        cov = {}
 
-        # Transform nmt part covariance back to the un-normalized
-        # tjp part to combine them together
-        nmt_cov *= 1.0 / (meta["f_sky"] ** 3)
-        norm_nmt = (2 * ell_nmt0 + 1) * np.gradient(ell_nmt0) * meta["f_sky"]
+        if not self.do_xi:
+            # Fourier case: nmt_cov is already the decoupled bandpower covariance
+            # Cov[C_b, C_b'] — no further normalization or binning needed.
+            # Trim the dummy padding bin if one was appended to satisfy lmax.
+            n = self.n_sacc_bands
+            if n is not None and nmt_cov.shape[0] > n:
+                nmt_cov = nmt_cov[:n, :n]
+            cov["final_b"] = nmt_cov
+            return cov["final_b"]
+
+        # Real-space case: renormalize coupled NMT output to match TJP scaling,
+        # interpolate to the original ell grid, then combine with TJP block.
+        f_sky = meta["f_sky_mask"]
+        nmt_cov *= 1.0 / (f_sky ** 3)
+        norm_nmt = (2 * ell_nmt0 + 1) * np.gradient(ell_nmt0) * f_sky
         nmt_cov *= norm_nmt
 
-        # interpolate nmt-part covariance to the original ell
         f = scipy.interpolate.RectBivariateSpline(ell_nmt0, ell_nmt0, nmt_cov)
         nmt_cov = f(ell_nmt, ell_nmt)
 
-        # Combining tjp and nmt parts together
-        cov = {}
         cov["final"] = np.zeros((len(ell), len(ell)))
         cov["final"][: len(ell_nmt), : len(ell_nmt)] = nmt_cov
         cov["final"][len(ell_nmt) :, len(ell_nmt) :] = cov_tjp["final"]
 
-        # Normalization and/or wigner transform
-        if self.do_xi:
-            s1_s2_1 = self.get_spins(tracer_comb1)
-            s1_s2_2 = self.get_spins(tracer_comb2)
+        # Wigner transform C_ell covariance → xi(theta) covariance
+        s1_s2_1 = self.get_spins(tracer_comb1)
+        s1_s2_2 = self.get_spins(tracer_comb2)
 
-            # For the shear-shear we have two sets of spins, plus and minus,
-            # which are returned as a dict, so we need to pull out the one we need
-            # Otherwise it's just specified as a tuple, e.g. (2,0)
-            if isinstance(s1_s2_1, dict):
-                s1_s2_1 = s1_s2_1[xi_plus_minus1]
-            if isinstance(s1_s2_2, dict):
-                s1_s2_2 = s1_s2_2[xi_plus_minus2]
+        if isinstance(s1_s2_1, dict):
+            s1_s2_1 = s1_s2_1[xi_plus_minus1]
+        if isinstance(s1_s2_2, dict):
+            s1_s2_2 = s1_s2_2[xi_plus_minus2]
 
-            # Use these terms to project the covariance from C_ell to xi(theta)
-            print(
-                "tracer combos:",
-                tracer_comb1,
-                tracer_comb2,
-                " xi+/xi-:",
-                xi_plus_minus1,
-                xi_plus_minus2,
-                " spins:",
-                s1_s2_1,
-                s1_s2_2,
-            )
-            th, cov["final"] = WT.projected_covariance(
-                ell_cl=ell, s1_s2=s1_s2_1, s1_s2_cross=s1_s2_2, cl_cov=cov["final"]
-            )
+        print(
+            "tracer combos:",
+            tracer_comb1,
+            tracer_comb2,
+            " xi+/xi-:",
+            xi_plus_minus1,
+            xi_plus_minus2,
+            " spins:",
+            s1_s2_1,
+            s1_s2_2,
+        )
+        th, cov["final"] = WT.projected_covariance(
+            ell_cl=ell, s1_s2=s1_s2_1, s1_s2_cross=s1_s2_2, cl_cov=cov["final"]
+        )
 
-        # Normalize
-
-        # The overall normalization factor at the front of the matrix
-        if self.do_xi:
-            norm = np.pi * 4 * meta["f_sky"]
-        else:
-            norm = (2 * ell + 1) * np.gradient(ell) * meta["f_sky"]
-
+        norm = np.pi * 4 * f_sky
         cov["final"] /= norm
 
-        # Put the covariance into bins.
-        # This is optional in the case of a C_ell covariance (only if bins in ell are
-        # supplied, otherwise the matrix is for each ell value individually).  It is
-        # required for real-space covariances since these are always binned.
-        if self.do_xi:
-            thb, cov["final_b"] = bin_cov(r=th / d2r, r_bins=ell_bins, cov=cov["final"])
-        else:
-            if ell_bins is not None:
-                lb, cov["final_b"] = bin_cov(r=ell, r_bins=ell_bins, cov=cov["final"])
+        thb, cov["final_b"] = bin_cov(r=th / d2r, r_bins=ell_bins, cov=cov["final"])
         return cov["final_b"]
 
     def get_nmt_spin(self, tracer_comb1, tracer_comb2):
@@ -636,7 +659,7 @@ class TXFourierNamasterCovariance(PipelineStage):
         return w1spin, w2spin, nmtspin
 
     def get_nmt_shape(self, tracer_comb1, tracer_comb2, meta):
-        nell = len(meta["ell_nmt0"])
+        nell = self.b.get_n_bands() if not self.do_xi else len(meta["ell_nmt0"])
         s1_s2_1 = self.get_spins(tracer_comb1)
         s1_s2_2 = self.get_spins(tracer_comb2)
         if isinstance(s1_s2_1, dict):
@@ -882,14 +905,15 @@ class TXFourierNamasterCovariance(PipelineStage):
 
     # compute all the covariances and then combine them into one single giant matrix
     def compute_covariance(self, cosmo, meta, two_point_data, diclist):
-        from tjpcov.wigner_transform import bin_cov
+        if self.do_xi:
+            from tjpcov.wigner_transform import bin_cov
 
         ccl_tracers, tracer_Noise = self.get_tracer_info(cosmo, meta, two_point_data=two_point_data)
         # we will loop over all these
         tracer_combs = two_point_data.get_tracer_combinations()
         N2pt = len(tracer_combs)
 
-        WT = self.make_wigner_transform(meta)
+        WT = self.make_wigner_transform(meta) if self.do_xi else None
 
         # the bit below is just counting the number of 2pt functions, and accounting
         # for the fact that xi needs to be double counted

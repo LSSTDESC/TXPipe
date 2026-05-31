@@ -111,6 +111,11 @@ COLUMN_MAP = {
 # Integer-typed HDF5 columns (everything else is float64)
 _INT_PARQUET_COLS = {"halo_id", "galaxy_id", "pixel"}
 
+# Columns that may legitimately be absent from some catalogs (e.g. Cardinal
+# has no halo catalogue and no Euclid VIS band).  Missing optional columns are
+# written as zeros in the output HDF5.
+OPTIONAL_PARQUET_COLUMNS = {"halo_id", "log_sfr", "log_stellar_mass", "lm_halo", "mag_vis_euclid"}
+
 # Parquet columns we actually need to read
 PARQUET_COLUMNS = list(COLUMN_MAP.keys())
 
@@ -207,25 +212,41 @@ class TXIngestParquetCatalog(PipelineStage):
         return pq.ParquetFile(path).metadata.num_rows
 
     def _validate_columns(self, path):
-        """Raise ``KeyError`` listing every missing required column in *path*."""
+        """Raise ``KeyError`` listing every missing *required* column in *path*.
+
+        Optional columns (OPTIONAL_PARQUET_COLUMNS) are allowed to be absent;
+        they will be filled with zeros in the output.
+        """
         import pyarrow.parquet as pq
         schema_names = set(pq.read_schema(path).names)
-        missing = [c for c in PARQUET_COLUMNS if c not in schema_names]
-        if missing:
+        required = [c for c in PARQUET_COLUMNS if c not in OPTIONAL_PARQUET_COLUMNS]
+        missing_required = [c for c in required if c not in schema_names]
+        if missing_required:
             raise KeyError(
-                f"File {path!r} is missing required columns: {missing}\n"
+                f"File {path!r} is missing required columns: {missing_required}\n"
                 f"Available columns in that file: {sorted(schema_names)}"
             )
+        missing_optional = [c for c in OPTIONAL_PARQUET_COLUMNS if c not in schema_names]
+        if missing_optional:
+            print(f"  Optional columns absent (will be zero-filled): {missing_optional}")
 
     def _iter_file_chunks(self, path):
-        """Yield ``(batch_size, pandas.DataFrame)`` for every chunk of *path*."""
+        """Yield ``(batch_size, pandas.DataFrame)`` for every chunk of *path*.
+
+        Only columns that are actually present in the file are requested from
+        pyarrow; missing optional columns are added as zero-filled Series.
+        """
         import pyarrow.parquet as pq
+        schema_names = set(pq.read_schema(path).names)
+        cols_to_read = [c for c in PARQUET_COLUMNS if c in schema_names]
+        missing_optional = [c for c in PARQUET_COLUMNS
+                            if c not in schema_names and c in OPTIONAL_PARQUET_COLUMNS]
         pf = pq.ParquetFile(path)
-        for batch in pf.iter_batches(
-            batch_size=self.config["chunk_rows"],
-            columns=PARQUET_COLUMNS,
-        ):
-            yield len(batch), batch.to_pandas()
+        for batch in pf.iter_batches(batch_size=self.config["chunk_rows"], columns=cols_to_read):
+            df = batch.to_pandas()
+            for col in missing_optional:
+                df[col] = 0
+            yield len(df), df
 
     def _prepare_output(self, nobj_total, output_file):
         g = output_file.create_group("photometry")
@@ -629,8 +650,6 @@ FLAGSHIP_COLUMN_MAP = {
     "disk_r50": "disk_r50",
     "bulge_r50": "bulge_r50",
     "bulge_fraction": "bulge_fraction",
-    # MW extinction
-    "mw_extinction": "mw_extinction",
 }
 
 # Parquet columns whose values are fluxes (erg/s/cm²/Hz) and must be
@@ -705,7 +724,9 @@ class TXIngestFlagshipCatalog(PipelineStage):
 
     def _count_rows(self, path):
         import pyarrow.parquet as pq
-        return pq.ParquetFile(path).metadata.num_rows
+        pf = pq.ParquetFile(path)
+        # file-level metadata.num_rows is wrong for these files; sum row groups instead
+        return sum(pf.metadata.row_group(i).num_rows for i in range(pf.metadata.num_row_groups))
 
     def _validate_columns(self, path):
         import pyarrow.parquet as pq

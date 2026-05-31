@@ -35,22 +35,62 @@ global:
 # -----------------------------------------------------------------------------
 TXIngestParquetCatalog:
 
-  # (a) Single file -------------------------------------------------------
-  # parquet_paths: data/inputs/simulation_catalog.parquet
-
-  # (b) Explicit list of files --------------------------------------------
+  # (b) Explicit list of Cardinal mock tiles (54 tiles) ---------------------
   parquet_paths:
-    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/dp2_mock_run_flagship_gold_test/24811/output_deredden_lsst_obs_cond_dp2.pq
-    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/dp2_mock_run_flagship_gold_test/24812/output_deredden_lsst_obs_cond_dp2.pq
-    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/dp2_mock_run_flagship_gold_test/24813/output_deredden_lsst_obs_cond_dp2.pq
-    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/dp2_mock_run_flagship_gold_test/24814/output_deredden_lsst_obs_cond_dp2.pq
-    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/dp2_mock_run_flagship_gold_test/24815/output_deredden_lsst_obs_cond_dp2.pq
-    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/dp2_mock_run_flagship_gold_test/24816/output_deredden_lsst_obs_cond_dp2.pq
-    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/dp2_mock_run_flagship_gold_test/24817/output_deredden_lsst_obs_cond_dp2.pq
-    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/dp2_mock_run_flagship_gold_test/24818/output_deredden_lsst_obs_cond_dp2.pq
-
-  # (c) Glob pattern (resolved alphabetically) ----------------------------
-  # parquet_paths: data/inputs/catalog_*.parquet
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/64/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/65/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/66/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/67/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/68/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/69/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/70/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/71/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/72/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/73/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/74/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/75/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/76/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/77/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/78/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/80/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/81/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/82/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/96/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/97/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/341/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/342/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/343/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/345/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/346/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/347/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/348/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/349/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/350/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/351/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/369/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/371/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/372/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/373/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/374/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/375/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/421/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/422/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/423/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/425/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/426/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/427/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/428/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/429/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/430/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/431/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/432/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/434/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/435/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/440/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/441/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/442/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/443/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/444/output_deredden_lsst_obs_cond_dp2.pq
 
   # Rows to stream per chunk (can differ from global chunk_rows)
   chunk_rows: 100000
@@ -125,7 +165,7 @@ TXLSSDensityNullTests:
 
   # Significance threshold for null-test failures (in sigma)
   null_test_threshold: 3.0
-  supreme_path_root: /pscratch/sd/a/anicola/DP2/data/sysmaps/
+  supreme_path_root: /global/cfs/cdirs/lsst/groups/PZ/users/qhang/dp2_maps_may/
   # TODO: Fix this
   # Hack to get the stage running despite mask being larger than the sysmaps:
   fill_missing_pix: True
@@ -171,7 +211,7 @@ TXTwoPointFourier:
 
   # Optional: systematics deprojection for number counts
   deproject_syst_clustering: True
-  systmaps_clustering_dir: /pscratch/sd/a/anicola/DP2/data/sysmaps/
+  systmaps_clustering_dir: /global/cfs/cdirs/lsst/groups/PZ/users/qhang/dp2_maps_may/
 
   # Optional NaMaster workspace cache (speeds up repeated runs)
   cache_dir: data/cache
@@ -189,10 +229,8 @@ TXFourierNamasterCovariance:
 # # =============================================================================
 # # TXIngestPlanckLensingMaps
 # # Ingests Planck CMB lensing maps (alm and mask) for cross-correlation.
-# # ============================================================================= 
+# # =============================================================================
 TXIngestPlanckLensingMaps:
-    # kappa_file: "/pscratch/sd/a/anicola/DP2/data/cmb/COM_Lensing_4096_R3.00/MV/dat_klm.fits"
-    # mask_file: "/pscratch/sd/a/anicola/DP2/data/cmb/COM_Lensing_4096_R3.00/mask.fits"
     kappa_file: "/global/cfs/cdirs/cmb/data/planck2020/PR4_lensing/PR4_klm_dat_p.fits"
     mask_file: "/global/cfs/cdirs/cmb/data/planck2020/PR4_lensing/mask.fits.gz"
     experiment: "Planck"  # Planck or ACT
@@ -204,21 +242,6 @@ TXIngestPlanckLensingMaps:
 ## Requires the Planck lensing maps and the lens density maps to be ingested first.
 ## The correction is applied to the cross-power spectra computed by TXTwoPointFourierCMBLensingCrossDensity.
 ## =============================================================================
-## Planck PR4
-# TXCMBLensingCrossMonteCarloCorrection:
-#     nside: 512
-#     nsim: 540
-#     bandpower_width: 30
-#     mask_threshold: 0.0
-#     lmax: 0       # 0 means use 3*nside-1 = 1535
-#     sim_index_start: 60
-#     ffp10_offset: 200 # the FFP10 simulations correspond to the reconstruction with simidx+200
-#     # Planck FFP10 input phi alm files
-#     input_phi_alm_template: /global/cfs/cdirs/cmb/data/generic/cmb/ffp10/mc/scalar/ffp10_unlensed_scl_cmb_000_tebplm_mc_{i:04d}.fits
-#     input_phi_alm_hdu: 4  # the FFP10 files have the lensing potential in HDU 4, but some other sims may have it in HDU 1 (the default)
-#     # Reconstructed kappa maps from your reconstruction pipeline
-#     recon_kappa_alm_template: /global/cfs/cdirs/cmb/data/planck2020/PR4_lensing/PR4_sims/klm_sim_{i:04d}_p.fits
-
 ## ACT DR6
 TXCMBLensingCrossMonteCarloCorrection:
     nside: 512
@@ -226,15 +249,6 @@ TXCMBLensingCrossMonteCarloCorrection:
     bandpower_width: 30
     mask_threshold: 0.0
     lmax: 0       # 0 means use 3*nside-1 = 1535
-    ### Planck PR4
-    # experiment: "PR4"
-    # sim_index_start: 60
-    # ffp10_offset: 200 # the FFP10 simulations correspond to the reconstruction with simidx+200
-    # # Planck FFP10 input phi alm files
-    # input_alm_template: /global/cfs/cdirs/cmb/data/generic/cmb/ffp10/mc/scalar/ffp10_unlensed_scl_cmb_000_tebplm_mc_{i:04d}.fits
-    # input_alm_hdu: 4  # the FFP10 files have the lensing potential in HDU 4
-    # # Reconstructed kappa maps from reconstruction pipeline
-    # recon_alm_template: /global/cfs/cdirs/cmb/data/planck2020/PR4_lensing/PR4_sims/klm_sim_{i:04d}_p.fits
     ### ACT DR6
     experiment: "ACT_DR6"
     sim_index_start: 0
