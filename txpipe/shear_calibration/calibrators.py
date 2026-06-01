@@ -643,7 +643,7 @@ class AnaCalibrator(MetaCalibrator):
             self.mu = np.array(mu) / R
             assert("Anacal needs an already calibrated mu.")
     
-    def apply(self, g1, g2, weights, substract_mean=True):
+    def apply(self, g1, g2, weights, subtract_mean=True):
         """
         Calibrate a set of shears using the response matrix and 
         mean shear substraction
@@ -658,7 +658,7 @@ class AnaCalibrator(MetaCalibrator):
         subtract_mean: bool
             whether to subtract mean shear (default True)
         """
-        if not substract_mean:
+        if not subtract_mean:
             g1, g2 =  weights * [g1, g2] / self.R
         elif np.isscalar(g1):
             g1, g2 = weights * [g1, g2] / self.R - self.mu
