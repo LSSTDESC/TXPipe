@@ -693,14 +693,17 @@ class AnaCalibrator(MetaCalibrator):
         import h5py
 
         with h5py.File(tomo_file, "r") as f:
-            R = f["response/R"][:]
-            n = len(R)
-
             mu1 = f["counts/mean_e1"][:]
             mu2 = f["counts/mean_e2"][:]
+            n = len(mu1)
+            R = f["response/R"][:n]
+            R_2d = f["response/R_2d"][0]
+            mu1_2d = f["counts/mean_e1_2d"][0]
+            mu2_2d = f["counts/mean_e2_2d"][0]
 
         calibrators = [cls(R[i], [mu1[i], mu2[i]]) for i in range(n)]
-        return calibrators
+        calibrator2d = cls(R_2d, [mu1_2d, mu2_2d])
+        return calibrators, calibrator2d
     
     def save(self, outfile, i):
         if i == "2d":
