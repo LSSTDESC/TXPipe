@@ -437,7 +437,8 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
 
         if self.rank == 0:
             # flatten list of lists
-            results = [result for sublist in results for result in sublist]
+            if self.comm is not None:
+                results = [result for sublist in results for result in sublist]
             # open outdir density correlation file.
             # only the root process does any writing.
             with self.open_output("unweighted_density_correlation", wrapper=False) as dens_output:
