@@ -16,6 +16,7 @@ launcher:
     interval: 3.0
 modules: >
     txpipe
+    txpipe.extensions
     rail.estimation.algos.bpz_lite
 
 python_paths: []
@@ -49,20 +50,20 @@ stages:
 
 
 
-output_dir: /sps/lsst/users/ebarroso/TXPipe/data/cosmodc2/outputs-20deg2-CL
-config: /sps/lsst/users/ebarroso/TXPipe/examples/cosmodc2/Cluster_pipelines/config-20deg2-CL.yml
+output_dir: ./data/cosmodc2/outputs-20deg2-CL
+config: ./examples/cosmodc2/Cluster_pipelines/config-20deg2-CL.yml
 
 inputs:
     # See README for paths to download these files
-    shear_catalog: /sps/lsst/groups/clusters/cl_pipeline_project/TXPipe_data/cosmodc2/20deg2/shear_catalog.hdf5
-    #photometry_catalog:  /sps/lsst/users/mricci/TXPipe_data/data_link/cosmodc2/20deg2/photometry_catalog.hdf5
-    fiducial_cosmology: /sps/lsst/users/ebarroso/TXPipe/data/fiducial_cosmology.yml
-    calibration_table: /sps/lsst/groups/clusters/cl_pipeline_project/TXPipe_data/cosmodc2/20deg2/sample_cosmodc2_w10year_errors.dat
-    spectroscopic_catalog: /sps/lsst/groups/clusters/cl_pipeline_project/TXPipe_data/cosmodc2/20deg2/spectroscopic_catalog.hdf5
-    cluster_catalog: /sps/lsst/groups/clusters/cl_pipeline_project/TXPipe_data/cosmodc2/20deg2/cluster_catalog.hdf5
+    shear_catalog: ./data/cosmodc2/20deg2/shear_catalog.hdf5
+    #photometry_catalog:  ./data/cosmodc2/20deg2/photometry_catalog.hdf5
+    fiducial_cosmology: ./data/fiducial_cosmology.yml
+    calibration_table: ./data/cosmodc2/20deg2/sample_cosmodc2_w10year_errors.dat
+    spectroscopic_catalog: ./data/cosmodc2/20deg2/spectroscopic_catalog.hdf5
+    cluster_catalog: ./data/cosmodc2/20deg2/cluster_catalog.hdf5
     #shear_tomography_catalog: ./data/example/outputs_metadetect/shear_tomography_catalog.hdf5
     #source_photoz_pdfs: ./data/example/inputs/photoz_pdfs.hdf5
 resume: true
-log_dir: /sps/lsst/users/ebarroso/TXPipe/data/cosmodc2/logs
-pipeline_log: /sps/lsst/users/ebarroso/TXPipe/data/cosmodc2/log_20deg2.txt
+log_dir: ./data/cosmodc2/logs
+pipeline_log: ./data/cosmodc2/log_20deg2.txt
 

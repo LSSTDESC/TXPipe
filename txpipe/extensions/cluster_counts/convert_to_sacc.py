@@ -14,10 +14,9 @@ class CLClusterSACC(PipelineStage):
     ]
 
     config_options = {
-        #distance bin definition
-        "d_min" : 0.5, #in Mpc or acrmin
-        "d_max" : 5.0, #in Mpc or arcmin
-        "cov_component": "tan_jk",
+        "cov_component": "tan_jk", #tan_jk, tan_bs, tan_sc
+        "survey_name" : "test_survey", #survey tracer name, free choice
+        "area" : 20.0, #survey area
     }
 
     def run(self):
@@ -68,12 +67,18 @@ class CLClusterSACC(PipelineStage):
             bin_z_dict[bin_z] = z_edges
             bin_rich_dict[bin_rich] = rich_edges
 
-        distance_centers = np.array(data['bin_zbin_0_richbin_0']['clmm_cluster_ensemble'].stacked_data['radius'])
-        dmin = self.config_options['d_min']
-        dmax = self.config_options['d_max'] 
-        distance_edges = np.logspace(np.log10(dmin), np.log10(dmax), len(distance_centers) + 1)
-        for i in range(len(distance_edges) - 1):
-            bin_radius_dict[f'radius_{i}'] = (distance_edges[i], distance_edges[i+1], distance_centers[i])
+        radial_bin_centers = np.array(data['bin_zbin_0_richbin_0']['clmm_cluster_ensemble'].stacked_data['radius'])
+        logc = np.log10(radial_bin_centers)
+
+        log10_edges = np.empty(len(radial_bin_centers) + 1)
+        log10_edges[1:-1] = 0.5 * (logc[:-1] + logc[1:])
+        log10_edges[0] = logc[0] - 0.5 * (logc[1] - logc[0])
+        log10_edges[-1] = logc[-1] + 0.5 * (logc[-1] - logc[-2])
+
+        radial_bin_edges = 10 ** log10_edges        
+
+        for i in range(len(radial_bin_edges) - 1):
+            bin_radius_dict[f'radius_{i}'] = (radial_bin_edges[i], radial_bin_edges[i+1], radial_bin_centers[i])
 
         return bin_z_dict, bin_rich_dict, bin_radius_dict
 
@@ -83,15 +88,14 @@ class CLClusterSACC(PipelineStage):
         """
         import sacc
         z_bins, rich_bins, radius_bins = self.get_bins(data)
-
+        bin_units = np.array(data['bin_zbin_0_richbin_0']['clmm_cluster_ensemble'].data.meta["bin_units"])
         for bin_comb in data:
             bin_z, bin_rich = self.transform_bin_string(bin_comb)
             sacc_obj.add_tracer("bin_z", bin_z, *z_bins[bin_z])
             sacc_obj.add_tracer("bin_richness", bin_rich, np.log10(rich_bins[bin_rich][0]), np.log10(rich_bins[bin_rich][1]))
 
         for radius_bin, radius_edges in radius_bins.items():
-            sacc_obj.add_tracer("bin_radius", radius_bin, *radius_edges)
-
+            sacc_obj.add_tracer("bin_radius", radius_bin, *radius_edges, metadata = {"bin_units" : bin_units})
         sacc_obj.add_tracer("survey", survey_name, area)
 
     def add_counts_data(self, sacc_obj, data: dict, survey_name: str):
@@ -107,7 +111,7 @@ class CLClusterSACC(PipelineStage):
 
     def add_shear_data(self, sacc_obj, data: dict, survey_name: str, profile_type: str):
         """
-        Adds cluster shear (delta sigma) data to the SACC object.
+        Adds cluster reduced shear or delta sigma (depending on profile_type) profile to the SACC object.
         """
         import sacc
         print(profile_type)

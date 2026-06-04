@@ -36,7 +36,7 @@ class CLClusterShearCatalogs(PipelineStage):
         "subtract_mean_shear": False, # Not clear if this is useful for clusters
         "coordinate_system": "celestial",
         "use_true_shear": False,
-        "delta_sigma": False, # If True then we compute delta-sigma, otherwise we compute gamma
+        "delta_sigma": True, # If True then we compute delta-sigma, otherwise we compute gamma
         "use_shape_noise": False,
         "use_radius": True,
         "max_angle": 30, # arcmin

@@ -24,18 +24,14 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
     ]
 
     config_options = {
-        #radial bin definition
-        "r_min" : 0.2, #in Mpc
-        "r_max" : 3.0, #in Mpc
-        "nbins" : 5, # number of bins
-        #Angular bin definition
-        "angle_arcmin_min" : 25.0, #in arcmin
-        "angle_arcmin_max" : 45.0, #in arcmin
+        #radial binning intervals
+        "r_min" : 0.2, #in Mpc or arcmin
+        "r_max" : 3.0, #in Mpc or arcmin
         "nbins" : 5, # number of bins
         #type of profile
         "magnification_profile" : False,
-        "units": "mpc", # options are mpc or arcmin
-        "cov_type" : "jackknife_covariance",
+        "bin_units": "mpc", # options are mpc or arcmin
+        "cov_type" : "jackknife_covariance", #sample_covariance, jackknife_covariance, bootstrap_covariance
         "jackknife_nside": 32,
         "bootstrap_nboot": 100,
         #coordinate_system for shear
@@ -48,12 +44,9 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         import h5py
         import clmm
         import clmm.cosmology.ccl 
-        if self.config["units"].lower() == "arcmin":
-            bin_min = self.config["angle_arcmin_min"]
-            bin_max = self.config["angle_arcmin_max"]
-        else:
-            bin_min = self.config["r_min"]
-            bin_max = self.config["r_max"]
+        
+        bin_min = self.config["r_min"]
+        bin_max = self.config["r_max"]
         self.distance_bins = clmm.dataops.make_bins(bin_min, bin_max, nbins=self.config["nbins"], method="evenlog10width")
         print (self.distance_bins) 
         
@@ -124,7 +117,7 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
 
     def create_cluster_ensemble(self, cluster_list, cluster_ensemble_id=0):
         import clmm
-        shear_units = self.config["units"].lower()
+        bin_units = self.config["bin_units"].lower()
         # load cluster shear catalog using similar astropy table set up as cluster catalog
         #cluster_shears_cat, coordinate_system = self.load_cluster_shear_catalog() 
         
@@ -168,7 +161,7 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             # Instantiating a CLMM galaxy cluster object
             gc_object = clmm.GalaxyCluster(np.int(id_cl), ra_cl, dec_cl, z_cl, galcat)
             gc_object.richness = rich_cl
-            cat_max_distance = (clmm.utils.convert_units(np.max(bg_cat["distance_arcmin"]), "arcmin", "Mpc", z_cl, self.clmm_cosmo) if shear_units == "mpc" else np.max(bg_cat["distance_arcmin"]))
+            cat_max_distance = (clmm.utils.convert_units(np.max(bg_cat["distance_arcmin"]), "arcmin", "Mpc", z_cl, self.clmm_cosmo) if bin_units == "mpc" else np.max(bg_cat["distance_arcmin"]))
             if cat_max_distance < self.distance_bins[-1]:
                 print ("!!! maximum distance of source smaller than distance_bins")
 
@@ -176,7 +169,7 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
 
             # Compute radial profile for the current cluster
             gc_object.make_radial_profile(
-                    shear_units, 
+                    bin_units, 
                     bins=self.distance_bins,
                     cosmo=self.clmm_cosmo, 
                     tan_component_in = "tangential_comp_clmm", # name given in the CLClusterShearCatalogs stage
