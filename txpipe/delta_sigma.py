@@ -590,7 +590,7 @@ class TXDeltaSigmaPlots(PipelineStage):
                 y_theory = sacc_theory.get_mean(tracers=(f"lens_{l}",))
                 axes[l, 0].set_title(f"Lens {l}")
                 axes[l, 0].set_xlabel("Radius [Mpc/h]")
-                axes[l, 0].set_ylabel(r"$R \cdot \Delta \Sigma [M_\odot h^2 / pc^2]$")
+                axes[l, 0].set_ylabel(r"$R \cdot \Delta \Sigma [(\mathrm{M}_{\mathrm{pc}}/h) \cdot (M_\odot h^2 / \mathrm{pc}^2)]$")
                 axes[l, 0].grid()
                 axes[l, 0].plot(x_theory, y_theory * x_theory, "-", label="Theory")
                 for s in range(nbin_source):
