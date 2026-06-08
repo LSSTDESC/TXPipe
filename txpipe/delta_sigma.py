@@ -121,7 +121,6 @@ class TXDeltaSigma(PipelineStage):
             else:
                 delta_sigma_cov = None
 
-
             results.append((source_bin, lens_bin, result, delta_sigma_cov))
 
         # restore numpy settings
@@ -391,6 +390,7 @@ class TXDeltaSigma(PipelineStage):
                     boost=row["b"],  # the boost factor that was applied to get the final Delta(Sigma)
                     random_subtraction=row["ds_r"],  # the contribution from the randoms that was subtracted off
                     n_pairs=row["n_pairs"],  # the number of pairs in the bin
+                    r_unit="Mpc/h", # according to the dSigma docs
                 )
 
             if cov_block is not None:
@@ -411,12 +411,134 @@ class TXDeltaSigma(PipelineStage):
         s.save_hdf5(output_filename, overwrite=True)
 
 
+class TXDeltaSigmaTheory(PipelineStage):
+
+    name = "TXDeltaSigmaTheory"
+    inputs = [
+        ("fiducial_cosmology", FiducialCosmology),
+        ("lens_photoz_stack", QPNOfZFile),
+    ]
+    outputs = [
+        ("delta_sigma_theory", SACCFile),
+    ]
+    config_options = {
+        "r_min": StageParameter(float, 0.1, msg="Minimum radius to use in Mpc"),
+        "r_max": StageParameter(float, 60.0, msg="Maximum radius to use in Mpc"),
+        "n_r": StageParameter(int, 200, msg="Number of radial bins"),
+    }
+
+    def run(self):
+        import dsf
+        import sacc
+        from astropy import units as u
+        from astropy.cosmology import units as cu
+        n_of_zs = self.load_lens_nz()
+
+        # the r binning values for our theory curve.
+        r = np.geomspace(self.config["r_min"], self.config["r_max"], self.config["n_r"])
+
+        calculator, cosmo = self.build_calculator()
+
+        s = sacc.Sacc()
+
+        # Units! dSigma generates results with Mpc/h for distance
+        # and Msun/(pc/h)^2 for Delta-Sigma. dsf generates them all
+        # without the h factors.
+        # Use astropy to avoid messing this up. Hopefully.
+        H0 = cosmo._params["H0"] * u.km / u.s / u.Mpc
+        dsf_delta_sigma_units = u.Msun / u.pc**2
+        h_delta_sigma_units = u.Msun / u.pc**2 * cu.littleh**2
+        dsf_distance_units = u.Mpc
+        desired_distance_units = u.Mpc * cu.littleh**-1
+        # this little helper object is passed to the
+        # astropy unit conversion.
+        with_H0 = cu.with_H0(H0)
+
+
+        for bin_name, (z, n_z) in n_of_zs.items():
+            # save the n(z) for this bin to file.
+            # Note that there will be a "bin_all" bin at the
+            # end of the tomographic bins, which is the combined
+            # n(z) for all the objects in any bin, for non-tomographic
+            # analyses. If there is only one tomographic bin anyway
+            # then this will just be the same as the single bin's n(z).
+            s.add_tracer("NZ", bin_name, z, n_z)
+
+            # compute the Delta-Sigma with dsf for this bin.
+            delta_sigma_bin = calculator.delta_sigma_lens_bin(
+                r=r,
+                lens_dndz=(z, n_z),
+                cosmo=cosmo,
+            )
+
+            # do the unit conversion of the values we have.
+            # we have to first add the units that dsf is apparently using
+            # as astropy units, and then convert, and then take the value attribute
+            # which converts them to plain arrays again.
+            # Because we are re-using "r" we won't modify it in place,
+            # but we can with delta_sigma_bin as we don't use it again.
+            r_with_units = (r * dsf_distance_units).to(desired_distance_units, with_H0).value
+            delta_sigma_bin = (delta_sigma_bin * dsf_delta_sigma_units).to(h_delta_sigma_units, with_H0).value
+
+            for (r_i, ds_i) in zip(r_with_units, delta_sigma_bin):
+                # add in the h-factor
+                s.add_data_point(
+                    "galaxy_shearDensity_deltasigma",
+                    (bin_name,),
+                    ds_i,  # Final corrected Delta(Sigma) measurement
+                    rp=r_i,  # radius of the bin
+                    r_unit="Mpc/h",
+                )
+        output_filename = self.get_output("delta_sigma_theory")
+        s.save_hdf5(output_filename)
+        
+
+    def build_calculator(self):
+        from dsf.modelling import pk2d_hod
+        from dsf.data_vector.delta_sigma_builder import DeltaSigmaCalculator
+
+        with self.open_input("fiducial_cosmology", wrapper=True) as cosmo_file:
+            cosmo = cosmo_file.to_ccl()
+
+        print("CCL Cosmology:",cosmo)
+        
+        # TODO expose these as config options
+        k_array = np.geomspace(1.0e-3, 100.0, 128)
+        a_array = np.linspace(0.2, 1.0, 128)
+
+        def pk2d_func(*, cosmo):
+            return pk2d_hod(
+                cosmo,
+                k_array=k_array,
+                a_array=a_array,
+            )
+        
+        calculator = DeltaSigmaCalculator(pk2d_func=pk2d_func)
+        return calculator, cosmo
+
+
+
+    def load_lens_nz(self):
+        output = {}
+        with self.open_input("lens_photoz_stack", wrapper=True) as f:
+            nbin = f.get_nbin()
+            for i in range(nbin):
+                z, n_of_z = f.get_bin_n_of_z(i)
+                output[f"lens_{i}"] = (z, n_of_z)
+            z, n_of_z = f.get_2d_n_of_z()
+            output["lens_all"] = (z, n_of_z)
+        return output
+
+
+
+
 class TXDeltaSigmaPlots(PipelineStage):
     """Make plots of Delta Sigma results."""
 
     name = "TXDeltaSigmaPlots"
     inputs = [
         ("delta_sigma", SACCFile),
+        ("delta_sigma_theory", SACCFile),
         ("fiducial_cosmology", FiducialCosmology),
     ]
     outputs = [
@@ -429,6 +551,7 @@ class TXDeltaSigmaPlots(PipelineStage):
         import matplotlib.pyplot as plt
 
         sacc_data = sacc.Sacc.load_hdf5(self.get_input("delta_sigma"))
+        sacc_theory = sacc.Sacc.load_hdf5(self.get_input("delta_sigma_theory"))
 
         # Plot in theta coordinates
         nbin_source = sacc_data.metadata["nbin_source"]
@@ -443,29 +566,34 @@ class TXDeltaSigmaPlots(PipelineStage):
         # Plot in r coordinates
         nbin_source = sacc_data.metadata["nbin_source"]
         nbin_lens = sacc_data.metadata["nbin_lens"]
-        with self.open_output("delta_sigma_plot", wrapper=True, figsize=(5 * nbin_lens, 4 * nbin_source)) as fig:
-            axes = fig.file.subplots(nbin_source, nbin_lens, squeeze=False)
-            for s in range(nbin_source):
-                for l in range(nbin_lens):
-                    axes[s, l].set_title(f"Source {s}, Lens {l}")
-                    axes[s, l].set_xlabel("Radius [Mpc]")
-                    axes[s, l].set_ylabel(r"$R \cdot \Delta \Sigma [M_\odot / pc^2]$")
-                    axes[s, l].grid()
+        shift = np.geomspace(0.95, 1.05, nbin_source)
+        with self.open_output("delta_sigma_plot", wrapper=True, figsize=(5 * nbin_lens, 4)) as fig:
+            axes = fig.file.subplots(1, nbin_lens, squeeze=False)
+            for l in range(nbin_lens):
+                x_theory = np.array(sacc_theory.get_tag("rp", tracers=(f"lens_{l}",)))
+                y_theory = sacc_theory.get_mean(tracers=(f"lens_{l}",))
+                axes[l, 0].set_title(f"Lens {l}")
+                axes[l, 0].set_xlabel("Radius [Mpc/h]")
+                axes[l, 0].set_ylabel(r"$R \cdot \Delta \Sigma [M_\odot h^2 / pc^2]$")
+                axes[l, 0].grid()
+                axes[l, 0].plot(x_theory, y_theory * x_theory, '-', label='Theory')
+                for s in range(nbin_source):
                     x = sacc_data.get_tag("rp", tracers=(f"source_{s}", f"lens_{l}"))
                     x = np.array(x)
                     y = sacc_data.get_mean(tracers=(f"source_{s}", f"lens_{l}"))
-                    raw_y = sacc_data.get_tag("raw_value", tracers=(f"source_{s}", f"lens_{l}"))
+                    # raw_y = sacc_data.get_tag("raw_value", tracers=(f"source_{s}", f"lens_{l}"))
                     if cov is not None:
                         index = sacc_data.indices(tracers=(f"source_{s}", f"lens_{l}"))
                         cov_block = cov[index][:, index]
                         error = np.sqrt(np.diag(cov_block))
-                        axes[s, l].errorbar(x, y * x, yerr=error * x, fmt='+')
+                        axes[l, 0].errorbar(x * shift[s] , y * x, yerr=error * x, fmt='+', label=rf'$\Delta\Sigma$ s={s}')
                         # Also plot the raw value with boost/randoms
-                        axes[s, l].plot(x, raw_y * x, 'x')
+                        # axes[l, 0].plot(x, raw_y * x, 'x', label=r'Raw $\Delta\Sigma$')
                     else:
-                        axes[s, l].plot(x, y * x, '+')
-                        axes[s, l].plot(x, raw_y * x, 'x')
-                    axes[s, l].set_ylim(0, None)
-                    axes[s, l].set_xscale("log")
+                        axes[l, 0].plot(x * shift[s], y * x, '+', label=rf'$\Delta\Sigma$ s={s}')
+                        # axes[l, 0].plot(x, raw_y * x, 'x', label=r'Raw $\Delta\Sigma$')
+                    axes[l, 0].set_ylim(0, None)
+                    axes[l, 0].set_xscale("log")
+            axes[0, 0].legend(loc='upper left')
             plt.subplots_adjust(hspace=0.05, wspace=0.05)
             plt.tight_layout()
