@@ -55,3 +55,5 @@ dependencies:
     # try to install a different version
     - numpy==2.3.*
     - dsigma==1.1.*
+    # We should pin this to a version once we get to merging this
+    - git+https://github.com/LSSTDESC/dsf.git
