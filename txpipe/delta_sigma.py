@@ -34,13 +34,23 @@ class TXDeltaSigma(PipelineStage):
         "r_max": StageParameter(float, 10.0, msg="Maximum radius to use in Mpc"),
         "nbins": StageParameter(int, 10, msg="Number of radial bins"),
         "photoz": StageParameter(bool, False, msg="Whether or not objects have point photo-z estimate"),
-        "lens_source_sep": StageParameter(float, 0.1, msg="Minimum redshift separation between lens and source bins to use for dSigma measurement"),
-        "lower_bin_edge": StageParameter(list, [0.0, 0.358, 0.631, 0.872], msg="Lower edge of the source redshift bins to use for dSigma measurement, only used if photoz=True"),
+        "lens_source_sep": StageParameter(
+            float, 0.1, msg="Minimum redshift separation between lens and source bins to use for dSigma measurement"
+        ),
+        "lower_bin_edge": StageParameter(
+            list,
+            [0.0, 0.358, 0.631, 0.872],
+            msg="Lower edge of the source redshift bins to use for dSigma measurement, only used if photoz=True",
+        ),
         "source_cat_w_col": StageParameter(str, "weight", msg="Source catalog weight column name."),
         "lens_cat_w_col": StageParameter(str, "weight", msg="Lens catalog weight column name."),
         "n_jobs": StageParameter(int, 1, msg="Number of multiprocessing processes to use"),
-        "n_jackknife": StageParameter(int, 0, msg="Number of jackknife regions to use for error estimation, 0 means no jackknife"),
-        "subsample": StageParameter(float, 0.0, msg="If set to non-zero, randomly subsample this fraction of the all the data sets for testing."),
+        "n_jackknife": StageParameter(
+            int, 0, msg="Number of jackknife regions to use for error estimation, 0 means no jackknife"
+        ),
+        "subsample": StageParameter(
+            float, 0.0, msg="If set to non-zero, randomly subsample this fraction of the all the data sets for testing."
+        ),
     }
 
     def run(self):
@@ -81,8 +91,7 @@ class TXDeltaSigma(PipelineStage):
 
             if self.config["photoz"]:
                 # if we do not have point photo-z estimates for the sources then we use the lower edge of the tomographic bins to make z column
-                source_table['z'] = np.array(self.config["lower_bin_edge"])[source_table['z_bin']]
-
+                source_table["z"] = np.array(self.config["lower_bin_edge"])[source_table["z_bin"]]
 
             # Add columns to two tables in-place to do most of the pre-computation work.
             # We should look at using the n_jobs multiprocessing option here
@@ -94,10 +103,25 @@ class TXDeltaSigma(PipelineStage):
             )
             progress_bar = self.rank == 0
             n_jobs = self.config["n_jobs"]
-            
-            dsigma.precompute.precompute(lens_table, source_table, table_n=source_n_of_z, bins=bins, cosmology=cosmo, progress_bar=progress_bar, n_jobs=n_jobs)#, lens_source_cut=self.config["lens_source_sep"])
-            dsigma.precompute.precompute(randoms_table, source_table, table_n=source_n_of_z, bins=bins, cosmology=cosmo, progress_bar=progress_bar, n_jobs=n_jobs)#, lens_source_cut=self.config["lens_source_sep"])
 
+            dsigma.precompute.precompute(
+                lens_table,
+                source_table,
+                table_n=source_n_of_z,
+                bins=bins,
+                cosmology=cosmo,
+                progress_bar=progress_bar,
+                n_jobs=n_jobs,
+            )  # , lens_source_cut=self.config["lens_source_sep"])
+            dsigma.precompute.precompute(
+                randoms_table,
+                source_table,
+                table_n=source_n_of_z,
+                bins=bins,
+                cosmology=cosmo,
+                progress_bar=progress_bar,
+                n_jobs=n_jobs,
+            )  # , lens_source_cut=self.config["lens_source_sep"])
 
             # stack to get the excess surface density Delta(Sigma)
             result = dsigma.stacking.excess_surface_density(
@@ -105,18 +129,16 @@ class TXDeltaSigma(PipelineStage):
             )
 
             # Optionally get the jackknife covariance.
-            # dSigma does this for us too. The stacking is the relatively
+            # dSigma does this for us too. The stacking is the relatively
             # fast bit so hopefully this is quite fast.
             njack = self.config["n_jackknife"]
             if njack > 0:
                 centers = dsigma.jackknife.compute_jackknife_fields(lens_table, njack)
                 dsigma.jackknife.compute_jackknife_fields(randoms_table, centers)
 
-                # Get the covariance 
+                # Get the covariance
                 delta_sigma_cov = dsigma.jackknife.jackknife_resampling(
-                    dsigma.stacking.excess_surface_density,
-                    lens_table,
-                    randoms_table
+                    dsigma.stacking.excess_surface_density, lens_table, randoms_table
                 )
             else:
                 delta_sigma_cov = None
@@ -335,7 +357,7 @@ class TXDeltaSigma(PipelineStage):
         if self.comm is not None:
             # Gather results from all ranks to the root rank
             results = self.comm.gather(results, root=0)
-            # flatten back into a single list. I always forget this
+            # flatten back into a single list. I always forget this
             if self.rank == 0:
                 results = [r for sublist in results for r in sublist]
 
@@ -390,7 +412,7 @@ class TXDeltaSigma(PipelineStage):
                     boost=row["b"],  # the boost factor that was applied to get the final Delta(Sigma)
                     random_subtraction=row["ds_r"],  # the contribution from the randoms that was subtracted off
                     n_pairs=row["n_pairs"],  # the number of pairs in the bin
-                    r_unit="Mpc/h", # according to the dSigma docs
+                    r_unit="Mpc/h",  # according to the dSigma docs
                 )
 
             if cov_block is not None:
@@ -432,6 +454,7 @@ class TXDeltaSigmaTheory(PipelineStage):
         import sacc
         from astropy import units as u
         from astropy.cosmology import units as cu
+
         n_of_zs = self.load_lens_nz()
 
         # the r binning values for our theory curve.
@@ -442,7 +465,7 @@ class TXDeltaSigmaTheory(PipelineStage):
         s = sacc.Sacc()
 
         # Units! dSigma generates results with Mpc/h for distance
-        # and Msun/(pc/h)^2 for Delta-Sigma. dsf generates them all
+        # and Msun/(pc/h)^2 for Delta-Sigma. dsf generates them all
         # without the h factors.
         # Use astropy to avoid messing this up. Hopefully.
         H0 = cosmo._params["H0"] * u.km / u.s / u.Mpc
@@ -454,14 +477,13 @@ class TXDeltaSigmaTheory(PipelineStage):
         # astropy unit conversion.
         with_H0 = cu.with_H0(H0)
 
-
         for bin_name, (z, n_z) in n_of_zs.items():
-            # save the n(z) for this bin to file.
-            # Note that there will be a "bin_all" bin at the
-            # end of the tomographic bins, which is the combined
-            # n(z) for all the objects in any bin, for non-tomographic
-            # analyses. If there is only one tomographic bin anyway
-            # then this will just be the same as the single bin's n(z).
+            # save the n(z) for this bin to file.
+            # Note that there will be a "bin_all" bin at the
+            # end of the tomographic bins, which is the combined
+            # n(z) for all the objects in any bin, for non-tomographic
+            # analyses. If there is only one tomographic bin anyway
+            # then this will just be the same as the single bin's n(z).
             s.add_tracer("NZ", bin_name, z, n_z)
 
             # compute the Delta-Sigma with dsf for this bin.
@@ -471,16 +493,16 @@ class TXDeltaSigmaTheory(PipelineStage):
                 cosmo=cosmo,
             )
 
-            # do the unit conversion of the values we have.
-            # we have to first add the units that dsf is apparently using
+            # do the unit conversion of the values we have.
+            # we have to first add the units that dsf is apparently using
             # as astropy units, and then convert, and then take the value attribute
-            # which converts them to plain arrays again.
+            # which converts them to plain arrays again.
             # Because we are re-using "r" we won't modify it in place,
             # but we can with delta_sigma_bin as we don't use it again.
             r_with_units = (r * dsf_distance_units).to(desired_distance_units, with_H0).value
             delta_sigma_bin = (delta_sigma_bin * dsf_delta_sigma_units).to(h_delta_sigma_units, with_H0).value
 
-            for (r_i, ds_i) in zip(r_with_units, delta_sigma_bin):
+            for r_i, ds_i in zip(r_with_units, delta_sigma_bin):
                 # add in the h-factor
                 s.add_data_point(
                     "galaxy_shearDensity_deltasigma",
@@ -491,7 +513,6 @@ class TXDeltaSigmaTheory(PipelineStage):
                 )
         output_filename = self.get_output("delta_sigma_theory")
         s.save_hdf5(output_filename)
-        
 
     def build_calculator(self):
         from dsf.modelling import pk2d_hod
@@ -500,8 +521,8 @@ class TXDeltaSigmaTheory(PipelineStage):
         with self.open_input("fiducial_cosmology", wrapper=True) as cosmo_file:
             cosmo = cosmo_file.to_ccl()
 
-        print("CCL Cosmology:",cosmo)
-        
+        print("CCL Cosmology:", cosmo)
+
         # TODO expose these as config options
         k_array = np.geomspace(1.0e-3, 100.0, 128)
         a_array = np.linspace(0.2, 1.0, 128)
@@ -512,11 +533,9 @@ class TXDeltaSigmaTheory(PipelineStage):
                 k_array=k_array,
                 a_array=a_array,
             )
-        
+
         calculator = DeltaSigmaCalculator(pk2d_func=pk2d_func)
         return calculator, cosmo
-
-
 
     def load_lens_nz(self):
         output = {}
@@ -528,8 +547,6 @@ class TXDeltaSigmaTheory(PipelineStage):
             z, n_of_z = f.get_2d_n_of_z()
             output["lens_all"] = (z, n_of_z)
         return output
-
-
 
 
 class TXDeltaSigmaPlots(PipelineStage):
@@ -562,7 +579,6 @@ class TXDeltaSigmaPlots(PipelineStage):
         else:
             cov = None
 
-
         # Plot in r coordinates
         nbin_source = sacc_data.metadata["nbin_source"]
         nbin_lens = sacc_data.metadata["nbin_lens"]
@@ -576,7 +592,7 @@ class TXDeltaSigmaPlots(PipelineStage):
                 axes[l, 0].set_xlabel("Radius [Mpc/h]")
                 axes[l, 0].set_ylabel(r"$R \cdot \Delta \Sigma [M_\odot h^2 / pc^2]$")
                 axes[l, 0].grid()
-                axes[l, 0].plot(x_theory, y_theory * x_theory, '-', label='Theory')
+                axes[l, 0].plot(x_theory, y_theory * x_theory, "-", label="Theory")
                 for s in range(nbin_source):
                     x = sacc_data.get_tag("rp", tracers=(f"source_{s}", f"lens_{l}"))
                     x = np.array(x)
@@ -586,14 +602,16 @@ class TXDeltaSigmaPlots(PipelineStage):
                         index = sacc_data.indices(tracers=(f"source_{s}", f"lens_{l}"))
                         cov_block = cov[index][:, index]
                         error = np.sqrt(np.diag(cov_block))
-                        axes[l, 0].errorbar(x * shift[s] , y * x, yerr=error * x, fmt='+', label=rf'$\Delta\Sigma$ s={s}')
-                        # Also plot the raw value with boost/randoms
+                        axes[l, 0].errorbar(
+                            x * shift[s], y * x, yerr=error * x, fmt="+", label=rf"$\Delta\Sigma$ s={s}"
+                        )
+                        # Also plot the raw value with boost/randoms
                         # axes[l, 0].plot(x, raw_y * x, 'x', label=r'Raw $\Delta\Sigma$')
                     else:
-                        axes[l, 0].plot(x * shift[s], y * x, '+', label=rf'$\Delta\Sigma$ s={s}')
+                        axes[l, 0].plot(x * shift[s], y * x, "+", label=rf"$\Delta\Sigma$ s={s}")
                         # axes[l, 0].plot(x, raw_y * x, 'x', label=r'Raw $\Delta\Sigma$')
                     axes[l, 0].set_ylim(0, None)
                     axes[l, 0].set_xscale("log")
-            axes[0, 0].legend(loc='upper left')
+            axes[0, 0].legend(loc="upper left")
             plt.subplots_adjust(hspace=0.05, wspace=0.05)
             plt.tight_layout()
