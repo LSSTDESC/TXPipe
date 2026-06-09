@@ -10,9 +10,9 @@ global:
     sparse: true  # Generate sparse maps - faster if using small areas
 
 _nsides:
-  nside_high: &nside_high 256    # nside used for aux maps and mask
-  nside_mid:  &nside_mid  128    # nside used for making source and lens maps
-  nside_low:  &nside_low  64     # nside used for plotting
+  nside_high: &nside_high 512    # nside used for aux maps and mask (must be >= example_mask.hsp nside_coverage=512)
+  nside_mid:  &nside_mid  256    # nside used for making source and lens maps
+  nside_low:  &nside_low  128    # nside used for plotting
 
 TXGCRTwoCatalogInput:
     metacal_dir: /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/metacal_table_summary
@@ -137,31 +137,24 @@ TXSourceSelectorMetadetect:
     bands: riz #used for selection
     T_cut: 0.5
     s2n_cut: 10.0
-    max_rows: 1000
     delta_gamma: 0.02
-    source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
+    source_zbin_edges: [0.5, 0.9, 1.3, 1.8, 2.5]
 
 TXSourceTomography:
     bands: riz #used for selection
-    source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
+    source_zbin_edges: [0.5, 0.9, 1.3, 1.8, 2.5]
 
 TXTruthLensSelector:
-    # Mag cuts
     input_pz: false
     true_z: true
-    lens_zbin_edges: [0.1, 0.3, 0.5]
-    cperp_cut: 0.2
-    r_cpar_cut: 13.5
-    r_lo_cut: 16.0
-    r_hi_cut: 21.6
-    i_lo_cut: 17.5
-    i_hi_cut: 21.9
-    r_i_cut: 2.0
-    # may also need one for r_cpar_cut
+    selection_type: maglim
+    maglim_band: i
+    maglim_limit: 26.0
+    lens_zbin_edges: [0.1, 0.3, 0.5, 0.7, 0.9]
 
 TXMeanLensSelector:
     # Mag cuts
-    lens_zbin_edges: [0.0, 0.2, 0.4]
+    lens_zbin_edges: [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
     cperp_cut: 0.2
     r_cpar_cut: 13.5
     r_lo_cut: 16.0
@@ -172,7 +165,7 @@ TXMeanLensSelector:
 
 TXModeLensSelector:
     # Mag cuts
-    lens_zbin_edges: [0.0, 0.2, 0.4]
+    lens_zbin_edges: [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
     cperp_cut: 0.2
     r_cpar_cut: 13.5
     r_lo_cut: 16.0
@@ -196,10 +189,6 @@ TXTwoPoint:
     nbins: 10
     verbose: 0
     subtract_mean_shear: true
-
-TXGammaTBrightStars: {}
-
-TXGammaTDimStars: {}
 
 TXGammaTRandoms: {}
 
@@ -238,8 +227,8 @@ TXDiagnosticMaps:
     snr_delta: 1.0
     # pixelization: gnomonic
     pixel_size: 0.2
-    ra_cent: 62.
-    dec_cent: -35.
+    ra_cent: 9.55
+    dec_cent: -44.11
     npix_x: 60
     npix_y: 60
     depth_cut: 23.0
@@ -330,12 +319,11 @@ TXTwoPointFourierCatalog:
     nside: *nside_mid
 
 TXSimpleMaskFrac:
-    supreme_map_file: data/example/inputs/supreme_dc2_dr6d_v2_g_nexp_sum_1deg2.hs
+    supreme_map_file: data/example/inputs/roman-hlis/example_mask.hsp
     depth_cut: 23.5
     bright_object_max: 10.0
 
 TXMapCorrelations:
-    supreme_path_root: data/example/inputs/supreme
     outlier_fraction: 0.05
     nbin: 20
 
@@ -379,6 +367,18 @@ GridSelection:
 
 TXParqetToHDF:
     hdf_group: photometry
+TXTruePhotozStack:
+    nz: 50
+    zmax: 3.0
+    redshift_group: shear/00
+    redshift_col: redshift_true
+
+TXTrueLensPhotozStack:
+    nz: 50
+    zmax: 3.0
+    redshift_group: photometry
+    redshift_col: redshift_true
+
 NZDirInformerSource:
     name: NZDirInformerSource
     usecols: [r, i, z]

@@ -169,13 +169,13 @@ def make_plot(corr, obs_data, obs_theory, fig=None, xlogscale=True, ratios=False
     if corr == XIP:
         name = r"\xi_+(\theta)"
         ymin = 5e-7
-        ymax = 9e-5
+        ymax = 5e-4
         auto_only = False
         half_only = True
     elif corr == XIM:
         name = r"\xi_-(\theta)"
         ymin = 5e-7
-        ymax = 9e-5
+        ymax = 5e-4
         auto_only = False
         half_only = True
     elif corr == GAMMA:

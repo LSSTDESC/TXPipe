@@ -279,6 +279,16 @@ class TXSimpleMaskFrac(TXSimpleMask):
         else:
             fracdet = self.compute_fracdet_from_hsp_list(metadata)
 
+        # Reproject fracdet to match the mask's nside_coverage if they differ,
+        # which happens when the input hsp file has a different coverage nside
+        # (e.g. example_mask.hsp has nside_coverage=512 while aux maps use 32).
+        if fracdet.nside_coverage != mask.nside_coverage or fracdet.nside_sparse != mask.nside_sparse:
+            fracdet_reprojected = hsp.HealSparseMap.make_empty(
+                mask.nside_coverage, mask.nside_sparse, dtype=fracdet.dtype
+            )
+            fracdet_reprojected[fracdet.valid_pixels] = fracdet[fracdet.valid_pixels]
+            fracdet = fracdet_reprojected
+
         # boolean mask of pixels with high fracdet
         frac_cut_mask = hsp.HealSparseMap.make_empty_like(mask)
         frac_cut_mask[fracdet.valid_pixels] = (

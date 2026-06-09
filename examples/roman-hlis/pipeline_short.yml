@@ -1,5 +1,6 @@
 # Stages to run
 stages:
+
   - name: FlowCreator               # Simulate a spectroscopic population
     aliases:
         output: ideal_specz_catalog
@@ -24,42 +25,30 @@ stages:
         model: lens_photoz_model
         input: photometry_catalog
         output: lens_photoz_pdfs
-  - name: TXMeanLensSelector       # select objects for lens bins from the PDFs
-  - name: NZDirInformerLens         # Prepare the DIR method inputs for the lens sample     
-    classname: NZDirInformer
-    aliases:
-        input: spectroscopic_catalog
-        model: lens_direct_calibration_model
-  - name: PZRailSummarizeLens      # Run the DIR method on the lens sample to find n(z)
-    classname: PZRailSummarize
+  - name: TXTruthLensSelector      # select lens bins using true redshifts (no color cuts)
+  # - name: NZDirInformerLens        # Disabled: replaced by TXTrueLensPhotozStack
+  # - name: PZRailSummarizeLens     # Disabled: replaced by TXTrueLensPhotozStack
+  - name: TXTrueLensPhotozStack     # Use true redshifts for lens n(z) (replacing DIR)
     aliases:
         tomography_catalog: lens_tomography_catalog
-        binned_catalog: binned_lens_catalog
-        model: lens_direct_calibration_model
+        catalog: photometry_catalog
         photoz_stack: lens_photoz_stack
-        photoz_realizations: lens_photoz_realizations
-  - name: PZRailSummarizeSource    # Run the DIR method on the lens sample to find n(z)
-    classname: PZRailSummarize
+  - name: TXTruePhotozStack         # Use true redshifts for source n(z) (replacing DIR)
     aliases:
         tomography_catalog: shear_tomography_catalog
-        binned_catalog: binned_shear_catalog
-        model: source_direct_calibration_model
+        catalog: shear_catalog
         photoz_stack: shear_photoz_stack
-        photoz_realizations: source_photoz_realizations
+  # - name: PZRailSummarizeSource   # Disabled: replaced by TXTruePhotozStackSource
+  # - name: NZDirInformerSource     # Disabled: replaced by TXTruePhotozStackSource
   - name: TXSourceSelectorMetadetect    # select and split objects into source bins
   - name: TXSourceTomography
-  - name: NZDirInformerSource       # Prepare the DIR method inputs for the source sample
-    classname: NZDirInformer
-    aliases:
-        input: spectroscopic_catalog
-        model: source_direct_calibration_model
   - name: TXShearCalibration       # Calibrate and split the source sample tomographically
   - name: TXLensCatalogSplitter    # Split the lens sample tomographically
-  # - name: TXStarCatalogSplitter  # Disabled: no star catalog for Roman HLIS
+#  - name: TXStarCatalogSplitter    # Split the star catalog into separate bins (psf/non-psf)
   - name: TXLSSWeightsUnit         # add systematic weights to the lens sample (weight=1 for this example)
   - name: TXSourceMaps             # make source g1 and g2 maps
   - name: TXLensMaps               # make source lens and n_gal maps
-  # - name: TXAuxiliarySourceMaps  # Disabled: no PSF/exposure info for Roman HLIS
+  - name: TXAuxiliarySourceMaps    # make PSF and flag maps
   - name: TXAuxiliaryLensMaps      # make depth and bright object maps
   - name: TXSimpleMaskFrac       # combine maps to make a simple mask
   - name: TXSourceNoiseMaps      # Compute shear noise using rotations
@@ -67,6 +56,8 @@ stages:
   - name: TXDensityMaps          # turn mask and ngal maps into overdensity maps
   - name: TXMapPlots             # make pictures of all the maps
   - name: TXTracerMetadata       # collate metadata
+
+
   - name: TXRandomCat            # generate lens bin random catalogs
   - name: TXJackknifeCenters     # Split the area into jackknife regions
   - name: TXTwoPoint             # Compute real-space 2-point correlations
@@ -76,17 +67,14 @@ stages:
   - name: TXTwoPointTheoryReal   # compute theory using CCL to save in sacc file and plot later
   - name: TXTwoPointPlots        # Make plots of 2pt correlations
   - name: TXDiagnosticQuantiles
-  - name: TXSourceDiagnosticPlots      # Make a suite of diagnostic plots
-    nprocess: 2
+#  - name: TXSourceDiagnosticPlots      # Make a suite of diagnostic plots
+#    nprocess: 2
   - name: TXLensDiagnosticPlots      # Make a suite of diagnostic plots
-  - name: TXGammaTFieldCenters   # Compute and plot gamma_t around center points
-    threads_per_process: 2
-  # - name: TXGammaTStars  # Disabled: no star catalog for Roman HLIS
-    threads_per_process: 2
+  # - name: TXGammaTFieldCenters  # Disabled: needs exposures not available for Roman HLIS
+  # - name: TXGammaTStars        # Disabled: no star catalog for Roman HLIS
   - name: TXGammaTRandoms        # Compute and plot gamma_t around randoms
     threads_per_process: 2
   # - name: TXRoweStatistics      # Disabled: no PSF info for Roman HLIS
-    threads_per_process: 2
   # - name: TXGalaxyStarDensity   # Disabled: no star catalog for Roman HLIS
   # - name: TXGalaxyStarShear    # Disabled: no star catalog for Roman HLIS
   # - name: TXPSFDiagnostics     # Disabled: no PSF info for Roman HLIS
@@ -102,16 +90,8 @@ stages:
     aliases:
         photoz_stack: lens_photoz_stack
         nz_plot: nz_lens
-  - name: PZRealizationsPlotSource     # Plot n(z) realizations
-    classname: PZRealizationsPlot
-    aliases:
-        photoz_realizations: source_photoz_realizations
-        photoz_realizations_plot: source_photoz_realizations_plot
-  - name: PZRealizationsPlotLens     # Plot n(z) realizations
-    classname: PZRealizationsPlot
-    aliases:
-        photoz_realizations: lens_photoz_realizations
-        photoz_realizations_plot: lens_photoz_realizations_plot
+  # - name: PZRealizationsPlotSource  # Disabled: no photoz realizations with TXTruePhotozStack
+  # - name: PZRealizationsPlotLens    # Disabled: no photoz realizations with TXTrueLensPhotozStack
   - name: TXConvergenceMaps      # Make convergence kappa maps from g1, g2 maps
   - name: TXConvergenceMapPlots   # Plot the convergence map
   - name: TXMapCorrelations      # plot the correlations between systematics and data
@@ -123,12 +103,7 @@ stages:
     # Disabled since not yet synchronised with new Treecorr MPI
   - name: TXTwoPointSCIA   # Self-calibration intrinsic alignments of galaxies
 
-    # Disabling these as they takes too long for a quick test.
-    # The latter two need NaMaster
-    # - name: TXRealGaussianCovariance   # Compute covariance of real-space correlations
-    # - name: TXFourierGaussianCovariance # Compute the C_ell covariance
-    # - name: TXFourierTJPCovariance # Compute the C_ell covariance
-    #   threads_per_process: 2
+
 
 
 # modules and packages to import that have pipeline
@@ -170,6 +145,7 @@ config: examples/roman-hlis/config.yml
 inputs:
     shear_catalog: data/example/inputs/roman-hlis/roman_hlis_shear_catalog.hdf5
     photometry_catalog: data/example/inputs/roman-hlis/roman_hlis_photometry_catalog.hdf5
+    weights_catalog: None
     # This file comes with the code
     fiducial_cosmology: data/fiducial_cosmology.yml
     # For the self-calibration extension if we are not using random_catalog_source for now
@@ -180,8 +156,9 @@ inputs:
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted
-resume: true
+resume: false
 # where to put output logs for individual stages
 log_dir: data/example/logs_roman_hlis
 # where to put an overall parsl pipeline log
-pipeline_log: data/example/log.txt
+pipeline_log: data/example/log_roman_hlis.txt
+

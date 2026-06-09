@@ -122,6 +122,37 @@ class TXPhotozStack(PipelineStage):
                 f.write_ensemble(q)
 
 
+class TXTrueLensPhotozStack(PipelineStage):
+    """
+    Make an ideal true lens n(z) using true redshifts.
+
+    Thin subclass of TXTruePhotozStack for the lens sample, allowing both
+    source and lens stacks to appear as separate stages in the same pipeline.
+    """
+
+    name = "TXTrueLensPhotozStack"
+    inputs = [("tomography_catalog", TomographyCatalog), ("catalog", HDFFile), ("weights_catalog", HDFFile)]
+    outputs = [("photoz_stack", QPNOfZFile)]
+    config_options = {
+        "chunk_rows": StageParameter(int, 5000, msg="Number of rows to read at once."),
+        "zmax": StageParameter(float, 0.0, msg="Maximum redshift for stacking."),
+        "nz": StageParameter(int, 0, msg="Number of redshift histogram bins."),
+        "weight_col": StageParameter(str, "weight", msg="Column name for weights in the input catalog."),
+        "redshift_group": StageParameter(str, "", msg="Group name for redshift column in input file."),
+        "redshift_col": StageParameter(str, "redshift_true", msg="Column name for true redshift in input file."),
+    }
+
+    # Reuse all methods from TXTruePhotozStack
+    def run(self):
+        TXTruePhotozStack.run(self)
+
+    def data_iterator(self, weight_col):
+        return TXTruePhotozStack.data_iterator(self, weight_col)
+
+    def stack_data(self, data, histograms, total_weight, zmax, weight_col):
+        return TXTruePhotozStack.stack_data(self, data, histograms, total_weight, zmax, weight_col)
+
+
 class TXTruePhotozStack(PipelineStage):
     """
     Make an ideal true source n(z) using true redshifts
@@ -153,7 +184,7 @@ class TXTruePhotozStack(PipelineStage):
         with self.open_input("tomography_catalog", wrapper=True) as f:
             nbin = f.read_nbin()
 
-        if self.get_input("weights_catalog") == "none":
+        if str(self.get_input("weights_catalog")).lower() in ("none", "null"):
             weight_col = None
         else:
             weight_col = self.config["weight_col"]

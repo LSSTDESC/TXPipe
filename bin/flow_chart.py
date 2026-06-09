@@ -4,6 +4,7 @@ import ceci
 import txpipe
 import yaml
 import argparse
+import importlib
 import pygraphviz
 
 parser = argparse.ArgumentParser(description="Make a flow chart from a pipeline file")
@@ -13,8 +14,14 @@ parser.add_argument("--highlight", default="", nargs="*", help="Highlight inputs
 args = parser.parse_args()
 config = yaml.safe_load(open(args.input))
 
-# Get all the stage objects
-stages = [ceci.PipelineStage.get_stage(stage['name']) for stage in config['stages']]
+# Import any extra modules listed in the pipeline file so their stages are registered
+for path in config.get('python_paths', []):
+    sys.path.append(path)
+for module in config.get('modules', '').split():
+    importlib.import_module(module)
+
+# Get all the stage objects (use classname if provided, otherwise name)
+stages = [ceci.PipelineStage.get_stage(stage.get('classname', stage['name'])) for stage in config['stages']]
 
 # Make a graph object
 graph = pygraphviz.AGraph(directed=True)
