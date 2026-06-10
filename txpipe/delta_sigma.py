@@ -584,7 +584,7 @@ class TXDeltaSigmaPlots(PipelineStage):
         nbin_lens = sacc_data.metadata["nbin_lens"]
         shift = np.geomspace(0.95, 1.05, nbin_source)
         with self.open_output("delta_sigma_plot", wrapper=True, figsize=(5 * nbin_lens, 4)) as fig:
-            axes = fig.file.subplots(1, nbin_lens, squeeze=False)
+            axes = fig.file.subplots(nbin_lens, 1, squeeze=False)
             for l in range(nbin_lens):
                 x_theory = np.array(sacc_theory.get_tag("rp", tracers=(f"lens_{l}",)))
                 y_theory = sacc_theory.get_mean(tracers=(f"lens_{l}",))
