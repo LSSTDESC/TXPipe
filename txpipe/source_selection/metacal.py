@@ -1,6 +1,7 @@
 from .base import TXSourceSelectorBase
 from .base import select_weak_lensing_sample, select_tomographic_weak_lensing_sample
 from ..shear_calibration import metacal_variants, MetacalCalculator, band_variants
+from ..data_types import HDFFile
 import numpy as np
 from ceci.config import StageParameter
 
@@ -144,3 +145,59 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
             pz_data[f"zbin{v}"] = pz_data_v
 
         return pz_data
+
+
+class TXSourceSelectorDESY3(TXSourceSelectorMetacal):
+    """
+    Source selection and tomography for DESY3 catalogs
+
+        DES Source selection follows the metacal selection, except
+    that we do not attempt to re-create the SOM-based tomographic
+    bin assignment as the underlying data for this does not seem to be public.
+
+    Instead we just cheat and use the publicly released DES Y3
+    tomography information
+    """
+
+    name = "TXSourceSelectorDESY3"
+
+    inputs = TXSourceSelectorMetacal.inputs + [
+        ("desy3_index_catalog", HDFFile),
+    ]
+
+    def make_tomographic_bin_chooser_function(self):
+        import h5py
+
+        # In this cheat case (which would be a bit odd to use)
+        # then everything will be the same as the basic metacal case
+        # I guess it might happen with a simulated DESY3.
+        if self.config["true_z"] or self.config["input_pz"]:
+            return super().make_tomographic_bin_chooser_function()
+
+        variants = ["", "_1p", "_2p", "_1m", "_2m"]
+
+        # Otherwise we are going to read the DESY3 index catalog
+        # and construct a tomographic bin for each object in it.
+        # This is unfortunately about 2GB per process. I guess
+        # we could save it all to a temporary file. If this becomes
+        # an issue we can do that.
+        with self.open_input("desy3_index_catalog") as f:
+            n = f["/index/coadd_object_id"].size
+            tomography = np.zeros((5, n), dtype=np.int8)
+            tomography[:] = -1
+            for i, v in enumerate(variants):
+                for b in range(1, 5):
+                    col = f"/index/select_{v}_bin{b}"
+                    sel = f[col][:]
+                    # The -1 here is because in TXPipe
+                    # bins start at zero but in the DES catalog
+                    # they start 1 one.
+                    tomography[i, sel] = b - 1
+
+        def tomography_classifier(start, end, shear_data):
+            pz_data = {}
+            for i, v in enumerate(variants):
+                pz_data[f"zbin{v}"] = tomography[i, start:end]
+            return pz_data
+
+        return tomography_classifier

@@ -1,4 +1,4 @@
-from ...data_types import HDFFile, MapsFile, FitsFile, ShearCatalog
+from ...data_types import HDFFile, MapsFile, FitsFile, ShearCatalog, QPNOfZFile
 from ..base import TXIngestCatalogH5, TXIngestMapsHsp, TXIngestCatalogFits, PipelineStage
 from ceci.config import StageParameter
 import numpy as np
@@ -268,3 +268,50 @@ class TXIngestDESY3Shear(PipelineStage):
                 gout.create_dataset(f"mag_{band}{suffix}", data=mag, chunks=True, compression=compression)
                 gout.create_dataset(f"mag_err_{band}{suffix}", data=mag_err, chunks=True, compression=compression)
 
+
+
+class TXIngestDESY3SourceRedshift(PipelineStage):
+    name = "TXIngestDESY3SourceRedshift"
+    parallel = False
+    inputs = [
+        # this should be the file 2pt_NG_final_2ptunblind_02_26_21_wnz_maglim_covupdate.fits
+        ("des_datavector_file", FitsFile),
+    ]
+
+    outputs = [
+        ("shear_photoz_stack", QPNOfZFile)
+    ]
+
+    config_options = {
+    }
+
+
+    def run(self):
+        import twopoint
+        import qp
+
+        # Read in the old DES 2point file format
+        filename = self.get_input("des_datavector_file")
+        data = twopoint.TwoPointFile.from_fits(filename)
+
+        # get the kernel info out of it
+        kernel = data.kernels[0]
+        z = kernel.z
+        nz = kernel.nz
+        nbin_source = kernel.nbin
+
+        # convert to just an array stack from the list
+        pdfs = np.zeros((nbin_source + 1, nz))
+        ntot = kernel.ngal.sum()
+        for i in range(nz):
+            pdfs[i] = kernel.nzs[i]
+            # weighted average of the other PDFs to get the
+            # 2D one.
+            pdfs[nz] += kernel.ngal * pdfs[i]
+        # do the 2D bin, just the weighted sum
+        pdfs[nz] /= ntot
+
+        # save in QP format
+        q = qp.Ensemble(qp.interp, data={"xvals": z, "yvals": pdfs})
+        with self.open_output("shear_photoz_stack", "w") as f:
+            f.write_ensemble(q)
