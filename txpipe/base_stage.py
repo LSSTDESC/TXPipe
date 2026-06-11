@@ -129,7 +129,9 @@ class PipelineStage(PipelineStageBase):
                 f = self.open_input(name, wrapper=True)
                 input_id = f.provenance["uuid"]
                 f.close()
-            except (OSError, IOError, KeyError):
+            # use of external files means that any kind of error can
+            # happen here
+            except Exception:
                 input_id = "UNKNOWN"
 
             provenance[f"input/{name}"] = input_id

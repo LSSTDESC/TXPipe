@@ -602,7 +602,8 @@ class DensityCorrelation:
         A = np.zeros((n_corr_maps * n_bins, n_corr_maps + 1))
         A[:, 0] = 1.0  # beta column
 
-        for j, map_index_j in enumerate(corr_map_indices): #For each map we are binning on...
+        for j, map_index_j in enumerate(corr_map_indices[:]): #For each map we are binning on...
+            print(f"Precomputing design matrix rows for map {j} / {n_corr_maps}")
             edges_j = self.get_edges(map_index_j)
             row_start = j * n_bins
             row_end = row_start + n_bins

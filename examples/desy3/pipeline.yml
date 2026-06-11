@@ -7,6 +7,7 @@ stages:
   - name: TXIngestDESY3SpeczCat
   - name: TXIngestDESY3Shear
   - name: TXCustomMask
+  - name: TXIngestDESY3SourceRedshift
 
   # PER-OBJECT PHOTO-Z
 
@@ -35,15 +36,6 @@ stages:
         input: spectroscopic_catalog
         model: source_photoz_model
 
-  # Apply the trained DNF model to the metacalibration photometric sample to get source photo-z
-  - name: PZEstimatorSource
-    nprocess: 64
-    threads_per_process: 1
-    classname: DNFEstimator
-    aliases:
-        model: source_photoz_model
-        input: shear_catalog
-        output: source_photoz_pdfs
 
   # SELECTION & CALIBRATION
 
@@ -68,7 +60,7 @@ stages:
     threads_per_process: 8
 
   # Compute metacalibration shear response and selection bias corrections
-  - name: TXSourceSelectorMetacal
+  - name: TXSourceSelectorDESY3
     nprocess: 32
     threads_per_process: 4
 
@@ -91,17 +83,6 @@ stages:
         photoz_stack: lens_photoz_stack
         photoz_realizations: lens_photoz_realizations
 
-  # Compute the ensemble n(z) for the source bins using point estimate histograms
-  - name: PZRailSummarizeSource
-    classname: PZRailPZSummarize
-    nprocess: 32
-    threads_per_process: 4
-    aliases:
-        tomography_catalog: shear_tomography_catalog
-        photoz_pdfs: source_photoz_pdfs
-        model: source_photoz_model
-        photoz_stack: shear_photoz_stack
-        photoz_realizations: source_photoz_realizations
 
   # Plot the source n(z) distribution
   - name: TXPhotozPlotSource
@@ -116,13 +97,6 @@ stages:
     aliases:
         photoz_stack: lens_photoz_stack
         nz_plot: nz_lens
-
-  # Plot realizations of the source n(z) distribution
-  - name: PZRealizationsPlotSource
-    classname: PZRealizationsPlot
-    aliases:
-        photoz_realizations: source_photoz_realizations
-        photoz_realizations_plot: source_photoz_realizations_plot
 
 
   # TWO-POINT ESTIMATION
@@ -201,7 +175,9 @@ inputs:
     des_photometry_catalog: data/desy3/inputs/DESY3_GOLD_2_2.1.h5
     des_shear_catalog: data/desy3/inputs/DESY3_metacal_v03-004.h5
     des_specz_catalog: data/desy3/inputs/y6gold22_trainnov20_matchedtoy3.fits
+    des_datavector_file: data/desy3/inputs/2pt_NG_final_2ptunblind_02_26_21_wnz_maglim_covupdate.fits
     fiducial_cosmology: data/fiducial_cosmology.yml
+    desy3_index_catalog: data/desy3/inputs/DESY3_indexcat.h5
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted

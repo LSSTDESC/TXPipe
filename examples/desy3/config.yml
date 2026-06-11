@@ -88,13 +88,16 @@ PZRailSummarizeLens:
     summarizer: PointEstHistMaskedSummarizer
     module: "rail.estimation.algos.point_est_hist"
     chunk_size: 100_000
+    n_samples: 30
+    
 
 PZRailSummarizeSource:
     name: PZRailSummarizeSource
     classname: PZRailPZSummarize
     catalog_group: source
     tomography_name: source
-    nsamples: 0
+    #nsamples: 30
+    n_samples: 30
     zmin: 0.0
     zmax: 2.0
     nzbins: 150
@@ -103,6 +106,7 @@ PZRailSummarizeSource:
     summarizer: PointEstHistMaskedSummarizer
     module: "rail.estimation.algos.point_est_hist"
     chunk_size: 100_000
+    
 
 TXPhotozPlotSource:
     name: TXPhotozPlotSource
@@ -129,7 +133,7 @@ TXCustomLensSelector:
 
 TXLSSWeightsLinBinned:
     name: TXLSSWeightsLinBinned
-    supreme_path_root: data/desy3/inputs/patch_survey_property_maps/
+    supreme_path_root: data/desy3/inputs/survey_property_maps/
     nbin: 10 
     outlier_fraction: 0.05
     pvalue_threshold: 0.05  # max p-value for maps to be included in the corrected (a very simple form of regularization)
@@ -138,7 +142,7 @@ TXLSSWeightsLinBinned:
 
 TXLSSDensityNullTests:
     name: TXLSSDensityNullTests
-    supreme_path_root: data/desy3/inputs/patch_survey_property_maps/
+    supreme_path_root: data/desy3/inputs/survey_property_maps/
     nbin: 10 
     outlier_fraction: 0.05
     pvalue_threshold: 0.05  # max p-value for maps to be included in the corrected (a very simple form of regularization)
@@ -181,7 +185,7 @@ TXSourceTomography:
     spec_mag_column_format: "photometry/mag_{band}"
 
 
-TXSourceSelectorMetacal:
+TXSourceSelectorDESY3:
     input_pz: False
     true_z: False
     bands: ["r", "i", "z"]

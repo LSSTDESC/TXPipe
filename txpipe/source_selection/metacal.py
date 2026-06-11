@@ -187,7 +187,10 @@ class TXSourceSelectorDESY3(TXSourceSelectorMetacal):
             tomography[:] = -1
             for i, v in enumerate(variants):
                 for b in range(1, 5):
-                    col = f"/index/select_{v}_bin{b}"
+                    if v:
+                        col = f"/index/select{v}_bin{b}"
+                    else:
+                        col = f"/index/select_bin{b}"
                     sel = f[col][:]
                     # The -1 here is because in TXPipe
                     # bins start at zero but in the DES catalog

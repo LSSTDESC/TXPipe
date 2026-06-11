@@ -297,19 +297,19 @@ class TXIngestDESY3SourceRedshift(PipelineStage):
         # get the kernel info out of it
         kernel = data.kernels[0]
         z = kernel.z
-        nz = kernel.nz
+        nz = kernel.nsample
         nbin_source = kernel.nbin
 
         # convert to just an array stack from the list
         pdfs = np.zeros((nbin_source + 1, nz))
         ntot = kernel.ngal.sum()
-        for i in range(nz):
-            pdfs[i] = kernel.nzs[i]
+        for i in range(nbin_source):
+            pdfs[i] = kernel.nzs[i].clip(0, np.inf)
             # weighted average of the other PDFs to get the
             # 2D one.
-            pdfs[nz] += kernel.ngal * pdfs[i]
+            pdfs[nbin_source] += kernel.ngal[i] * pdfs[i]
         # do the 2D bin, just the weighted sum
-        pdfs[nz] /= ntot
+        pdfs[nbin_source] /= ntot
 
         # save in QP format
         q = qp.Ensemble(qp.interp, data={"xvals": z, "yvals": pdfs})
