@@ -2,7 +2,7 @@ import glob
 import numpy as np
 from ..base_stage import PipelineStage
 from ..data_types import ShearCatalog
-from ..utils.conversion import mag_ab_to_nanojansky_with_errors, combine_intrinsic_shear
+from ..utils.conversion import mag_ab_to_nanojansky_with_errors, combine_intrinsic_shear, mags_to_snr
 from ..utils.hdf_tools import repack
 from ceci.config import StageParameter
 
@@ -16,6 +16,7 @@ class TXIngestFlagshipMocks(PipelineStage):
     ]
     config_options = {
         "input_file_pattern": StageParameter(str, default=DEFAULT_MOCK_PATTERN, msg="Glob pattern for input files"),
+        "chunk_rows": StageParameter(int, default=1_000_000, msg="Number of rows to process at once")
     }
 
     def run(self):
@@ -34,22 +35,29 @@ class TXIngestFlagshipMocks(PipelineStage):
 
         # Loop through the chunks of data in the different input files
         s = 0
+        s1 = 0
         for data in self.iterate_data(input_files):
+            e1 = s1 + len(data["ra"])
+            print(f"Processing rows {s1:,} - {e1:,} of {size:,}")
+            s1 = e1
 
             # Convert the data in each to the observable
             # quantities we might see in a real catalog
             data = self.process_chunk(data)
+            # New end value because we throw away some data.
             e = s + len(data["ra"])
 
+
+            
             # save this chunk to the file
-            print(f"Saving rows {s} - {e}")
-            for name, col in data.keys():
+            for name, col in data.items():
                 outgroup[name][s:e] = col
             s = e
         
         # reclaim the space because we over-estimated the availeble size
+        print(f"Cutting down to final catalog size {size} -> {e}")
         for key in list(outgroup.keys()):
-            outgroup[key].resize(s)
+            outgroup[key].resize((s,))
         
         outfile.close()
 
@@ -82,8 +90,8 @@ class TXIngestFlagshipMocks(PipelineStage):
         renamed_columns = {
             "galaxy_id": "id",
             "redshift": "redshift_true",
-            "true_g1": "gamma1",
-            "true_g2": "gamma2",
+            "gamma1": "true_g1",
+            "gamma2": "true_g2",
         }
         for b in "ugrizy":
             renamed_columns[f"mag_{b}_lsst"] = f"mag_{b}"
@@ -116,9 +124,11 @@ class TXIngestFlagshipMocks(PipelineStage):
 
     def iterate_data(self, input_files):
         from pyarrow.parquet import ParquetFile
+        batch_size = self.config["chunk_rows"]
+        print("Using batch size: ", batch_size)
         for filename in input_files:
             with ParquetFile(filename) as f:
-                for batch in f.iter_batches():
+                for batch in f.iter_batches(batch_size):
                     batch = {k:np.array(batch[k]) for k in batch.column_names}
                     yield batch
 
@@ -149,7 +159,7 @@ def setup_mock_shear_catalog_file(filename, size):
     f = h5py.File(filename, "w")
     g = f.create_group("shear")
     g.attrs['catalog_type'] = "simple"
-    g.create_dataset("galaxy_id", shape=(size,), maxshape=(size,), dtype=np.int64)
+    g.create_dataset("id", shape=(size,), maxshape=(size,), dtype=np.int64)
     for col in [
         "T", 
         "T_err", 
@@ -161,10 +171,15 @@ def setup_mock_shear_catalog_file(filename, size):
         "psf_g1", 
         "psf_g2", 
         "ra", 
-        "redshift_true", 
+        "redshift_true",
+        "true_g1",
+        "true_g2",    
         "s2n", 
         "weight",
     ]:
         g.create_dataset(col, shape=(size,), maxshape=(size, ), dtype=np.float64)
+    for b in "ugrizy":
+        g.create_dataset("mag_"+b, shape=(size,), maxshape=(size, ), dtype=np.float64)
+        g.create_dataset("mag_err_"+b, shape=(size,), maxshape=(size, ), dtype=np.float64)
     return f, g
 
