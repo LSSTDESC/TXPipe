@@ -66,6 +66,7 @@ class TXCosmoDC2Mock(PipelineStage):
             "size_true",
             "galaxy_id",
             "redshift_true",
+            "convergence",
         ]
         # Add any extra requestd columns
         cols += self.config["extra_cols"].split()
@@ -508,8 +509,8 @@ class TXCosmoDC2Mock(PipelineStage):
 
         eps = np.random.normal(0, shape_noise, nobj) + 1.0j * np.random.normal(0, shape_noise, nobj)
         # True shears without shape noise
-        g1 = data["shear_1"]
-        g2 = data["shear_2"]
+        g1 = data["shear_1"]/ (1.0 - data["convergence"]) 
+        g2 = data["shear_2"]/ (1.0 - data["convergence"])
 
         if self.config["flip_g2"]:
             g2 *= -1
@@ -519,7 +520,8 @@ class TXCosmoDC2Mock(PipelineStage):
         e = (eps + g) / (1 + g.conj() * eps)
         e1 = e.real
         e2 = e.imag
-
+        g1 = e1
+        g2 = e2
         zero = np.zeros(nobj)
         # Now collect together everything to go into the metacal
         # file
