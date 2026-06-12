@@ -1368,7 +1368,7 @@ class TXGalaxyStarDensity(PipelineStage):
         with self.open_input("shear_catalog", wrapper=True) as f:
             g = f.file["shear"]
             if f.catalog_type == "metadetect":
-                g = g["00"]
+                g = g["ns"]
             ra = g["ra"][:][mask]
             dec = g["dec"][:][mask]
 

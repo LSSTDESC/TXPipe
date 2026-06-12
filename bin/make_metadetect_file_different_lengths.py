@@ -5,7 +5,7 @@ output_file = "data/example/inputs/metadetect_shear_catalog_different_lengths.hd
 
 
 skips = {
-    "00": 1,
+    "ns": 1,
     "1p": 100,
     "1m": 120,
     "2p": 130,
