@@ -76,6 +76,32 @@ jobs:
       run: |
         ./bin/install.sh
 
+  Notebook:
+    runs-on: ${{ matrix.os }}
+    needs: Run_Installer
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: Restore conda environment
+      id: restore-conda
+      uses: actions/cache@v4
+      env:
+        cache-name: cache-conda-environment
+      with:
+        path: ./conda
+        key: ${{ matrix.os }}-conda-${{ hashFiles('bin/install.sh','bin/environment*.yml' ) }}
+        fail-on-cache-miss: true
+
+    - name: Execute notebook
+      run: |
+        source conda/bin/activate
+        jupyter execute notebooks/Welcome\ to\ TXPipe.ipynb
+
+
   Unit_Tests:
     runs-on: ${{ matrix.os }}
     needs: Run_Installer
