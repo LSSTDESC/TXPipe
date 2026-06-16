@@ -200,3 +200,6 @@ TXSourceSelectorDESY3:
 TXRandomCat:
     depth_band: i
     density: 10 # gals per sq arcmin
+
+TXTwoPoint:
+    flip_g2: true
