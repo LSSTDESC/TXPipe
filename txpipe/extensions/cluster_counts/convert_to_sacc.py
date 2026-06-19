@@ -14,9 +14,9 @@ class CLClusterSACC(PipelineStage):
     ]
 
     config_options = {
-        #radial bin definition
-        "r_min" : 0.2, #in Mpc
-        "r_max" : 5.0, #in Mpc
+        "cov_component": "tan_jk", #tan_jk, tan_bs, tan_sc
+        "survey_name" : "test_survey", #survey tracer name, free choice
+        "area" : 20.0, #survey area
     }
 
     def run(self):
@@ -28,11 +28,12 @@ class CLClusterSACC(PipelineStage):
         survey_name = my_configs['survey_name']
         area = my_configs['area']
         output_filename = self.get_output("cluster_sacc_catalog", final_name=True)
-
+        first_bin = next(iter(data.values()))
+        profile_type = first_bin["profile_type"]        
         sacc_obj = sacc.Sacc()
         self.add_tracers(sacc_obj, data, survey_name, area)
         self.add_counts_data(sacc_obj, data, survey_name)
-        self.add_deltasigma_data(sacc_obj, data, survey_name)
+        self.add_shear_data(sacc_obj, data, survey_name, profile_type)
         self.add_covariance_data(sacc_obj, data)
 
         sacc_obj.to_canonical_order()
@@ -66,12 +67,18 @@ class CLClusterSACC(PipelineStage):
             bin_z_dict[bin_z] = z_edges
             bin_rich_dict[bin_rich] = rich_edges
 
-        radius_centers = np.array(data['bin_zbin_0_richbin_0']['clmm_cluster_ensemble'].stacked_data['radius'])
-        rmin = self.config_options['r_min']
-        rmax = self.config_options['r_max'] 
-        radius_edges = np.logspace(np.log10(rmin), np.log10(rmax), len(radius_centers) + 1)
-        for i in range(len(radius_edges) - 1):
-            bin_radius_dict[f'radius_{i}'] = (radius_edges[i], radius_edges[i+1], radius_centers[i])
+        radial_bin_centers = np.array(data['bin_zbin_0_richbin_0']['clmm_cluster_ensemble'].stacked_data['radius'])
+        logc = np.log10(radial_bin_centers)
+
+        log10_edges = np.empty(len(radial_bin_centers) + 1)
+        log10_edges[1:-1] = 0.5 * (logc[:-1] + logc[1:])
+        log10_edges[0] = logc[0] - 0.5 * (logc[1] - logc[0])
+        log10_edges[-1] = logc[-1] + 0.5 * (logc[-1] - logc[-2])
+
+        radial_bin_edges = 10 ** log10_edges        
+
+        for i in range(len(radial_bin_edges) - 1):
+            bin_radius_dict[f'radius_{i}'] = (radial_bin_edges[i], radial_bin_edges[i+1], radial_bin_centers[i])
 
         return bin_z_dict, bin_rich_dict, bin_radius_dict
 
@@ -81,15 +88,14 @@ class CLClusterSACC(PipelineStage):
         """
         import sacc
         z_bins, rich_bins, radius_bins = self.get_bins(data)
-
+        bin_units = np.array(data['bin_zbin_0_richbin_0']['clmm_cluster_ensemble'].data.meta["bin_units"])
         for bin_comb in data:
             bin_z, bin_rich = self.transform_bin_string(bin_comb)
             sacc_obj.add_tracer("bin_z", bin_z, *z_bins[bin_z])
             sacc_obj.add_tracer("bin_richness", bin_rich, np.log10(rich_bins[bin_rich][0]), np.log10(rich_bins[bin_rich][1]))
 
         for radius_bin, radius_edges in radius_bins.items():
-            sacc_obj.add_tracer("bin_radius", radius_bin, *radius_edges)
-
+            sacc_obj.add_tracer("bin_radius", radius_bin, *radius_edges, metadata = {"bin_units" : bin_units})
         sacc_obj.add_tracer("survey", survey_name, area)
 
     def add_counts_data(self, sacc_obj, data: dict, survey_name: str):
@@ -103,12 +109,16 @@ class CLClusterSACC(PipelineStage):
             bin_z, bin_rich = self.transform_bin_string(bin_comb)
             sacc_obj.add_data_point(cluster_count, (survey_name, bin_rich, bin_z), int(bin_data['n_cl']))
 
-    def add_deltasigma_data(self, sacc_obj, data: dict, survey_name: str):
+    def add_shear_data(self, sacc_obj, data: dict, survey_name: str, profile_type: str):
         """
-        Adds cluster shear (delta sigma) data to the SACC object.
+        Adds cluster reduced shear or delta sigma (depending on profile_type) profile to the SACC object.
         """
         import sacc
-        cluster_shear = sacc.standard_types.cluster_shear
+        print(profile_type)
+        if profile_type == 'reduced_shear':
+            cluster_shear = sacc.standard_types.cluster_shear
+        elif profile_type == 'delta_sigma':
+            cluster_shear = sacc.standard_types.cluster_delta_sigma    
         _, _, radius_bins = self.get_bins(data)
 
         for bin_comb, bin_data in data.items():
@@ -119,17 +129,20 @@ class CLClusterSACC(PipelineStage):
 
     def add_covariance_data(self, sacc_obj, data: dict):
         """
-        Adds covariance data to the SACC object.
+        Adds full block-diagonal covariance data to the SACC object.
         """
         import sacc
+        from scipy.linalg import block_diag
+        cov_str = self.config["cov_component"]
         cluster_count = sacc.standard_types.cluster_counts
-        counts_points = np.array(sacc_obj.get_data_points(cluster_count))
-        counts_cov = np.array([point.value for point in counts_points])
+        counts_points = sacc_obj.get_data_points(cluster_count)
+    
+        counts_values = np.array([point.value for point in counts_points])
+        counts_cov_block = np.diag(counts_values) 
 
-        deltasigma_cov = [
-            bin_data['clmm_cluster_ensemble'].cov['tan_sc'].diagonal()
+        ds_blocks = [
+            bin_data['clmm_cluster_ensemble'].cov[cov_str]
             for bin_data in data.values()
         ]
-
-        diag_cov_vector = np.concatenate([counts_cov.flatten(), np.array(deltasigma_cov).flatten()])
-        sacc_obj.add_covariance(np.diag(diag_cov_vector))
+        full_cov = block_diag(counts_cov_block, *ds_blocks)
+        sacc_obj.add_covariance(full_cov)
