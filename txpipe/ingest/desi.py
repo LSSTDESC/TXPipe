@@ -218,12 +218,12 @@ class TXIngestDESI(PipelineStage):
 
         gb = cat_binned.create_group("lens")
         gb.attrs["nbin_lens"] = nbin_lens
-        for bn in range(nbin_lens):
-            gb_ = gb.create_group(f"bin_{bn}")
-            gb_.create_dataset("ra", (n,), dtype=np.float64)
-            gb_.create_dataset("dec", (n,), dtype=np.float64)
-            gb_.create_dataset("z", (n,), dtype=np.float64)
-            gb_.create_dataset("w_sys", (n,), dtype=np.float64)
+        # for bn in range(nbin_lens):
+        #     gb_ = gb.create_group(f"bin_{bn}")
+        #     gb_.create_dataset("ra", (n,), dtype=np.float64)
+        #     gb_.create_dataset("dec", (n,), dtype=np.float64)
+        #     gb_.create_dataset("z", (n,), dtype=np.float64)
+        #     gb_.create_dataset("w_sys", (n,), dtype=np.float64)
 
         h_uw = tomo_uw.create_group("tomography")
         h_uw.create_dataset("bin", (n,), dtype=np.int32)
@@ -300,11 +300,12 @@ class TXIngestDESI(PipelineStage):
         # save data to binned lens catalog
         for bn in range(nbin_lens):
             sel = h_w["bin"][:] == bn
-            gb_ = gb[f"bin_{bn}"]
-            gb_["ra"][:] = g["ra"][:][sel]
-            gb_["dec"][:] = g["dec"][:][sel]
-            gb_["z"][:] = g["z"][:][sel]
-            gb_["w_sys"][:] = h_w["lens_weight"][:][sel]
+
+            gb_ = gb.create_group(f"bin_{bn}")
+            gb_.create_dataset("ra", data=g["ra"][:][sel], dtype=np.float64)
+            gb_.create_dataset("dec", data=g["dec"][:][sel], dtype=np.float64)
+            gb_.create_dataset("z", data=g["z"][:][sel], dtype=np.float64)
+            gb_.create_dataset("w_sys", data=h_w["lens_weight"][:][sel], dtype=np.float64)
 
         # this is an overall count
         h_counts_uw["counts"][:] = counts

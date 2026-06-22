@@ -38,11 +38,11 @@ TXIngestRedmagic:
 
 TXIngestDESI:
     mock: false
-    lens_zbin_edges: [0.0, 3.0]
-    dz: 0.001
+    lens_zbin_edges: [0.1, 0.2, 0.3, 0.4]
+    dz: 0.05
 
 TXIngestDESIRandoms:
-    lens_zbin_edges: [0.0, 3.0]
+    lens_zbin_edges: [0.1, 0.2, 0.3, 0.4]
     ra_col: RA
     dec_col: DEC
     z_col: Z
@@ -56,8 +56,8 @@ TXDESISelector:
     zmin: 0.0
 
 TXDeltaSigma:
-    source_bins: [0,1,2,3] # no non-tomograhpic redshift distribution.
-    lens_bins: [0]
+    source_bins: [1,2,3] # no non-tomograhpic redshift distribution.
+    lens_bins: [0,1,2]
     lens_source_sep: 0.1
     photoz: True
     r_min: 0.35
@@ -67,6 +67,7 @@ TXDeltaSigma:
     source_cat_w_col: w
     lens_cat_w_col: w_sys
     n_jobs: 128
+    n_jackknife: 30
 
 TXSourceSelectorHSC:
     input_pz: true
@@ -258,7 +259,7 @@ TXRealGaussianCovariance:
 
 
 TXJackknifeCenters:
-    npatch: 5
+    npatch: 30
 
 
 TXTwoPointFourier:
@@ -276,6 +277,7 @@ TXMapCorrelations:
 
 TXPhotozPlotSource:
     name: TXPhotozPlotSource
+    nz: 61
 TXPhotozPlotLens:
     name: TXPhotozPlotLens
 TXTruePhotozStackSource:
