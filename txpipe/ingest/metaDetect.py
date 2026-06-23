@@ -245,8 +245,8 @@ class TXIngestRubinMetaDetect(PipelineStage):
             "gauss_psfReconvolved_g1", 
             "gauss_psfReconvolved_g2",
             'gauss_psfReconvolved_T',
-            "psfOriginal_e1",
-            "psfOriginal_e2",
+            "psfOriginal_g1",
+            "psfOriginal_g2",
             "psfOriginal_T",
             #Next follows the fluxes:
             "g_pgaussFlux",
