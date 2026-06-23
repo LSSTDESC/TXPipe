@@ -21,7 +21,7 @@ import h5py
 # ---------------------------------------------------------------------------
 # Input / output paths
 # ---------------------------------------------------------------------------
-INPUT_DIR = "."
+INPUT_DIR = "/pscratch/sd/c/chto100/e2e/"
 OUTPUT_SHEAR = "roman_hlis_shear_catalog.hdf5"
 OUTPUT_PHOT = "roman_hlis_photometry_catalog.hdf5"
 
