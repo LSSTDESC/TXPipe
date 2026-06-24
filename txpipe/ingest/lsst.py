@@ -92,9 +92,10 @@ def process_metadetect_data(data):
             "psf_g1": var_data["gauss_psfReconvolved_g1"],
             "psf_g2": var_data["gauss_psfReconvolved_g1"],
             "psf_T_mean": var_data["gauss_psfReconvolved_T"],
-            "flags": var_data["gauss_shape_flags"], # TO BE ADDRESSED!
+            "flags": var_data["gauss_shape_flags"], # currently just loading the shape flag,*
             "weight": 1 / (0.5 * (var_data["gauss_g1_g1_Cov"] + var_data["gauss_g2_g2_Cov"])),
         }
+        #* But we might want to load more flags, or generate a combined flag.
         for band in "gri": # For DP2, we only expect 4 bands
             f = var_data[f"{band}_pgaussFlux"]
             f_err = var_data[f"{band}_pgaussFluxErr"]
