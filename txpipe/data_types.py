@@ -692,7 +692,7 @@ class SACCFile(DataFile):
 
         if mode == "w":
             raise ValueError("Do not use the open_output method to write sacc files.  Use sacc.write_fits")
-        return sacc.Sacc.load_fits(path)
+        return sacc.Sacc.load(path)
 
     def read_provenance(self):
         meta = self.file.metadata
