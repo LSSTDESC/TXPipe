@@ -1,7 +1,7 @@
 import glob
 import numpy as np
 from ..base_stage import PipelineStage
-from ..data_types import ShearCatalog
+from ..data_types import ShearCatalog, HDFFile
 from ..utils.conversion import mag_ab_to_nanojansky_with_errors, combine_intrinsic_shear, mags_to_snr
 from ..utils.hdf_tools import repack
 from ceci.config import StageParameter

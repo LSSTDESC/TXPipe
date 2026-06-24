@@ -978,7 +978,7 @@ class TXDESIMultiMockSelector(TXDESIMockSelector):
     ]
 
     config_options = {
-        "mock_path_pattern": StageParameter(str, required=True, msg="Glob pattern for input mock files")
+        "mock_path_pattern": StageParameter(str, required=True, msg="Glob pattern for input mock files"),
         **TXDESISelector.config_options,
     }
 
