@@ -31,12 +31,15 @@ TXCosmoDC2Mock:
 TXIngestRedmagic:
     lens_zbin_edges: [0.1, 0.3, 0.5]
 
+TXIngestFlagshipMocks:
+    input_file_pattern: /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/dp2_mock_run_flagship_gold_test/*/output_deredden_lsst_obs_cond_dp2.pq
+
 TXIngestDESI:
     mock: true
     lens_zbin_edges: [0.0, 3.0]
     dz: 0.001
 
-TXDESIMockSelector:
+TXDESIMultiMockSelector:
     bands: ugrizy
     ra_col: ra
     dec_col: dec
@@ -44,6 +47,9 @@ TXDESIMockSelector:
     w_col: weight
     apply_mask: true
     zmin: 0.5
+    mock_path_pattern: '/global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/dp2_mock_run_flagship_gold_test/*/output_select_lsst_obs_cond_dp2_DESI_ELG_flagship.pq'
+
+
 
 
 PZPDFMLZ:

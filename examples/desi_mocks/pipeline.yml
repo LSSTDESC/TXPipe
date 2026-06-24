@@ -1,5 +1,7 @@
 # Stages to run
 stages:
+  - name: TXIngestFlagshipMocks
+  - name: TXDESIJointMask
   # - name: TXSourceSelectorMetacal
   # - name: TXSourceTomography
   # - name: TXShearCalibration
@@ -13,7 +15,7 @@ stages:
   #       weights_catalog: shear_catalog
   #       photoz_stack: shear_photoz_stack
   # - name: TXIngestRedmagic
-  - name: TXDESIMockSelector
+  - name: TXDESIMultiMockSelector
   - name: TXIngestDESI
   # - name: TXTracerMetadata
   # - name: TXSourceMaps
@@ -99,10 +101,12 @@ inputs:
     # star_catalog: data/example/inputs/star_catalog.hdf5
     desi_catalog: /scratch/gpfs/AAMON/desc_analysis/catalogs/output_select_lsst_obs_cond_dp2_DESI_ELG_flagship.pq
     # mask should be already a combination of source and lens.
-    mask: /scratch/gpfs/AAMON/desc_analysis/catalogs/dp2_23p5_combined_mask_nmin=500_nside=512.hdf5 # /scratch/gpfs/AAMON/desc_analysis/catalogs/mask_eg.fits
+    # mask: /scratch/gpfs/AAMON/desc_analysis/catalogs/dp2_23p5_combined_mask_nmin=500_nside=512.hdf5 # /scratch/gpfs/AAMON/desc_analysis/catalogs/mask_eg.fits
     # This file comes with the code
     # fiducial_cosmology: data/fiducial_cosmology.yml
     # spectroscopic_catalog: data/example/inputs/mock_spectroscopic_catalog.hdf5
+    desi_mask:
+        name: desi_dr1_mask
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted
@@ -111,3 +115,9 @@ resume: true
 log_dir: data/example/logs_desi_mocks
 # where to put an overall parsl pipeline log
 pipeline_log: data/example/log_desi_mocks.txt
+
+
+registry:
+    owner_type: project
+    owner: wlss-dp2-desi-delta-sigma
+ 

@@ -994,8 +994,9 @@ class TXDESIMultiMockSelector(TXDESIMockSelector):
         if not input_files:
             raise ValueError("No input files found with pattern:" + pattern)
         start = 0
-
-        for fn in input_files:
+        nfile = len(input_files)
+        for ifn, fn in enumerate(input_files):
+            print(f"Reading file {ifn+1}/{nfile}: {fn}")
             with PQFile(fn) as f:
                 for batch in f.iter_batches(columns=cols, batch_size=chunk_rows):
                     data = {name: batch[name].to_numpy(zero_copy_only=False) for name in cols}
