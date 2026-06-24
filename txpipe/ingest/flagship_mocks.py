@@ -18,7 +18,7 @@ class TXIngestFlagshipMocks(PipelineStage):
     config_options = {
         "input_file_pattern": StageParameter(str, default=DEFAULT_MOCK_PATTERN, msg="Glob pattern for input files"),
         "chunk_rows": StageParameter(int, default=1_000_000, msg="Number of rows to process at once"),
-        "mask_nside" StageParameter(int, default=1024, msg="nside of generated mask"),
+        "mask_nside": StageParameter(int, default=1024, msg="nside of generated mask"),
     }
 
     def run(self):
