@@ -15,6 +15,7 @@ from .utils import LensNumberDensityStats, Splitter, rename_iterated
 from .binning import build_tomographic_classifier, apply_classifier, read_training_data
 import numpy as np
 import warnings
+import glob
 from ceci.config import StageParameter
 
 
@@ -967,6 +968,41 @@ class TXDESIMockSelector(TXDESISelector):
                 end = start + n
                 yield start, end, data
                 start = end
+
+
+class TXDESIMultiMockSelector(TXDESIMockSelector):
+    name = "TXDESIMultiMockSelector"
+
+    inputs = [
+        ("mask", MapsFile),
+    ]
+
+    config_options = {
+        "mock_path_pattern": StageParameter(str, required=True, msg="Glob pattern for input mock files")
+        **TXDESISelector.config_options,
+    }
+
+    def data_iterator(self):
+        from pyarrow.parquet import ParquetFile as PQFile
+        chunk_rows = self.config["chunk_rows"]
+        ra_col = self.config["ra_col"]
+        dec_col = self.config["dec_col"]
+        z_col = self.config["z_col"]
+        cols = [ra_col, dec_col, z_col] + [f"mag_{b}_lsst" for b in self.bands]
+        pattern = self.config["mock_path_pattern"]
+        input_files = glob.glob(pattern)
+        if not input_files:
+            raise ValueError("No input files found with pattern:" + pattern)
+        start = 0
+
+        for fn in input_files:
+            with PQFile(fn) as f:
+                for batch in f.iter_batches(columns=cols, batch_size=chunk_rows):
+                    data = {name: batch[name].to_numpy(zero_copy_only=False) for name in cols}
+                    n = len(data[cols[0]])
+                    end = start + n
+                    yield start, end, data
+                    start = end
 
 
 if __name__ == "__main__":
