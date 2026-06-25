@@ -1048,7 +1048,7 @@ class TXLensDiagnosticPlots(PipelineStage):
         "mag_max": StageParameter(float, 28, msg="Maximum magnitude for plots."),
         "snr_min": StageParameter(float, 5, msg="Minimum S/N for plots."),
         "snr_max": StageParameter(float, 200, msg="Maximum S/N for plots."),
-        "bands": StageParameter(str, "ugrizy", msg="Bands to use for diagnostics."),
+        "bands": StageParameter(list, ["u", "g", "r", "i", "z", "y"], msg="Bands to use for diagnostics."),
     }
 
     def run(self):
