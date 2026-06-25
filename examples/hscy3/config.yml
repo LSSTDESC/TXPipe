@@ -58,8 +58,8 @@ PZPrepareEstimatorLens:
     mag_err_min: 0.005
     inform_options: {save_train: false, load_model: false, modelfile: BPZpriormodel.out}
     madau_reddening: no
-    bands: riz
-    zp_errors: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+    bands: [r, i, z]
+    zp_errors: [0.01, 0.01, 0.01]
     hdf5_groupname: photometry
 
 
@@ -81,8 +81,8 @@ PZPrepareEstimatorSource:
     mag_err_min: 0.005
     inform_options: {save_train: false, load_model: false, modelfile: BPZpriormodel.out}
     madau_reddening: no
-    bands: riz
-    zp_errors: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+    bands: [r, i, z]
+    zp_errors: [0.01, 0.01, 0.01]
     hdf5_groupname: photometry
 
 
@@ -127,7 +127,7 @@ TXSourceTrueNumberDensity:
 TXSourceSelectorHSC:
     input_pz: true
     true_z: false
-    bands: i    #used for selection
+    bands: [i]    #used for selection
     T_cut: 0.0
     s2n_cut: 10.0
     max_rows: 10000000000
@@ -137,7 +137,7 @@ TXSourceSelectorHSC:
 TXSourceSelectorMetacal:
     input_pz: true
     true_z: false
-    bands: riz #used for selection
+    bands: [r, i, z] #used for selection
     T_cut: 0.5
     s2n_cut: 10.0
     max_rows: 10000000000

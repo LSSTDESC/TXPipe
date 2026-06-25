@@ -28,29 +28,6 @@ PZPDFMLZ:
 
 
 
-PZRailTrainLens:
-    class_name: BPZ_lite
-    zmin: 0.0
-    zmax: 3.0
-    dz: 0.01
-    columns_file: ./data/bpz_ugrizy.columns
-    data_path: ./data/example/rail-bpz-inputs
-    spectra_file: CWWSB4.list
-    prior_band: i
-    # Not sure about this
-    prior_file: hdfn_gen
-    p_min: 0.005
-    gauss_kernel: 0.0
-    mag_err_min: 0.005
-    inform_options: {save_train: false, load_model: false, modelfile: BPZpriormodel.out}
-    madau_reddening: no
-    bands: ugrizy
-    zp_errors: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
-
-PZRailEstimateLens:
-    convert_unseen: true
-    bands: ugrizy
-
 TXPhotozPlotSource:
     name: TXPhotozPlotSource
 TXPhotozPlotLens:
@@ -69,7 +46,7 @@ TXLensTrueNumberDensity:
 
 TXSourceSelectorLensfit:
     input_pz: true
-    bands: ri #used for selection
+    bands: [r, i] #used for selection
     T_cut: 0.25
     s2n_cut: 5.0
     max_rows: 1000
@@ -78,7 +55,7 @@ TXSourceSelectorLensfit:
     input_m_is_weighted: true
 
 TXSourceTomography:
-    bands: ri #used for selection
+    bands: [r, i] #used for selection
     source_zbin_edges: [0.1, 0.5, 1.0, 2.0]
 
 PZPrepareEstimatorLens:
@@ -99,7 +76,10 @@ PZPrepareEstimatorLens:
     mag_err_min: 0.005
     inform_options: {save_train: false, load_model: false, modelfile: BPZpriormodel.out}
     madau_reddening: no
-    bands: riz
+    band_names: [mag_u, mag_g, mag_r, mag_i, mag_z, mag_y]
+    bands: [mag_u, mag_g, mag_r, mag_i, mag_z, mag_y]
+    band_err_names: [mag_err_u, mag_err_g, mag_err_r, mag_err_i, mag_err_z, mag_err_y]
+    err_bands: [mag_err_u, mag_err_g, mag_err_r, mag_err_i, mag_err_z, mag_err_y]
     zp_errors: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
     hdf5_groupname: photometry
 
@@ -168,7 +148,7 @@ TXBlinding:
 
 TXDiagnosticQuantiles:
     nbins: 20
-    bands: ri
+    bands: [r, i]
 
 
 TXSourceDiagnosticPlots:
@@ -181,12 +161,12 @@ TXSourceDiagnosticPlots:
     T_max: 2.5
     s2n_min: 1.25
     s2n_max: 300
-    bands: ri
+    bands: [r, i]
 
 TXLensDiagnosticPlots:
     T_min: 0.5
     T_max: 1.0
-    bands: ri
+    bands: [r, i]
 
 
 TXMapPlots:
@@ -253,6 +233,7 @@ GridSelection:
 
 TXParqetToHDF:
     hdf_group: photometry
+
 PZEstimatorLens:
     name: PZEstimatorLens
     classname: BPZliteEstimator
