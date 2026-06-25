@@ -91,7 +91,7 @@ TXTrueNumberDensity:
 
 TXSourceSelectorMetacal:
     input_pz: false
-    bands: riz #used for selection
+    bands: [r, i, z] #used for selection
     T_cut: 0.5
     s2n_cut: 10.0
     max_rows: 1000
@@ -103,7 +103,7 @@ TXSourceSelectorMetacal:
 
 TXSourceSelectorMetadetect:
     input_pz: false
-    bands: riz #used for selection
+    bands: [r, i, z] #used for selection
     T_cut: 0.5
     s2n_cut: 10.0
     max_rows: 1000
@@ -114,7 +114,7 @@ TXSourceSelectorMetadetect:
     true_z: false
 
 TXSourceTomography:
-    bands: riz #used for selection
+    bands: [r, i, z] #used for selection
     source_zbin_edges: [0.19285902, 0.40831394, 0.65503818, 0.94499109, 1.2947086, 1.72779632, 2.27855242, 3.]  # 7 bins
 
 TXDiagnosticQuantiles:
@@ -131,7 +131,7 @@ TXPhotozPlotSource:
 
 TXRandomForestLensSelector:
     verbose: false
-    bands: ugrizy
+    bands: [u, g, r, i, z, "y"]
     lens_zbin_edges: [0.2, 0.4, 0.6, 0.8, 1.0, 1.2]
     random_seed: 79521323
     mag_i_limit: 24.1

@@ -2,7 +2,7 @@ global:
     chunk_rows: 1000000
 
 TXSourceSelectorMetadetect:
-    bands: riz
+    bands: [r, i, z]
     T_cut: 0.5
     s2n_cut: 10.0
     delta_gamma: 0.02
@@ -12,13 +12,13 @@ TXSourceSelectorMetadetect:
 
 
 TXSourceTomography:
-    bands: riz
+    bands: [r, i, z]
     source_zbin_edges: [0.0, 0.34, 0.53, 0.71, 0.96, 3.0]
     random_seed: 6765675
 
 TXRandomForestLensSelector:
     verbose: False
-    bands: ugrizy
+    bands: [u, g, r, i, z, "y"]
     lens_zbin_edges: [0.2, 0.4, 0.6, 0.8, 1.0, 1.2]
     random_seed: 79521
     mag_i_limit: 24.1

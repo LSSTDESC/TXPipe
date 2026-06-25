@@ -56,7 +56,9 @@ PZPrepareEstimatorLens:
     mag_err_min: 0.005
     inform_options: {save_train: false, load_model: false, modelfile: BPZpriormodel.out}
     madau_reddening: no
-    bands: riz
+    band_names: [mag_u, mag_g, mag_r, mag_i, mag_z, mag_y]
+    bands: [mag_u, mag_g, mag_r, mag_i, mag_z, mag_y]
+    err_bands: [mag_err_u, mag_err_g, mag_err_r, mag_err_i, mag_err_z, mag_err_y]
     zp_errors: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
     hdf5_groupname: photometry
 
@@ -79,8 +81,8 @@ PZPrepareEstimatorSource:
     mag_err_min: 0.005
     inform_options: {save_train: false, load_model: false, modelfile: BPZpriormodel.out}
     madau_reddening: no
-    bands: riz
-    zp_errors: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+    bands: [r, i, z]
+    zp_errors: [0.01, 0.01, 0.01]
     hdf5_groupname: photometry
 
 
@@ -129,7 +131,7 @@ TXShearCalibration:
 TXSourceSelectorMetacal:
     input_pz: false
     true_z: true
-    bands: riz #used for selection
+    bands: [r, i, z] #used for selection
     T_cut: 0.5
     s2n_cut: 10.0
     max_rows: 1000
@@ -137,7 +139,7 @@ TXSourceSelectorMetacal:
     source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
 
 TXSourceTomography:
-    bands: riz #used for selection
+    bands: [r, i, z] #used for selection
     source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
 
 TXTruthLensSelector:
@@ -309,7 +311,7 @@ PZRailSummarizeLens:
     name: PZRailSummarizeLens
     catalog_group: lens
     tomography_name: lens
-    bands: ugrizy
+    bands: [u, g, r, i, z, "y"]
 
 
 PZRailSummarizeSource:
@@ -320,7 +322,7 @@ PZRailSummarizeSource:
     mag_prefix: /shear/mcal_mag_
     tomography_name: source
     catalog_group: shear
-    bands: riz
+    bands: [r, i, z]
     name: PZRailSummarizeSource
 
 TXPhotozPlotLens:
