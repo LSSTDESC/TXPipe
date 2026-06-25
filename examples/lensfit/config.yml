@@ -44,12 +44,12 @@ PZRailTrainLens:
     mag_err_min: 0.005
     inform_options: {save_train: false, load_model: false, modelfile: BPZpriormodel.out}
     madau_reddening: no
-    bands: ugrizy
+    bands: [u, g, r, i, z, "y"]
     zp_errors: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
 
 PZRailEstimateLens:
     convert_unseen: true
-    bands: ugrizy
+    bands: [u, g, r, i, z, "y"]
 
 TXPhotozPlotSource:
     name: TXPhotozPlotSource
@@ -69,7 +69,7 @@ TXLensTrueNumberDensity:
 
 TXSourceSelectorLensfit:
     input_pz: true
-    bands: ri #used for selection
+    bands: [r, i] #used for selection
     T_cut: 0.25
     s2n_cut: 5.0
     max_rows: 1000
@@ -78,7 +78,7 @@ TXSourceSelectorLensfit:
     input_m_is_weighted: true
 
 TXSourceTomography:
-    bands: ri #used for selection
+    bands: [r, i] #used for selection
     source_zbin_edges: [0.1, 0.5, 1.0, 2.0]
 
 PZPrepareEstimatorLens:
@@ -99,7 +99,7 @@ PZPrepareEstimatorLens:
     mag_err_min: 0.005
     inform_options: {save_train: false, load_model: false, modelfile: BPZpriormodel.out}
     madau_reddening: no
-    bands: riz
+    bands: [r, i, z]
     zp_errors: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
     hdf5_groupname: photometry
 
@@ -168,7 +168,7 @@ TXBlinding:
 
 TXDiagnosticQuantiles:
     nbins: 20
-    bands: ri
+    bands: [r, i]
 
 
 TXSourceDiagnosticPlots:
@@ -181,12 +181,12 @@ TXSourceDiagnosticPlots:
     T_max: 2.5
     s2n_min: 1.25
     s2n_max: 300
-    bands: ri
+    bands: [r, i]
 
 TXLensDiagnosticPlots:
     T_min: 0.5
     T_max: 1.0
-    bands: ri
+    bands: [r, i]
 
 
 TXMapPlots:

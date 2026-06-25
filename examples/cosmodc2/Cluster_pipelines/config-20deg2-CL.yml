@@ -1,6 +1,6 @@
 TXSourceSelectorMetadetect:
     input_pz: false
-    bands: riz #used for selection
+    bands: [r, i, z] #used for selection
     T_cut: 0.5
     s2n_cut: 10.0
     max_rows: 1000
@@ -10,7 +10,7 @@ TXSourceSelectorMetadetect:
     true_z: false
 
 TXSourceTomography:
-    bands: riz #used for selection
+    bands: [r, i, z] #used for selection
     source_zbin_edges: [0.1, 3.0]
 
 BPZliteInformer:
@@ -29,7 +29,7 @@ BPZliteInformer:
     mag_err_min: 0.005
     inform_options: {save_train: false, load_model: false, modelfile: BPZpriormodel.out}
     madau_reddening: no
-    bands: riz
+    bands: [r, i, z]
     zp_errors: [0.01, 0.01, 0.01]
     hdf5_groupname: photometry
 
