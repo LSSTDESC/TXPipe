@@ -100,7 +100,7 @@ PZPrepareEstimatorLens:
     inform_options: {save_train: false, load_model: false, modelfile: BPZpriormodel.out}
     madau_reddening: no
     bands: [r, i, z]
-    zp_errors: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+    zp_errors: [0.01, 0.01, 0.01]
     hdf5_groupname: photometry
 
 
