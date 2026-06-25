@@ -56,8 +56,10 @@ PZPrepareEstimatorLens:
     mag_err_min: 0.005
     inform_options: {save_train: false, load_model: false, modelfile: BPZpriormodel.out}
     madau_reddening: no
-    bands: [r, i, z]
-    zp_errors: [0.01, 0.01, 0.01]
+    band_names: [mag_u, mag_g, mag_r, mag_i, mag_z, mag_y]
+    bands: [mag_u, mag_g, mag_r, mag_i, mag_z, mag_y]
+    err_bands: [mag_err_u, mag_err_g, mag_err_r, mag_err_i, mag_err_z, mag_err_y]
+    zp_errors: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
     hdf5_groupname: photometry
 
 
