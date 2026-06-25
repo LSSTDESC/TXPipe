@@ -146,7 +146,7 @@ class PZRailSummarize(PZRailSummarizeBase):
         "catalog_group": StageParameter(str, "", msg="Group name in the catalog file for tomographic bins."),
         "mag_prefix": StageParameter(str, "photometry/mag_", msg="Prefix for magnitude columns in the catalog."),
         "tomography_name": StageParameter(str, "", msg="Name of the tomography scheme."),
-        "bands": StageParameter(str, "ugrizy", msg="Bands to use for summarization."),
+        "bands": StageParameter(list, ["u", "g", "r", "i", "z", "y"], msg="Bands to use for summarization."),
         "summarizer": StageParameter(str, "NZDirSummarizer", msg="Name of the RAIL summarizer class to use."),
         "module": StageParameter(
             str, "rail.estimation.algos.nz_dir", msg="Python module path for the summarizer class."
@@ -190,7 +190,7 @@ class PZRailPZSummarize(PZRailSummarizeBase):
         "catalog_group": StageParameter(str, "", msg="Group name in the catalog file for tomographic bins."),
         "mag_prefix": StageParameter(str, "photometry/mag_", msg="Prefix for magnitude columns in the catalog."),
         "tomography_name": StageParameter(str, "", msg="Name of the tomography scheme."),
-        "bands": StageParameter(str, "ugrizy", msg="Bands to use for summarization."),
+        "bands": StageParameter(list, ["u", "g", "r", "i", "z", "y"], msg="Bands to use for summarization."),
         "summarizer": StageParameter(
             str, "PointEstHistMaskedSummarizer", msg="Name of the RAIL summarizer class to use."
         ),
