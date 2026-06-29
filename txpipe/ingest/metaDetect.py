@@ -252,11 +252,11 @@ class TXIngestRubinMetaDetect(PipelineStage):
             "g_pgaussFlux",
             "r_pgaussFlux",
             "i_pgaussFlux",
-            #"z_pgaussFlux",
+            "z_pgaussFlux",
             "g_pgaussFluxErr",
             "r_pgaussFluxErr",
             "i_pgaussFluxErr",
-            #"z_pgaussFluxErr",
+            "z_pgaussFluxErr",
             "pgauss_T",
             "pgauss_TErr",
             #Various flags
@@ -267,11 +267,11 @@ class TXIngestRubinMetaDetect(PipelineStage):
             "g_gaussFlux_flags",
             "r_gaussFlux_flags",
             "i_gaussFlux_flags",
-            #"z_gaussFlux_flags",
+            "z_gaussFlux_flags",
             "g_pgaussFlux_flags",
             "r_pgaussFlux_flags",
             "i_pgaussFlux_flags",
-            #"z_pgaussFlux_flags",
+            "z_pgaussFlux_flags",
             #"gauss_T_flags",
             #"pgauss_T_flags",
             "gauss_flags",
@@ -305,7 +305,7 @@ class TXIngestRubinMetaDetect(PipelineStage):
                 # replace masked values with nans
                 if np.ma.isMaskedArray(col):
                     col = col.filled(np.nan)
-                k[name].append(col)  #NOT SURE THIS WORKS EITHER TBD
+                k[name].append(col)
 
 
 

@@ -794,7 +794,6 @@ class MockCalculator(CalibrationCalculator):
         self.shear_stats.add_data(0, g1[sel], w)
         self.shear_stats.add_data(1, g2[sel], w)
 
-
         return sel
 
     def collect(self, comm=None, allgather=False) -> BinStats:

@@ -92,11 +92,10 @@ def process_metadetect_data(data):
             "psf_g1": var_data["gauss_psfReconvolved_g1"],
             "psf_g2": var_data["gauss_psfReconvolved_g1"],
             "psf_T_mean": var_data["gauss_psfReconvolved_T"],
-            "flags": var_data["gauss_shape_flags"], # currently just loading the shape flag,*
+            "flags": combined_flag(var_data),
             "weight": 1 / (0.5 * (var_data["gauss_g1_g1_Cov"] + var_data["gauss_g2_g2_Cov"])),
         }
-        #* But we might want to load more flags, or generate a combined flag.
-        for band in "gri": # For DP2, we only expect 4 bands
+        for band in "griz": # For DP2, we only expect 4 bands
             f = var_data[f"{band}_pgaussFlux"]
             f_err = var_data[f"{band}_pgaussFluxErr"]
             var_output[f"mag_{band}"] = nanojansky_to_mag_ab(f)
@@ -117,3 +116,21 @@ def sanitize(data):
         data = data.astype(int)
 
     return data
+
+
+def combined_flag(data):
+    """
+    generate a combined flag for the metadetect catalog
+    """
+    flag = np.ones(len(data), dtype=bool)
+    flag &= data["gauss_object_flags"] == 0
+    flag &= data["is_primary"] 
+    flag &= data["psfOriginal_flags"] == 0
+    flag &= data["gauss_psfReconvolved_flags"] == 0
+    flag &= data["gauss_shape_flags"] == 0
+    flag &= data["gauss_flags"] == 0
+    flag &= data["pgauss_flags"] == 0
+    for band in "griz":
+        flag &= data[f"{band}_gaussFlux_flags"] == 0
+        flag &= data[f"{band}_pgaussFlux_flags"] == 0
+    return (~flag).astype(int)
