@@ -120,7 +120,8 @@ def sanitize(data):
 
 def combined_flag(data):
     """
-    generate a combined flag for the metadetect catalog
+    generate a combined flag for the metadetect catalog,
+    this could also become initial cut if we want it to.
     """
     flag = np.ones(len(data), dtype=bool)
     flag &= data["gauss_object_flags"] == 0

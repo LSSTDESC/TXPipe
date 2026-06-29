@@ -277,6 +277,7 @@ class TXIngestRubinMetaDetect(PipelineStage):
             "gauss_flags",
             "pgauss_flags",
             "gauss_shape_flags",
+            "is_primary"
  
         ]
         return input_columns
