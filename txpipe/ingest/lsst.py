@@ -90,16 +90,26 @@ def process_metadetect_data(data):
             "psf_g2_original": var_data["psfOriginal_g2"],
             "psf_T_mean_original": var_data["psfOriginal_T"],
             "psf_g1": var_data["gauss_psfReconvolved_g1"],
-            "psf_g2": var_data["gauss_psfReconvolved_g1"],
+            "psf_g2": var_data["gauss_psfReconvolved_g2"],
             "psf_T_mean": var_data["gauss_psfReconvolved_T"],
             "flags": combined_flag(var_data),
             "weight": 1 / (0.5 * (var_data["gauss_g1_g1_Cov"] + var_data["gauss_g2_g2_Cov"])),
+            "gauss_flags": var_data["gauss_flags"],
+            "pgauss_flags": var_data["pgauss_flags"],
+            "gauss_shape_flags": var_data["gauss_shape_flags"],
+            "is_primary": var_data["is_primary"],
+            "gauss_object_flags": var_data["gauss_object_flags"],
+            "pgauss_object_flags": var_data["pgauss_object_flags"],
+            "psfOriginal_flags": var_data["psfOriginal_flags"],
+            "gauss_psfReconvolved_flags": var_data["gauss_psfReconvolved_flags"],
         }
         for band in "griz": # For DP2, we only expect 4 bands
             f = var_data[f"{band}_pgaussFlux"]
             f_err = var_data[f"{band}_pgaussFluxErr"]
             var_output[f"mag_{band}"] = nanojansky_to_mag_ab(f)
             var_output[f"mag_err_{band}"] = nanojansky_err_to_mag_ab(f, f_err)
+            var_output[f"{band}_gaussFlux_flags"] = var_data[f"{band}_gaussFlux_flags"]
+            var_output[f"{band}_pgaussFlux_flags"] = var_data[f"{band}_pgaussFlux_flags"]
         output[f"{variant}"] = var_output
 
     return output
@@ -125,6 +135,7 @@ def combined_flag(data):
     """
     flag = np.ones(len(data), dtype=bool)
     flag &= data["gauss_object_flags"] == 0
+    flag &= data["pgauss_object_flags"] == 0
     flag &= data["is_primary"]
     flag &= data["psfOriginal_flags"] == 0
     flag &= data["gauss_psfReconvolved_flags"] == 0

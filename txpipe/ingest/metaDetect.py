@@ -264,6 +264,7 @@ class TXIngestRubinMetaDetect(PipelineStage):
             "psfOriginal_flags",
             "gauss_psfReconvolved_flags",
             "gauss_object_flags",
+            "pgauss_object_flags",
             "g_gaussFlux_flags",
             "r_gaussFlux_flags",
             "i_gaussFlux_flags",
