@@ -125,7 +125,7 @@ def combined_flag(data):
     """
     flag = np.ones(len(data), dtype=bool)
     flag &= data["gauss_object_flags"] == 0
-    flag &= data["is_primary"] 
+    flag &= data["is_primary"]
     flag &= data["psfOriginal_flags"] == 0
     flag &= data["gauss_psfReconvolved_flags"] == 0
     flag &= data["gauss_shape_flags"] == 0
