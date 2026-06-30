@@ -66,6 +66,23 @@ DP1_SURVEY_PROPERTIES = {
     "deepCoadd_dcr_e2_consolidated_map_weighted_mean": "Weighted mean of DCR-induced change in PSF ellipticity (e2), expressed as a proportionality factor",
 }
 
+RENAMES = {
+    "gauss_g1":"g1",
+    "gauss_g2":"g2",
+    "gauss_g1_g1_Cov":"g1_err",
+    "gauss_g1_g2_Cov":"g2_err",
+    "gauss_g1_g2_Cov":"g_cross",
+    "gauss_T": "T",
+    "gauss_snr":"s2n",
+    "psfOriginal_g1": "psf_g1_original",
+    "psfOriginal_g2": "psf_g2_original",
+    "psfOriginal_T": "psf_T_mean_original",
+    "gauss_psfReconvolved_g1": "psf_g1",
+    "gauss_psfReconvolved_g2": "psf_g2",
+    "gauss_psfReconvolved_T": "psf_T_mean",
+    "mfrac": "object_mask_fraction",
+    "shearObjectId":"id", 
+}
 
 class TXIngestRubinMetaDetect(PipelineStage):
     """
@@ -181,6 +198,8 @@ class TXIngestRubinMetaDetect(PipelineStage):
             print(f"Processing chunk {i + 1} / {n_chunks}")
 
         splitter.finish()
+        print("adding in aliases")
+        self.aliasing(shear_outfile, group)
         shear_outfile.close()
 
     def file_run(self):
@@ -220,6 +239,7 @@ class TXIngestRubinMetaDetect(PipelineStage):
                 splitter.write_bin(data, variant)
 
         splitter.finish()
+        self.aliasing(shear_outfile, group)
         shear_outfile.close()
 
     def get_input_columns(self):
@@ -308,6 +328,13 @@ class TXIngestRubinMetaDetect(PipelineStage):
                     col = col.filled(np.nan)
                 k[name].append(col)
 
+    def aliasing(self, outfile, group):
+        g = outfile[group]
+        for variant in ["ns", "1p", "1m", "2p", "2m"]:
+            k = g[variant]
+            for original, txname in RENAMES.items():
+                k[original] = k[txname]
+        
 
 
 # Outstanding issues! 
