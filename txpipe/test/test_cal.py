@@ -4,6 +4,7 @@ from ..shear_calibration import (
     MetaDetectCalculator,
     MetaCalibrator,
     NullCalibrator,
+    AnaCalCalculator
 )
 
 import numpy as np
@@ -22,6 +23,8 @@ def select_all_where(data):
     # we just want to select everything here too
     return np.where(data["g2"] * 0 == 0)
 
+def select_all_anacal(data):
+    return np.repeat(True, data["e2"].size)
 
 
 
@@ -161,12 +164,69 @@ def core_metadet(comm):
         assert stats.source_count == N * nproc
 
 
+def core_anacal(comm):
+    delta_gamma = .02
+    nproc = 1 if comm is None else comm.size
+    N = 10
+
+
+    R_shape_true = 0.4 # known test value
+    R_weight_true = 0.3
+
+    base_data = {
+        "e1": np.random.normal(0, 0.1, size=N),
+        "e2": np.random.normal(0, 0.1, size=N),
+        "weight": np.ones(N),
+        "weight_dg1": np.zeros(N),
+        "weight_dg2": np.zeros(N),
+        "de1_dg1": np.zeros(N),
+        "de2_dg2": np.zeros(N),
+        "m00": np.ones(N),
+        "m20": np.ones(N),
+        "dm00_dg1": np.zeros(N),
+        "dm00_dg2": np.zeros(N),
+        "dm20_dg1": np.zeros(N),
+        "dm20_dg2": np.zeros(N),
+        "mask_value": np.zeros(N)
+    }
+
+    # case 1: pure shape response
+    data = {**base_data, "de1_dg1": np.full(N, R_shape_true), "de2_dg2": np.full(N, R_shape_true)}
+    cal = AnaCalCalculator(select_all_anacal, delta_gamma)
+    cal.add_data(data)
+    stats = cal.collect(comm, allgather=True)
+    assert np.allclose(stats.calibrator.R, R_shape_true)
+    assert stats.source_count == N * nproc
+
+    # case 2: pure weight-bias response
+    data = {**base_data, "weight_dg1": np.full(N, R_weight_true), "weight_dg2": np.full(N, R_weight_true)}
+    cal = AnaCalCalculator(select_all_anacal, delta_gamma)
+    cal.add_data(data)
+    stats = cal.collect(comm, allgather=True)
+    assert np.allclose(stats.calibrator.R, R_weight_true)
+
+    # Case 3: both contributions add correctly
+    data = {**base_data,
+            "de1_dg1": np.full(N, R_shape_true),
+            "de2_dg2": np.full(N, R_shape_true),
+            "weight_dg1": np.full(N, R_weight_true),
+            "weight_dg2": np.full(N, R_weight_true),
+            }
+    cal = AnaCalCalculator(select_all_anacal, delta_gamma)
+    cal.add_data(data)
+    stats = cal.collect(comm, allgather=True)
+    assert np.allclose(stats.calibrator.R, R_shape_true + R_weight_true)
+
+
 def test_metacalibrator_serial():
     core_metacal(None)
 
 
 def test_metadetect_serial():
     core_metadet(None)
+
+def test_anacal_serial():
+    core_anacal(None)
 
 
 def test_metadetect_parallel():
@@ -376,3 +436,4 @@ if __name__ == "__main__":
     test_metadetect_parallel()
     test_mean_shear_no_weights()
     test_mean_shear_weights()
+    test_anacal_serial()
