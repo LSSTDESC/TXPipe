@@ -345,20 +345,12 @@ class MapsFile(HDFFile):
             mask.update_values_pix(pix_to_keep, mask_in[pix_to_keep])
         else:
             mask = mask_in
-        # print("BBB")
-        # breakpoint()
 
         # degrade if requested and nessesary
         if (degrade_nside is not None) and (degrade_nside != mask.nside_sparse):
             mask = degrade_healsparse(
                 mask, reduction="mask", degrade_nside=degrade_nside
             )
-            non_zero_mask = hsp.HealSparseMap.make_empty_like(mask)
-            pix = mask.valid_pixels
-            pix = pix[mask[pix] > 0]
-            non_zero_mask[pix] = mask[pix]
-            mask = non_zero_mask
-
 
         if returnbool and not np.issubdtype(mask.dtype, np.bool_):
             # make a boolean mask from a frac map
