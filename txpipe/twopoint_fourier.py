@@ -230,7 +230,7 @@ class TXTwoPointFourier(PipelineStage):
                 nbin_lens = f.file["maps"].attrs["nbin_lens"]
                 d_maps = [f.read_map_healpix(f"delta_{b}") for b in range(nbin_lens)]
                 assert all(healpy.npix2nside(len(m)) == nside for m in d_maps)
-                print(f"Loaded {nbin_lens} overdensity maps")
+                print(f"Loaded {nbin_lens} overdensity maps")                
         else:
             d_maps = []
             nbin_lens = 0
@@ -815,15 +815,15 @@ class TXTwoPointFourier(PipelineStage):
             # the coupled noise is constant
             tr = S.tracers[tracer1]
             if (tracer1 == tracer2) and ("n_ell_coupled" not in tr.metadata):
-                if self.config["analytic_noise"] is False:
+                if self.config["analytic_noise"]:
+                    # Save the last element because the first one is zero for
+                    # shear
+                    tr.metadata["n_ell_coupled"] = d.noise_coupled[-1]
+                else:
                     # If computed through simulations, it might be better to
                     # take the mean since, for now, only a float can be passed
                     i = 0 if "lens" in tracer1 else 2
                     tr.metadata["n_ell_coupled"] = np.mean(d.noise_coupled)
-                else:
-                    # Save the last element because the first one is zero for
-                    # shear
-                    tr.metadata["n_ell_coupled"] = d.noise_coupled[-1]
 
                 if self.config["gaussian_sims_factor"] != [1.0] and "lens" in tracer1:
                     print(tracer1)
