@@ -84,6 +84,7 @@ def choose_ell_bins(**config):
         The resulting NmtBin object.
     """
     from pymaster import NmtBin
+    config = {key.removeprefix("binning/"): val for (key, val) in config.items()}
 
     if "ell_edges" in config:
         ell_edges = config["ell_edges"]

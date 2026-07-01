@@ -687,7 +687,7 @@ class TXFourierTJPCovariance(PipelineStage):
         # Load masks
         # For clustering, we follow twopoint_fourier.py:214-219
         with self.open_input("mask", wrapper=True) as f:
-            mask = f.read_map("mask")
+            mask = f.read_map_healpix("mask")
             mask[mask == healpy.UNSEEN] = 0.0
             if self.rank == 0:
                 print("Loaded mask")
@@ -697,8 +697,11 @@ class TXFourierTJPCovariance(PipelineStage):
 
         with self.open_input("density_maps", wrapper=True) as f:
             nbin_lens = f.file["maps"].attrs["nbin_lens"]
-            d_maps = [f.read_map(f"delta_{b}") for b in range(nbin_lens)]
+            d_maps = [f.read_map_healpix(f"delta_{b}") for b in range(nbin_lens)]
             print(f"Loaded {nbin_lens} overdensity maps")
+            dmap_nside = healpy.npix2nside(d_maps[0].size)
+        
+        mask = healpy.ud_grade(mask, nside_out=dmap_nside, order_in="nest", order_out="nest")
 
         # twopoint_fourier.py:219
         for d in d_maps:
@@ -708,7 +711,7 @@ class TXFourierTJPCovariance(PipelineStage):
         with self.open_input("source_maps", wrapper=True) as f:
             lensing_weights = []
             for b in range(nbin_source):
-                lw = f.read_map(f"lensing_weight_{b}")
+                lw = f.read_map_healpix(f"lensing_weight_{b}")
                 lw[lw == healpy.UNSEEN] = 0.0
                 lensing_weights.append(lw)
 
@@ -718,7 +721,7 @@ class TXFourierTJPCovariance(PipelineStage):
         # Following twopoint_fourier.py:197 all clustering maps use this mask
         masks = {f"lens_{i}": mask for i in range(nbin_lens)}
         masks.update({f"source_{i}": lensing_weights[i] for i in range(nbin_source)})
-        masks_names = {f"lens_{i}": "mask_lens" for i in range(nbin_lens)}
+        masks_names = {f"lens_{i}": f"mask_lens_{i}" for i in range(nbin_lens)}
         masks_names.update({f"source_{i}": f"mask_source_{i}" for i in range(nbin_source)})
 
         tjp_config[f"mask_file"] = masks
