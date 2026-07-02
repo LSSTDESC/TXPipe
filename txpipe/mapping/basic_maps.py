@@ -284,7 +284,7 @@ def degrade_healsparse(hsp_map, degrade_nside, reduction, weight_map=None):
         assert weight_map is None, "weight_map not used for fractional mask degrade"
 
         # if the map is a binary mask, return the fracdet
-        if np.issubdtype(hsp_map.dtype, np.integer):
+        if np.issubdtype(hsp_map.dtype, np.integer) or hsp_map.dtype == np.bool_: 
             map_out = hsp_map.fracdet_map(degrade_nside)
 
         # if the map is already a fractional coverage map, sum(frac)/N_tot_subpix

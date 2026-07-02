@@ -13,21 +13,7 @@ stages:
     aliases:
         input: specz_catalog_pq
         output: spectroscopic_catalog
-#  - name: PZPrepareEstimatorLens     # Prepare the p(z) estimator
-#    classname: BPZliteInformer
-#    aliases:
-#        input: spectroscopic_catalog
-#        model: lens_photoz_model
-#  - name: PZEstimatorLens          # Measure lens galaxy PDFs
-#    classname: BPZliteEstimator
-#    threads_per_process: 1
-#    aliases:
-#        model: lens_photoz_model
-#        input: photometry_catalog
-#        output: lens_photoz_pdfs
   - name: TXTruthLensSelector      # select lens bins using true redshifts (no color cuts)
-  # - name: NZDirInformerLens        # Disabled: replaced by TXTrueLensPhotozStack
-  # - name: PZRailSummarizeLens     # Disabled: replaced by TXTrueLensPhotozStack
   - name: TXTrueLensPhotozStack     # Use true redshifts for lens n(z) (replacing DIR)
     aliases:
         tomography_catalog: lens_tomography_catalog
@@ -38,53 +24,21 @@ stages:
         tomography_catalog: shear_tomography_catalog
         catalog: shear_catalog
         photoz_stack: shear_photoz_stack
-  # - name: PZRailSummarizeSource   # Disabled: replaced by TXTruePhotozStackSource
-  # - name: NZDirInformerSource     # Disabled: replaced by TXTruePhotozStackSource
   - name: TXSourceSelectorMetadetect    # select and split objects into source bins
   - name: TXSourceTomography
   - name: TXShearCalibration       # Calibrate and split the source sample tomographically
   - name: TXTruthLensCatalogSplitter
-#  - name: TXLensCatalogSplitter    # Split the lens sample tomographically
-#  - name: TXStarCatalogSplitter    # Split the star catalog into separate bins (psf/non-psf)
   - name: TXLSSWeightsUnit         # add systematic weights to the lens sample (weight=1 for this example)
   - name: TXSourceMaps             # make source g1 and g2 maps
   - name: TXLensMaps               # make source lens and n_gal maps
   - name: TXAuxiliarySourceMaps    # make PSF and flag maps
   - name: TXAuxiliaryLensMaps      # make depth and bright object maps
   - name: TXSimpleMask
-#  - name: TXSimpleMaskFrac       # combine maps to make a simple mask
   - name: TXSourceNoiseMaps      # Compute shear noise using rotations
   - name: TXLensNoiseMaps        # Compute lens noise using half-splits
   - name: TXDensityMaps          # turn mask and ngal maps into overdensity maps
   - name: TXMapPlots             # make pictures of all the maps
   - name: TXTracerMetadata       # collate metadata
-
-
-  # - name: TXRandomCat            # generate lens bin random catalogs
-  # - name: TXJackknifeCenters     # Split the area into jackknife regions
-
-  - name: TXTwoPoint             # Compute real-space 2-point correlations
-    #nprocess: 32
-    #threads_per_process: 1
-    threads_per_process: 2
-  - name: TXBlinding             # Blind the data following Muir et al
-    threads_per_process: 2
-  - name: TXTwoPointTheoryReal   # compute theory using CCL to save in sacc file and plot later
-  - name: TXTwoPointPlots        # Make plots of 2pt correlations
-  - name: TXDiagnosticQuantiles
-#  - name: TXSourceDiagnosticPlots      # Make a suite of diagnostic plots
-#    nprocess: 2
-  # - name: TXLensDiagnosticPlots      # Make a suite of diagnostic plots
-  # - name: TXGammaTFieldCenters  # Disabled: needs exposures not available for Roman HLIS
-  # - name: TXGammaTStars        # Disabled: no star catalog for Roman HLIS
-#  - name: TXGammaTRandoms        # Compute and plot gamma_t around randoms
-#    threads_per_process: 2
-  # - name: TXRoweStatistics      # Disabled: no PSF info for Roman HLIS
-  # - name: TXGalaxyStarDensity   # Disabled: no star catalog for Roman HLIS
-  # - name: TXGalaxyStarShear    # Disabled: no star catalog for Roman HLIS
-  # - name: TXPSFDiagnostics     # Disabled: no PSF info for Roman HLIS
-  # - name: TXTauStatistics      # Disabled: no PSF info for Roman HLIS
-  # - name: TXBrighterFatterPlot # Disabled: no exposure info for Roman HLIS
   - name: TXPhotozPlotSource          # Plot the bin n(z)
     classname: TXPhotozPlot
     aliases:
@@ -95,19 +49,10 @@ stages:
     aliases:
         photoz_stack: lens_photoz_stack
         nz_plot: nz_lens
-  # - name: PZRealizationsPlotSource  # Disabled: no photoz realizations with TXTruePhotozStack
-  # - name: PZRealizationsPlotLens    # Disabled: no photoz realizations with TXTrueLensPhotozStack
-  # - name: TXConvergenceMaps      # Make convergence kappa maps from g1, g2 maps
-  # - name: TXConvergenceMapPlots   # Plot the convergence map
-  #- name: TXMapCorrelations      # plot the correlations between systematics and data
-  #- name: TXApertureMass          # Compute aperture-mass statistics
-  #  threads_per_process: 2
-  # - name: TXTwoPointFourier      # Compute power spectra C_ell
-  # - name: TXTwoPointFourierCatalog
-  #- name: HOSFSB
-    # Disabled since not yet synchronised with new Treecorr MPI
-  #- name: TXTwoPointSCIA   # Self-calibration intrinsic alignments of galaxies
 
+
+  - name: TXRandomCat            # generate lens bin random catalogs
+  - name: TXJackknifeCenters     # Split the area into jackknife regions
 
 
 
@@ -158,9 +103,9 @@ inputs:
     # the binned_random_catalog_source should also be set to Null in this case.
     binned_random_catalog_source: None
     flow: data/example/inputs/example_flow.pkl
-    binned_random_catalog_sub: /pscratch/sd/c/chihway/TXPipe/data/example/outputs_roman_hlis/e2e/binned_random_catalog_sub.hdf5
-    binned_random_catalog: /pscratch/sd/c/chihway/TXPipe/data/example/outputs_roman_hlis/e2e/binned_random_catalog_new.hdf5
-    patch_centers: /pscratch/sd/c/chihway/TXPipe/data/example/outputs_roman_hlis/patch_centers.txt
+    # binned_random_catalog_sub: /pscratch/sd/c/chihway/TXPipe/data/example/outputs_roman_hlis/e2e/binned_random_catalog_sub.hdf5
+    # binned_random_catalog: /pscratch/sd/c/chihway/TXPipe/data/example/outputs_roman_hlis/e2e/binned_random_catalog_new.hdf5
+    # patch_centers: /pscratch/sd/c/chihway/TXPipe/data/example/outputs_roman_hlis/patch_centers.txt
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted

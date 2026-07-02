@@ -21,16 +21,16 @@ import h5py
 # ---------------------------------------------------------------------------
 # Input / output paths
 # ---------------------------------------------------------------------------
-INPUT_DIR = "/pscratch/sd/c/chto100/e2e/"
+INPUT_DIR = "/pscratch/sd/c/chto100/e2e2/" #"/pscratch/sd/c/chto100/e2e/test/"
 OUTPUT_SHEAR = "roman_hlis_shear_catalog.hdf5"
 OUTPUT_PHOT = "roman_hlis_photometry_catalog.hdf5"
 
 PARQUET_FILES = {
-    "00": "example_cat_scm_noshear.parquet",
-    "1m": "example_cat_scm_1m.parquet",
-    "1p": "example_cat_scm_1p.parquet",
-    "2m": "example_cat_scm_2m.parquet",
-    "2p": "example_cat_scm_2p.parquet",
+    "00": "e2e_catalog_noshear.parquet",
+    "1m": "e2e_catalog_1m.parquet",
+    "1p": "e2e_catalog_1p.parquet",
+    "2m": "e2e_catalog_2m.parquet",
+    "2p": "e2e_catalog_2p.parquet",
 }
 
 # LSST bands available in the parquet files
