@@ -105,6 +105,10 @@ jobs:
         key: example-data-${{ env.EXAMPLE_DATA_FILE_VERSION }}
         fail-on-cache-miss: true
 
+    - name: Extract test data
+      run: |
+        tar -zxvf example.tar.gz
+
     - name: Execute notebook
       run: |
         source conda/bin/activate
