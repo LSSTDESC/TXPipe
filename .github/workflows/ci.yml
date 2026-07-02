@@ -110,6 +110,12 @@ jobs:
         source conda/bin/activate
         jupyter execute notebooks/Welcome\ to\ TXPipe.ipynb
 
+    - name: Show logs
+      if: always()
+      run: |
+        # always run
+        cat data/example/logs_metadetect/*
+
 
   Unit_Tests:
     runs-on: ${{ matrix.os }}
