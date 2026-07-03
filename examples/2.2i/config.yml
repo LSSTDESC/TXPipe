@@ -111,7 +111,7 @@ TXSimpleMask:
     depth_cut: 23.0
     bright_object_max: 30
 
-TXSourceDiagnosticPlots:
+TXSourceDiagnosticPlots: {}
 
 TXLensDiagnosticPlots: {}
 

@@ -96,7 +96,7 @@ TXJackknifeCenters:
 
 TXSourceDiagnosticPlots: {}
 
-TXRealCovariance:
+TXRealCovariance: {}
 
 TXTwoPoint:
     bin_slop: 0.0

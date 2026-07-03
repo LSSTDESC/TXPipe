@@ -107,7 +107,7 @@ TXRandomCat:
 TXJackknifeCenters:
     npatch: 40
 
-TXSourceDiagnosticPlots:
+TXSourceDiagnosticPlots: {}
 
 TXLensDiagnosticPlots: {}
 

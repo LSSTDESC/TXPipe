@@ -152,7 +152,7 @@ TXMainMaps: {}
 TXAuxiliarySourceMaps:
     flag_exponent_max: 8
 
-TXRealCovariance:
+TXRealCovariance: {}
 
 TXFourierCovariance:
     cov_type: [FourierGaussianFsky]

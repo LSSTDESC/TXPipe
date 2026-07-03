@@ -301,7 +301,7 @@ TXAuxiliaryLensMaps:
     snr_threshold: 10.0  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)
     snr_delta: 1.0  # The range threshold +/- delta is used for finding objects at the boundary
 
-TXRealCovariance:
+TXRealCovariance: {}
 
 TXFourierCovariance:
     cov_type: ["FourierGaussianFsky"]

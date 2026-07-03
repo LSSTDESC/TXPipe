@@ -293,7 +293,7 @@ TXAuxiliaryLensMaps:
     snr_delta: 1.0  # The range threshold +/- delta is used for finding objects at the boundary
     nside: *nside_high
 
-TXRealCovariance:
+TXRealCovariance: {}
 
 TXFourierCovariance:
     cov_type: [FourierGaussianFsky]

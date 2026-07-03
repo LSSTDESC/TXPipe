@@ -210,7 +210,7 @@ TXDiagnosticMaps:
     depth_cut: 23.0
 
 
-TXRealCovariance:
+TXRealCovariance: {}
 
 
 
