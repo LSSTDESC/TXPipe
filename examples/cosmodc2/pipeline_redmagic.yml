@@ -58,7 +58,7 @@ stages:
   - name: TXTwoPointTheoryReal
   - name: TXTwoPointTheoryFourier
   - name: TXTwoPointPlots
-  - name: TXRealGaussianCovariance
+  - name: TXRealCovariance
     threads_per_process: 64
   - name: TXSourceNoiseMaps
     nprocess: 4
@@ -72,7 +72,7 @@ stages:
     nprocess: 2
     nodes: 2
     threads_per_process: 64
-  - name: TXFourierGaussianCovariance
+  - name: TXFourierCovariance
     threads_per_process: 64
   - name: TXConvergenceMaps      # Make convergence kappa maps from g1, g2 maps
     threads_per_process: 32

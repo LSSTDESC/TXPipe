@@ -81,7 +81,7 @@ stages:
     nprocess: 8
     nodes: 8
   - name: TXTwoPointPlots
-  - name: TXRealGaussianCovariance
+  - name: TXRealCovariance
     threads_per_process: 32
   - name: TXTwoPointFourier
     nprocess: 8
@@ -95,7 +95,7 @@ stages:
     nprocess: 32
     nodes: 8
     threads_per_process: 1
-  - name: TXFourierGaussianCovariance
+  - name: TXFourierCovariance
     threads_per_process: 32
   - name: TXTwoPointPlotsFourier
 

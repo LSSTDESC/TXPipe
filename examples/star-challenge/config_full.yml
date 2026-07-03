@@ -113,21 +113,12 @@ TXTwoPointTheoryReal:
     #galaxy_bias: [0.682, 0.907, 1.106, 1.278, 1.572] #from 2x2 fit
     galaxy_bias: [0.87, 1.02, 1.19, 1.30, 1.54] #from fit by eye    
 
-TXFourierGaussianCovariance:
+TXFourierCovariance:
     #galaxy_bias: [0.682, 0.907, 1.106, 1.278, 1.572] #from 2x2 fit
     galaxy_bias: [0.87, 1.02, 1.19, 1.30, 1.54] #from fit by eye    
-    cache_dir: ./cache_nmt/cosmodc2/srd/nside4096/
-
-TXFourierTJPCovariance:
-    #galaxy_bias: [0.682, 0.907, 1.106, 1.278, 1.572] #from 2x2 fit
-    galaxy_bias: [0.87, 1.02, 1.19, 1.30, 1.54] #from fit by eye    
-    cache_dir: ./cache_nmt/cosmodc2/srd/nside4096/
     IA: 0.
 
-TXRealGaussianCovariance:
-    min_sep: 2.5
-    max_sep: 250.
-    nbins: 20
+TXRealCovariance:
     use_true_shear: False
     nprocess: 4
     threads_per_process: 2

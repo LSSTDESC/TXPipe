@@ -85,9 +85,9 @@ stages:
   - name: TXConvergenceMaps      # Make convergence kappa maps from g1, g2 maps
   - name: TXConvergenceMapPlots   # Plot the convergence map
     # disabling these as they takes too long for a quick test
-#    - name: TXRealGaussianCovariance
+#    - name: TXRealCovariance
 #    - name: TXTwoPointFourier
-#    - name: TXFourierGaussianCovariance
+#    - name: TXFourierCovariance
 # uncomment the last two if you have namaster working
 
 # Where to put outputs

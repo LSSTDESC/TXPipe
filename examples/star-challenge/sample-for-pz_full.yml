@@ -60,7 +60,7 @@ stages:
     - name: TXTwoPointTheoryReal
     - name: TXTwoPointTheoryFourier
     - name: TXTwoPointPlots
-    - name: TXRealGaussianCovariance
+    - name: TXRealCovariance
       threads_per_process: 64
     - name: TXSourceNoiseMaps
       nprocess: 4
@@ -74,9 +74,9 @@ stages:
       nprocess: 2
       nodes: 2
       threads_per_process: 32
-    #- name: TXFourierGaussianCovariance
+    #- name: TXFourierCovariance
     #  threads_per_process: 64
-    - name: TXFourierTJPCovariance
+    - name: TXFourierCovariance
       nodes: 4
       nprocess: 4
       threads_per_process: 32      

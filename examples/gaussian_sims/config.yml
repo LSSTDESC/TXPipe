@@ -95,25 +95,15 @@ TXTwoPointTheoryFourier:
 TXTwoPointTheoryReal:
     galaxy_bias: [1.229, 1.362, 1.502, 1.648, 1.799]
 
-TXFourierGaussianCovariance:
+TXFourierCovariance:
     galaxy_bias: [1.229, 1.362, 1.502, 1.648, 1.799]
-    cache_dir: ./cache_nmt/nside4096/srdbins/
-    gaussian_sims_factor: [2.458, 2.043, 1.878, 2.060, 2.249]
-    
-TXFourierTJPCovariance:
-    galaxy_bias: [1.229, 1.362, 1.502, 1.648, 1.799]
-    cache_dir: ./cache_nmt/nside4096/srdbins/
     IA: 0.
 
-TXRealGaussianCovariance:
-    min_sep: 2.5
-    max_sep: 250.
-    nbins: 20
+TXRealCovariance:
     use_true_shear: False
     nprocess: 4
     threads_per_process: 2
     nodes: 4
-    gaussian_sims_factor: [2.458, 2.043, 1.878, 2.060, 2.249]
     galaxy_bias: [1.229, 1.362, 1.502, 1.648, 1.799]
 
 TXTwoPointFourier:

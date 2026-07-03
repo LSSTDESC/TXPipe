@@ -45,10 +45,10 @@ global:
 # TXMapCorrelations    # plot the correlations between systematics and data
 # TXApertureMass        # Compute aperture-mass statistics
     
-##- name: TXRealGaussianCovariance   # Compute covariance of real-space correlations
+##- name: TXRealCovariance   # Compute covariance of real-space correlations
 ##- name: TXTwoPointFourier          # Compute power spectra C_ell
-##- name: TXFourierNamasterCovariance # Compute the C_ell covariance
-##- name: TXFourierTJPCovariance     # Compute the C_ell covariance with TJPCov 
+##- name: TXFourierCovariance # Compute the C_ell covariance
+##- name: TXFourierCovariance     # Compute the C_ell covariance with TJPCov 
 
 TXSourceSelectorMetacal:
     input_pz: True
@@ -184,11 +184,7 @@ TXDiagnosticMaps:
     depth_cut: 23.0
 
 
-TXRealGaussianCovariance:
-    min_sep: 2.5
-    max_sep: 60.
-    nbins: 10
-    pickled_wigner_transform: data/example/inputs/wigner.pkl
+TXRealCovariance:
 
 
 

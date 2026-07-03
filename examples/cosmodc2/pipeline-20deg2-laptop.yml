@@ -91,10 +91,10 @@ stages:
   - name: TXSourceDiagnosticPlots
     nprocess: 12
     nodes: 1
-  - name: TXFourierGaussianCovariance
+  - name: TXFourierCovariance
     threads_per_process: 12
   - name: TXTwoPointTheoryReal
-  - name: TXRealGaussianCovariance
+  - name: TXRealCovariance
     threads_per_process: 12
   - name: TXConvergenceMaps
     threads_per_process: 12
