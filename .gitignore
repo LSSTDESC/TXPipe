@@ -26,6 +26,7 @@ cache/
 conda/
 .vscode/
 Mambaforge3.sh
-*.code-workspacedata/cmb/
+*.code-workspace
+data/cmb/
 example-cmb-lensing.tar.gz
 data/cmb
