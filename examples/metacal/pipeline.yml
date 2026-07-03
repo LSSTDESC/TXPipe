@@ -109,10 +109,10 @@ stages:
     # Disablig this since not yet synchronised with new Treecorr MPI
     # - name: TXSelfCalibrationIA   # Self-calibration intrinsic alignments of galaxies
     # Disabling these as they take too long for a quick test.
-    # - name: TXRealGaussianCovariance   # Compute covariance of real-space correlations
+    # - name: TXRealCovariance   # Compute covariance of real-space correlations
     # - name: TXTwoPointFourier          # Compute power spectra C_ell
-    # - name: TXFourierNamasterCovariance # Compute the C_ell covariance
-    # - name: TXFourierTJPCovariance     # Compute the C_ell covariance with TJPCov 
+    # - name: TXFourierCovariance # Compute the C_ell covariance
+    # - name: TXFourierCovariance     # Compute the C_ell covariance with TJPCov 
 
 
 # modules and packages to import that have pipeline

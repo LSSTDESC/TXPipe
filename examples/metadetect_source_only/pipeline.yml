@@ -63,9 +63,9 @@ stages:
 
     # Disabling these as they takes too long for a quick test.
     # The latter two need NaMaster
-    # - name: TXRealGaussianCovariance   # Compute covariance of real-space correlations
-    # - name: TXFourierGaussianCovariance # Compute the C_ell covariance
-    # - name: TXFourierTJPCovariance # Compute the C_ell covariance
+    # - name: TXRealCovariance   # Compute covariance of real-space correlations
+    # - name: TXFourierCovariance # Compute the C_ell covariance
+    # - name: TXFourierCovariance # Compute the C_ell covariance
     #   threads_per_process: 2
 
 

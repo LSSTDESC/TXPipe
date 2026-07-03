@@ -135,11 +135,8 @@ Covariance:
     blurb: |
         These stages compute covariances of measurements
     stages:
-        - TXFourierGaussianCovariance
-        - TXRealGaussianCovariance
-        - TXFourierTJPCovariance
-        - TXFourierNamasterCovariance
-        - TXRealNamasterCovariance
+        - TXFourierCovariance
+        - TXRealCovariance
 
 
 Blinding:

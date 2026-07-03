@@ -152,13 +152,9 @@ TXMainMaps: {}
 TXAuxiliarySourceMaps:
     flag_exponent_max: 8
 
-TXRealGaussianCovariance:
-    min_sep: 2.5
-    max_sep: 60.
-    nbins: 10
-    pickled_wigner_transform: data/example/inputs/wigner.pkl
+TXRealCovariance: {}
 
-TXFourierTJPCovariance:
+TXFourierCovariance:
     cov_type: [FourierGaussianFsky]
 
 TXJackknifeCenters:

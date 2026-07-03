@@ -58,7 +58,7 @@ stages:
   - name: TXTwoPointPlots
     # - name: TXTwoPointFourier
       # threads_per_process: 2
-    # - name: TXRealGaussianCovariance   # Compute covariance of real-space correlations
+    # - name: TXRealCovariance   # Compute covariance of real-space correlations
 
 # Where to put outputs
 output_dir: data/example/outputs_redmagic

@@ -96,10 +96,7 @@ TXJackknifeCenters:
 
 TXSourceDiagnosticPlots: {}
 
-TXRealGaussianCovariance:
-    min_sep: 2.5
-    max_sep: 250.
-    nbins: 20
+TXRealCovariance: {}
 
 TXTwoPoint:
     bin_slop: 0.0

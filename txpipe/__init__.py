@@ -17,7 +17,7 @@ from .random_cats import TXRandomCat
 from .twopoint_fourier import TXTwoPointFourier
 from .twopoint import TXTwoPoint
 from .blinding import TXBlinding
-from .covariance import TXFourierGaussianCovariance, TXRealGaussianCovariance
+from .covariance import TXFourierCovariance, TXRealCovariance
 from .diagnostics import TXSourceDiagnosticPlots, TXLensDiagnosticPlots
 from .exposure_info import TXExposureInfo
 from .psf_diagnostics import TXPSFDiagnostics, TXRoweStatistics
@@ -40,7 +40,6 @@ from .spatial_diagnostics import TXFocalPlanePlot
 from .lssweights import TXLSSWeights
 from .simulation import TXLogNormalGlass
 from .magnification import TXSSIMagnification
-from .covariance_nmt import TXFourierNamasterCovariance, TXRealNamasterCovariance
 
 # We no longer import all the extensions automatically here to avoid
 # some dependency problems when running under the LSST environment on NERSC.
