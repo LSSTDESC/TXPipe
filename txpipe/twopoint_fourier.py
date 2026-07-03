@@ -230,7 +230,7 @@ class TXTwoPointFourier(PipelineStage):
                 nbin_lens = f.file["maps"].attrs["nbin_lens"]
                 d_maps = [f.read_map_healpix(f"delta_{b}") for b in range(nbin_lens)]
                 assert all(healpy.npix2nside(len(m)) == nside for m in d_maps)
-                print(f"Loaded {nbin_lens} overdensity maps")                
+                print(f"Loaded {nbin_lens} overdensity maps")
         else:
             d_maps = []
             nbin_lens = 0
@@ -822,7 +822,6 @@ class TXTwoPointFourier(PipelineStage):
                 else:
                     # If computed through simulations, it might be better to
                     # take the mean since, for now, only a float can be passed
-                    i = 0 if "lens" in tracer1 else 2
                     tr.metadata["n_ell_coupled"] = np.mean(d.noise_coupled)
 
                 if self.config["gaussian_sims_factor"] != [1.0] and "lens" in tracer1:
