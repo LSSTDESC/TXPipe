@@ -19,8 +19,8 @@ BPZliteInformer:
     mag_err_min: 0.005
     inform_options: {save_train: false, load_model: false, modelfile: BPZpriormodel.out}
     madau_reddening: no
-    bands: riz
-    zp_errors: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+    bands: [r, i, z]
+    zp_errors: [0.01, 0.01, 0.01]
     hdf5_groupname: photometry
 
 
@@ -60,7 +60,7 @@ TXMeanLensSelector:
 
 TXLensCatalogSplitter: {}
 TXSourceSelectorHSC:
-    bands: ugrizy
+    bands: [u, g, r, i, z, "y"]
     verbose: true
     T_cut: 1.3
     s2n_cut: 10.0
@@ -84,7 +84,7 @@ TXSimpleMask: {}
 TXTracerMetadata: {}
 
 TXSourceTomography:
-    bands: ugrizy
+    bands: [u, g, r, i, z, "y"]
     source_zbin_edges: [0.3, 0.5, 0.7, 0.9]
 
 TXRandomCat:

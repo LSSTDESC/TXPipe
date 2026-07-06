@@ -505,7 +505,7 @@ class TXRandomForestLensSelector(TXBaseLensSelector):
     config_options.update(
         {
             "verbose": StageParameter(bool, False, msg="Enable verbose output for lens selection."),
-            "bands": StageParameter(str, "ugrizy", msg="Photometric bands to use for classification."),
+            "bands": StageParameter(list, ["u", "g", "r", "i", "z", "y"], msg="Photometric bands to use for classification."),
             "chunk_rows": StageParameter(int, 10000, msg="Number of rows to process in each chunk."),
             "lens_zbin_edges": StageParameter(list, required=True, msg="Edges of lens redshift bins."),
             "random_seed": StageParameter(int, 42, msg="Random seed for reproducibility."),

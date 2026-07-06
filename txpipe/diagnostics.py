@@ -42,7 +42,7 @@ class TXDiagnosticQuantiles(PipelineStage):
     config_options = {
         "nbins": StageParameter(int, 20, msg="Number of quantile bins to compute."),
         "chunk_rows": StageParameter(int, 0, msg="Number of rows to process in each chunk (0 means auto)."),
-        "bands": StageParameter(str, "riz", msg="Bands to use for diagnostics."),
+        "bands": StageParameter(list, ["r", "i", "z"], msg="Bands to use for diagnostics."),
     }
 
     def run(self):
@@ -152,7 +152,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         "s2n_min": StageParameter(float, 10, msg="Minimum S/N value for plots."),
         "s2n_max": StageParameter(float, 300, msg="Maximum S/N value for plots."),
         "psf_unit_conv": StageParameter(bool, False, msg="Whether to convert PSF units."),
-        "bands": StageParameter(str, "riz", msg="Bands to use for diagnostics."),
+        "bands": StageParameter(list, ["r", "i", "z"], msg="Bands to use for diagnostics."),
     }
 
     def run(self):
@@ -1048,7 +1048,7 @@ class TXLensDiagnosticPlots(PipelineStage):
         "mag_max": StageParameter(float, 28, msg="Maximum magnitude for plots."),
         "snr_min": StageParameter(float, 5, msg="Minimum S/N for plots."),
         "snr_max": StageParameter(float, 200, msg="Maximum S/N for plots."),
-        "bands": StageParameter(str, "ugrizy", msg="Bands to use for diagnostics."),
+        "bands": StageParameter(list, ["u", "g", "r", "i", "z", "y"], msg="Bands to use for diagnostics."),
     }
 
     def run(self):
