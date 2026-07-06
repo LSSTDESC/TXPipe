@@ -89,7 +89,6 @@ class TXBaseLensSelector(PipelineStage):
         if self.config["apply_mask"]:
             with self.open_input("mask", wrapper=True) as f:
                 info = f.read_map_info("mask")
-                print(info)
                 self.mask_nside = info['nside']
                 self.mask_nest = info['nest']
                 self.mask = f.read_mask_healpix("mask")

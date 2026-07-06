@@ -65,7 +65,6 @@ class TXRandomCat(PipelineStage):
             info = maps_file.read_map_info(f"depth/depth{depth_band}")
             nside = info["nside"]
             scheme = choose_pixelization(**info)
-        print(scheme.nest, scheme.nside)
 
         # Load the input mask
         with self.open_input("mask", wrapper=True) as maps_file:
@@ -87,10 +86,6 @@ class TXRandomCat(PipelineStage):
         depth = depth[pixel]
         frac = mask[pixel]
         npix = depth.size
-        print("npix = ", npix)
-        print("frac = ", frac)
-        print("depth = ", depth)
-        print("pixel = ", pixel)
 
         if len(pixel) == 1:
             raise ValueError("Only one pixel in depth map!")
@@ -274,7 +269,6 @@ class TXRandomCat(PipelineStage):
 
                 # generate a random location within the pixel using healpix
                 ra, dec = healpix.randang(nside, pix_catalog, lonlat=True, nest=scheme.nest)
-                print(ra.min(), ra.max(), dec.min(), dec.max())
 
                 N = len(pix_catalog)
                 bin_index = np.repeat(j, N)
