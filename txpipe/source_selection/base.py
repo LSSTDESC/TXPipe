@@ -55,6 +55,13 @@ class TXSourceSelectorBase(PipelineStage):
             required=True,
             msg="Signal-to-noise cut threshold for object selection",
         ),
+        "mag_g_cut": StageParameter(float, required=True, msg="Magnitude cut threshold for object selection"),
+        "mag_r_cut": StageParameter(float, required=True, msg="Magnitude cut threshold for object selection"),
+        "mag_i_cut": StageParameter(float, required=True, msg="Magnitude cut threshold for object selection"),
+        "mag_z_cut": StageParameter(float, required=True, msg="Magnitude cut threshold for object selection"),
+        "g-r_cut": StageParameter(float, required=True, msg="Color cut threshold for object selection"),
+        "r-i_cut": StageParameter(float, required=True, msg="Color cut threshold for object selection"),
+        "i-z_cut": StageParameter(float, required=True, msg="Color cut threshold for object selection"),
         "chunk_rows": StageParameter(int, 10000, msg="Number of rows to process in each chunk"),
         "source_zbin_edges": StageParameter(list, required=True, msg="Redshift bin edges for source tomography"),
     }
@@ -328,6 +335,14 @@ def select_weak_lensing_sample(data, config, calling_from_select=False):
     # output is different in each case
     s2n_cut = config["s2n_cut"]
     T_cut = config["T_cut"]
+    mag_g_cut = config["mag_g_cut"]
+    mag_r_cut = config["mag_r_cut"]
+    mag_i_cut = config["mag_i_cut"]
+    mag_z_cut = config["mag_z_cut"]
+    gmr_cut = config["g-r_cut"]
+    rmi_cut = config["r-i_cut"]
+    imz_cut = config["i-z_cut"]
+
     verbose = config["verbose"]
     variant = data.suffix
 
@@ -351,10 +366,20 @@ def select_weak_lensing_sample(data, config, calling_from_select=False):
     sel &= s2n > s2n_cut
     f3 = sel.sum() / n0
 
+    # We should also have some crazy color cuts and magnitude cuts which should come from PZ group
+    sel &= (data["mag_g"] < mag_g_cut) & \
+        (data["mag_r"] < mag_r_cut) & \
+        (data["mag_i"] < mag_i_cut) & \
+        (data["mag_i"] < mag_z_cut) & \
+        (np.abs(data["mag_g"] - data["mag_r"]) < gmr_cut) & \
+        (np.abs(data["mag_r"] - data["mag_i"]) < rmi_cut) & \
+        (np.abs(data["mag_i"] - data["mag_i"]) < imz_cut)
+    f4 = sel.sum() / n0
+
     # Finally we want objects that have been put into any of our other
     # tomographic bins
     sel &= data["zbin"] >= 0
-    f4 = sel.sum() / n0
+    f5 = sel.sum() / n0
 
     # Print out a message.  If we are selecting a 2D sample
     # this is the complete message.  Otherwise if we are about
@@ -362,10 +387,10 @@ def select_weak_lensing_sample(data, config, calling_from_select=False):
     # as above
     if verbose and calling_from_select:
         print(
-            f"Tomo selection ({variant}) {f1:.2%} flag, {f2:.2%} size, {f3:.2%} SNR, ",
+            f"Tomo selection ({variant}) {f1:.2%} flag, {f2:.2%} size, {f3:.2%} SNR, {f4:.2%} mag/color",
             end="",
         )
     elif verbose:
-        print(f"2D selection ({variant}) {f1:.2%} flag, {f2:.2%} size, {f3:.2%} SNR, {f4:.2%} any z bin")
+        print(f"2D selection ({variant}) {f1:.2%} flag, {f2:.2%} size, {f3:.2%} SNR, {f4:.2%} mag/color, {f5:.2%} any z bin")
         print("total 2D", sel.sum())
     return sel
