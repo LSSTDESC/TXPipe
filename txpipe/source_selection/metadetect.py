@@ -33,11 +33,6 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
             required=True,
             msg="Delta gamma value for metadetect response calculation",
         ),
-        "dp2_selection": StageParameter(
-            bool,
-            False,
-            msg="Whether to apply the metadetect DP2-specific extra selection cuts",
-        ),
     }
 
     def data_iterator(self):
@@ -46,7 +41,7 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         bands = self.config["bands"]
 
         # Core quantities we need
-        shear_cols = metadetect_variants("T", "s2n", "g1", "g2", "ra", "dec", "weight", "psf_T_mean", "flags", "object_mask_fraction")
+        shear_cols = metadetect_variants("T", "s2n", "g1", "g2", "ra", "dec", "weight", "psf_T_mean", "flags")
 
         # Magnitudes and errors
         shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="metadetect")
@@ -68,14 +63,8 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
 
     def setup_response_calculators(self, nbin_source):
         delta_gamma = self.config["delta_gamma"]
-        if self.config["dp2_selection"]:
-            tomo_selector = select_tomographic_weak_lensing_sample_metadetect_dp2
-            selector = select_weak_lensing_sample_metadetect_dp2
-        else:
-            tomo_selector = select_tomographic_weak_lensing_sample
-            selector = select_weak_lensing_sample
-        calculators = [MetaDetectCalculator(tomo_selector, delta_gamma) for i in range(nbin_source)]
-        calculators.append(MetaDetectCalculator(selector, delta_gamma))
+        calculators = [MetaDetectCalculator(select_tomographic_weak_lensing_sample, delta_gamma) for i in range(nbin_source)]
+        calculators.append(MetaDetectCalculator(select_weak_lensing_sample, delta_gamma))
         return calculators
 
     def write_tomography(self, outfile, start, end, source_bin, per_object_response):
@@ -178,48 +167,3 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         calculators[-1].add_data(data, self.config)
 
         return tomo_bins, R
-
-
-def select_weak_lensing_sample_metadetect_dp2(data, config, calling_from_select=False):
-    """
-    Select weak lensing sample objects for metadetect catalogs.
-
-    This starts from the general cuts in select_weak_lensing_sample (flags,
-    size, S/N, mask fraction, tomographic bin) and then applies extra cuts
-    that only make sense for metadetect catalogs. Add / remove cuts below
-    and re-run to iterate.
-    """
-    verbose = config["verbose"]
-    variant = data.suffix
-
-    sel = select_weak_lensing_sample(data, config, calling_from_select=calling_from_select)
-    n0 = sel.size
-
-    # --- metadetect-specific cuts go here ---
-    # Follow the same pattern as select_weak_lensing_sample, but add extra cuts for metadetect catalogs.:
-    mfrac_cut = config["mfrac_cut"]
-    mfrac = data["object_mask_fraction"]
-    sel &= mfrac < mfrac_cut
-    f_new = sel.sum() / n0
-
-    return sel
-
-
-def select_tomographic_weak_lensing_sample_metadetect_dp2(data, config, bin_index):
-    """
-    Tomographic counterpart to select_weak_lensing_sample_metadetect_dp2, in the
-    same way that select_tomographic_weak_lensing_sample relates to
-    select_weak_lensing_sample.
-    """
-    zbin = data["zbin"]
-    verbose = config["verbose"]
-
-    sel = select_weak_lensing_sample_metadetect_dp2(data, config, calling_from_select=True)
-    sel &= zbin == bin_index
-    f4 = sel.sum() / sel.size
-
-    if verbose:
-        print(f"{f4:.2%} z for bin {bin_index}")
-        print("total tomo", sel.sum())
-
-    return sel
