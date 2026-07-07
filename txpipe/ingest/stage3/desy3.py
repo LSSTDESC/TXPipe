@@ -225,12 +225,12 @@ class TXIngestDESY3Shear(PipelineStage):
         fluxes = ["r", "i", "z"]
 
         # The input and output sections in the files
-        fin = self.open_input("des_shear_catalog")
-        fout = self.open_output("shear_catalog")
-        gin = fin.file["catalog/"]
+        fin = self.open_input("des_shear_catalog", wrapper=True)
+        fout = self.open_output("shear_catalog", wrapper=True)
+        input_group = self.config["input_group_name"].rstrip("/") + "/"
+        gin = fin.file[input_group]
         gout = fout.file.create_group("shear")
-        gout.attrs['catalog_type'] = 'metacal'
-
+        gout.attrs["catalog_type"] = "metacal"
         compression = None
 
         # save all the columns that are only measured once, not on all the
@@ -313,5 +313,5 @@ class TXIngestDESY3SourceRedshift(PipelineStage):
 
         # save in QP format
         q = qp.Ensemble(qp.interp, data={"xvals": z, "yvals": pdfs})
-        with self.open_output("shear_photoz_stack", "w") as f:
+        with self.open_output("shear_photoz_stack", wrapper=True) as f:
             f.write_ensemble(q)

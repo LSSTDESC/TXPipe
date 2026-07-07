@@ -41,7 +41,7 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
         We call to a parent class method to do the main iteration; the work here is
         just choosing which columns to read.
         """
-        with self.open_input("shear_catalog") as f:
+        with self.open_input("shear_catalog", wrapper=True) as f:
             if "flags_1p" in f.file["shear"]:
                 flag_mode = "variant"
             else:

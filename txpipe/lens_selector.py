@@ -91,7 +91,7 @@ class TXBaseLensSelector(PipelineStage):
                 info = f.read_map_info("mask")
                 self.mask_nside = info['nside']
                 self.mask_nest = info['nest']
-                self.mask = f.read_mask_healpix("mask")
+                self.mask = f.read_map_healpix("mask", nest=self.mask_nest)
 
         # We will collect the selection biases for each bin
         # as a matrix.  We will collect together the different

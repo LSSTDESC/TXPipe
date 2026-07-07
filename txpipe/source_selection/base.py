@@ -122,9 +122,7 @@ class TXSourceSelectorBase(PipelineStage):
 
 
     def make_tomographic_bin_chooser_function(self):
-        """
-        
-        """
+        """Return a function tomography_classifier(start, end, shear_data) -> dict of zbin arrays."""
 
         # In the simple case we just have a straightforward
         # redshfit cut, and we use the existing function for that.

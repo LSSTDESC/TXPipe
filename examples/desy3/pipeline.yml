@@ -66,7 +66,7 @@ stages:
 
   # Generate calibrated tomographic source catalogs
   - name: TXShearCalibration
-    nproces: 8
+    nprocess: 8
     threads_per_process: 4
 
   # PHOTO-Z SUMMARIZATION

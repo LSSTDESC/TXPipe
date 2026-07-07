@@ -624,7 +624,12 @@ class DensityCorrelation:
                     weights=sysmap_table_all[map_index_i] * frac,
                 )
 
-                A[row_start:row_end, i + 1] = sumsys / weighted_pix_count
+                A[row_start:row_end, i + 1] = np.divide(
+                    sumsys,
+                    weighted_pix_count,
+                    out=np.zeros_like(sumsys, dtype=float),
+                    where=weighted_pix_count != 0,
+                )
 
         self.design_matrix_corr_map_indices = np.asarray(corr_map_indices)
         self.design_matrix = A
