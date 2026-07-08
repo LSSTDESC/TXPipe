@@ -73,6 +73,7 @@ def process_metadetect_data(data):
         var_data = sanitize(var_data)
 
         var_output = dict(var_data.columns) #just process all columns
+        var_output.pop("metaStep", None)
         # extra columns we are still adding:
         var_output["flags"] = combined_flag(var_data)
         for band in "griz": # For DP2, we only expect 4 bands
