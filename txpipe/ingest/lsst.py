@@ -72,37 +72,9 @@ def process_metadetect_data(data):
         var_data = data[data["metaStep"] == variant]
         var_data = sanitize(var_data)
 
-        var_output = {
-            "ra": var_data["ra"],
-            "dec": var_data["dec"],
-            "id": var_data["shearObjectId"],
-            "object_mask_fraction": var_data["mfrac"],
-            #"n_epoch": var_data["nEpochCell"],
-            "g1": var_data["gauss_g1"],
-            "g2": var_data["gauss_g2"],
-            "g1_err": var_data["gauss_g1_g1_Cov"],
-            "g2_err": var_data["gauss_g2_g2_Cov"],
-            "g_cross": var_data["gauss_g1_g2_Cov"],
-            "T": var_data["gauss_T"],
-            "s2n": var_data["gauss_snr"],
-            "T_err": var_data["gauss_TErr"],
-            "psf_g1_original": var_data["psfOriginal_g1"],
-            "psf_g2_original": var_data["psfOriginal_g2"],
-            "psf_T_mean_original": var_data["psfOriginal_T"],
-            "psf_g1": var_data["gauss_psfReconvolved_g1"],
-            "psf_g2": var_data["gauss_psfReconvolved_g2"],
-            "psf_T_mean": var_data["gauss_psfReconvolved_T"],
-            "flags": combined_flag(var_data),
-            "weight": 1 / (0.5 * (var_data["gauss_g1_g1_Cov"] + var_data["gauss_g2_g2_Cov"])),
-            "gauss_flags": var_data["gauss_flags"],
-            "pgauss_flags": var_data["pgauss_flags"],
-            "gauss_shape_flags": var_data["gauss_shape_flags"],
-            "is_primary": var_data["is_primary"],
-            "gauss_object_flags": var_data["gauss_object_flags"],
-            "pgauss_object_flags": var_data["pgauss_object_flags"],
-            "psfOriginal_flags": var_data["psfOriginal_flags"],
-            "gauss_psfReconvolved_flags": var_data["gauss_psfReconvolved_flags"],
-        }
+        var_output = dict(var_data.columns) #just process all columns
+        # extra columns we are still adding:
+        var_output["flags"] = combined_flag(var_data)
         for band in "griz": # For DP2, we only expect 4 bands
             f = var_data[f"{band}_pgaussFlux"]
             f_err = var_data[f"{band}_pgaussFluxErr"]

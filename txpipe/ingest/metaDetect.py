@@ -66,22 +66,22 @@ DP1_SURVEY_PROPERTIES = {
     "deepCoadd_dcr_e2_consolidated_map_weighted_mean": "Weighted mean of DCR-induced change in PSF ellipticity (e2), expressed as a proportionality factor",
 }
 
-RENAMES = {
-    "gauss_g1":"g1",
-    "gauss_g2":"g2",
-    "gauss_g1_g1_Cov":"g1_err",
-    "gauss_g1_g2_Cov":"g2_err",
-    "gauss_g1_g2_Cov":"g_cross",
-    "gauss_T": "T",
-    "gauss_snr":"s2n",
-    "psfOriginal_g1": "psf_g1_original",
-    "psfOriginal_g2": "psf_g2_original",
-    "psfOriginal_T": "psf_T_mean_original",
-    "gauss_psfReconvolved_g1": "psf_g1",
-    "gauss_psfReconvolved_g2": "psf_g2",
-    "gauss_psfReconvolved_T": "psf_T_mean",
-    "mfrac": "object_mask_fraction",
-    "shearObjectId":"id", 
+TXPPIPE_COLUMNS = {
+    "g1":"gauss_g1",
+    "g2":"gauss_g2",
+    "g1_err":"gauss_g1_g1_Cov",
+    "g2_err":"gauss_g1_g2_Cov",
+    "g_cross":"gauss_g1_g2_Cov",
+    "T":"gauss_T",
+    "s2n":"gauss_snr",
+    "psf_g1_original":"psfOriginal_g1",
+    "psf_g2_original":"psfOriginal_g2",
+    "psf_T_mean_original":"psfOriginal_T",
+    "psf_g1":"gauss_psfReconvolved_g1",
+    "psf_g2":"gauss_psfReconvolved_g2",
+    "psf_T_mean":"gauss_psfReconvolved_T",
+    "object_mask_fraction":"mfrac",
+    "id":"shearObjectId", 
 }
 
 class TXIngestRubinMetaDetect(PipelineStage):
@@ -161,7 +161,6 @@ class TXIngestRubinMetaDetect(PipelineStage):
         created_files = False
         data_set_refs = butler.query_datasets('object_shear_all')
         n_chunks = len(data_set_refs)
-        input_columns = self.get_input_columns()
 
         for i, ref in enumerate(data_set_refs):
             tract = ref.dataId["tract"]
@@ -171,7 +170,6 @@ class TXIngestRubinMetaDetect(PipelineStage):
 
             d = butler.get('object_shear_all',
                            dataId=ref.dataId,
-                           parameters={"columns": input_columns}
                            )
             chunk_size = len(d)
 
@@ -203,6 +201,7 @@ class TXIngestRubinMetaDetect(PipelineStage):
         shear_outfile.close()
 
     def file_run(self):
+        # THIS method is deprecated
         file_path = self.config("file_path")
         if file_path is None:
             raise RuntimeError("You must either use a butler, or specify a file_path to your metadetect catalog.")
@@ -242,67 +241,6 @@ class TXIngestRubinMetaDetect(PipelineStage):
         self.aliasing(shear_outfile, group)
         shear_outfile.close()
 
-    def get_input_columns(self):
-        input_columns = [
-            "shearObjectId",
-            #"cellId", #removed
-            'cell_x',
-            'cell_y',
-            "metaStep",
-            "ra",
-            "dec",
-            "mfrac",
-            #"maskFractionCell", #Removed
-            #"nEpochCell", #Removed
-            "gauss_g1",
-            "gauss_g2",
-            "gauss_g1_g1_Cov",
-            "gauss_g1_g2_Cov",
-            "gauss_g2_g2_Cov",
-            "gauss_T",
-            "gauss_snr",
-            "gauss_TErr",
-            "gauss_psfReconvolved_g1", 
-            "gauss_psfReconvolved_g2",
-            'gauss_psfReconvolved_T',
-            "psfOriginal_g1",
-            "psfOriginal_g2",
-            "psfOriginal_T",
-            #Next follows the fluxes:
-            "g_pgaussFlux",
-            "r_pgaussFlux",
-            "i_pgaussFlux",
-            "z_pgaussFlux",
-            "g_pgaussFluxErr",
-            "r_pgaussFluxErr",
-            "i_pgaussFluxErr",
-            "z_pgaussFluxErr",
-            "pgauss_T",
-            "pgauss_TErr",
-            #Various flags
-            #"stamp_flags",
-            "psfOriginal_flags",
-            "gauss_psfReconvolved_flags",
-            "gauss_object_flags",
-            "pgauss_object_flags",
-            "g_gaussFlux_flags",
-            "r_gaussFlux_flags",
-            "i_gaussFlux_flags",
-            "z_gaussFlux_flags",
-            "g_pgaussFlux_flags",
-            "r_pgaussFlux_flags",
-            "i_pgaussFlux_flags",
-            "z_pgaussFlux_flags",
-            #"gauss_T_flags",
-            #"pgauss_T_flags",
-            "gauss_flags",
-            "pgauss_flags",
-            "gauss_shape_flags",
-            "is_primary"
- 
-        ]
-        return input_columns
-
     def setup_output(self, tag, group, first_chunk):
         f = self.open_output(tag)
         g = f.create_group(group)
@@ -333,8 +271,8 @@ class TXIngestRubinMetaDetect(PipelineStage):
         g = outfile[group]
         for variant in ["ns", "1p", "1m", "2p", "2m"]:
             k = g[variant]
-            for original, txname in RENAMES.items():
-                k[original] = k[txname]
+            for txname, original in TXPPIPE_COLUMNS.items():
+                k[txname] = k[original]
         
 
 
