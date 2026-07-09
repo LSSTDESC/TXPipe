@@ -59,8 +59,8 @@ class TXIngestRubinMetaDetect(PipelineStage):
         )
         try:
             from lsst.daf.butler import Butler
-        except:
-            raise ImportError(error_msg)
+        except Exception as e:
+            raise ImportError(error_msg) from e
         
 
         # Configure and create the butler. There are several ways to do this,
@@ -70,8 +70,8 @@ class TXIngestRubinMetaDetect(PipelineStage):
         collections = self.config["collections"]
         try:
             butler = Butler(butler_config_file, collections=collections)
-        except:
-            raise RuntimeError(error_msg)
+        except Exception as e:
+            raise RuntimeError(error_msg) from e
 
         if self.config["select_field"]:
             tracts = DP1_TRACTS[self.config["select_field"]]
