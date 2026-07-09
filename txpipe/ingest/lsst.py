@@ -1,6 +1,7 @@
 from ..utils import nanojansky_err_to_mag_ab, nanojansky_to_mag_ab, moments_to_shear, mag_ab_to_nanojansky
 import numpy as np
-
+import h5py
+from ..shear_calibration.names import META_VARIANTS
 
 def process_photometry_data(data):
     cut = data["refExtendedness"] == 1
@@ -68,7 +69,7 @@ def process_shear_data(data):
 
 def process_metadetect_data(data):
     output = {}
-    for variant in ["ns", "1p", "1m", "2p", "2m"]:
+    for variant in META_VARIANTS:
         var_data = data[data["metaStep"] == variant]
         var_data = sanitize(var_data)
 
@@ -96,7 +97,7 @@ def sanitize(data):
         data = data.astype("S")
     # convert dates to integers
     elif data.dtype.kind == "M":
-        data = data.astype(int)
+        data = data.astype(h5py.opaque_dtype(data.dtype))
 
     return data
 
