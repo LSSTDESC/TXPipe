@@ -1,5 +1,6 @@
 from ..utils import nanojansky_err_to_mag_ab, nanojansky_to_mag_ab, moments_to_shear, mag_ab_to_nanojansky
 import numpy as np
+import h5py
 
 
 def process_photometry_data(data):
@@ -123,7 +124,7 @@ def sanitize(data):
         data = data.astype("S")
     # convert dates to integers
     elif data.dtype.kind == "M":
-        data = data.astype(int)
+        data = data.astype(h5py.opaque_dtype(data.dtype))
 
     return data
 
