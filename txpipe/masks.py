@@ -523,13 +523,14 @@ class TXJointMask(TXBaseMask):
         name1, name2 = self.mask_input_names
 
         with self.open_input(name1, wrapper=True) as f:
-            metadata = dict(f.file["maps"].attrs)
+            metadata = f.read_map_info("mask")
             nside1 = metadata["nside"]
             pixel_scheme1 = choose_pixelization(**metadata)
             mask1 = f.read_mask("mask", returnbool=True)
+            
 
         with self.open_input(name2, wrapper=True) as f:
-            metadata = dict(f.file["maps"].attrs)
+            metadata = f.read_map_info("mask")
             nside2 = metadata["nside"]
             pixel_scheme2 = choose_pixelization(**metadata)
             mask2 = f.read_mask("mask", returnbool=True)

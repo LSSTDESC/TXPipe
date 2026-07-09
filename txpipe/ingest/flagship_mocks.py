@@ -33,7 +33,8 @@ class TXIngestFlagshipMocks(PipelineStage):
         size = self.get_catalog_size(input_files)
 
         # Assume mask is uniform
-        mask_npix = healpy.nside2npix(self.config["nside"])
+        nside = self.config["nside"]
+        mask_npix = healpy.nside2npix(nside)
         mask = np.zeros(mask_npix)
 
         # Set up the output file objects
@@ -54,7 +55,7 @@ class TXIngestFlagshipMocks(PipelineStage):
             # New end value because we throw away some data.
             e = s + len(data["ra"])
 
-            pix = healpy.ang2pix(data["ra"], data["dec"], lonlat=True, nest=True)
+            pix = healpy.ang2pix(nside, data["ra"], data["dec"], lonlat=True, nest=True)
             mask[pix] = 1.0
             
             # save this chunk to the file
@@ -69,10 +70,6 @@ class TXIngestFlagshipMocks(PipelineStage):
         
         outfile.close()
 
-        # This re-packs everything to save space
-        # because we did the resizing
-        print("Repacking")
-        repack(filename)
 
         pix = np.where(mask==1)[0]
         vals = mask[pix] # will just be ones
@@ -83,7 +80,13 @@ class TXIngestFlagshipMocks(PipelineStage):
             "npix": mask_npix,
         }
         with self.open_output("shear_mask", wrapper=True) as f:
-            f.write_map_pixval(self, "mask", pix, vals, metadata)
+            f.write_map_pixval("mask", pix, vals, metadata)
+
+        
+        # This re-packs everything to save space
+        # because we did the resizing
+        print("Repacking")
+        repack(filename)
 
         
 
