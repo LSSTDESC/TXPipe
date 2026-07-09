@@ -127,3 +127,10 @@ class TXIngestRubinMetaDetect(PipelineStage):
         self.aliasing(shear_outfile, group)
         shear_outfile.close()
 
+    def aliasing(self, outfile, group):
+        g = group
+        for variant in ["ns", "1p", "1m", "2p", "2m"]:
+            k = g[variant]
+            for txname, original in TXPPIPE_COLUMNS.items():
+                k[txname] = k[original]
+
