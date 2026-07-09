@@ -2,18 +2,29 @@
 stages:
   - name: TXIngestFlagshipMocks
   - name: TXDESIJointMask
+  - name: TXCutShearCatalog
+  - name: TXSourceSelectorSimple
+    aliases:
+      shear_catalog: cut_shear_catalog
+  - name: TXShearCalibration
+    aliases:
+      shear_catalog: cut_shear_catalog
+  - name: TXTracerMetadata
+    aliases:
+      shear_catalog: cut_shear_catalog
+  # - name: TXIngestDESIRandoms
   # - name: TXSourceSelectorMetacal
-  # - name: TXSourceTomography
+  - name: TXSourceTomography
   # - name: TXShearCalibration
   # - name: TXExternalLensCatalogSplitter
   # - name: TXStarCatalogSplitter
-  # - name: TXTruePhotozStackSource
-  #   classname: TXTruePhotozStack
-  #   aliases:
-  #       tomography_catalog: shear_tomography_catalog
-  #       catalog: shear_catalog
-  #       weights_catalog: shear_catalog
-  #       photoz_stack: shear_photoz_stack
+  - name: TXTruePhotozStackSource
+    classname: TXTruePhotozStack
+    aliases:
+      tomography_catalog: shear_tomography_catalog
+      catalog: cut_shear_catalog
+      weights_catalog: cut_shear_catalog
+      photoz_stack: shear_photoz_stack
   # - name: TXIngestRedmagic
   - name: TXDESIMultiMockSelector
   - name: TXIngestDESI
@@ -31,13 +42,12 @@ stages:
   # - name: TXTwoPoint
   #   threads_per_process: 2
   # - name: TXBlinding             # Blind the data following Muir et al
-  #   threads_per_process: 2
   # - name: TXTwoPointTheoryReal   # compute theory using CCL to save in sacc file and plot later
-  # - name: TXPhotozPlotSource          # Plot the bin n(z)
-  #   classname: TXPhotozPlot
-  #   aliases:
-  #       photoz_stack: shear_photoz_stack
-  #       nz_plot: nz_source
+  - name: TXPhotozPlotSource          # Plot the bin n(z)
+    classname: TXPhotozPlot
+    aliases:
+      photoz_stack: shear_photoz_stack
+      nz_plot: nz_source
   - name: TXPhotozPlotLens          # Plot the bin n(z)
     classname: TXPhotozPlot
     aliases:
@@ -103,8 +113,8 @@ inputs:
     # mask should be already a combination of source and lens.
     # mask: /scratch/gpfs/AAMON/desc_analysis/catalogs/dp2_23p5_combined_mask_nmin=500_nside=512.hdf5 # /scratch/gpfs/AAMON/desc_analysis/catalogs/mask_eg.fits
     # This file comes with the code
-    # fiducial_cosmology: data/fiducial_cosmology.yml
-    # spectroscopic_catalog: data/example/inputs/mock_spectroscopic_catalog.hdf5
+    fiducial_cosmology: data/fiducial_cosmology.yml
+    spectroscopic_catalog: data/example/inputs/mock_spectroscopic_catalog.hdf5
     desi_mask:
         name: desi_dr1_mask
 
