@@ -10,7 +10,23 @@ import numpy as np
 import os
 import pyarrow.parquet as pq
 
-
+TXPPIPE_COLUMNS = {
+    "g1":"gauss_g1",
+    "g2":"gauss_g2",
+    "g1_err":"gauss_g1_g1_Cov",
+    "g2_err":"gauss_g1_g2_Cov",
+    "g_cross":"gauss_g1_g2_Cov",
+    "T":"gauss_T",
+    "s2n":"gauss_snr",
+    "psf_g1_original":"psfOriginal_g1",
+    "psf_g2_original":"psfOriginal_g2",
+    "psf_T_mean_original":"psfOriginal_T",
+    "psf_g1":"gauss_psfReconvolved_g1",
+    "psf_g2":"gauss_psfReconvolved_g2",
+    "psf_T_mean":"gauss_psfReconvolved_T",
+    "object_mask_fraction":"mfrac",
+    "id":"shearObjectId", 
+}
 
 
 class TXIngestRubinMetaDetect(PipelineStage):
