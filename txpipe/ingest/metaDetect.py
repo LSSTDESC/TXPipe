@@ -1,7 +1,7 @@
 from ..base_stage import PipelineStage
 from ..data_types import ShearCatalog, PhotometryCatalog, HDFFile, FileCollection
 from .lsst import process_metadetect_data, sanitize
-from dp1_info import DP1_COSMOLOGY_TRACTS, ALL_TRACTS
+from .dp1_info import DP1_COSMOLOGY_TRACTS, ALL_TRACTS
 from ceci.config import StageParameter
 from ..utils.hdf_tools import h5py_shorten, repack
 from ..utils.splitters import MetaDetectSplitter
