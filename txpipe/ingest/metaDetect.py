@@ -162,8 +162,8 @@ class TXIngestRubinMetaDetect(PipelineStage):
             for variant in ["ns", "1p", "1m", "2p", "2m"]:
                 data = sanitize(shear_data[variant])
                 splitter.write_bin(data, variant)
-
-        splitter.finish()
+        if created_files:
+            splitter.finish()
         shear_outfile.close()
 
     def get_input_columns(self):
