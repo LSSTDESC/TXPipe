@@ -77,6 +77,7 @@ def process_metadetect_data(data):
         var_output.pop("metaStep", None)
         # extra columns we are still adding:
         var_output["flags"] = combined_flag(var_data)
+        var_output["weight"] = 1 / (0.5 * (var_data["gauss_g1_g1_Cov"] + var_data["gauss_g2_g2_Cov"]))
         for band in "griz": # For DP2, we only expect 4 bands
             f = var_data[f"{band}_pgaussFlux"]
             f_err = var_data[f"{band}_pgaussFluxErr"]
