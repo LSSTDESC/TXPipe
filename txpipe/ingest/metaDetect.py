@@ -5,6 +5,7 @@ from .dp1_info import DP1_COSMOLOGY_TRACTS, ALL_TRACTS
 from ceci.config import StageParameter
 from ..utils.hdf_tools import h5py_shorten, repack
 from ..utils.splitters import MetaDetectSplitter
+from ..shear_calibration.names import META_VARIANTS
 import numpy as np
 import os
 import pyarrow.parquet as pq
@@ -120,7 +121,7 @@ class TXIngestRubinMetaDetect(PipelineStage):
                 dtypes = {key: shear_data["ns"][key].dtype for key in shear_data["ns"]}
                 splitter = MetaDetectSplitter(group, columns, variants, dtypes=dtypes)
 
-            for variant in ["ns", "1p", "1m", "2p", "2m"]:
+            for variant in META_VARIANTS:
                 splitter.write_bin(shear_data[variant], variant)
             print(f"Processing chunk {i + 1} / {n_chunks}")
 
@@ -159,7 +160,7 @@ class TXIngestRubinMetaDetect(PipelineStage):
                 columns = list(shear_data["ns"].keys())
                 splitter = MetaDetectSplitter(group, columns, variants)
 
-            for variant in ["ns", "1p", "1m", "2p", "2m"]:
+            for variant in META_VARIANTS:
                 data = sanitize(shear_data[variant])
                 splitter.write_bin(data, variant)
         if created_files:
