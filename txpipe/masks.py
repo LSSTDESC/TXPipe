@@ -626,6 +626,12 @@ class TXCutCatalog(PipelineStage):
 
             # Write selected rows for every column in the group
             g_out = f_out.create_group(group_name)
+
+            # copy attributes, primarily the catalog_type
+            # property
+            attrs = g_in.attrs
+            for key, value in attrs.items():
+                g_out.attrs[key] = value
             for col in g_in.keys():
                 g_out.create_dataset(col, data=g_in[col][selected])
 

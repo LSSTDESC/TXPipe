@@ -1,5 +1,6 @@
 # Stages to run
 stages:
+  - name: TXIngestFlagshipMasks
   - name: TXIngestFlagshipMocks
   - name: TXDESIJointMask
   - name: TXCutShearCatalog
@@ -109,14 +110,16 @@ inputs:
     # photoz_trained_model: data/example/inputs/cosmoDC2_trees_i25.3.npy
     # exposures: data/example/inputs/exposures.hdf5
     # star_catalog: data/example/inputs/star_catalog.hdf5
-    desi_catalog: /scratch/gpfs/AAMON/desc_analysis/catalogs/output_select_lsst_obs_cond_dp2_DESI_ELG_flagship.pq
+    # desi_catalog: /scratch/gpfs/AAMON/desc_analysis/catalogs/output_select_lsst_obs_cond_dp2_DESI_ELG_flagship.pq
     # mask should be already a combination of source and lens.
     # mask: /scratch/gpfs/AAMON/desc_analysis/catalogs/dp2_23p5_combined_mask_nmin=500_nside=512.hdf5 # /scratch/gpfs/AAMON/desc_analysis/catalogs/mask_eg.fits
     # This file comes with the code
     fiducial_cosmology: data/fiducial_cosmology.yml
     spectroscopic_catalog: data/example/inputs/mock_spectroscopic_catalog.hdf5
-    desi_mask:
-        name: desi_dr1_mask
+    # desi_mask:
+    #     name: desi_dr1_mask
+    original_dp2_mask: /global/cfs/cdirs/lsst/groups/PZ/users/qhang/dp2_maps_may/dp2_public_catalog_mask_nside-256.fits
+    original_flagship_mask: /global/cfs/cdirs/lsst/groups/PZ/users/qhang/desi-model-mask-nside-256.fits
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted
@@ -127,7 +130,7 @@ log_dir: data/example/logs_desi_mocks
 pipeline_log: data/example/log_desi_mocks.txt
 
 
-registry:
-    owner_type: project
-    owner: wlss-dp2-desi-delta-sigma
+# registry:
+#     owner_type: project
+#     owner: wlss-dp2-desi-delta-sigma
  

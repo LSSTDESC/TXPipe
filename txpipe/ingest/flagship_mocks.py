@@ -13,12 +13,10 @@ class TXIngestFlagshipMocks(PipelineStage):
     inputs = []
     outputs = [
         ("shear_catalog", ShearCatalog),
-        ("shear_mask", MapsFile),
     ]
     config_options = {
         "input_file_pattern": StageParameter(str, default=DEFAULT_MOCK_PATTERN, msg="Glob pattern for input files"),
         "chunk_rows": StageParameter(int, default=1_000_000, msg="Number of rows to process at once"),
-        "mask_nside": StageParameter(int, default=1024, msg="nside of generated mask"),
     }
 
     def run(self):
@@ -34,8 +32,6 @@ class TXIngestFlagshipMocks(PipelineStage):
 
         # Assume mask is uniform
         nside = self.config["nside"]
-        mask_npix = healpy.nside2npix(nside)
-        mask = np.zeros(mask_npix)
 
         # Set up the output file objects
         filename = self.get_output("shear_catalog")
@@ -54,9 +50,6 @@ class TXIngestFlagshipMocks(PipelineStage):
             data = self.process_chunk(data)
             # New end value because we throw away some data.
             e = s + len(data["ra"])
-
-            pix = healpy.ang2pix(nside, data["ra"], data["dec"], lonlat=True, nest=True)
-            mask[pix] = 1.0
             
             # save this chunk to the file
             for name, col in data.items():
@@ -69,19 +62,6 @@ class TXIngestFlagshipMocks(PipelineStage):
             outgroup[key].resize((s,))
         
         outfile.close()
-
-
-        pix = np.where(mask==1)[0]
-        vals = mask[pix] # will just be ones
-        metadata = {
-            "pixelization": "healpix",
-            "nside": self.config["mask_nside"],
-            "nest": True,
-            "npix": mask_npix,
-        }
-        with self.open_output("shear_mask", wrapper=True) as f:
-            f.write_map_pixval("mask", pix, vals, metadata)
-
         
         # This re-packs everything to save space
         # because we did the resizing
@@ -153,6 +133,39 @@ class TXIngestFlagshipMocks(PipelineStage):
                 for batch in f.iter_batches(batch_size):
                     batch = {k:np.array(batch[k]) for k in batch.column_names}
                     yield batch
+
+
+class TXIngestFlagshipMasks(PipelineStage):
+    name = "TXIngestFlagshipMasks"
+    inputs = [
+        ("original_dp2_mask", MapsFile),
+        ("original_flagship_mask", MapsFile),
+    ]
+    outputs = [
+        ("shear_mask", MapsFile),
+        ("desi_mask", MapsFile),
+    ]
+    def run(self):
+        self.convert_map("original_dp2_mask", "shear_mask")
+        self.convert_map("original_flagship_mask", "desi_mask")
+
+    def convert_map(self, input_fits_tag, output_hdf_tag):
+        import healpy as hp
+        mask = hp.read_map(self.get_input(input_fits_tag), nest=True)
+        nside = hp.get_nside(mask)
+        pix = np.where(mask==1)[0]
+        vals = mask[pix] # will just be ones
+        metadata = {
+            "pixelization": "healpix",
+            "nside": nside,
+            "nest": True,
+        }
+        with self.open_output(output_hdf_tag, wrapper=True) as f:
+            f.write_map_pixval("mask", map_name, pix, vals, metadata)
+        
+
+
+
 
 
 def half_light_radius_to_T(hlr):
