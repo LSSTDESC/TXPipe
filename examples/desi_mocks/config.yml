@@ -48,7 +48,7 @@ TXDESIMultiMockSelector:
     apply_mask: true
     zmin: 0.5
     # Select the ELG sample for now
-    mock_path_pattern: /global/cfs/cdirs/lsst/groups/PZ/Flagship/dp2_mock_run_flagship_gold_test/*/output_select_lsst_obs_cond_dp2_DESI_ELG_flagship.pq
+    mock_path_pattern: /global/cfs/cdirs/lsst/groups/PZ/Flagship/dp2_mock_run_flagship_gold_test/*/output_select_lsst_obs_cond_dp2_DESI_LRG_flagship.pq
 
 
 
