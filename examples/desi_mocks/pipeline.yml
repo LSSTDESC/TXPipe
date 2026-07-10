@@ -23,12 +23,8 @@ stages:
     aliases:
       shear_catalog: cut_shear_catalog
   - name: TXDeltaSigma
-  # - name: TXIngestDESIRandoms
-  # - name: TXSourceSelectorMetacal
+  - name: TXDeltaSigmaPlots
   - name: TXSourceTomography
-  # - name: TXShearCalibration
-  # - name: TXExternalLensCatalogSplitter
-  # - name: TXStarCatalogSplitter
   - name: TXTruePhotozStackSource
     classname: TXTruePhotozStack
     aliases:
@@ -36,23 +32,8 @@ stages:
       catalog: cut_shear_catalog
       weights_catalog: cut_shear_catalog
       photoz_stack: shear_photoz_stack
-  # - name: TXIngestRedmagic
   - name: TXDESIMultiMockSelector
   - name: TXIngestDESI
-  # - name: TXTracerMetadata
-  # - name: TXSourceMaps
-  # - name: TXExternalLensMaps
-  # - name: TXAuxiliarySourceMaps
-  # - name: TXAuxiliaryLensMaps
-  # - name: TXSimpleMask
-  # - name: TXLSSWeightsUnit
-  # - name: TXDensityMaps
-  # - name: TXRandomCat
-  # - name: TXJackknifeCenters
-  # - name: TXTwoPoint
-  #   threads_per_process: 2
-  # - name: TXBlinding             # Blind the data following Muir et al
-  # - name: TXTwoPointTheoryReal   # compute theory using CCL to save in sacc file and plot later
   - name: TXPhotozPlotSource          # Plot the bin n(z)
     classname: TXPhotozPlot
     aliases:
@@ -63,26 +44,6 @@ stages:
     aliases:
         photoz_stack: lens_photoz_stack
         nz_plot: nz_lens
-  # - name: TXDiagnosticQuantiles
-  # - name: TXSourceDiagnosticPlots      # Make a suite of diagnostic plots
-  # - name: TXGammaTFieldCenters   # Compute and plot gamma_t around center points
-  #   threads_per_process: 2
-  # - name: TXGammaTRandoms        # Compute and plot gamma_t around randoms
-  #   threads_per_process: 2
-  # - name: TXGammaTStars       # Compute and plot gamma_t around dim stars
-  #   threads_per_process: 2
-  # - name: TXRoweStatistics       # Compute and plot Rowe statistics
-  #   threads_per_process: 2
-  # - name: TXPSFDiagnostics       # Compute and plots other PSF diagnostics
-  # - name: TXBrighterFatterPlot   # Make plots tracking the brighter-fatter effect
-  # - name: TXSourceNoiseMaps
-  # - name: TXExternalLensNoiseMaps
-  # - name: TXConvergenceMaps      # Make convergence kappa maps from g1, g2 maps
-  # - name: TXConvergenceMapPlots   # Plot the convergence map
-  # - name: TXTwoPointPlots
-    # - name: TXTwoPointFourier
-      # threads_per_process: 2
-    # - name: TXRealGaussianCovariance   # Compute covariance of real-space correlations
 
 # Where to put outputs
 output_dir: data/example/outputs_desi_mocks
