@@ -23,6 +23,7 @@ stages:
     aliases:
       shear_catalog: cut_shear_catalog
   - name: TXDeltaSigma
+  - name: TXDeltaSigmaTheory
   - name: TXDeltaSigmaPlots
   - name: TXSourceTomography
   - name: TXTruePhotozStackSource
