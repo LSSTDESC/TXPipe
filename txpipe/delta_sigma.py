@@ -174,11 +174,16 @@ class TXDeltaSigma(PipelineStage):
 
         if source_bins == [-1]:
             source_bins = list(range(nbin_source))
-            source_bins.append("all")
+            # If there are multiple bins then there should
+            # also be an "all" bin combining all of them together.
+            # If there is only one bin there is no point doing this.
+            if nbin_source > 1:
+                source_bins.append("all")
 
         if lens_bins == [-1]:
             lens_bins = list(range(nbin_lens))
-            lens_bins.append("all")
+            if nbin_lens > 1:
+                lens_bins.append("all")
 
         # Collect all bin pairs together.
         # This is everything to be done by all processes.
