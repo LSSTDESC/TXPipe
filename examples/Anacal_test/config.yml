@@ -6,7 +6,7 @@ global:
 
 TXIngestAnacal:
     bands: griz
-    collections: "u/xiangchl/dp1/a360_anacal"
+    collections: "u/xiangchl/dp1/a360_anacal2"
     cosmology_tracts_only: False
     prefix: "fpfs1"
     scale: "fpfs1"

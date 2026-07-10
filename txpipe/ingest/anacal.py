@@ -25,6 +25,7 @@ class TXIngestAnacal(TXIngestCatalogFits):
         "butler_config_file": StageParameter(str,
                                              "/global/cfs/cdirs/lsst/production/gen3/rubin/DP1/repo/butler.yaml",
                                              msg="Path to the LSST butler config file."),
+        "butler_object_name": StageParameter(str, "deep_coadd_cell_anacal_merged"),
         "cosmology_tracts_only": StageParameter(bool, True, msg="Use only cosmology tracts."),
         "select_field": StageParameter(str, "", msg="Field to select (overrides cosmology_tracts_only)."),
         "collections": StageParameter(str, "LSSTComCam/DP1", msg="Butler collections to use."),
@@ -52,8 +53,8 @@ class TXIngestAnacal(TXIngestCatalogFits):
         )
         try:
             from lsst.daf.butler import Butler
-        except:
-            raise ImportError(error_msg)
+        except Exception as e:
+            raise ImportError(error_msg) from e
         
         # Configure and create the butler. There are several ways to do this,
         # Here we use a central collective butler yaml file from NERSC.
@@ -62,8 +63,8 @@ class TXIngestAnacal(TXIngestCatalogFits):
         collections = self.config["collections"]
         try:
             butler = Butler(butler_config_file, collections=collections)
-        except:
-            raise RuntimeError(error_msg)
+        except Exception as e:
+            raise RuntimeError(error_msg) from e
 
         if self.config["select_field"]:
             tracts = DP1_TRACTS[self.config["select_field"]]
@@ -72,13 +73,14 @@ class TXIngestAnacal(TXIngestCatalogFits):
         else:
             tracts = ALL_TRACTS
 
-        n = self.get_catalog_size(butler, "deep_coadd_cell_anacal_merged")
+        object_name = self.config["butler_object_name"]
+        n = self.get_catalog_size(butler, object_name)
         #shear_outfile = self.open_output("shear_catalog")
         #group = shear_outfile.create_group("shear")
         #shear_outfile["shear"].attrs["catalog_type"] = "Anacal"
 
         created_files = False
-        data_set_refs = butler.query_datasets('object_shear_all')
+        data_set_refs = butler.query_datasets(object_name)
         n_chunks = len(data_set_refs)
         input_columns = self.setup_input()
 
@@ -89,7 +91,7 @@ class TXIngestAnacal(TXIngestCatalogFits):
                 print(f"Skipping chunk {i + 1} / {n_chunks} since tract {tract} is not selected")
                 continue
 
-            d = butler.get("deep_coadd_cell_anacal_merged", #This name might change, we should double check with Xiangchong / PO
+            d = butler.get(object_name,
                            dataId=ref.dataId,
                            parameters={"columns": input_columns}
                            )
@@ -206,8 +208,8 @@ class TXIngestAnacal(TXIngestCatalogFits):
             if band == "i":
                 output["s2n"] = f / f_err
 
-            for d in ["_dg1", "_dg2"]:
-                dd = data[f"{band}_dflux_{s}"+d][:]
+            for d in ["dg1", "dg2"]:
+                dd = data[f"{band}_dflux_{s}_"+d][:]
                 output[f"mag_{band}_{d}"] = nanojansky_to_mag_ab(dd)
 
         return output
