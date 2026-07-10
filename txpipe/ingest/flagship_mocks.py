@@ -103,7 +103,7 @@ class TXIngestFlagshipMocks(PipelineStage):
             data[new_name] = chunk[old_name]
 
         # Now the ones we actually need to derive
-        T = half_light_radius_to_T(chunk['totalHalfLightRadiusArcsec'])
+        data["T"] = half_light_radius_to_T(chunk['totalHalfLightRadiusArcsec'])
         data["s2n"] = mags_to_snr(data, "gri")
         data["g1"], data["g2"] = combine_intrinsic_shear(chunk["gamma1"], chunk["gamma2"], chunk["eps1_gal"], chunk["eps2_gal"])
         data["weight"] = wildly_simplistic_weight_model(data)
@@ -161,7 +161,7 @@ class TXIngestFlagshipMasks(PipelineStage):
             "nest": True,
         }
         with self.open_output(output_hdf_tag, wrapper=True) as f:
-            f.write_map_pixval("mask", map_name, pix, vals, metadata)
+            f.write_map_pixval("mask", pix, vals, metadata)
         
 
 
