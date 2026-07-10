@@ -67,7 +67,7 @@ def process_shear_data(data):
     return output
 
 
-def process_metadetect_data(data):
+def process_metadetect_data(data, flag):
     output = {}
     for variant in META_VARIANTS:
         var_data = data[data["metaStep"] == variant]
@@ -93,7 +93,7 @@ def process_metadetect_data(data):
             "psf_g1": var_data["gauss_psfReconvolved_g1"],
             "psf_g2": var_data["gauss_psfReconvolved_g2"],
             "psf_T_mean": var_data["gauss_psfReconvolved_T"],
-            "flags": combined_flag(var_data),
+            "flags": combined_flag(var_data, flag),
             "weight": 1 / (0.5 * (var_data["gauss_g1_g1_Cov"] + var_data["gauss_g2_g2_Cov"])),
             "gauss_flags": var_data["gauss_flags"],
             "pgauss_flags": var_data["pgauss_flags"],
@@ -129,7 +129,7 @@ def sanitize(data):
     return data
 
 
-def combined_flag(data):
+def combined_flag(data, flag):
     """
     generate a combined flag for the metadetect catalog,
     this could also become initial cut if we want it to.
@@ -143,7 +143,8 @@ def combined_flag(data):
     flag &= data["gauss_shape_flags"] == 0
     flag &= data["gauss_flags"] == 0
     flag &= data["pgauss_flags"] == 0
-    for band in "griz":
-        flag &= data[f"{band}_gaussFlux_flags"] == 0
-        flag &= data[f"{band}_pgaussFlux_flags"] == 0
+    if flag:
+        for band in "griz":
+            flag &= data[f"{band}_gaussFlux_flags"] == 0
+            flag &= data[f"{band}_pgaussFlux_flags"] == 0
     return (~flag).astype(int)
