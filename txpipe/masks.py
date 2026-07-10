@@ -620,9 +620,13 @@ class TXCutCatalog(PipelineStage):
                 pix = hp.ang2pix(nside, ra, dec, lonlat=True, nest=True)
                 sel = mask[pix].astype(bool)
                 selected.append(np.where(sel)[0] + start)
+                nsel = sel.sum()
+                ntot_chunk = ra.size
+                print(f"Rows {start:,}-{end:,} selected {nsel:,} / {ntot_chunk:,} rows")
 
             selected = np.concatenate(selected)
-            print(f"Selected {len(selected)} / {n_total} objects inside mask")
+            print("")
+            print(f"Overall selected {len(selected):,} / {n_total:,} objects inside mask")
 
             # Write selected rows for every column in the group
             g_out = f_out.create_group(group_name)
@@ -633,7 +637,12 @@ class TXCutCatalog(PipelineStage):
             for key, value in attrs.items():
                 g_out.attrs[key] = value
             for col in g_in.keys():
-                g_out.create_dataset(col, data=g_in[col][selected])
+                print("Copying column", col)
+                # Random selection in h5py is painfully slow.
+                # Unless it's really too big it's better to load the whole
+                # column and then select out of it. If it is too big then you
+                # want to read in chunks and then select within each chunk
+                g_out.create_dataset(col, data=g_in[col][:][selected])
 
 
 class TXCutShearCatalog(TXCutCatalog):
