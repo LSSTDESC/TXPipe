@@ -227,15 +227,17 @@ class TXDeltaSigma(PipelineStage):
         names = {
             "ra": "ra",
             "dec": "dec",
-            "z": "z",
             "w": self.config["source_cat_w_col"],
             "e_1": "g1",
             "e_2": "g2",
         }
+        # If we have photometric sources (usually true) then
+        # we don't load per-galaxy photo-z.
+        if not self.config["photoz"]:
+            names["z"] = "z"
+
         with self.open_input("binned_shear_catalog") as shear_file:
             group = shear_file[f"shear/bin_{bin_index}"]
-            if self.config["photoz"]:
-                del names["z"]
             table = self.load_table(group, names)
             nbin = shear_file["shear"].attrs["nbin_source"]
 
