@@ -37,11 +37,6 @@ class TXDeltaSigma(PipelineStage):
         "lens_source_sep": StageParameter(
             float, 0.1, msg="Minimum redshift separation between lens and source bins to use for dSigma measurement"
         ),
-        "lower_bin_edge": StageParameter(
-            list,
-            [0.0, 0.358, 0.631, 0.872],
-            msg="Lower edge of the source redshift bins to use for dSigma measurement, only used if photoz=True",
-        ),
         "source_cat_w_col": StageParameter(str, "weight", msg="Source catalog weight column name."),
         "lens_cat_w_col": StageParameter(str, "weight", msg="Lens catalog weight column name."),
         "n_jobs": StageParameter(int, 1, msg="Number of multiprocessing processes to use"),
@@ -56,6 +51,9 @@ class TXDeltaSigma(PipelineStage):
     def run(self):
         import dsigma
         import sacc
+
+        if dsigma.__version__.startswith("1.1."):
+            raise ValueError("The TXPipe dSigma interface now expects a version >= 1.2")
 
         bin_pairs = self.get_bin_pairs()
         print(bin_pairs)
@@ -89,9 +87,6 @@ class TXDeltaSigma(PipelineStage):
             lens_table = self.load_lens_table(lens_bin)
             randoms_table = self.load_random_table(lens_bin)
 
-            if self.config["photoz"]:
-                # if we do not have point photo-z estimates for the sources then we use the lower edge of the tomographic bins to make z column
-                source_table["z"] = np.array(self.config["lower_bin_edge"])[source_table["z_bin"]]
 
             # Add columns to two tables in-place to do most of the pre-computation work.
             # We should look at using the n_jobs multiprocessing option here
