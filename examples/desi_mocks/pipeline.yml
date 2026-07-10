@@ -10,9 +10,19 @@ stages:
   - name: TXShearCalibration
     aliases:
       shear_catalog: cut_shear_catalog
+  - name: TXSourceMaps
+  - name: TXMapPlots
+    aliases:
+      density_maps: none
+      aux_source_maps: none
+      aux_lens_maps: none
+      lens_maps: none
+  - name: TXUniformDepthMap
+  - name: TXRandomCat
   - name: TXTracerMetadata
     aliases:
       shear_catalog: cut_shear_catalog
+  - name: TXDeltaSigma
   # - name: TXIngestDESIRandoms
   # - name: TXSourceSelectorMetacal
   - name: TXSourceTomography
@@ -37,7 +47,6 @@ stages:
   # - name: TXSimpleMask
   # - name: TXLSSWeightsUnit
   # - name: TXDensityMaps
-  # - name: TXMapPlots
   # - name: TXRandomCat
   # - name: TXJackknifeCenters
   # - name: TXTwoPoint
@@ -120,6 +129,7 @@ inputs:
     #     name: desi_dr1_mask
     original_dp2_mask: /global/cfs/cdirs/lsst/groups/PZ/users/qhang/dp2_maps_may/dp2_public_catalog_mask_nside-256.fits
     original_flagship_mask: /global/cfs/cdirs/lsst/groups/PZ/users/qhang/desi-model-mask-nside-256.fits
+    none: none
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted

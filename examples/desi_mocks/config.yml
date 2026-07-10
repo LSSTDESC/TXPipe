@@ -4,23 +4,16 @@ global:
     # This is read by many stages that read complete
     # catalog data, and tells them how many rows to read
     # at once
-    chunk_rows: 100000
+    chunk_rows: 1000000
     # These mapping options are also read by a range of stages
     pixelization: healpix
     nside: 512
     sparse: true  # Generate sparse maps - faster if using small areas
 
-TXGCRTwoCatalogInput:
-    metacal_dir: /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/metacal_table_summary
-    photo_dir: /global/cscratch1/sd/desc/DC2/data/Run2.2i/dpdd/Run2.2i-t3828/object_table_summary
-
-TXMetacalGCRInput:
-    cat_name: dc2_object_run2.1i_dr1b_with_metacal_griz
-
-TXExposureInfo:
-    dc2_name: 1.2p
-
 TXShearCalibration: {}
+
+TXUniformDepthMap:
+    depth: 24.0
 
 TXCosmoDC2Mock:
     cat_name: cosmoDC2_v1.1.4_image
@@ -142,7 +135,8 @@ TXModeLensSelector:
     r_i_cut: 2.0
 
 TXRandomCat:
-    density: 10 # gals per sq arcmin
+    density: 2.0
+    method: spherical_projection
 
 TXTwoPoint:
     bin_slop: 0.1
@@ -252,9 +246,17 @@ TXPhotozPlotSource:
     name: TXPhotozPlotSource
 TXPhotozPlotLens:
     name: TXPhotozPlotLens
+
 TXTruePhotozStackSource:
     name: TXTruePhotozStackSource
-    weight_col: metacal/weight
-    redshift_group: metacal
+    weight_col: shear/weight
+    redshift_group: shear
+    redshift_col: redshift_true
     zmax: 2.0
     nz: 201
+
+TXDeltaSigma:
+    n_jobs: 16
+    n_jackknife: 16
+    photoz: True
+    lens_cat_w_col: w_sys
