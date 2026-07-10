@@ -122,6 +122,7 @@ class TXDeltaSigma(PipelineStage):
             result = dsigma.stacking.excess_surface_density(
                 lens_table, table_r=randoms_table, random_subtraction=True, boost_correction=True, return_table=True
             )
+            result["rp"] = np.sqrt(result['rp_min'] * result['rp_max'])
 
             # Optionally get the jackknife covariance.
             # dSigma does this for us too. The stacking is the relatively
