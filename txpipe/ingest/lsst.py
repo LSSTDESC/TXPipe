@@ -129,7 +129,7 @@ def sanitize(data):
     return data
 
 
-def combined_flag(data, flag):
+def combined_flag(data, flux_flag):
     """
     generate a combined flag for the metadetect catalog,
     this could also become initial cut if we want it to.
@@ -143,7 +143,7 @@ def combined_flag(data, flag):
     flag &= data["gauss_shape_flags"] == 0
     flag &= data["gauss_flags"] == 0
     flag &= data["pgauss_flags"] == 0
-    if flag:
+    if flux_flag:
         for band in "griz":
             flag &= data[f"{band}_gaussFlux_flags"] == 0
             flag &= data[f"{band}_pgaussFlux_flags"] == 0
