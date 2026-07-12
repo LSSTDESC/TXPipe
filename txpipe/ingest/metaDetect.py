@@ -1,7 +1,7 @@
 from ..base_stage import PipelineStage
 from ..data_types import ShearCatalog, PhotometryCatalog, HDFFile, FileCollection
 from .lsst import process_metadetect_data, sanitize
-from .dp1_info import DP1_COSMOLOGY_TRACTS, ALL_TRACTS
+from .dp1_info import DP1_COSMOLOGY_TRACTS, ALL_TRACTS, DP1_TRACTS
 from ceci.config import StageParameter
 from ..utils.hdf_tools import h5py_shorten, repack
 from ..utils.splitters import MetaDetectSplitter
@@ -37,7 +37,8 @@ class TXIngestRubinMetaDetect(PipelineStage):
         "select_field": StageParameter(str, "", msg="Field to select (overrides cosmology_tracts_only)."),
         "select_tracts": StageParameter(list, [], msg="list of tracts (overrides cosmology_tracts_only, but not select_field)."),
         "collections": StageParameter(str, "LSSTComCam/DP1", msg="Butler collections to use."),
-        "flux_flags": StageParameter(bool, True, msg="use flux_flags for the combined flag or not"),
+        "exclusion_flag": StageParameter(bool, False, msg="Decide if flags are used for exclusion or just flagged."),
+        "flag_list": StageParameter(list, ["is_primary"], msg="list of flags to use for combined.")
         }
 
     def run(self):
@@ -90,7 +91,8 @@ class TXIngestRubinMetaDetect(PipelineStage):
         data_set_refs = butler.query_datasets('object_shear_all')
         n_chunks = len(data_set_refs)
         input_columns = self.get_input_columns()
-        flux_flag = self.config["flux_flags"]
+        exclusion_flag = self.config["exclusion_flag"]
+        flag_list = self.config["flag_list"]
         for i, ref in enumerate(data_set_refs):
             tract = ref.dataId["tract"]
             if tract not in tracts:
@@ -107,7 +109,7 @@ class TXIngestRubinMetaDetect(PipelineStage):
                 print(f"Skipping chunk {i + 1} / {n_chunks} since it is empty")
                 continue
 
-            shear_data = process_metadetect_data(d, flux_flag)
+            shear_data = process_metadetect_data(d, flag_list, exclusion_flag)
             if not created_files:
                 created_files = True
                 variants = {

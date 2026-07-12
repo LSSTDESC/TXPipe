@@ -67,11 +67,17 @@ def process_shear_data(data):
     return output
 
 
-def process_metadetect_data(data, flag):
+def process_metadetect_data(data, flag_list, flag_exclusion):
     output = {}
     for variant in META_VARIANTS:
         var_data = data[data["metaStep"] == variant]
         var_data = sanitize(var_data)
+
+        flags = combined_flag(var_data, flag_list)
+        if flag_exclusion:
+            keep = flags == 0
+            var_data = var_data[keep]
+            flags = flags[keep]
 
         var_output = {
             "ra": var_data["ra"],
@@ -93,7 +99,7 @@ def process_metadetect_data(data, flag):
             "psf_g1": var_data["gauss_psfReconvolved_g1"],
             "psf_g2": var_data["gauss_psfReconvolved_g2"],
             "psf_T_mean": var_data["gauss_psfReconvolved_T"],
-            "flags": combined_flag(var_data, flag),
+            "flags": flags,
             "weight": 1 / (0.5 * (var_data["gauss_g1_g1_Cov"] + var_data["gauss_g2_g2_Cov"])),
             "gauss_flags": var_data["gauss_flags"],
             "pgauss_flags": var_data["pgauss_flags"],
@@ -129,22 +135,18 @@ def sanitize(data):
     return data
 
 
-def combined_flag(data, flux_flag):
+def combined_flag(data, flag_list, bands="riz"):
     """
     generate a combined flag for the metadetect catalog,
     this could also become initial cut if we want it to.
     """
-    flag = np.ones(len(data), dtype=bool)
-    flag &= data["gauss_object_flags"] == 0
-    flag &= data["pgauss_object_flags"] == 0
-    flag &= data["is_primary"]
-    flag &= data["psfOriginal_flags"] == 0
-    flag &= data["gauss_psfReconvolved_flags"] == 0
-    flag &= data["gauss_shape_flags"] == 0
-    flag &= data["gauss_flags"] == 0
-    flag &= data["pgauss_flags"] == 0
-    if flux_flag:
-        for band in "griz":
-            flag &= data[f"{band}_gaussFlux_flags"] == 0
-            flag &= data[f"{band}_pgaussFlux_flags"] == 0
-    return (~flag).astype(int)
+    flag = np.zeros(len(data), dtype=bool)
+    for name in flag_list:
+        columns = [name] if name in data.dtype.names else [f"{band}_{name}" for band in bands]
+        for col in columns:
+            if col == "is_primary":
+                flag |= ~data[col]
+            else:
+                flag |= data[col] != 0 
+    return flag.astype(int)
+
