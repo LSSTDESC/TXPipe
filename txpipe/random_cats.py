@@ -62,9 +62,10 @@ class TXRandomCat(PipelineStage):
             depth_band = "_" + depth_band
         with self.open_input("aux_lens_maps", wrapper=True) as maps_file:
             depth = maps_file.read_map(f"depth/depth{depth_band}")
-            info = maps_file.read_map_info(f"depth/depth{depth_band}")
-            nside = info["nside"]
-            scheme = choose_pixelization(**info)
+            nside = depth.nside_sparse
+            # Maps are always returned as Healsparse maps which are in the NEST
+            # scheme.
+            scheme = choose_pixelization(pixelization="healpix", nside=nside, nest=True)
 
         # Load the input mask
         with self.open_input("mask", wrapper=True) as maps_file:
@@ -80,6 +81,8 @@ class TXRandomCat(PipelineStage):
         # for each random, for use in Rlens type metrics
         with self.open_input("fiducial_cosmology", wrapper=True) as f:
             cosmo = f.to_ccl()
+
+        assert mask.nside_sparse == depth.nside_sparse
 
         # Cut down to pixels that have any objects in
         pixel = mask.valid_pixels
