@@ -256,7 +256,10 @@ TXTruePhotozStackSource:
     nz: 201
 
 TXDeltaSigma:
+    # this can be 64 on nersc for speed
     n_jobs: 16
     n_jackknife: 16
     photoz: True
     lens_cat_w_col: w_sys
+    r_max: 100
+    nbins: 20
