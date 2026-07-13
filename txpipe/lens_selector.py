@@ -872,7 +872,6 @@ class TXDESISelector(PipelineStage):
 
         n_total = 0
         n_selected = 0
-
         for s, e, data in self.data_iterator():
             sel = self._apply_cuts(data)
             n_chunk = int(sel.sum())
@@ -925,7 +924,7 @@ class TXDESISelector(PipelineStage):
         if self.mask is not None:
             import healpy as hp
             pix = hp.ang2pix(self.mask_nside, data[ra_col], data[dec_col], lonlat=True, nest=True)
-            sel &= self.mask[pix] != hp.UNSEEN
+            sel &= self.mask[pix] > 0
 
         return sel
 
