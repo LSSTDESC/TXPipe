@@ -138,15 +138,15 @@ class TXIngestFlagshipMocks(PipelineStage):
 class TXIngestFlagshipMasks(PipelineStage):
     name = "TXIngestFlagshipMasks"
     inputs = [
-        ("original_dp2_mask", MapsFile),
+        # ("original_dp2_mask", MapsFile),
         ("original_flagship_mask", MapsFile),
     ]
     outputs = [
-        ("shear_mask", MapsFile),
+        # ("shear_mask", MapsFile),
         ("desi_mask", MapsFile),
     ]
     def run(self):
-        self.convert_map("original_dp2_mask", "shear_mask")
+        # self.convert_map("original_dp2_mask", "shear_mask")
         self.convert_map("original_flagship_mask", "desi_mask")
 
     def convert_map(self, input_fits_tag, output_hdf_tag):

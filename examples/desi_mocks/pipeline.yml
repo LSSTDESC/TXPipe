@@ -89,7 +89,8 @@ inputs:
     spectroscopic_catalog: data/example/inputs/mock_spectroscopic_catalog.hdf5
     # desi_mask:
     #     name: desi_dr1_mask
-    original_dp2_mask: /global/cfs/cdirs/lsst/groups/PZ/users/qhang/dp2_maps_may/dp2_public_catalog_mask_nside-256.fits
+    # original_dp2_mask: /global/cfs/cdirs/lsst/groups/PZ/users/qhang/dp2_maps_may/dp2_public_catalog_mask_nside-256.fits
+    shear_mask: "/global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/mask_flagship_dp2_23p5_nside512.hdf5"
     original_flagship_mask: /global/cfs/cdirs/lsst/groups/PZ/users/qhang/desi-model-mask-nside-256.fits
     none: none
 
