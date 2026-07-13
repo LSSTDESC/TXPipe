@@ -180,7 +180,8 @@ class TXIngestDESY3Shear(PipelineStage):
 
     def des_metacal_flux_to_mag(self, flux, flux_err):
         # Seems to use a zero-point of 30 based on comparison
-        # to the gold catalog.
+        # to the gold catalog. This is different to the LSST reference
+        # so don't use the same function.
         mag = -2.5 * np.log10(flux) + 30
         mag_err = 2.5 / np.log(10) * (flux_err / flux)
         return mag, mag_err
