@@ -35,6 +35,7 @@ class PZRailSummarizeBase(PipelineStage):
         # But there is also often a special bin_all
         # that is non-tomographic
         bins = self.get_bin_list()
+        print("Summarizing the following bins: ", bins)
 
         # These parameters are common to all the bins runs
         if "binned_catalog" in self.input_tags():
@@ -210,15 +211,19 @@ class PZRailPZSummarize(PZRailSummarizeBase):
             bins = [
                 f"bin_{bin_index}" for bin_index in unique_bins[unique_bins != -1]
             ]  # do not include the "unselected" bin, -1
+        bins.append("bin_all")  # add the non-tomographic bin at the end
         return bins
 
     def get_extra_sub_config(self, bin):
         """
         Additional config options needed by the PZSummarizers
         """
-        with self.open_input("tomography_catalog", wrapper=True) as f:
-            tomo_path = f.path
-        bin_index = int(bin.split("_")[-1])
+        from rail.core.common_params import TOMOGRAPHY_ALL
+        tomo_path = self.get_input("tomography_catalog")
+        if bin == "bin_all":
+            bin_index = TOMOGRAPHY_ALL
+        else:
+            bin_index = int(bin.split("_")[-1])
 
         extra_sub_config = {
             "selected_bin": bin_index,
