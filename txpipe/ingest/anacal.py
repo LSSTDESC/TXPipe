@@ -7,6 +7,7 @@ import numpy as np
 from ..utils import nanojansky_err_to_mag_ab, nanojansky_to_mag_ab
 from ..utils.hdf_tools import h5py_shorten, repack
 
+
 class TXIngestAnacal(TXIngestCatalogFits):
     """
     Ingest an anacal catalog!,
@@ -211,6 +212,9 @@ class TXIngestAnacal(TXIngestCatalogFits):
             for d in ["dg1", "dg2"]:
                 dd = data[f"{band}_dflux_{s}_"+d][:]
                 output[f"mag_{band}_{d}"] = nanojansky_to_mag_ab(dd)
+                if band == "i":
+                    output[f"ds2n_{d}"] = dd/f_err 
+                    
 
         return output
 
