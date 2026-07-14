@@ -10,7 +10,9 @@ from ..utils.hdf_tools import h5py_shorten, repack
 
 class TXIngestAnacal(TXIngestCatalogFits):
     """
-    Ingest an anacal catalog!,
+    Ingestion of an anacal catalog, generated from actual Rubin data.
+    This stage, will take an anacal catalog, from either the butler, or a file (parquet),
+    and ingest it into TXPipe format (HDF5).
     """
 
     name = "TXIngestAnacal"
