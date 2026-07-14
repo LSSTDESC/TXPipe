@@ -76,9 +76,6 @@ class TXIngestAnacal(TXIngestCatalogFits):
 
         object_name = self.config["butler_object_name"]
         n = self.get_catalog_size(butler, object_name)
-        #shear_outfile = self.open_output("shear_catalog")
-        #group = shear_outfile.create_group("shear")
-        #shear_outfile["shear"].attrs["catalog_type"] = "Anacal"
 
         created_files = False
         data_set_refs = butler.query_datasets(object_name)
@@ -108,7 +105,7 @@ class TXIngestAnacal(TXIngestCatalogFits):
                 shear_outfile = self.setup_output("shear_catalog", "shear",
                                                   shear_data, n)
 
-                shear_outfile["shear"].attrs["catalog_type"] = "Anacal"
+                shear_outfile["shear"].attrs["catalog_type"] = "anacal"
 
             shear_end = shear_start + len(shear_data["ra"])
             self.write_output(shear_outfile, "shear", shear_data, shear_start,
@@ -136,8 +133,7 @@ class TXIngestAnacal(TXIngestCatalogFits):
         shear_data = self.process_anacal_shear_data(data)
 
         shear_outfile = self.setup_output("shear_catalog", "shear", shear_data, n)
-        shear_outfile["shear"].attrs["catalog_type"] = "Anacal"
-        #self.write_output(shear_outfile, "shear", shear_data)
+        shear_outfile["shear"].attrs["catalog_type"] = "anacal"
 
         print("Trimming shear columns:")
         for col in shear_data.keys():
@@ -171,14 +167,6 @@ class TXIngestAnacal(TXIngestCatalogFits):
         cols += [band + "_flux_" + scale + "_err" for band in bands]
         cols += [band + "_dflux_" + scale + suffix for band in bands for suffix in ["_dg1", "_dg2"]]
 
-        # for i in [0, 2, 4]:
-        #     cols += [band + "_flux_" + scale + f"{i}" for band in bands]
-        #     cols += [band + "_flux_" + scale + f"{i}" + "_err" for band in bands]
-        #     cols += [
-        #              band + "_dflux_" + prefix + f"{i}" + suffix
-        #              for band in bands
-        #              for suffix in ["_dg1", "_dg2"]
-        #              ]
         return cols
     
     def process_anacal_shear_data(self, data):
@@ -214,7 +202,6 @@ class TXIngestAnacal(TXIngestCatalogFits):
                 output[f"mag_{band}_{d}"] = anacal_mag_response(f, dd)
                 if band == "i":
                     output[f"ds2n_{d}"] = dd/f_err 
-
 
         return output
 
