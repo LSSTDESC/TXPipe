@@ -95,7 +95,7 @@ def select_anacal_weak_lensing_sample(data, config, calling_from_select=False):
     s2n = data["s2n"]
 
     n0 = len(flag)
-    sel = flag == 0
+    sel = flag
     f1 = sel.sum() / n0
 
     sel &= s2n > s2n_cut
