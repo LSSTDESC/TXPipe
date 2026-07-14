@@ -32,7 +32,7 @@ class TXIngestAnacal(TXIngestCatalogFits):
         "collections": StageParameter(str, "LSSTComCam/DP1", msg="Butler collections to use."),
         "tracts": StageParameter(str, "", msg="Comma-separated list of tracts to use (empty for all)."),
         "prefix": StageParameter(str, "fpfs", msg="prefix indicating the method used to calculate the "),
-        "bands": StageParameter(str, "grizy", msg="string of flux bands"),
+        "bands": StageParameter(list, ["g","r","i","z","y"], msg="string of flux bands"),
         "scale": StageParameter(str, "gauss2", msg="scale radius for the convolution with Gaussian PSF")
     }
 
