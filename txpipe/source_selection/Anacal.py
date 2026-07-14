@@ -22,6 +22,7 @@ class TXSourceSelectorAnacal(TXSourceSelectorBase):
             required=True,
             msg= "Delta gmamma value for hte AnaCal response calculation"
         ),
+        "mask_threshold": StageParameter(float, 40, msg = "mask threshold, for when to mask objects." ),
     }
 
     def data_iterator(self):
@@ -48,6 +49,8 @@ class TXSourceSelectorAnacal(TXSourceSelectorBase):
                       "dm20_dg1",
                       "dm20_dg2",
                       "s2n",
+                      "ds2n_dg1",
+                      "ds2n_dg2",
                       "weight_dg1",
                       "weight_dg2"
                       ]
@@ -74,8 +77,9 @@ class TXSourceSelectorAnacal(TXSourceSelectorBase):
 
     def setup_response_calculators(self, nbin_source):
         delta_gamma = self.config["delta_gamma"]
-        calculators = [AnaCalCalculator(select_anacal_tomographic_weak_lensing_sample, delta_gamma) for i in range(nbin_source)]
-        calculators.append(AnaCalCalculator(select_anacal_weak_lensing_sample, delta_gamma))
+        mask_threshold = self.config["mask_threshold"]
+        calculators = [AnaCalCalculator(select_anacal_tomographic_weak_lensing_sample, delta_gamma, mask_threshold) for i in range(nbin_source)]
+        calculators.append(AnaCalCalculator(select_anacal_weak_lensing_sample, delta_gamma, mask_threshold))
         return calculators
     
     def write_tomography(self, outfile, start, end, source_bin, R):
@@ -87,7 +91,7 @@ def select_anacal_weak_lensing_sample(data, config, calling_from_select=False):
     s2n_cut = config["s2n_cut"]
     verbose = config["verbose"]
 
-    flag = data["mask_value"]
+    flag = data["mask_value"] < config["mask_threshold"]
     s2n = data["s2n"]
 
     n0 = len(flag)

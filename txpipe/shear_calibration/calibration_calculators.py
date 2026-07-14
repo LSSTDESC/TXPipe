@@ -855,7 +855,7 @@ class AnaCalCalculator(CalibrationCalculator):
     See the CalibrationCalculator class for the use and contents of this class
     """
 
-    def __init__(self, selector, delta_gamma):
+    def __init__(self, selector, delta_gamma, mask_threshold):
         """
         Initialize the Calibrator using the funtion you will use to select
         objects. That function should take at least one argument, 
@@ -871,11 +871,14 @@ class AnaCalCalculator(CalibrationCalculator):
             Function that selects objects
         delta_gamma: float
             The difference in applied g between 1p and 1m variants
+        mask_threshold: float
+            The value of the mask at which to cut
         """
         from parallel_statistics import ParallelMean
         super().__init__(selector)
         
         self.delta_gamma = delta_gamma
+        self.mask_threshold = mask_threshold
         self.response_means = ParallelMean(size=4)
         self.sel_response_e1p1 = 0
         self.sel_response_e1m1 = 0
@@ -931,7 +934,7 @@ class AnaCalCalculator(CalibrationCalculator):
         wsel = weight[select]
         e1_sel = e1[select]
         e2_sel = e2[select]
-        mask = mask_value[select] < 40
+        mask = mask_value[select] < self.mask_threshold
 
         mask_p1 = mask & self.get_submask(m00[select], m20[select], dm00_dg1[select], dm20_dg1[select], +1)
         mask_m1 = mask & self.get_submask(m00[select], m20[select], dm00_dg1[select], dm20_dg1[select], -1)
