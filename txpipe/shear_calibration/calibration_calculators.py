@@ -1031,8 +1031,6 @@ class AnaCalCalculator(CalibrationCalculator):
         # Unpack the flat mean R:
         mean_de1_dg1 = R[0]
         mean_de2_dg2 = R[1]
-        mean_dwsel_dg1_e1 = R[2]
-        mean_dwsel_dg2_e2 = R[3]
         
         # Reducing down the responses
         R_shape = 0.5 * (mean_de1_dg1 + mean_de2_dg2)
