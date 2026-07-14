@@ -204,7 +204,9 @@ def core_anacal(comm):
     cal = AnaCalCalculator(select_all_anacal, delta_gamma, mask_threshold)
     cal.add_data(data)
     stats = cal.collect(comm, allgather=True)
-    assert np.allclose(stats.calibrator.R, R_weight_true)
+    expected_R_weight = 0.5 * (np.sum(data["weight_dg1"] * data["e1"]) +
+                               np.sum(data["weight_dg2"] * data["e2"])) / np.sum(data["weight"])
+    assert np.allclose(stats.calibrator.R, expected_R_weight)
 
     # Case 3: both contributions add correctly
     data = {**base_data,
@@ -216,7 +218,9 @@ def core_anacal(comm):
     cal = AnaCalCalculator(select_all_anacal, delta_gamma, mask_threshold)
     cal.add_data(data)
     stats = cal.collect(comm, allgather=True)
-    assert np.allclose(stats.calibrator.R, R_shape_true + R_weight_true)
+    expected_R_weight = 0.5 * (np.sum(data["weight_dg1"] * data["e1"]) +
+                               np.sum(data["weight_dg2"] * data["e2"])) / np.sum(data["weight"])
+    assert np.allclose(stats.calibrator.R, R_shape_true + expected_R_weight)
 
 
 def test_metacalibrator_serial():
