@@ -64,10 +64,13 @@ class TXIngestAnacal(TXIngestCatalogFits):
 
         butler_config_file = self.config["butler_config_file"]
         collections = self.config["collections"]
+        error_msg2 = error_msg + (
+            ' Or there is a typo in the collection you have looked for.'
+        )
         try:
             butler = Butler(butler_config_file, collections=collections)
         except Exception as e:
-            raise RuntimeError(error_msg) from e
+            raise RuntimeError(error_msg2) from e
 
         if self.config["select_field"]:
             tracts = DP1_TRACTS[self.config["select_field"]]
