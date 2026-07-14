@@ -166,6 +166,7 @@ def core_metadet(comm):
 
 def core_anacal(comm):
     delta_gamma = .02
+    mask_threshold = 40
     nproc = 1 if comm is None else comm.size
     N = 10
 
@@ -192,7 +193,7 @@ def core_anacal(comm):
 
     # case 1: pure shape response
     data = {**base_data, "de1_dg1": np.full(N, R_shape_true), "de2_dg2": np.full(N, R_shape_true)}
-    cal = AnaCalCalculator(select_all_anacal, delta_gamma)
+    cal = AnaCalCalculator(select_all_anacal, delta_gamma, mask_threshold)
     cal.add_data(data)
     stats = cal.collect(comm, allgather=True)
     assert np.allclose(stats.calibrator.R, R_shape_true)
@@ -200,7 +201,7 @@ def core_anacal(comm):
 
     # case 2: pure weight-bias response
     data = {**base_data, "weight_dg1": np.full(N, R_weight_true), "weight_dg2": np.full(N, R_weight_true)}
-    cal = AnaCalCalculator(select_all_anacal, delta_gamma)
+    cal = AnaCalCalculator(select_all_anacal, delta_gamma, mask_threshold)
     cal.add_data(data)
     stats = cal.collect(comm, allgather=True)
     assert np.allclose(stats.calibrator.R, R_weight_true)
@@ -212,7 +213,7 @@ def core_anacal(comm):
             "weight_dg1": np.full(N, R_weight_true),
             "weight_dg2": np.full(N, R_weight_true),
             }
-    cal = AnaCalCalculator(select_all_anacal, delta_gamma)
+    cal = AnaCalCalculator(select_all_anacal, delta_gamma, mask_threshold)
     cal.add_data(data)
     stats = cal.collect(comm, allgather=True)
     assert np.allclose(stats.calibrator.R, R_shape_true + R_weight_true)
