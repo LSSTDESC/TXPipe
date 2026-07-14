@@ -879,11 +879,13 @@ class AnaCalCalculator(CalibrationCalculator):
         
         self.delta_gamma = delta_gamma
         self.mask_threshold = mask_threshold
-        self.response_means = ParallelMean(size=4)
+        self.response_means = ParallelMean(size=2)
         self.sel_response_e1p1 = 0
         self.sel_response_e1m1 = 0
         self.sel_response_e2p2 = 0
         self.sel_response_e2m2 = 0
+        self.det_response_e1 = 0
+        self.det_response_e2 = 0
         #self.sel_bias_means = ParallelMean(size=8)
 
     def add_data(self, data, *args, **kwargs):
@@ -955,8 +957,9 @@ class AnaCalCalculator(CalibrationCalculator):
 
         self.response_means.add_data(0, de1_dg1_sub, wsel)
         self.response_means.add_data(1, de2_dg2_sub, wsel)
-        self.response_means.add_data(2, dwsel_dg1, wsel)
-        self.response_means.add_data(3, dwsel_dg2, wsel)
+
+        self.det_response_e1 += np.sum(dwsel_dg1 * e1_sel)
+        self.det_response_e2 += np.sum(dwsel_dg2 * e2_sel)
 
         self.shear_stats.add_data(0, e1[select], wsel)
         self.shear_stats.add_data(1, e2[select], wsel)
@@ -997,6 +1000,8 @@ class AnaCalCalculator(CalibrationCalculator):
                 sum_sel_response_e1m1 = comm.allreduce(self.sel_response_e1m1)
                 sum_sel_response_e2p2 = comm.allreduce(self.sel_response_e2p2)
                 sum_sel_response_e2m2 = comm.allreduce(self.sel_response_e2m2)
+                sum_det_response_e1 = comm.allreduce(self.det_response_e1)
+                sum_det_response_e2 = comm.allreduce(self.det_response_e2)
             else:
                 count = comm.reduce(self.count)
                 sum_weights = comm.reduce(self.sum_weights)
@@ -1005,6 +1010,8 @@ class AnaCalCalculator(CalibrationCalculator):
                 sum_sel_response_e1m1 = comm.reduce(self.sel_response_e1m1)
                 sum_sel_response_e2p2 = comm.reduce(self.sel_response_e2p2)
                 sum_sel_response_e2m2 = comm.reduce(self.sel_response_e2m2)
+                sum_det_response_e1 = comm.reduce(self.det_respponse_e1)
+                sum_det_response_e2 = comm.reduce(self.det_response_e2)
         else:
             count = self.count
             sum_weights = self.sum_weights
@@ -1013,6 +1020,8 @@ class AnaCalCalculator(CalibrationCalculator):
             sum_sel_response_e1m1 = self.sel_response_e1m1
             sum_sel_response_e2p2 = self.sel_response_e2p2
             sum_sel_response_e2m2 = self.sel_response_e2m2
+            sum_det_response_e1 = self.det_response_e1
+            sum_det_response_e2 = self.det_response_e2
 
         # Collect the mean values we need
         mode = "allgather" if allgather else "gather"
@@ -1027,7 +1036,7 @@ class AnaCalCalculator(CalibrationCalculator):
         
         # Reducing down the responses
         R_shape = 0.5 * (mean_de1_dg1 + mean_de2_dg2)
-        R_weight = 0.5 * (mean_dwsel_dg1_e1 + mean_dwsel_dg2_e2)
+        R_weight = 0.5 * (sum_det_response_e1 + sum_det_response_e2) / sum_weights
 
         R_sel_1 = (sum_sel_response_e1p1 - sum_sel_response_e1m1) / (2.0 * self.delta_gamma) / count
         R_sel_2 = (sum_sel_response_e2p2 - sum_sel_response_e2m2) / (2.0 * self.delta_gamma) / count
