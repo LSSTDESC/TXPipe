@@ -5,8 +5,18 @@ global:
     nside: 512
 
 TXIngestAnacal:
-    bands: griz
-    collections: "u/xiangchl/dp1/a360_anacal2"
+    # DP1-v2 AnaCal outputs for the a360 cluster field (mergePatches per-tract).
+    butler_config_file: /global/cfs/cdirs/lsst/production/gen3/rubin/DP1/repo/butler.yaml
+    collections: "u/xiangchl/dp1-v2/a360_anacal2"
+
+    # a360 sits in the "Low Ecliptic Latitude Field" (LELF).  DP1_TRACTS["LELF"]
+    # contains the two live tracts 10463, 10464 (plus four never-processed).
+    select_field: "LELF"
     cosmology_tracts_only: False
+
+    # Merged catalog carries band-combined shape moments under the "fpfs1_*"
+    # prefix and Gaussian-aperture fluxes at scale "gauss2".  a360 was
+    # measured on griz only (no u/y coadds).
     prefix: "fpfs1"
-    scale: "fpfs1"
+    scale: "gauss2"
+    bands: "griz"
