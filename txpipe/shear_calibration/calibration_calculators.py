@@ -1010,7 +1010,7 @@ class AnaCalCalculator(CalibrationCalculator):
                 sum_sel_response_e1m1 = comm.reduce(self.sel_response_e1m1)
                 sum_sel_response_e2p2 = comm.reduce(self.sel_response_e2p2)
                 sum_sel_response_e2m2 = comm.reduce(self.sel_response_e2m2)
-                sum_det_response_e1 = comm.reduce(self.det_respponse_e1)
+                sum_det_response_e1 = comm.reduce(self.det_response_e1)
                 sum_det_response_e2 = comm.reduce(self.det_response_e2)
         else:
             count = self.count
@@ -1036,8 +1036,8 @@ class AnaCalCalculator(CalibrationCalculator):
         R_shape = 0.5 * (mean_de1_dg1 + mean_de2_dg2)
         R_weight = 0.5 * (sum_det_response_e1 + sum_det_response_e2) / sum_weights
 
-        R_sel_1 = (sum_sel_response_e1p1 - sum_sel_response_e1m1) / (2.0 * self.delta_gamma) / count
-        R_sel_2 = (sum_sel_response_e2p2 - sum_sel_response_e2m2) / (2.0 * self.delta_gamma) / count
+        R_sel_1 = (sum_sel_response_e1p1 - sum_sel_response_e1m1) / (2.0 * self.delta_gamma) / sum_weights
+        R_sel_2 = (sum_sel_response_e2p2 - sum_sel_response_e2m2) / (2.0 * self.delta_gamma) / sum_weights
         R_sel = 0.5 * (R_sel_1 + R_sel_2)
 
         R_total = R_shape + R_weight + R_sel

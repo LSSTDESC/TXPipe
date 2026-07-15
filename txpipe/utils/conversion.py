@@ -13,7 +13,11 @@ def mag_ab_to_nanojansky(mag):
 
 
 def nanojansky_err_to_mag_ab(flux, flux_err):
-    return 2.5 / np.log(10) * (flux_err / flux)
+    return np.divide(2.5 / np.log(10) * flux_err,
+                     flux,
+                     out=np.full_like(flux, np.nan, dtype=np.float64),
+                     where=flux > 0,
+                     )
 
 
 def moments_to_shear(Ixx, Iyy, Ixy):
@@ -24,9 +28,9 @@ def moments_to_shear(Ixx, Iyy, Ixy):
 
 
 def anacal_mag_response(flux, response):
-    mag_resp = np.divide( -2.5 / np.log(10) * response, 
-                         flux, 
-                         out=np.full_like(f, np.nan),
-                         where=f > 0
+    mag_resp = np.divide( -2.5 / np.log(10) * response,
+                         flux,
+                         out=np.full_like(flux, np.nan, dtype=np.float64),
+                         where=flux > 0,
                          )
     return mag_resp
