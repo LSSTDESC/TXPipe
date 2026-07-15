@@ -1,7 +1,7 @@
 Metadetect catalogs
 ===================
 
-The "variant" groups in metadetect catalogs take the values "ns", "1p", "1m", "2m", and contain catalogs 
+The "variant" groups in metadetect catalogs take the values "ns", "1p", "2p", "1m", "2m", and contain catalogs 
 
 The variants are used to calculate calibration factors that account for shear measurement and selection biases.
 

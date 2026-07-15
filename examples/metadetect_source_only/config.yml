@@ -189,7 +189,7 @@ PZRailSummarizeSource:
     zmin: 0.0
     zmax: 3.0
     nzbins: 50
-    mag_prefix: /shear/00/mag_
+    mag_prefix: /shear/ns/mag_
     catalog_group: shear
     tomography_name: source
     bands: [r, i, z]
