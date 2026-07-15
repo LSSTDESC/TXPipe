@@ -41,6 +41,7 @@ class TXCosmoDC2Mock(PipelineStage):
         ),
         "apply_mag_cut": StageParameter(bool, False, msg="Apply magnitude cut for descqa comparison."),
         "Mag_r_limit": StageParameter(float, -19, msg="Magnitude r limit for object selection."),
+        "Mag_i_limit": StageParameter(float, -19, msg="Magnitude i limit for object selection."),
         "metadetect": StageParameter(
             bool, True, msg="Whether to make a metadetect-style catalog (True) or metacal (False)."
         ),
@@ -148,6 +149,8 @@ class TXCosmoDC2Mock(PipelineStage):
                 print(f"Cutting down to {nselect}/{chunk_size} objects")
                 for name in list(data.keys()):
                     data[name] = data[name][select]
+            if self.config["apply_mag_cut"]:
+                self.apply_magnitude_cut(data)
 
             # Simulate the various output data sets
             mock_photometry = self.make_mock_photometry(data)
@@ -158,10 +161,6 @@ class TXCosmoDC2Mock(PipelineStage):
             # metacal info, saving us some time simulating un-needed objects
             if self.config["snr_limit"] > 0:  # otherwise there is no need to run this function which is slow
                 self.remove_undetected(data, mock_photometry)
-
-            if self.config["apply_mag_cut"]:
-                self.apply_magnitude_cut(data)
-
             if self.config["metadetect"]:
                 mock_shear = self.make_mock_metadetect(data, mock_photometry)
             else:
@@ -245,7 +244,10 @@ class TXCosmoDC2Mock(PipelineStage):
             cols.append(f"snr_{band}")
 
         for col in self.config["extra_cols"].split():
-            cols.append(col)
+            if col not in cols:
+                cols.append(col)
+        else:
+            print(f"Warning: extra col '{col}' already present; skipping duplicate")
 
         # Make group for all the photometry
         group = photo_file.create_group("photometry")
@@ -273,14 +275,12 @@ class TXCosmoDC2Mock(PipelineStage):
             "dec",
             "psf_g1",
             "psf_g2",
-            "psf_g1",
-            "psf_g2",
             "psf_T_mean",
             "weight",
         ) + band_variants("riz", "mag", "mag_err", shear_catalog_type="metadetect")
 
-        # Store the truth values only for the primary catalog
-        cols += ["00/true_g1", "00/true_g2", "00/redshift_true"]
+        # Store the truth shear only for the primary catalog, true redshift for all variants
+        cols += ["00/true_g1", "00/true_g2"] + metadetect_variants("redshift_true")
 
         # Make group for all the photometry
         group = metacal_file.create_group("shear")
@@ -304,8 +304,6 @@ class TXCosmoDC2Mock(PipelineStage):
             [
                 "ra",
                 "dec",
-                "psf_g1",
-                "psf_g2",
                 "psf_g1",
                 "psf_g2",
                 "psf_T_mean",
@@ -547,6 +545,10 @@ class TXCosmoDC2Mock(PipelineStage):
             "00/true_g1": g1,
             "00/true_g2": g2,
             "00/redshift_true": photo["redshift_true"],
+            "1p/redshift_true": photo["redshift_true"],
+            "1m/redshift_true": photo["redshift_true"],
+            "2p/redshift_true": photo["redshift_true"],
+            "2m/redshift_true": photo["redshift_true"],
             # g1
             "00/g1": e1 * R,
             "1p/g1": (e1 + delta_gamma) * R,
@@ -609,16 +611,6 @@ class TXCosmoDC2Mock(PipelineStage):
             "1m/mag_err_z": photo["mag_z_err"],
             "2m/mag_err_z": photo["mag_z_err"],
             # Fixed PSF parameters - all round with same size
-            "00/psf_g1": zero,
-            "1p/psf_g1": zero,
-            "1m/psf_g1": zero,
-            "2p/psf_g1": zero,
-            "2m/psf_g1": zero,
-            "00/psf_g2": zero,
-            "1p/psf_g2": zero,
-            "1m/psf_g2": zero,
-            "2p/psf_g2": zero,
-            "2m/psf_g2": zero,
             "00/psf_g1": zero,
             "1p/psf_g1": zero,
             "1m/psf_g1": zero,
@@ -841,15 +833,25 @@ class TXCosmoDC2Mock(PipelineStage):
 
     def apply_magnitude_cut(self, data):
         """
-        Allow for a cut in absolute magnitude.
+        Allow for a cut in absolute r and i magnitudes.
         """
-        mag_limit = self.config["Mag_r_limit"]
-        sel = data["Mag_true_r_sdss_z0"] < mag_limit
+        mag_r_limit = self.config["Mag_r_limit"]
+        mag_i_limit = self.config["Mag_i_limit"]
+
+        sel_r = data["Mag_true_r_sdss_z0"] < mag_r_limit
+        sel_i = data["mag_i"] < mag_i_limit
+
+        sel = sel_r & sel_i
 
         ndet = sel.sum()
         ntot = sel.size
         fract = ndet * 100.0 / ntot
-        print(f"{ndet} objects pass magnitude cut out of {ntot} objects ({fract:.1f}%)")
+
+        print(
+            f"{ndet} objects pass magnitude cuts "
+            f"(r < {mag_r_limit}, i < {mag_i_limit}) "
+            f"out of {ntot} objects ({fract:.1f}%)"
+        )
 
         # Remove all objects not selected
         for key in list(data.keys()):
@@ -971,6 +973,8 @@ class TXGaussianSimsMock(TXCosmoDC2Mock):
         "cat_size": StageParameter(int, 0, msg="Catalog size (0 for all)."),
         "flip_g2": StageParameter(bool, False, msg="Whether to flip g2 sign to match conventions."),
         "apply_mag_cut": StageParameter(bool, False, msg="Apply magnitude cut for descqa comparison."),
+        "apply_i_mag_cut": StageParameter(bool, False, msg="Apply observed i-band magnitude cut."),
+        "Mag_i_limit": StageParameter(float, 24.25, msg="Observed i-band magnitude limit for object selection."),
         "metadetect": StageParameter(
             bool, True, msg="Whether to make a metadetect-style catalog (True) or metacal (False)."
         ),
@@ -1063,7 +1067,8 @@ def make_mock_photometry(n_visit, bands, data, unit_response):
     output["dec"] = data["dec"]
     output["id"] = data["galaxy_id"]
     output["extendedness"] = np.ones(nobj)
-
+    if "redshift_true" in data:
+        output["redshift_true"] = data["redshift_true"]
     # Sky background, seeing FWHM, and system throughput,
     # all from table 2 of Ivezic, Jones, & Lupton
     B_b = np.array([85.07, 467.9, 1085.2, 1800.3, 2775.7, 3614.3])
