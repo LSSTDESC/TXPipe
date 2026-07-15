@@ -102,7 +102,7 @@ def sanitize(data):
     # following loop is for structured arrays, and will correct them.
     if data.dtype.names is not None:
         cols = {name: sanitize(data[name]) for name in data.dtype.names}
-        out = np.empty(data.shape, dtype=[(name, col.dtype) for name, col in cols.items()])
+        out = np.empty((len(data),), dtype=[(name, col.dtype) for name, col in cols.items()])
         for name, col in cols.items():
             out[name] = col
         return out
