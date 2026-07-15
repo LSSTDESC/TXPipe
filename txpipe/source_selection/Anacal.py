@@ -54,7 +54,7 @@ class TXSourceSelectorAnacal(TXSourceSelectorBase):
                       "weight_dg1",
                       "weight_dg2"
                       ]
-        shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="Anacal")
+        shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="anacal")
 
         if self.config["input_pz"]:
             shear_cols += ["mean_z"]

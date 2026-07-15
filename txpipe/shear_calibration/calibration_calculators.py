@@ -1010,7 +1010,7 @@ class AnaCalCalculator(CalibrationCalculator):
                 sum_sel_response_e1m1 = comm.reduce(self.sel_response_e1m1)
                 sum_sel_response_e2p2 = comm.reduce(self.sel_response_e2p2)
                 sum_sel_response_e2m2 = comm.reduce(self.sel_response_e2m2)
-                sum_det_response_e1 = comm.reduce(self.det_respponse_e1)
+                sum_det_response_e1 = comm.reduce(self.det_response_e1)
                 sum_det_response_e2 = comm.reduce(self.det_response_e2)
         else:
             count = self.count
