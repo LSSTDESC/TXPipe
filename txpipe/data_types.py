@@ -73,29 +73,29 @@ class ShearCatalog(HDFFile):
 
     def get_size(self):
         if self.catalog_type == "metadetect":
-            return self.file["shear/00/ra"].size
+            return self.file["shear/ns/ra"].size
         else:
             return self.file["shear/ra"].size
 
     def get_primary_catalog_group(self):
         if self.catalog_type == "metadetect":
-            return "shear/00"
+            return "shear/ns"
         else:
             return "shear"
 
     def get_true_redshift_column(self):
         if self.catalog_type == "metadetect":
-            return "00/redshift_true"
+            return "ns/redshift_true"
         else:
             return "redshift_true"
 
     def get_primary_catalog_names(self, true_shear=False):
         if true_shear:
             if self.catalog_type == "metadetect":
-                shear_cols = ["00/true_g1", "00/true_g2", "00/ra", "00/dec", "00/weight"]
+                shear_cols = ["ns/true_g1", "ns/true_g2", "ns/ra", "ns/dec", "ns/weight"]
                 rename = {c: c[3:] for c in shear_cols}
-                rename["00/true_g1"] = "g1"
-                rename["00/true_g2"] = "g2"
+                rename["ns/true_g1"] = "g1"
+                rename["ns/true_g2"] = "g2"
             else:
                 rename = {"true_g1": "g1", "true_g2": "g2"}
                 rename = {}
@@ -106,7 +106,7 @@ class ShearCatalog(HDFFile):
             shear_cols = ["g1", "g2", "c1", "c2", "ra", "dec", "weight"]
             rename = {}
         elif self.catalog_type == "metadetect":
-            shear_cols = ["00/g1", "00/g2", "00/ra", "00/dec", "00/weight"]
+            shear_cols = ["ns/g1", "ns/g2", "ns/ra", "ns/dec", "ns/weight"]
             rename = {c: c[3:] for c in shear_cols}
         else:
             shear_cols = ["g1", "g2", "ra", "dec", "weight"]

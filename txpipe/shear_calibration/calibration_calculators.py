@@ -53,7 +53,7 @@ class CalibrationCalculator:
 
     The data that is added to the calculator should contain shear columns appropriate to
     the specific type of calibrationn used. For example, the metadetect calculator expects
-    columns 00/g1, 00/g2, etc.
+    columns ns/g1, ns/g2, etc.
 
     The selection function does not need to know about all these variants. The calculator
     will wrap the data dictionary passed in in a special class that chooses variant
@@ -793,7 +793,6 @@ class MockCalculator(CalibrationCalculator):
         self.sum_sq_weights += np.sum(w**2)
         self.shear_stats.add_data(0, g1[sel], w)
         self.shear_stats.add_data(1, g2[sel], w)
-
 
         return sel
 

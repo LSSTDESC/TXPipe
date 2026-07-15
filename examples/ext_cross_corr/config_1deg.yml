@@ -355,7 +355,7 @@ PZRailSummarizeSource:
     zmax: 3.0
     nzbins: 50
     nsamples: 100
-    mag_prefix: "/shear/00/mag_"
+    mag_prefix: "/shear/ns/mag_"
     tomography_name: "source"
     name: PZRailSummarizeSource
     aliases:
