@@ -39,7 +39,7 @@ class TXIngestAnacal(TXIngestCatalogFits):
             self.butler_run()
         else:
             self.file_run()
-        
+
         print("repacking files")
         repack(self.get_output("shear_catalog"))
 
@@ -54,7 +54,7 @@ class TXIngestAnacal(TXIngestCatalogFits):
             from lsst.daf.butler import Butler
         except:
             raise ImportError(error_msg)
-        
+
         # Configure and create the butler. There are several ways to do this,
         # Here we use a central collective butler yaml file from NERSC.
 
@@ -140,7 +140,7 @@ class TXIngestAnacal(TXIngestCatalogFits):
         for col in shear_data.keys():
             print("    ", col)
             h5py_shorten(shear_outfile["shear"], col, len(shear_data["ra"]))
-        
+
         shear_outfile.close()
 
     def setup_input(self):
@@ -159,7 +159,7 @@ class TXIngestAnacal(TXIngestCatalogFits):
             ])
         cols += ["dwsel"+ suffix for suffix in ["_dg1", "_dg2"]]
         cols += [
-                 prefix +delta + suffix 
+                 prefix +delta + suffix
                  for delta in ["_de1", "_de2", "_dm00", "_dm20"]
                  for suffix in ["_dg1", "_dg2"]
                  ]
@@ -177,7 +177,7 @@ class TXIngestAnacal(TXIngestCatalogFits):
         #              for suffix in ["_dg1", "_dg2"]
         #              ]
         return cols
-    
+
     def process_anacal_shear_data(self, data):
         bands = self.config["bands"]
         s = self.config["scale"]
@@ -208,7 +208,15 @@ class TXIngestAnacal(TXIngestCatalogFits):
 
             for d in ["_dg1", "_dg2"]:
                 dd = data[f"{band}_dflux_{s}"+d][:]
-                output[f"mag_{band}_{d}"] = nanojansky_to_mag_ab(dd)
+                # Chain rule: mag = -2.5 log10(f * 1e-9 / REF_FLUX)
+                # -> d(mag)/dgamma = -(2.5/ln10) * (df/dgamma) / f.
+                # d already leads with "_", so the key is mag_g_dg1 (no double _).
+                # NaN for f <= 0 — avoid RuntimeWarning.
+                output[f"mag_{band}{d}"] = np.divide(
+                    -2.5 / np.log(10.0) * dd, f,
+                    out=np.full_like(f, np.nan, dtype=np.float64),
+                    where=f > 0,
+                )
 
         return output
 
