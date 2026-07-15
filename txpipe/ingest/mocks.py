@@ -41,8 +41,7 @@ class TXCosmoDC2Mock(PipelineStage):
         ),
         "apply_mag_cut": StageParameter(bool, False, msg="Apply magnitude cut for descqa comparison."),
         "Mag_r_limit": StageParameter(float, -19, msg="Magnitude r limit for object selection."),
-        "apply_i_mag_cut": StageParameter(bool, False, msg="Apply observed i-band magnitude cut."),
-        "Mag_i_limit": StageParameter(float, 24.25, msg="Observed i-band magnitude limit for object selection."),
+        "Mag_i_limit": StageParameter(float, -19, msg="Magnitude i limit for object selection."),
         "metadetect": StageParameter(
             bool, True, msg="Whether to make a metadetect-style catalog (True) or metacal (False)."
         ),
@@ -150,6 +149,8 @@ class TXCosmoDC2Mock(PipelineStage):
                 print(f"Cutting down to {nselect}/{chunk_size} objects")
                 for name in list(data.keys()):
                     data[name] = data[name][select]
+            if self.config["apply_mag_cut"]:
+                self.apply_magnitude_cut(data)
 
             # Simulate the various output data sets
             mock_photometry = self.make_mock_photometry(data)
@@ -160,21 +161,6 @@ class TXCosmoDC2Mock(PipelineStage):
             # metacal info, saving us some time simulating un-needed objects
             if self.config["snr_limit"] > 0:  # otherwise there is no need to run this function which is slow
                 self.remove_undetected(data, mock_photometry)
-            # "apply_mag_cut" and "apply_i_mag_cut" should not be combined
-            # as one applies cut the data and the other both data and photometry
-            if self.config["apply_i_mag_cut"]:
-                sel = mock_photometry["mag_i"] < self.config["Mag_i_limit"]
-                ndet = sel.sum()
-                ntot = sel.size
-                fract = ndet * 100.0 / ntot
-                print(f"{ndet} objects pass observed i-band magnitude cut out of {ntot} objects ({fract:.1f}%)")
-
-                for key in list(mock_photometry.keys()):
-                    mock_photometry[key] = mock_photometry[key][sel]
-                for key in list(data.keys()):
-                    data[key] = data[key][sel]
-            if self.config["apply_mag_cut"]:
-                self.apply_magnitude_cut(data)
             if self.config["metadetect"]:
                 mock_shear = self.make_mock_metadetect(data, mock_photometry)
             else:
@@ -258,7 +244,10 @@ class TXCosmoDC2Mock(PipelineStage):
             cols.append(f"snr_{band}")
 
         for col in self.config["extra_cols"].split():
-            cols.append(col)
+            if col not in cols:
+                cols.append(col)
+        else:
+            print(f"Warning: extra col '{col}' already present; skipping duplicate")
 
         # Make group for all the photometry
         group = photo_file.create_group("photometry")
@@ -844,15 +833,25 @@ class TXCosmoDC2Mock(PipelineStage):
 
     def apply_magnitude_cut(self, data):
         """
-        Allow for a cut in absolute magnitude.
+        Allow for a cut in absolute r and i magnitudes.
         """
-        mag_limit = self.config["Mag_r_limit"]
-        sel = data["Mag_true_r_sdss_z0"] < mag_limit
+        mag_r_limit = self.config["Mag_r_limit"]
+        mag_i_limit = self.config["Mag_i_limit"]
+
+        sel_r = data["Mag_true_r_sdss_z0"] < mag_r_limit
+        sel_i = data["mag_i"] < mag_i_limit
+
+        sel = sel_r & sel_i
 
         ndet = sel.sum()
         ntot = sel.size
         fract = ndet * 100.0 / ntot
-        print(f"{ndet} objects pass magnitude cut out of {ntot} objects ({fract:.1f}%)")
+
+        print(
+            f"{ndet} objects pass magnitude cuts "
+            f"(r < {mag_r_limit}, i < {mag_i_limit}) "
+            f"out of {ntot} objects ({fract:.1f}%)"
+        )
 
         # Remove all objects not selected
         for key in list(data.keys()):
