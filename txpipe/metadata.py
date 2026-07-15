@@ -60,10 +60,8 @@ class TXTracerMetadata(PipelineStage):
             if shear_catalog_type == "metacal":
                 copy(shear_tomo_file, "response", "tracers", "R_gamma_mean", meta_file, metadata)
                 copy(shear_tomo_file, "response", "tracers", "R_S", meta_file, metadata)
-                copy(shear_tomo_file, "response", "tracers", "R_total", meta_file, metadata)
                 copy(shear_tomo_file, "response", "tracers", "R_gamma_mean_2d", meta_file, metadata)
                 copy(shear_tomo_file, "response", "tracers", "R_S_2d", meta_file, metadata)
-                copy(shear_tomo_file, "response", "tracers", "R_total_2d", meta_file, metadata)
             elif shear_catalog_type == "metadetect":
                 copy(shear_tomo_file, "response", "tracers", "R", meta_file, metadata)
                 copy(shear_tomo_file, "response", "tracers", "R_2d", meta_file, metadata)

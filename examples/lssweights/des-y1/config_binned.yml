@@ -11,7 +11,7 @@ global:
     sparse: True  # Generate sparse maps - faster if using small areas
 
 TXLSSDensityNullTests:
-    supreme_path_root: /global/cfs/cdirs/lsst/groups/WL/users/jelvinpo/txpipe-weights/des-y1/spmaps/
+    supreme_path_root: data/desy1//spmaps/
     outlier_fraction: 0.01  # Will remove this fraction of the maps is most extreme regions when computing 1d trends
     nbin: 10                # number of bins per SP map to compute 1d trends
     simple_cov: True        # If True will use diagonal shot noise covariance
@@ -19,7 +19,7 @@ TXLSSDensityNullTests:
     b0: [1.4, 1.6, 1.6, 1.93, 1.98]
 
 TXLSSWeightsLinBinned:
-    supreme_path_root: /global/cfs/cdirs/lsst/groups/WL/users/jelvinpo/txpipe-weights/des-y1/spmaps/
+    supreme_path_root: data/desy1//spmaps/
     outlier_fraction: 0.01  # Will remove this fraction of the maps is most extreme regions when computing 1d trends
     nbin: 10                # number of bins per SP map to compute 1d trends
     pvalue_threshold: 0.05  # max p-value for maps to be corrected (0 is no maps, 1 is all maps)

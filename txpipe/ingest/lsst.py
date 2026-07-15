@@ -99,6 +99,13 @@ def sanitize(data):
     """
     Convert unicode arrays into types that h5py can save
     """
+    # following loop is for structured arrays, and will correct them.
+    if data.dtype.names is not None:
+        cols = {name: sanitize(data[name]) for name in data.dtype.names}
+        out = np.empty(data.shape, dtype=[(name, col.dtype) for name, col in cols.items()])
+        for name, col in cols.items():
+            out[name] = col
+        return out
     # convert unicode to strings
     if data.dtype.kind == "U":
         data = data.astype("S")

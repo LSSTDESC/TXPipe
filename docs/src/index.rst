@@ -21,6 +21,8 @@ It is designed to take catalogs of objects (as produced by the LSST Project), an
    file_types
    files
    shear_calibration
+   masking
+   weights
 
 .. toctree::
    :maxdepth: 1

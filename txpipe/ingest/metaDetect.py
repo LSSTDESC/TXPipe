@@ -40,10 +40,6 @@ class TXIngestRubinMetaDetect(PipelineStage):
         ("shear_catalog", ShearCatalog),
     ]
     config_options= {
-        "use_butler": StageParameter(
-                                     bool,
-                                     True,
-                                     msg="We only support Butler run for now, so leave this on"),
         "butler_config_file": StageParameter(
             str, 
             "/global/cfs/cdirs/lsst/production/gen3/rubin/DP1/repo/butler.yaml",
@@ -58,16 +54,6 @@ class TXIngestRubinMetaDetect(PipelineStage):
         }
 
     def run(self):
-        if self.config["use_butler"]:
-            self.butler_run()
-        else:
-            raise NotImplementedError("we only support Butler run for now")
-
-        # Run h5repack on the file
-        print("Repacking files")
-        repack(self.get_output("shear_catalog"))
-
-    def butler_run(self):
         error_msg = (
             "The LSST Science Pipelines are not installed in this environment, "
             "or are not configured correctly to access the data. "
@@ -146,6 +132,8 @@ class TXIngestRubinMetaDetect(PipelineStage):
         print("adding in aliases")
         self.aliasing(shear_outfile, group)
         shear_outfile.close()
+        print("Repacking files")
+        repack(self.get_output("shear_catalog"))
 
     def aliasing(self, outfile, group):
         g = group
