@@ -79,7 +79,7 @@ def process_metadetect_data(data, flag_list, flag_exclusion):
             var_data = var_data[keep]
             flags = flags[keep]
 
-        var_output = dict(var_data.columns) #just process all columns
+        var_output = {name: var_data[name] for name in var_data.dtype.names} #just process all columns
         var_output.pop("metaStep", None)
         # extra columns we are still adding:
         var_output["flags"] = flags
