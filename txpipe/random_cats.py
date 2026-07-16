@@ -82,7 +82,10 @@ class TXRandomCat(PipelineStage):
         with self.open_input("fiducial_cosmology", wrapper=True) as f:
             cosmo = f.to_ccl()
 
-        assert mask.nside_sparse == depth.nside_sparse
+        if mask.nside_sparse != depth.nside_sparse:
+            raise ValueError(
+                f"Mask and depth map have different nside: {mask.nside_sparse} vs {depth.nside_sparse}"
+            )
 
         # Cut down to pixels that have any objects in
         pixel = mask.valid_pixels

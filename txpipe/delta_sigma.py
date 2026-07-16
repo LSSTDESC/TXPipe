@@ -574,8 +574,10 @@ class TXDeltaSigmaPlots(PipelineStage):
 
     def run(self):
         import sacc
-        import matplotlib.pyplot as plt
+        import matplotlib
 
+        matplotlib.use("agg")
+        import matplotlib.pyplot as plt
         sacc_data = sacc.Sacc.load_hdf5(self.get_input("delta_sigma"))
         sacc_theory = sacc.Sacc.load_hdf5(self.get_input("delta_sigma_theory"))
 
