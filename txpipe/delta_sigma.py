@@ -383,11 +383,12 @@ class TXDeltaSigma(PipelineStage):
         z = shear_photoz_stack["z"]
         Nz = shear_photoz_stack["n"]
         nbin_source = Nz.shape[1]
+        breakpoint()
 
         for i in range(nbin_source):
             if i == nbin_source - 1:
                 i = "all"
-            s.add_tracer("NZ", f"source_{i}", z, Nz)
+            s.add_tracer("NZ", f"source_{i}", z, Nz[:, i])
 
         # Create tracers for the lens sample
         # as SACC objects
@@ -398,7 +399,7 @@ class TXDeltaSigma(PipelineStage):
             if i == nbin_lens - 1:
                 i = "all"
 
-            s.add_tracer("NZ", f"lens_{i}", z, Nz)
+            s.add_tracer("NZ", f"lens_{i}", z, Nz[:, i])
 
         # for each bin pair's results, add all the
         # measurements in the output data table
