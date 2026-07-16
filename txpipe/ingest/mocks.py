@@ -280,7 +280,7 @@ class TXCosmoDC2Mock(PipelineStage):
         ) + band_variants("riz", "mag", "mag_err", shear_catalog_type="metadetect")
 
         # Store the truth shear only for the primary catalog, true redshift for all variants
-        cols += ["00/true_g1", "00/true_g2"] + metadetect_variants("redshift_true")
+        cols += ["ns/true_g1", "ns/true_g2"] + metadetect_variants("redshift_true")
 
         # Make group for all the photometry
         group = metacal_file.create_group("shear")
