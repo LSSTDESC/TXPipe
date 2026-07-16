@@ -360,7 +360,7 @@ PZRailSummarizeSource:
     zmax: 3.0
     nzbins: 50
     nsamples: 100
-    mag_prefix: /shear/00/mag_
+    mag_prefix: /shear/ns/mag_
     catalog_group: shear
     tomography_name: source
     bands: [r, i, z]
@@ -401,7 +401,7 @@ PZRealizationsPlotLens:
 TXShearCalibration:
     add_fiducial_distance: true
     copy_redshift: true
-    redshift_name: '00/redshift_true'
+    redshift_name: 'ns/redshift_true'
 
 TXTwoPointSCIA:
     do_pos_pos: False

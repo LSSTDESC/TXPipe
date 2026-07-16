@@ -28,6 +28,10 @@ def fit_straight_line(x, y, y_err=None):
     if x.size == 0:
         print("ERROR: No data for straight line fit. Returning m=0 c=0")
         return 0.0, 0.0, np.array([[1.0, 0.0], [0.0, 1.0]])
+    
+    if x.size < 2:
+        print("ERROR: Can't fit a straight line to only 1 data point. returning m=0, c=0")
+        return 0.0, 0.0, np.array([[1.0, 0.0], [0.0, 1.0]])
 
     if x.size != y.size:
         raise ValueError("x and y must have the same length")

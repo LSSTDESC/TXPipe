@@ -25,8 +25,8 @@ TXSourceTrueNumberDensity:
     nz: 301
     zmax: 3.0
     name: TXSourceTrueNumberDensity
-    weight_col: shear/00/weight
-    redshift_group: shear/00
+    weight_col: shear/ns/weight
+    redshift_group: shear/ns
 
 # Mock version of stacking:
 TXLensTrueNumberDensity:
