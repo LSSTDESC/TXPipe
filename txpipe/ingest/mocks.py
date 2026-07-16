@@ -29,7 +29,7 @@ class TXCosmoDC2Mock(PipelineStage):
 
     config_options = {
         "cat_name": StageParameter(str, "cosmoDC2", msg="Name of the mock catalog to use."),
-        "year": StageParameter(float, 1.0, msg="The number of years of data to simulate for noise"),
+        "years": StageParameter(float, 1.0, msg="The number of years of data to simulate for noise"),
         "snr_limit": StageParameter(float, 4.0, msg="S/N limit for object selection."),
         "max_size": StageParameter(int, 99999999999999, msg="Maximum catalog size for testing."),
         "extra_cols": StageParameter(str, "", msg="Extra columns to include (space-separated)."),
@@ -930,7 +930,7 @@ class TXBuzzardMock(TXCosmoDC2Mock):
 
     config_options = {
         "cat_name": StageParameter(str, "buzzard", msg="Name of the mock catalog to use."),
-        "visits_per_band": StageParameter(int, 165, msg="Number of visits per band for noise simulation."),
+        "years": StageParameter(float, 1.0, msg="Number of years of data for noise simulation."),
         "snr_limit": StageParameter(float, 4.0, msg="S/N limit for object selection."),
         "max_size": StageParameter(int, 99999999999999, msg="Maximum catalog size for testing."),
         "extra_cols": StageParameter(str, "", msg="Extra columns to include (space-separated)."),
@@ -964,7 +964,7 @@ class TXGaussianSimsMock(TXCosmoDC2Mock):
 
     config_options = {
         "cat_name": StageParameter(str, "GaussianSims", msg="Name of the Gaussian simulation catalog."),
-        "visits_per_band": StageParameter(int, 165, msg="Number of visits per band for noise simulation."),
+        "years": StageParameter(float, 1.0, msg="Number of years of data for noise simulation."),
         "snr_limit": StageParameter(float, 0.0, msg="S/N limit for object selection (0 for all)."),
         "max_size": StageParameter(int, 99999999999999, msg="Maximum catalog size for testing."),
         "extra_cols": StageParameter(str, "", msg="Extra columns to include (space-separated)."),
@@ -1245,9 +1245,11 @@ class TXMockTruthPZ(PipelineStage):
 
 
 def test():
+    import matplotlib
+    matplotlib.use("agg")
     import matplotlib.pyplot as plt
 
-    n = 100_000
+    n = 1000
     data = {
         "ra": np.zeros(n),
         "dec": np.zeros(n),
@@ -1258,7 +1260,7 @@ def test():
     years = 1
     unit_response = True
     for b in bands:
-        data[f"mag_true_{b}_lsst"] = np.arange(19, 30, 0.01)
+        data[f"mag_true_{b}_lsst"] = np.linspace(19, 30, n)
     results = make_mock_photometry(bands, data, unit_response, years)
     for b in bands:
         plt.figure()
