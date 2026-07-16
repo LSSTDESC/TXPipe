@@ -165,7 +165,11 @@ def core_metadet(comm):
 
 
 def core_anacal(comm):
-    delta_gamma = 0.02
+    # Half-step convention: each ±1 variant is at ±delta_gamma from baseline,
+    # matching xlens' photoZPipe DISTORTIONS (±0.01) and the on-disk zmode
+    # variants in the merged catalog.  Not to be confused with metacal, where
+    # delta_gamma above is the full 1p−1m separation (0.02 there).
+    delta_gamma = 0.01
     nproc = 1 if comm is None else comm.size
     N = 10
 
