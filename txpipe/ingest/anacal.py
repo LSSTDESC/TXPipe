@@ -6,6 +6,7 @@ from ceci.config import StageParameter
 import numpy as np
 from ..utils import nanojansky_err_to_mag_ab, nanojansky_to_mag_ab, anacal_mag_response
 from ..utils.hdf_tools import h5py_shorten, repack
+import warnings
 
 # Suffixes on the merged catalog's photo-z point-estimate columns
 # (zmode_0, zmode_1p, zmode_1m, zmode_2p, zmode_2m).  These become
@@ -49,6 +50,7 @@ class TXIngestAnacal(TXIngestCatalogFits):
         if self.config["use_butler"]:
             self.butler_run()
         else:
+            warnings.warn("File run is a depricated method and might not function correctly.")
             self.file_run()
 
         print("repacking files")
@@ -94,7 +96,6 @@ class TXIngestAnacal(TXIngestCatalogFits):
         created_files = False
         data_set_refs = butler.query_datasets(object_name)
         n_chunks = len(data_set_refs)
-        input_columns = self.setup_input()
 
         shear_start = 0
         for i, ref in enumerate(data_set_refs):
@@ -105,7 +106,6 @@ class TXIngestAnacal(TXIngestCatalogFits):
 
             d = butler.get(object_name,
                            dataId=ref.dataId,
-                           parameters={"columns": input_columns}
                            )
             chunk_size = len(d)
 
@@ -132,18 +132,25 @@ class TXIngestAnacal(TXIngestCatalogFits):
         for col in shear_data.keys():
             print("    ", col)
             h5py_shorten(shear_outfile["shear"], col, shear_end)
-
+        self.aliasing(shear_outfile)
         shear_outfile.close()
 
     def file_run(self):
         tracts = self.config["tracts"]
 
         n, dtypes = self.get_meta("anacal_catalog")
-        cols = self.setup_input()
+
         prefix = self.config["prefix"]
 
         file = self.open_input("anacal_catalog")
-        data = file[1][cols]
+        data = file[1]
+        if not hasattr(data, "colnames"):
+            warnings.warn(
+                f"file_run's input ({type(data)}) has no `.colnames` attribute;"
+                "process_anacal_shear_data exp[ects an astropy Table like butler_run "
+                "provides, so this will likely fail."
+            )
+
         shear_data = self.process_anacal_shear_data(data)
 
         shear_outfile = self.setup_output("shear_catalog", "shear", shear_data, n)
@@ -154,6 +161,7 @@ class TXIngestAnacal(TXIngestCatalogFits):
             print("    ", col)
             h5py_shorten(shear_outfile["shear"], col, len(shear_data["ra"]))
 
+        self.aliasing(shear_outfile)
         shear_outfile.close()
 
     def setup_input(self):
@@ -191,22 +199,8 @@ class TXIngestAnacal(TXIngestCatalogFits):
     def process_anacal_shear_data(self, data):
         bands = self.config["bands"]
         s = self.config["scale"]
-        prefix = self.config["prefix"]
-        output = {
-                  "ra": data["ra"][:],
-                  "dec": data["dec"][:],
-                  "weight": data["wsel"][:],
-                  "mask_value": data["mask_value"][:],
-                  "weight_dg1": data["dwsel_dg1"][:],
-                  "weight_dg2": data["dwsel_dg2"][:],
-                  "e1": data[f"{prefix}_e1"][:],
-                  "e2": data[f"{prefix}_e2"][:],
-                  "m00": data[f"{prefix}_m00"][:],
-                  "m20": data[f"{prefix}_m20"][:],
-                  }
-        for delta in ["de1", "de2", "dm00", "dm20"]:
-            output[f"{delta}_dg1"] = data[f"{prefix}_{delta}_dg1"][:]
-            output[f"{delta}_dg2"] = data[f"{prefix}_{delta}_dg2"][:]
+        output = {name: data[name][:] for name in data.colnames}
+
         for band in bands:
             f = data[f"{band}_flux_{s}"][:]
             f_err = data[f"{band}_flux_{s}_err"][:]
@@ -221,16 +215,6 @@ class TXIngestAnacal(TXIngestCatalogFits):
                 output[f"mag_{band}_{d}"] = anacal_mag_response(f, dd)
                 if band == "i":
                     output[f"ds2n_{d}"] = dd/f_err
-
-        # zmode_0 → mean_z (baseline photo-z used by TXSourceSelectorAnaCal
-        # in input_pz mode for tomographic binning).
-        # zmode_{1p,1m,2p,2m} → mean_z_{1p,1m,2p,2m} (shifted variants
-        # used by the AnaCal calculator's ±γ selection response — the
-        # _DataWrapper suffix lookup routes them into the selector when it
-        # runs on the shifted samples).
-        output["mean_z"] = data["zmode_0"][:]
-        for suf in ("1p", "1m", "2p", "2m"):
-            output[f"mean_z_{suf}"] = data[f"zmode_{suf}"][:]
 
         return output
 
@@ -261,3 +245,23 @@ class TXIngestAnacal(TXIngestCatalogFits):
             with pyarrow.parquet.ParquetFile(uri.path) as f:
                 n += f.metadata.num_rows
         return n
+
+    def aliasing(self, outfile):
+        prefix = self.config["prefix"]
+        g = outfile["shear"]
+
+        g["weight"] = g["wsel"]
+        g["weight_dg1"] = g["dwsel_dg1"]
+        g["weight_dg2"] = g["dwsel_dg2"]
+        g["e1"] = g[f"{prefix}_e1"]
+        g["e2"] = g[f"{prefix}_e2"]
+        g["m00"] = g[f"{prefix}_m00"]
+        g["m20"] = g[f"{prefix}_m20"]
+        for delta in ["de1", "de2", "dm00", "dm20"]:
+            g[f"{delta}_dg1"] = g[f"{prefix}_{delta}_dg1"]
+            g[f"{delta}_dg2"] = g[f"{prefix}_{delta}_dg2"]
+        
+        g["mean_z"] = g["zmode_0"]
+        for suf in ["1p", "1m", "2p", "2m"]:
+            g[f"mean_z_{suf}"] = g[f"zmode_{suf}"]
+
