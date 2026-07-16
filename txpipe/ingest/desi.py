@@ -207,23 +207,12 @@ class TXIngestDESI(PipelineStage):
 
         # Create space in outputs
         g = cat.create_group("lens")
-        # g.attrs["bands"] = bands
         g.create_dataset("ra", (n,), dtype=np.float64)
         g.create_dataset("dec", (n,), dtype=np.float64)
         g.create_dataset("z", (n,), dtype=np.float64)
-        # for b in bands:
-        #     g.create_dataset(f"mag_{b}", (n,), dtype=np.float64)
-        #     g.create_dataset(f"mag_err_{b}", (n,), dtype=np.float64)
-        # g.attrs["bands"] = bands
 
         gb = cat_binned.create_group("lens")
         gb.attrs["nbin_lens"] = nbin_lens
-        # for bn in range(nbin_lens):
-        #     gb_ = gb.create_group(f"bin_{bn}")
-        #     gb_.create_dataset("ra", (n,), dtype=np.float64)
-        #     gb_.create_dataset("dec", (n,), dtype=np.float64)
-        #     gb_.create_dataset("z", (n,), dtype=np.float64)
-        #     gb_.create_dataset("w_sys", (n,), dtype=np.float64)
 
         h_uw = tomo_uw.create_group("tomography")
         h_uw.create_dataset("bin", (n,), dtype=np.int32)
@@ -270,7 +259,7 @@ class TXIngestDESI(PipelineStage):
             # Build up the count of the n(z) histograms per-bin
             z_grid_index = np.floor((z - zmin) / dz).astype(int)
             for i, (i_z, b) in enumerate(zip(z_grid_index, zbin)):
-                if b >= 0:
+                if b >= 0 and (0 <= i_z < nz):
                     nz_grid[b, i_z] += weight[i]
 
             # Build up the counts
@@ -282,11 +271,6 @@ class TXIngestDESI(PipelineStage):
             g["ra"][s:e] = data["ra"]
             g["dec"][s:e] = data["dec"]
             g["z"][s:e] = data["redshift"]
-
-            # # including mags
-            # for i, b in enumerate(bands):
-            #     g[f"mag_{b}"][s:e] = data["mag"][:, i]
-            #     g[f"mag_err_{b}"][s:e] = data["mag_err"][:, i]
 
             h_uw["bin"][s:e] = zbin
             h_uw["lens_weight"][s:e] = 1.0
@@ -306,6 +290,15 @@ class TXIngestDESI(PipelineStage):
             gb_.create_dataset("dec", data=g["dec"][:][sel], dtype=np.float64)
             gb_.create_dataset("z", data=g["z"][:][sel], dtype=np.float64)
             gb_.create_dataset("w_sys", data=h_w["lens_weight"][:][sel], dtype=np.float64)
+        
+        if bin_lens > 1:
+            sel = h_w["bin"][:] >= 0
+            gb_ = gb.create_group("bin_all")
+            gb_.create_dataset("ra", data=g["ra"][:][sel], dtype=np.float64)
+            gb_.create_dataset("dec", data=g["dec"][:][sel], dtype=np.float64)
+            gb_.create_dataset("z", data=g["z"][:][sel], dtype=np.float64)
+            gb_.create_dataset("w_sys", data=h_w["lens_weight"][:][sel], dtype=np.float64)
+
 
         # this is an overall count
         h_counts_uw["counts"][:] = counts

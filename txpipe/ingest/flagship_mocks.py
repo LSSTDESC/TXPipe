@@ -22,9 +22,10 @@ class TXIngestFlagshipMocks(PipelineStage):
     def run(self):
         import healpy
         
-        input_files = glob.glob(self.config["input_file_pattern"])
+        pattern = self.config["input_file_pattern"]
+        input_files = glob.glob(pattern)
         if not input_files:
-            raise ValueError("No files found with pattern: ", self.config["input_file_pattern"])
+            raise ValueError(f"No files found with pattern: {pattern}")
         
         # This is a maximum size - actually we will be quite a bit
         # smaller that this. We will cut the catalog down at the end.
@@ -104,6 +105,7 @@ class TXIngestFlagshipMocks(PipelineStage):
 
         # Now the ones we actually need to derive
         data["T"] = half_light_radius_to_T(chunk['totalHalfLightRadiusArcsec'])
+        data["T_err"] = np.zeros(n, dtype=np.float64)
         data["s2n"] = mags_to_snr(data, "gri")
         data["g1"], data["g2"] = combine_intrinsic_shear(chunk["gamma1"], chunk["gamma2"], chunk["eps1_gal"], chunk["eps2_gal"])
         data["weight"] = wildly_simplistic_weight_model(data)
@@ -131,7 +133,7 @@ class TXIngestFlagshipMocks(PipelineStage):
         for filename in input_files:
             with ParquetFile(filename) as f:
                 for batch in f.iter_batches(batch_size):
-                    batch = {k:np.array(batch[k]) for k in batch.column_names}
+                    batch = {k:batch[k].to_numpy(zero_copy_only=False) for k in batch.column_names}
                     yield batch
 
 

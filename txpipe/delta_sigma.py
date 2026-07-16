@@ -33,7 +33,7 @@ class TXDeltaSigma(PipelineStage):
         "r_min": StageParameter(float, 0.1, msg="Minimum radius to use in Mpc"),
         "r_max": StageParameter(float, 10.0, msg="Maximum radius to use in Mpc"),
         "nbins": StageParameter(int, 10, msg="Number of radial bins"),
-        "photoz": StageParameter(bool, False, msg="Whether or not objects have point photo-z estimate"),
+        "photoz": StageParameter(bool, True, msg="If True, the sources have photometric redshifts so we should not load or use per-objects z values. If False, use per-object values."),
         "lens_source_sep": StageParameter(
             float, 0.1, msg="Minimum redshift separation between lens and source bins to use for dSigma measurement"
         ),
@@ -62,7 +62,15 @@ class TXDeltaSigma(PipelineStage):
 
         with self.open_input("fiducial_cosmology", wrapper=True) as cosmo_file:
             cosmo = cosmo_file.to_astropy()
-        source_n_of_z = self.load_redshift_distribution("shear_photoz_stack")
+
+        # If our redshifts are photometric then per-objects z values are not used,
+        # and instead we supply the estimated n(z) distribution for the ensemble.
+        if self.config["photoz"]:
+            source_n_of_z = self.load_redshift_distribution("shear_photoz_stack")
+            source_n_of_z_for_saving = source_n_of_z
+        else:
+            source_n_of_z_for_saving = self.load_redshift_distribution("shear_photoz_stack")
+            source_n_of_z = None
 
         # The lens n_of_z is only used when saving at the end
         lens_n_of_z = self.load_redshift_distribution("lens_photoz_stack")
@@ -145,7 +153,7 @@ class TXDeltaSigma(PipelineStage):
         np.seterr(**numpy_error_settings)
 
         # Collate results from different ranks and save to SACC file
-        self.save_results(results, source_n_of_z, lens_n_of_z)
+        self.save_results(results, source_n_of_z_for_saving, lens_n_of_z)
 
     def get_bin_pairs(self):
         """
