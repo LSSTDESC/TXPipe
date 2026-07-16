@@ -48,7 +48,7 @@ class MeanShearInBins:
             if self.shear_catalog_type == "metadetect":
                 prefix = getattr(data, 'prefix', 'ns/').rstrip('/')
                 bin_key = f"bin_{prefix if prefix else 'ns'}"
-                w & data[bin_key] != -1
+                w &= data[bin_key] != -1
             else:
                 w &= data["bin"] != -1
         return np.where(w)[0]
