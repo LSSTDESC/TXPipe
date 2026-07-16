@@ -1094,19 +1094,35 @@ def make_mock_photometry(bands, data, unit_response, years):
         mag_err = np.array(noisy_df[b + "_err"])
         output[f"mag_{b}"] = mag_obs
         output[f"mag_err_{b}"] = mag_err
+
+        # The response is d(mag)/d(gamma), so this
+        # m value gives us delta_mag
         m = mag_responses[i] * delta_gamma
  
+        # Assume that the response is simple, i.e.
+        # that m_00 == m_11 and m_01 == m_10 == 0.
+        # In that case the 1p and 2p are the same,
+        # as are the 1m and 2m.
         output[f"mag_{b}_1p"] = mag_obs + m
         output[f"mag_{b}_1m"] = mag_obs - m
         output[f"mag_{b}_2p"] = mag_obs + m
-        print(b)
-        print("True", data[f"mag_true_{b}_lsst"])
-        print("Obs", np.array(output[f"mag_{b}"]))
-        print("ObErrs", np.array(output[f"mag_err_{b}"]))
-        print("")
         output[f"mag_{b}_2m"] = mag_obs - m
 
-        snr = 2.5 / np.log(10) /   mag_err
+        # Convert from magnitude error to
+        # SNR. This just comes from flux/flux_err
+        # See conversion.py for more.
+        snr = 2.5 / np.log(10) / mag_err
+        # We would like the SNR to vary with
+        # the applied shear too. In our approximation
+        # here the flux error doesn't vary with the
+        # shear, just the flux itself.
+        # So snr_1p / snr = f_1p / f
+        #                 = 10^{-0.4 M_1p} / 10^{-0.4 M}
+        #                 = 10^{-0.4 (M_1p - M)}
+        #                 = 10^{-0.4 m}
+        # This isn't the best way to do this but is adequate
+        # for our purposes here (you can also construct df/dgamma
+        # instead of using the dM = delta M approximation)
         s = np.power(10.0, -0.4 * m)
         output[f"snr_{b}"] = snr
         output[f"snr_{b}_1p"] = snr * s
