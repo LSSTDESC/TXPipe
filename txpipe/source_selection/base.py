@@ -370,10 +370,10 @@ def select_weak_lensing_sample(data, config, calling_from_select=False):
     sel &= (data["mag_g"] < mag_g_cut) & \
         (data["mag_r"] < mag_r_cut) & \
         (data["mag_i"] < mag_i_cut) & \
-        (data["mag_i"] < mag_z_cut) & \
+        (data["mag_z"] < mag_z_cut) & \
         (np.abs(data["mag_g"] - data["mag_r"]) < gmr_cut) & \
         (np.abs(data["mag_r"] - data["mag_i"]) < rmi_cut) & \
-        (np.abs(data["mag_i"] - data["mag_i"]) < imz_cut)
+        (np.abs(data["mag_i"] - data["mag_z"]) < imz_cut)
     f4 = sel.sum() / n0
 
     # Finally we want objects that have been put into any of our other
