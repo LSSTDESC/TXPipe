@@ -7,6 +7,12 @@ import numpy as np
 from ..utils import nanojansky_err_to_mag_ab, nanojansky_to_mag_ab, anacal_mag_response
 from ..utils.hdf_tools import h5py_shorten, repack
 
+# Suffixes on the merged catalog's photo-z point-estimate columns
+# (zmode_0, zmode_1p, zmode_1m, zmode_2p, zmode_2m).  These become
+# ``mean_z`` / ``mean_z_{1p,1m,2p,2m}`` in the ingested shear catalog
+# and are consumed by TXSourceSelectorAnaCal for the tomographic
+# bin-migration term of R_sel via _DataWrapper suffix lookup.
+PZ_SUFFIXES = ("0", "1p", "1m", "2p", "2m")
 
 class TXIngestAnacal(TXIngestCatalogFits):
     """
@@ -150,13 +156,6 @@ class TXIngestAnacal(TXIngestCatalogFits):
 
         shear_outfile.close()
 
-    # Suffixes on the merged catalog's photo-z point-estimate columns
-    # (zmode_0, zmode_1p, zmode_1m, zmode_2p, zmode_2m).  These become
-    # ``mean_z`` / ``mean_z_{1p,1m,2p,2m}`` in the ingested shear catalog
-    # and are consumed by TXSourceSelectorAnaCal for the tomographic
-    # bin-migration term of R_sel via _DataWrapper suffix lookup.
-    _PZ_SUFFIXES = ("0", "1p", "1m", "2p", "2m")
-
     def setup_input(self):
         prefix = self.config["prefix"]
         scale = self.config["scale"]
@@ -185,7 +184,7 @@ class TXIngestAnacal(TXIngestCatalogFits):
         # zmode_0 → mean_z; zmode_1p, zmode_1m, zmode_2p, zmode_2m → the
         # metacal-style shifted variants (built with dg=0.01 in xlens'
         # photoZPipe, so TXSourceSelectorAnaCal must use delta_gamma=0.01).
-        cols += [f"zmode_{s}" for s in self._PZ_SUFFIXES]
+        cols += [f"zmode_{s}" for s in PZ_SUFFIXES]
 
         return cols
 
