@@ -1,0 +1,126 @@
+# Stages to run
+stages:
+
+  - name: FlowCreator               # Simulate a spectroscopic population
+    aliases:
+        output: ideal_specz_catalog
+        model: flow
+  - name: GridSelection            # Simulate a spectroscopic sample
+    aliases:
+        input: ideal_specz_catalog
+        output: specz_catalog_pq
+  - name: TXParqetToHDF            # Convert the spec sample format
+    aliases:
+        input: specz_catalog_pq
+        output: spectroscopic_catalog
+  - name: TXTruthLensSelector      # select lens bins using true redshifts (no color cuts)
+  - name: TXTrueLensPhotozStack     # Use true redshifts for lens n(z) (replacing DIR)
+    aliases:
+        tomography_catalog: lens_tomography_catalog
+        catalog: photometry_catalog
+        photoz_stack: lens_photoz_stack
+  - name: TXTruthLensCatalogSplitter
+  - name: TXLSSWeightsUnit         # add systematic weights to the lens sample (weight=1 for this example)
+  - name: TXLensMaps               # make source lens and n_gal maps
+  - name: TXAuxiliaryLensMaps      # make depth and bright object maps
+  - name: TXSimpleMask
+  - name: TXPhotozPlotLens          # Plot the bin n(z)
+    classname: TXPhotozPlot
+    aliases:
+        photoz_stack: lens_photoz_stack
+        nz_plot: nz_lens
+  # - name: TXRandomCat            # generate lens bin random catalogs
+  # - name: TXJackknifeCenters     # Split the area into jackknife regions
+
+  - name: TXSourceTomography
+  - name: TXSourceSelectorMetadetect    # select and split objects into source bins 
+  - name: TXSourceNoiseMaps      # Compute shear noise using rotations
+
+##############
+
+  - name: TXShearCalibration       # Calibrate and split the source sample tomographically
+  - name: TXTruePhotozStack         # Use true redshifts for source n(z) (replacing DIR)
+    aliases:
+        tomography_catalog: shear_tomography_catalog
+        catalog: shear_catalog
+        photoz_stack: shear_photoz_stack
+  - name: TXPhotozPlotSource          # Plot the bin n(z)
+    classname: TXPhotozPlot
+    aliases:
+        photoz_stack: shear_photoz_stack
+        nz_plot: nz_source
+
+  - name: TXSourceMaps             # make source g1 and g2 maps
+  - name: TXAuxiliarySourceMaps    # make PSF and flag maps
+  - name: TXLensNoiseMaps        # Compute lens noise using half-splits
+  - name: TXDensityMaps          # turn mask and ngal maps into overdensity maps
+  - name: TXMapPlots             # make pictures of all the maps
+  - name: TXTracerMetadata       # collate metadata
+
+  - name: TXTwoPoint             # Compute real-space 2-point correlations
+    threads_per_process: 2
+  - name: TXBlinding             # Blind the data following Muir et al
+    threads_per_process: 2
+  - name: TXTwoPointTheoryReal   # compute theory using CCL to save in sacc file and plot later
+  - name: TXTwoPointPlots        # Make plots of 2pt correlations
+
+
+# modules and packages to import that have pipeline
+# stages defined in them
+modules: >
+    txpipe
+    txpipe.extensions
+    txpipe.extensions.hos.fsb
+    rail.creation.degraders.grid_selection
+    rail.creation.engines.flowEngine
+    rail.estimation.algos.nz_dir
+    rail.estimation.algos.bpz_lite
+
+# where to find any modules that are not in this repo,
+# and any other code we need.
+python_paths:
+  - submodules/WLMassMap/python/desc/
+  - submodules/pyfsb
+
+# Where to put outputs
+output_dir: data/example/outputs_roman_hlis
+
+# How to run the pipeline: mini, parsl, or cwl
+launcher:
+    name: mini
+    interval: 1.0
+
+# Where to run the pipeline: cori-interactive, cori-batch, or local
+site:
+    name: local
+    max_threads: 2
+
+# configuration settings
+config: examples/roman-hlis/config.yml
+
+# On NERSC, set this before running:
+# export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
+
+inputs:
+    shear_catalog: data/example/inputs/roman-hlis/roman_hlis_shear_catalog.hdf5
+    photometry_catalog: data/example/inputs/roman-hlis/roman_hlis_photometry_catalog.hdf5
+    weights_catalog: None
+    # This file comes with the code
+    fiducial_cosmology: data/fiducial_cosmology.yml
+    # For the self-calibration extension if we are not using random_catalog_source for now
+    # So it is set to Null, so the yaml intepreter returns a None value to python. OBS
+    # the binned_random_catalog_source should also be set to Null in this case.
+    binned_random_catalog_source: None
+    flow: data/example/inputs/example_flow.pkl
+    binned_random_catalog_sub: /pscratch/sd/c/chihway/TXPipe/data/example/outputs_roman_hlis/e2e/binned_random_catalog_sub.hdf5
+    binned_random_catalog: /pscratch/sd/c/chihway/TXPipe/data/example/outputs_roman_hlis/e2e/binned_random_catalog_new.hdf5
+    patch_centers: /pscratch/sd/c/chihway/TXPipe/data/example/outputs_roman_hlis/patch_centers.txt
+
+# if supported by the launcher, restart the pipeline where it left off
+# if interrupted
+resume: true
+# where to put output logs for individual stages
+log_dir: data/example/logs_roman_hlis
+# where to put an overall parsl pipeline log
+pipeline_log: data/example/log_roman_hlis.txt
+
