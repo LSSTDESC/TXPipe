@@ -893,6 +893,8 @@ class TXDESISelector(PipelineStage):
                     out_cols[f"mag_{b}"].append(data[f"mag_{b}_lsst"][sel])
 
         print(f"Total selected: {n_selected:,} / {n_total:,}")
+        if n_selected == 0:
+            raise ValueError("No rows selected from input")
 
         from astropy.table import Table
         table = Table({name: np.concatenate(chunks) for name, chunks in out_cols.items()})
