@@ -83,8 +83,8 @@ PZPrepareEstimatorLens:
     mag_err_min: 0.005
     inform_options: {'save_train': False, 'load_model': False, 'modelfile': 'BPZpriormodel.out'}  
     madau_reddening: no
-    bands: riz
-    zp_errors: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+    bands: [r, i, z]
+    zp_errors: [0.01, 0.01, 0.01]
     hdf5_groupname: photometry
 
 
@@ -110,8 +110,8 @@ PZPrepareEstimatorSource:
     mag_err_min: 0.005
     inform_options: {'save_train': False, 'load_model': False, 'modelfile': 'BPZpriormodel.out'}  
     madau_reddening: no
-    bands: riz
-    zp_errors: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+    bands: [r, i, z]
+    zp_errors: [0.01, 0.01, 0.01]
     hdf5_groupname: photometry
 
 
@@ -166,7 +166,7 @@ TXTrueNumberDensity:
 TXSourceSelectorMetadetect:
     input_pz: False
     true_z: True
-    bands: riz #used for selection
+    bands: [r, i, z] #used for selection
     T_cut: 0.5
     s2n_cut: 10.0
     max_rows: 1000
@@ -175,7 +175,7 @@ TXSourceSelectorMetadetect:
     true_z: False
 
 TXSourceTomography:
-    bands: riz #used for selection
+    bands: [r, i, z] #used for selection
     source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
 
 TXTruthLensSelector:
@@ -355,7 +355,7 @@ PZRailSummarizeSource:
     zmax: 3.0
     nzbins: 50
     nsamples: 100
-    mag_prefix: "/shear/00/mag_"
+    mag_prefix: "/shear/ns/mag_"
     tomography_name: "source"
     name: PZRailSummarizeSource
     aliases:

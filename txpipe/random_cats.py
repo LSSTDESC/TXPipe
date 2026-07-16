@@ -44,6 +44,7 @@ class TXRandomCat(PipelineStage):
         "sample_rate": StageParameter(
             float, 0.5, msg="Fraction of random catalog to be retained in the sub-sampled catalog."
         ),
+        "depth_band": StageParameter(str, "", msg="Band to use for depth map when calculating density. If not set just use 'depth'"),
     }
 
     def run(self):
@@ -56,9 +57,12 @@ class TXRandomCat(PipelineStage):
         import healpix
 
         # Load the input depth map
+        depth_band = self.config["depth_band"]
+        if depth_band:
+            depth_band = "_" + depth_band
         with self.open_input("aux_lens_maps", wrapper=True) as maps_file:
-            depth = maps_file.read_map("depth/depth")
-            info = maps_file.read_map_info("depth/depth")
+            depth = maps_file.read_map(f"depth/depth{depth_band}")
+            info = maps_file.read_map_info(f"depth/depth{depth_band}")
             nside = info["nside"]
             scheme = choose_pixelization(**info)
 
@@ -70,6 +74,7 @@ class TXRandomCat(PipelineStage):
             # This is a QP object
             n_of_z_object = f.read_ensemble()
             Ntomo = n_of_z_object.npdf - 1  # ensemble includes the non-tomo 2D n(z)
+        print("Generating randoms for {0} tomographic bins".format(Ntomo))
 
         # We also generate comoving distances under a fiducial cosmology
         # for each random, for use in Rlens type metrics
@@ -263,7 +268,7 @@ class TXRandomCat(PipelineStage):
                 pix_catalog = np.repeat(pixel[start_vertex:end_vertex], numbers[j, :][start_vertex:end_vertex])
 
                 # generate a random location within the pixel using healpix
-                ra, dec = healpix.randang(nside, pix_catalog, lonlat=True)
+                ra, dec = healpix.randang(nside, pix_catalog, lonlat=True, nest=scheme.nest)
 
                 N = len(pix_catalog)
                 bin_index = np.repeat(j, N)

@@ -25,8 +25,8 @@ TXSourceTrueNumberDensity:
     nz: 301
     zmax: 3.0
     name: TXSourceTrueNumberDensity
-    weight_col: shear/00/weight
-    redshift_group: shear/00
+    weight_col: shear/ns/weight
+    redshift_group: shear/ns
 
 # Mock version of stacking:
 TXLensTrueNumberDensity:
@@ -75,7 +75,7 @@ TXPhotozStack: {}
 
 TXSourceSelectorMetacal:
     input_pz: false
-    bands: riz #used for selection
+    bands: [r, i, z] #used for selection
     T_cut: 0.5
     s2n_cut: 10.0
     max_rows: 1000
@@ -85,7 +85,7 @@ TXSourceSelectorMetacal:
     true_z: false
 
 TXSourceTomography:
-    bands: riz #used for selection
+    bands: [r, i, z] #used for selection
     source_zbin_edges: [0.3, 0.55, 0.8, 1.05, 2.0]
 
 TXRandomCat:
