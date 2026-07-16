@@ -10,9 +10,9 @@ from ..utils.hdf_tools import h5py_shorten, repack
 
 class TXIngestAnacal(TXIngestCatalogFits):
     """
-    Ingestion of an anacal catalog, generated from actual Rubin data.
-    This stage, will take an anacal catalog, from either the butler, or a file (parquet),
-    and ingest it into TXPipe format (HDF5).
+    Ingestion of an anacal catalog, generated from actual Rubin data. This
+    stage, will take an anacal catalog, from either the butler, or a file
+    (parquet), and ingest it into TXPipe format (HDF5).
     """
 
     name = "TXIngestAnacal"
@@ -44,7 +44,7 @@ class TXIngestAnacal(TXIngestCatalogFits):
             self.butler_run()
         else:
             self.file_run()
-        
+
         print("repacking files")
         repack(self.get_output("shear_catalog"))
 
@@ -59,7 +59,7 @@ class TXIngestAnacal(TXIngestCatalogFits):
             from lsst.daf.butler import Butler
         except Exception as e:
             raise ImportError(error_msg) from e
-        
+
         # Configure and create the butler. There are several ways to do this,
         # Here we use a central collective butler yaml file from NERSC.
 
@@ -147,8 +147,15 @@ class TXIngestAnacal(TXIngestCatalogFits):
         for col in shear_data.keys():
             print("    ", col)
             h5py_shorten(shear_outfile["shear"], col, len(shear_data["ra"]))
-        
+
         shear_outfile.close()
+
+    # Suffixes on the merged catalog's photo-z point-estimate columns
+    # (zmode_0, zmode_1p, zmode_1m, zmode_2p, zmode_2m).  These become
+    # ``mean_z`` / ``mean_z_{1p,1m,2p,2m}`` in the ingested shear catalog
+    # and are consumed by TXSourceSelectorAnaCal for the tomographic
+    # bin-migration term of R_sel via _DataWrapper suffix lookup.
+    _PZ_SUFFIXES = ("0", "1p", "1m", "2p", "2m")
 
     def setup_input(self):
         prefix = self.config["prefix"]
@@ -166,7 +173,7 @@ class TXIngestAnacal(TXIngestCatalogFits):
             ])
         cols += ["dwsel"+ suffix for suffix in ["_dg1", "_dg2"]]
         cols += [
-                 prefix +delta + suffix 
+                 prefix +delta + suffix
                  for delta in ["_de1", "_de2", "_dm00", "_dm20"]
                  for suffix in ["_dg1", "_dg2"]
                  ]
@@ -175,8 +182,13 @@ class TXIngestAnacal(TXIngestCatalogFits):
         cols += [band + "_flux_" + scale + "_err" for band in bands]
         cols += [band + "_dflux_" + scale + suffix for band in bands for suffix in ["_dg1", "_dg2"]]
 
+        # zmode_0 → mean_z; zmode_1p, zmode_1m, zmode_2p, zmode_2m → the
+        # metacal-style shifted variants (built with dg=0.01 in xlens'
+        # photoZPipe, so TXSourceSelectorAnaCal must use delta_gamma=0.01).
+        cols += [f"zmode_{s}" for s in self._PZ_SUFFIXES]
+
         return cols
-    
+
     def process_anacal_shear_data(self, data):
         bands = self.config["bands"]
         s = self.config["scale"]
@@ -209,7 +221,17 @@ class TXIngestAnacal(TXIngestCatalogFits):
                 dd = data[f"{band}_dflux_{s}_"+d][:]
                 output[f"mag_{band}_{d}"] = anacal_mag_response(f, dd)
                 if band == "i":
-                    output[f"ds2n_{d}"] = dd/f_err 
+                    output[f"ds2n_{d}"] = dd/f_err
+
+        # zmode_0 → mean_z (baseline photo-z used by TXSourceSelectorAnaCal
+        # in input_pz mode for tomographic binning).
+        # zmode_{1p,1m,2p,2m} → mean_z_{1p,1m,2p,2m} (shifted variants
+        # used by the AnaCal calculator's ±γ selection response — the
+        # _DataWrapper suffix lookup routes them into the selector when it
+        # runs on the shifted samples).
+        output["mean_z"] = data["zmode_0"][:]
+        for suf in ("1p", "1m", "2p", "2m"):
+            output[f"mean_z_{suf}"] = data[f"zmode_{suf}"][:]
 
         return output
 

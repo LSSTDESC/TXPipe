@@ -58,7 +58,7 @@ class CalibrationCalculator:
     The selection function does not need to know about all these variants. The calculator
     will wrap the data dictionary passed in in a special class that chooses variant
     columns when they are looked up. So your selection function can just ask for, e.g.,
-    "T", "s2n", or "mag_r", and the calculator will make sure it gets the right variant of 
+    "T", "s2n", or "mag_r", and the calculator will make sure it gets the right variant of
     that column for each selection.
 
     The final results are in the form of a BinStats object, which contains:
@@ -314,8 +314,8 @@ class MetaDetectCalculator(CalibrationCalculator):
     """A calibration and stats calculator for metadetect catalogs.
 
     See the CalibrationCalculator class for the use and contents of this class,
-    but note that the attributes of the class are different because we have to 
-    keep track of 5 variants separately, and the shear_stats keeps track of the 
+    but note that the attributes of the class are different because we have to
+    keep track of 5 variants separately, and the shear_stats keeps track of the
     mean and std dev of all of the variants.
     """
 
@@ -849,48 +849,57 @@ class MockCalculator(CalibrationCalculator):
 
         return bin_stats
 
+
 class AnaCalCalculator(CalibrationCalculator):
     """Calibration and stats calculator for AnaCal catalogs
-    
+
     See the CalibrationCalculator class for the use and contents of this class
     """
 
-    def __init__(self, selector, delta_gamma, mask_threshold):
+    def __init__(self, selector, delta_gamma):
         """
         Initialize the Calibrator using the funtion you will use to select
-        objects. That function should take at least one argument, 
+        objects. That function should take at least one argument,
         the chunk of data to select on. It should look up the original
-        names of the columns to select on.
-        
-        The selector can take further *args and **kwargs, passed in when adding
-        data.
-        
+        names of the columns to select on; the calculator wraps the data
+        with _DataWrapper so the same call also picks up ±γ variants when
+        needed (mask + s2n + size + zbin cuts all go through this single
+        code path).
+
+        The selector can take further *args and **kwargs, passed in when
+        adding data.
+
         Parameters
         ----------
         selector: function
-            Function that selects objects
+            Function that selects objects. Must apply every cut whose
+            shear response contributes to the selection bias (mask, s2n,
+            size, zbin) — the calculator no longer applies any cut of its
+            own.
         delta_gamma: float
-            The difference in applied g between 1p and 1m variants
-        mask_threshold: float
-            The value of the mask at which to cut
+            Half-difference in applied g between the ±1 variants
+            (each variant is at ±delta_gamma from baseline).
         """
-        from parallel_statistics import ParallelMean
         super().__init__(selector)
-        
+
         self.delta_gamma = delta_gamma
-        self.mask_threshold = mask_threshold
-        self.response_means = ParallelMean(size=2)
-        self.sel_response_e1p1 = 0
-        self.sel_response_e1m1 = 0
-        self.sel_response_e2p2 = 0
-        self.sel_response_e2m2 = 0
-        self.det_response_e1 = 0
-        self.det_response_e2 = 0
-        #self.sel_bias_means = ParallelMean(size=8)
+        # Every accumulator below is Σ(per-source quantity).  In collect()
+        # each of R_shape, R_weight, R_sel is computed as
+        #     0.5 * (accum_e1 + accum_e2) / sum_weights
+        # (with a 2·delta_gamma factor for R_sel because it's a finite
+        # difference).  Same code shape for all three.
+        self.shape_response_e1 = 0.0    # Σ w · de1/dg1
+        self.shape_response_e2 = 0.0    # Σ w · de2/dg2
+        self.weight_response_e1 = 0.0   # Σ (dw/dg1) · e1
+        self.weight_response_e2 = 0.0   # Σ (dw/dg2) · e2
+        self.sel_response_e1p1 = 0.0    # Σ w · e1 · 𝟙[sel_1p]
+        self.sel_response_e1m1 = 0.0
+        self.sel_response_e2p2 = 0.0
+        self.sel_response_e2m2 = 0.0
 
     def add_data(self, data, *args, **kwargs):
         """Select objects from a new chunk of data and tally their responses
-        
+
         Parameters
         ----------
         data: dict
@@ -899,78 +908,67 @@ class AnaCalCalculator(CalibrationCalculator):
             Positional arguments to be passed to the selection function
         **kwargs
             Keyword arguments to be passed to the selection function.
-        
+
         Returns
         -------
         sel: array
             The indicies of the objects selected from this chunk of data
         """
-        data = _DataWrapper(data, "")
-        select = self.selector(data, *args, **kwargs)
+        # Baseline + four shifted views on the same chunk. _DataWrapper
+        # routes ``data_1p["s2n"] -> data["s2n_1p"]``,
+        # ``data_1p["m00"] -> data["m00_1p"]``,
+        # ``data_1p["zbin"] -> data["zbin_1p"]``, etc.
+        # Columns without a matching variant (mask_value, e1, weight, ...)
+        # fall back to baseline.
+        data_00 = _DataWrapper(data, "")
+        data_1p = _DataWrapper(data, "_1p")
+        data_1m = _DataWrapper(data, "_1m")
+        data_2p = _DataWrapper(data, "_2p")
+        data_2m = _DataWrapper(data, "_2m")
 
-        e1 = data["e1"]
-        e2 = data["e2"]
-        weight = data["weight"]
-        weight_dg1 = data["weight_dg1"]
-        weight_dg2 = data["weight_dg2"]
-        de1_dg1 = data["de1_dg1"]
-        de2_dg2 = data["de2_dg2"]
+        # A single selector call per variant applies mask + s2n + size +
+        # zbin cuts uniformly.  No per-cut special casing lives here now.
+        select = self.selector(data_00, *args, **kwargs)
+        sel_1p = self.selector(data_1p, *args, **kwargs)
+        sel_1m = self.selector(data_1m, *args, **kwargs)
+        sel_2p = self.selector(data_2p, *args, **kwargs)
+        sel_2m = self.selector(data_2m, *args, **kwargs)
 
-        m00 = data["m00"]
-        m20 = data["m20"]
+        e1 = data_00["e1"]
+        e2 = data_00["e2"]
+        weight = data_00["weight"]
+        weight_dg1 = data_00["weight_dg1"]
+        weight_dg2 = data_00["weight_dg2"]
+        de1_dg1 = data_00["de1_dg1"]
+        de2_dg2 = data_00["de2_dg2"]
 
-        dm00_dg1 = data["dm00_dg1"]
-        dm00_dg2 = data["dm00_dg2"]
-        dm20_dg1 = data["dm20_dg1"]
-        dm20_dg2 = data["dm20_dg2"]
-        mask_value = data["mask_value"]
-
-        n = e1[select].size
-
-        # Record the count for this chunk, for summation later
-        self.count += n 
-        self.sum_weights += np.sum(weight[select])
-        self.sum_sq_weights += np.sum(weight[select]**2)
-
-        # Next we calculate the cuts per variation masks
-        wsel = weight[select]
+        # Baseline slices shared by every accumulator below.
+        w_sel = weight[select]
         e1_sel = e1[select]
         e2_sel = e2[select]
-        mask = mask_value[select] < self.mask_threshold
 
-        mask_p1 = mask & self.get_submask(m00[select], m20[select], dm00_dg1[select], dm20_dg1[select], +1)
-        mask_m1 = mask & self.get_submask(m00[select], m20[select], dm00_dg1[select], dm20_dg1[select], -1)
-        mask_p2 = mask & self.get_submask(m00[select], m20[select], dm00_dg2[select], dm20_dg2[select], +1)
-        mask_m2 = mask & self.get_submask(m00[select], m20[select], dm00_dg2[select], dm20_dg2[select], -1)
+        # Bookkeeping: raw + weighted counts.
+        self.count += e1_sel.size
+        self.sum_weights += np.sum(w_sel)
+        self.sum_sq_weights += np.sum(w_sel ** 2)
 
-        self.sel_response_e1p1 += np.sum(wsel[mask_p1] * e1_sel[mask_p1])
-        self.sel_response_e1m1 += np.sum(wsel[mask_m1] * e1_sel[mask_m1])
-        self.sel_response_e2p2 += np.sum(wsel[mask_p2] * e2_sel[mask_p2])
-        self.sel_response_e2m2 += np.sum(wsel[mask_m2] * e2_sel[mask_m2])
+        # All three response-term numerators are accumulated in exactly the
+        # same shape (Σ over the chunk of a per-source product).  collect()
+        # divides each by sum_weights so they match convention (B):
+        # weighted-mean normalization consistent with mean_e = Σ(w·e)/Σw.
+        self.shape_response_e1 += np.sum(w_sel * de1_dg1[select])
+        self.shape_response_e2 += np.sum(w_sel * de2_dg2[select])
+        self.weight_response_e1 += np.sum(weight_dg1[select] * e1_sel)
+        self.weight_response_e2 += np.sum(weight_dg2[select] * e2_sel)
+        self.sel_response_e1p1 += np.sum(weight[sel_1p] * e1[sel_1p])
+        self.sel_response_e1m1 += np.sum(weight[sel_1m] * e1[sel_1m])
+        self.sel_response_e2p2 += np.sum(weight[sel_2p] * e2[sel_2p])
+        self.sel_response_e2m2 += np.sum(weight[sel_2m] * e2[sel_2m])
 
-        # Next we find the means part needed for the Shape response,
-        # and the Weight-bias response
-        de1_dg1_sub = de1_dg1[select]
-        de2_dg2_sub = de2_dg2[select]
-        dwsel_dg1 = weight_dg1[select]
-        dwsel_dg2 = weight_dg2[select]
-
-        self.response_means.add_data(0, de1_dg1_sub, wsel)
-        self.response_means.add_data(1, de2_dg2_sub, wsel)
-
-        self.det_response_e1 += np.sum(dwsel_dg1 * e1_sel)
-        self.det_response_e2 += np.sum(dwsel_dg2 * e2_sel)
-
-        self.shear_stats.add_data(0, e1[select], wsel)
-        self.shear_stats.add_data(1, e2[select], wsel)
+        self.shear_stats.add_data(0, e1_sel, w_sel)
+        self.shear_stats.add_data(1, e2_sel, w_sel)
 
         return select
-
-    def get_submask(self, m00, m20, dm00_dg, dm20_dg, sign):
-        m0 = m00 + sign * self.delta_gamma * dm00_dg
-        m2 = m20 + sign * self.delta_gamma * dm20_dg
-        return (m0 + m2)/ m0 > 0.1
-        
 
     def collect(self, comm=None, allgather=False) -> BinStats:
         """
@@ -990,68 +988,46 @@ class AnaCalCalculator(CalibrationCalculator):
         bin_stats: BinStats
             An object containing the final calibration and statistics for this bin.
         """
-        # collect all the things we need
-        if comm is not None:
-            if allgather:
-                count = comm.allreduce(self.count)
-                sum_weights = comm.allreduce(self.sum_weights)
-                sum_sq_weights = comm.allreduce(self.sum_sq_weights)
-                sum_sel_response_e1p1 = comm.allreduce(self.sel_response_e1p1)
-                sum_sel_response_e1m1 = comm.allreduce(self.sel_response_e1m1)
-                sum_sel_response_e2p2 = comm.allreduce(self.sel_response_e2p2)
-                sum_sel_response_e2m2 = comm.allreduce(self.sel_response_e2m2)
-                sum_det_response_e1 = comm.allreduce(self.det_response_e1)
-                sum_det_response_e2 = comm.allreduce(self.det_response_e2)
-            else:
-                count = comm.reduce(self.count)
-                sum_weights = comm.reduce(self.sum_weights)
-                sum_sq_weights = comm.reduce(self.sum_sq_weights)
-                sum_sel_response_e1p1 = comm.reduce(self.sel_response_e1p1)
-                sum_sel_response_e1m1 = comm.reduce(self.sel_response_e1m1)
-                sum_sel_response_e2p2 = comm.reduce(self.sel_response_e2p2)
-                sum_sel_response_e2m2 = comm.reduce(self.sel_response_e2m2)
-                sum_det_response_e1 = comm.reduce(self.det_response_e1)
-                sum_det_response_e2 = comm.reduce(self.det_response_e2)
-        else:
-            count = self.count
-            sum_weights = self.sum_weights
-            sum_sq_weights = self.sum_sq_weights
-            sum_sel_response_e1p1 = self.sel_response_e1p1
-            sum_sel_response_e1m1 = self.sel_response_e1m1
-            sum_sel_response_e2p2 = self.sel_response_e2p2
-            sum_sel_response_e2m2 = self.sel_response_e2m2
-            sum_det_response_e1 = self.det_response_e1
-            sum_det_response_e2 = self.det_response_e2
+        # One helper for every scalar accumulator; comm.reduce returns
+        # None on non-root ranks, which we let propagate through Neff.
+        def _reduce(x):
+            if comm is None:
+                return x
+            return comm.allreduce(x) if allgather else comm.reduce(x)
 
-        # Collect the mean values we need
+        count = _reduce(self.count)
+        sum_weights = _reduce(self.sum_weights)
+        sum_sq_weights = _reduce(self.sum_sq_weights)
+        S_e1 = _reduce(self.shape_response_e1)
+        S_e2 = _reduce(self.shape_response_e2)
+        W_e1 = _reduce(self.weight_response_e1)
+        W_e2 = _reduce(self.weight_response_e2)
+        sel_e1p1 = _reduce(self.sel_response_e1p1)
+        sel_e1m1 = _reduce(self.sel_response_e1m1)
+        sel_e2p2 = _reduce(self.sel_response_e2p2)
+        sel_e2m2 = _reduce(self.sel_response_e2m2)
+
+        # shear_stats has its own MPI reduction inside .collect()
         mode = "allgather" if allgather else "gather"
-        _, R = self.response_means.collect(comm, mode)
         _, mean_e, var_e = self.shear_stats.collect(comm, mode)
 
-        # Unpack the flat mean R:
-        mean_de1_dg1 = R[0]
-        mean_de2_dg2 = R[1]
-        
-        # Reducing down the responses
-        R_shape = 0.5 * (mean_de1_dg1 + mean_de2_dg2)
-        R_weight = 0.5 * (sum_det_response_e1 + sum_det_response_e2) / sum_weights
+        # All three responses in one consistent shape:
+        #     term = 0.5 * (accum_e1 + accum_e2) / sum_weights
+        # (R_sel picks up the extra 2·delta_gamma from the finite diff).
+        R_shape = 0.5 * (S_e1 + S_e2) / sum_weights
+        R_weight = 0.5 * (W_e1 + W_e2) / sum_weights
+        R_sel_1  = (
+            (sel_e1p1 - sel_e1m1) / (2.0 * self.delta_gamma) / sum_weights
+        )
+        R_sel_2  = (
+            (sel_e2p2 - sel_e2m2) / (2.0 * self.delta_gamma) / sum_weights
+        )
+        R_sel    = 0.5 * (R_sel_1 + R_sel_2)
+        R_total  = R_shape + R_weight + R_sel
 
-        R_sel_1 = (sum_sel_response_e1p1 - sum_sel_response_e1m1) / (2.0 * self.delta_gamma) / sum_weights
-        R_sel_2 = (sum_sel_response_e2p2 - sum_sel_response_e2m2) / (2.0 * self.delta_gamma) / sum_weights
-        R_sel = 0.5 * (R_sel_1 + R_sel_2)
+        Neff = None if sum_weights is None else sum_weights ** 2 / sum_sq_weights
 
-        R_total = R_shape + R_weight + R_sel
-        
-        if sum_weights is None:
-            Neff = None
-        else:
-            Neff = sum_weights**2 / sum_sq_weights
-        
         calibrator = AnaCalibrator(R_total, mean_e, mu_is_weighted=False)
         sigma_e = calibrator.calibrate_variance_to_sigma_e(var_e)
         sigma = calibrator.calibrate_sigma(np.sqrt(var_e))
-        bin_stats = BinStats(count, Neff, calibrator.mu, sigma_e, sigma, calibrator)
-        return bin_stats
-
-
-
+        return BinStats(count, Neff, calibrator.mu, sigma_e, sigma, calibrator)

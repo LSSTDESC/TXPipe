@@ -1,5 +1,6 @@
 stages:
   - name: TXIngestAnacal
+  - name: TXSourceSelectorAnaCal
 
 output_dir: data/example/output_anacal
 
@@ -17,6 +18,18 @@ modules: >
 config: examples/anacal/config.yml
 
 inputs:
+    # Butler-mode ingest doesn't read this FITS, but ceci requires every
+    # declared input to have a path — pointed at the DP1-v2 published
+    # per-field catalog to satisfy the graph builder.
     anacal_catalog: /pscratch/sd/x/xiangchl/data/DP1/catalogs/anacal_catalog_a360.fits
+
+    # Selector-side inputs.  With ``input_pz: true`` in config.yml the
+    # selector reads ``mean_z`` from the shear catalog (populated by
+    # TXIngestAnacal from ``zmode_0``), so these two are only exercised
+    # under ``input_pz: false`` (random-forest tomography).  Kept here to
+    # satisfy the ceci graph builder — ceci checks every declared input
+    # has a path, even when the stage doesn't open it.
+    spectroscopic_catalog: /pscratch/sd/x/xiangchl/data/DP1/catalogs/spec_catalog_a360.hdf5
+    shear_tomography_classifier: /pscratch/sd/x/xiangchl/data/DP1/catalogs/shear_tomography_classifier_a360.pkl
 
 resume: False

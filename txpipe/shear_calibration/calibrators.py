@@ -634,7 +634,7 @@ class HSCCalibrator(Calibrator):
 
 
 class AnaCalibrator(MetaCalibrator):
-    """Stores information needed to calibrate a Anacal shear method"""
+    """Stores information needed to calibrate an AnaCal shear method."""
     def __init__(self, R, mu, mu_is_weighted=True):
         self.R = R
         if mu_is_weighted:
@@ -688,7 +688,7 @@ class AnaCalibrator(MetaCalibrator):
         Returns
         -------
         cals: list
-            A set of AnacaltCalibrators, one per bin
+            A set of AnaCalibrators, one per bin
         """
         import h5py
 

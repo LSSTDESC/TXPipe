@@ -20,3 +20,39 @@ TXIngestAnacal:
     prefix: "fpfs1"
     scale: "gauss2"
     bands: "griz"
+
+TXSourceSelectorAnaCal:
+    # AnaCal shear-response step size for selection bias correction — must
+    # match the δγ used to build the on-disk photo-z distortions
+    # (zmode_{1p,1m,2p,2m}) in xlens' photoZPipe (currently ±0.01 in
+    # DISTORTIONS).
+    delta_gamma: 0.01
+
+    # mask_value threshold — sources with mask_value >= this get dropped.
+    # AnaCal reports a bit-packed flag; 1 means "any bit set" (strictest).
+    mask_threshold: 40
+
+    # AnaCal S/N cut (i-band flux / flux_err).  Default in code is 5.0.
+    s2n_cut: 5.0
+
+    # AnaCal size cut: (m00 + m20) / m00 > T_cut.  Default in code is 0.1.
+    T_cut: 0.1
+
+    # Bands available in the a360 ingest.
+    bands: [g, r, i, z]
+
+    # 5 tomographic bins — will need edited to fit your science n(z).
+    source_zbin_edges: [0.3, 0.6, 0.9, 1.2, 1.5, 2.0]
+
+    # ``input_pz: true`` reads ``mean_z`` from the shear catalog and skips the
+    # random-forest classifier.  TXIngestAnacal exposes ``mean_z`` (from
+    # ``zmode_0`` in the merged catalog) plus the four shifted variants
+    # ``mean_z_{1p,1m,2p,2m}`` (from ``zmode_{1p,1m,2p,2m}``) — the selector
+    # consumes the baseline column for tomographic binning and the four
+    # variants for the selection response computation.
+    # If ``input_pz: false``, a shear_tomography_classifier pickle +
+    # spectroscopic_catalog are required (see pipeline.yml inputs).
+    input_pz: true
+    true_z: false
+    verbose: True
+    chunk_rows: 100000
