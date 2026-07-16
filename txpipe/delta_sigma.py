@@ -34,9 +34,6 @@ class TXDeltaSigma(PipelineStage):
         "r_max": StageParameter(float, 10.0, msg="Maximum radius to use in Mpc"),
         "nbins": StageParameter(int, 10, msg="Number of radial bins"),
         "photoz": StageParameter(bool, True, msg="If True, the sources have photometric redshifts so we should not load or use per-objects z values. If False, use per-object values."),
-        "lens_source_sep": StageParameter(
-            float, 0.1, msg="Minimum redshift separation between lens and source bins to use for dSigma measurement"
-        ),
         "source_cat_w_col": StageParameter(str, "weight", msg="Source catalog weight column name."),
         "lens_cat_w_col": StageParameter(str, "weight", msg="Lens catalog weight column name."),
         "n_jobs": StageParameter(int, 1, msg="Number of multiprocessing processes to use"),
@@ -115,7 +112,7 @@ class TXDeltaSigma(PipelineStage):
                 cosmology=cosmo,
                 progress_bar=progress_bar,
                 n_jobs=n_jobs,
-            )  # , lens_source_cut=self.config["lens_source_sep"])
+            )
             dsigma.precompute.precompute(
                 randoms_table,
                 source_table,
@@ -124,7 +121,7 @@ class TXDeltaSigma(PipelineStage):
                 cosmology=cosmo,
                 progress_bar=progress_bar,
                 n_jobs=n_jobs,
-            )  # , lens_source_cut=self.config["lens_source_sep"])
+            )
 
             # stack to get the excess surface density Delta(Sigma)
             result = dsigma.stacking.excess_surface_density(
