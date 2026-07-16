@@ -334,10 +334,6 @@ class TXIngestDataPreview1(PipelineStage):
         return n
 
 
-class TXIngestDataPreview2(TXIngestDataPreview1):
-    name = "TXIngestDataPreview2"
-    
-
 def sanitize(data):
     """
     Convert unicode arrays into types that h5py can save
