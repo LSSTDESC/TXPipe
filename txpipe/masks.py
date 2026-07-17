@@ -523,18 +523,19 @@ class TXJointMask(TXBaseMask):
         name1, name2 = self.mask_input_names
 
         with self.open_input(name1, wrapper=True) as f:
-            metadata = f.read_map_info("mask")
-            nside1 = metadata["nside"]
-            pixel_scheme1 = choose_pixelization(**metadata)
+            metadata1 = f.read_map_info("mask")
+            nside1 = metadata1["nside"]
+            pixel_scheme1 = choose_pixelization(**metadata1)
             mask1 = f.read_mask("mask", returnbool=True)
-            
 
         with self.open_input(name2, wrapper=True) as f:
-            metadata = f.read_map_info("mask")
-            nside2 = metadata["nside"]
-            pixel_scheme2 = choose_pixelization(**metadata)
+            metadata2 = f.read_map_info("mask")
+            nside2 = metadata2["nside"]
+            pixel_scheme2 = choose_pixelization(**metadata2)
             mask2 = f.read_mask("mask", returnbool=True)
 
+        # Keep metadata from the first mask as documented.
+        metadata = metadata1
         if nside1 != nside2:
             if nside1 < nside2:
                 print(f"Degrading {name2} from Nside {nside2} to {nside1}")
