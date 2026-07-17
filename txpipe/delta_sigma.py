@@ -383,7 +383,6 @@ class TXDeltaSigma(PipelineStage):
         z = shear_photoz_stack["z"]
         Nz = shear_photoz_stack["n"]
         nbin_source = Nz.shape[1]
-        breakpoint()
 
         for i in range(nbin_source):
             if i == nbin_source - 1:
