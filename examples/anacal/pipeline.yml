@@ -1,5 +1,7 @@
+# AnaCal selector + calibrator pipeline — reads the shear catalog produced
+# by ``examples/anacal/ingest.yml``.
+
 stages:
-  - name: TXIngestAnacal
   - name: TXSourceSelectorAnaCal
 
 output_dir: data/example/output_anacal
@@ -18,10 +20,7 @@ modules: >
 config: examples/anacal/config.yml
 
 inputs:
-    # Butler-mode ingest doesn't read this FITS, but ceci requires every
-    # declared input to have a path — pointed at the DP1-v2 published
-    # per-field catalog to satisfy the graph builder.
-    anacal_catalog: /pscratch/sd/x/xiangchl/data/DP1/catalogs/anacal_catalog_a360.fits
+    shear_catalog: data/example/anacal_inputs/shear_catalog.hdf5
 
     # Selector-side inputs.  With ``input_pz: true`` in config.yml the
     # selector reads ``mean_z`` from the shear catalog (populated by
