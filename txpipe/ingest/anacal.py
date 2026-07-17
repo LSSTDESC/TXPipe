@@ -192,18 +192,35 @@ class TXIngestAnacal(TXIngestCatalogFits):
         bands = self.config["bands"]
         s = self.config["scale"]
         prefix = self.config["prefix"]
+        # The dm computed e1/e2 columns store the pre-multiplied observable
+        # e_meas = wsel · e_raw, and "weight" is uniformly set to 1.
+        # This way downstream GGCorrelation with weight_column="weight"
+        # computes xi_e =  Σ (wsel_i e_i)(wsel_j e_j) / N_pairs instead of a
+        # ⟨wsel wsel⟩-weighted mean of raw shapes.
+        # xi_g = xi_e / <R_total>^2
+
+        # The raw shapes and wsel are
+        # still exposed as separate columns (wsel, e1_raw, e2_raw) so
+        # TXSourceSelectorAnaCal can compute R_shape (⟨wsel · de/dg⟩) and
+        # R_detect (⟨(dwsel/dg) · e_raw⟩).
+        wsel = data["wsel"][:]
+        e1_raw = data[f"{prefix}_e1"][:]
+        e2_raw = data[f"{prefix}_e2"][:]
         output = {
-                  "ra": data["ra"][:],
-                  "dec": data["dec"][:],
-                  "weight": data["wsel"][:],
-                  "mask_value": data["mask_value"][:],
-                  "weight_dg1": data["dwsel_dg1"][:],
-                  "weight_dg2": data["dwsel_dg2"][:],
-                  "e1": data[f"{prefix}_e1"][:],
-                  "e2": data[f"{prefix}_e2"][:],
-                  "m00": data[f"{prefix}_m00"][:],
-                  "m20": data[f"{prefix}_m20"][:],
-                  }
+            "ra": data["ra"][:],
+            "dec": data["dec"][:],
+            "weight": np.ones_like(wsel),   # uniform 1 for treecorr
+            "wsel": wsel,                   # raw wsel (for R_shape)
+            "mask_value": data["mask_value"][:],
+            "weight_dg1": data["dwsel_dg1"][:],
+            "weight_dg2": data["dwsel_dg2"][:],
+            "e1": wsel * e1_raw,            # e_meas ≡ wsel · e_raw
+            "e2": wsel * e2_raw,
+            "e1_raw": e1_raw,               # raw shape (for R_detect)
+            "e2_raw": e2_raw,
+            "m00": data[f"{prefix}_m00"][:],
+            "m20": data[f"{prefix}_m20"][:],
+        }
         for delta in ["de1", "de2", "dm00", "dm20"]:
             output[f"{delta}_dg1"] = data[f"{prefix}_{delta}_dg1"][:]
             output[f"{delta}_dg2"] = data[f"{prefix}_{delta}_dg2"][:]

@@ -880,22 +880,23 @@ class AnaCalCalculator(CalibrationCalculator):
             Half-difference in applied g between the ±1 variants
             (each variant is at ±delta_gamma from baseline).
         """
+        from parallel_statistics import ParallelMean
         super().__init__(selector)
 
         self.delta_gamma = delta_gamma
-        # Every accumulator below is Σ(per-source quantity).  In collect()
-        # each of R_shape, R_weight, R_sel is computed as
-        #     0.5 * (accum_e1 + accum_e2) / sum_weights
-        # (with a 2·delta_gamma factor for R_sel because it's a finite
-        # difference).  Same code shape for all three.
-        self.shape_response_e1 = 0.0    # Σ w · de1/dg1
-        self.shape_response_e2 = 0.0    # Σ w · de2/dg2
-        self.weight_response_e1 = 0.0   # Σ (dw/dg1) · e1
-        self.weight_response_e2 = 0.0   # Σ (dw/dg2) · e2
-        self.sel_response_e1p1 = 0.0    # Σ w · e1 · 𝟙[sel_1p]
-        self.sel_response_e1m1 = 0.0
-        self.sel_response_e2p2 = 0.0
-        self.sel_response_e2m2 = 0.0
+        # e_meas ≡ wsel · e is the observable.  All accumulators
+        # use uniform weight=1 and per-source values are pre-multiplied by wsel
+        # where the chain-rule term needs it, so each collect() returns a
+        # plain sample mean ⟨wsel · X⟩ (never divided by ⟨wsel⟩).
+        # Note that wsel is smooth detection weight and 96% of them are 1.
+        # Ensemble shear estimator:
+        #     γ = ⟨e_meas⟩ / R_total,  R_total = R_shape + R_detect + R_sel
+        # 0: ⟨wsel · de1/dg1⟩, 1: ⟨wsel · de2/dg2⟩
+        self.shape_response = ParallelMean(size=2)
+        # 0: ⟨(dwsel/dg1)·e1⟩, 1: ⟨(dwsel/dg2)·e2⟩
+        self.detect_response = ParallelMean(size=2)
+        # 0..3: ⟨wsel · e · 𝟙[sel_±]⟩
+        self.sel_response = ParallelMean(size=4)
 
     def add_data(self, data, *args, **kwargs):
         """Select objects from a new chunk of data and tally their responses
@@ -934,39 +935,54 @@ class AnaCalCalculator(CalibrationCalculator):
         sel_2p = self.selector(data_2p, *args, **kwargs)
         sel_2m = self.selector(data_2m, *args, **kwargs)
 
-        e1 = data_00["e1"]
+        # Convention-A column plan (see TXIngestAnacal):
+        #   e1, e2      – e_meas ≡ wsel · e_raw (pre-multiplied, feed treecorr)
+        #   e1_raw, e2_raw – raw shape (needed for R_detect numerator)
+        #   wsel        – raw wsel (needed for R_shape numerator, Neff, μ)
+        #   weight      – uniform 1 (feed treecorr's weight_column)
+        e1 = data_00["e1"]                # = wsel · e_raw
         e2 = data_00["e2"]
-        weight = data_00["weight"]
+        e1_raw = data_00["e1_raw"]
+        e2_raw = data_00["e2_raw"]
+        wsel = data_00["wsel"]
         weight_dg1 = data_00["weight_dg1"]
         weight_dg2 = data_00["weight_dg2"]
         de1_dg1 = data_00["de1_dg1"]
         de2_dg2 = data_00["de2_dg2"]
 
-        # Baseline slices shared by every accumulator below.
-        w_sel = weight[select]
-        e1_sel = e1[select]
+        # Baseline slices.
+        w_sel = wsel[select]
+        e1_sel = e1[select]              # already wsel · e_raw
         e2_sel = e2[select]
 
-        # Bookkeeping: raw + weighted counts.
+        # Bookkeeping: raw count + wsel sums (used for Kish's Neff).
         self.count += e1_sel.size
         self.sum_weights += np.sum(w_sel)
         self.sum_sq_weights += np.sum(w_sel ** 2)
 
-        # All three response-term numerators are accumulated in exactly the
-        # same shape (Σ over the chunk of a per-source product).  collect()
-        # divides each by sum_weights so they match convention (B):
-        # weighted-mean normalization consistent with mean_e = Σ(w·e)/Σw.
-        self.shape_response_e1 += np.sum(w_sel * de1_dg1[select])
-        self.shape_response_e2 += np.sum(w_sel * de2_dg2[select])
-        self.weight_response_e1 += np.sum(weight_dg1[select] * e1_sel)
-        self.weight_response_e2 += np.sum(weight_dg2[select] * e2_sel)
-        self.sel_response_e1p1 += np.sum(weight[sel_1p] * e1[sel_1p])
-        self.sel_response_e1m1 += np.sum(weight[sel_1m] * e1[sel_1m])
-        self.sel_response_e2p2 += np.sum(weight[sel_2p] * e2[sel_2p])
-        self.sel_response_e2m2 += np.sum(weight[sel_2m] * e2[sel_2m])
+        # All accumulators use weight=1 (uniform).  Per-source values are
+        # pre-multiplied by wsel where the chain-rule term needs it, so each
+        # ParallelMean returns ⟨wsel · X⟩ over the fed sample.
 
-        self.shear_stats.add_data(0, e1_sel, w_sel)
-        self.shear_stats.add_data(1, e2_sel, w_sel)
+        # R_shape numerator: ⟨wsel · de_raw/dg⟩ over the baseline sample.
+        self.shape_response.add_data(0, w_sel * de1_dg1[select])
+        self.shape_response.add_data(1, w_sel * de2_dg2[select])
+        # R_detect numerator: ⟨(dwsel/dg) · e_raw⟩ over the baseline sample.
+        self.detect_response.add_data(0, weight_dg1[select] * e1_raw[select])
+        self.detect_response.add_data(1, weight_dg2[select] * e2_raw[select])
+        # R_sel numerator: ⟨wsel · e_raw⟩ over each ±γ variant sample —
+        # equivalently ⟨e_meas⟩ since e1, e2 are already pre-multiplied.
+        # (Spin-2 argument: N_1p, N_1m, N_2p, N_2m converge in the large-N
+        # ensemble, so per-subset means telescope cleanly under the finite
+        # difference; residual bias ~ (δN/N)·⟨e⟩, zero in ensemble.)
+        self.sel_response.add_data(0, e1[sel_1p])
+        self.sel_response.add_data(1, e1[sel_1m])
+        self.sel_response.add_data(2, e2[sel_2p])
+        self.sel_response.add_data(3, e2[sel_2m])
+
+        # μ numerator: mean of e_meas (already pre-multiplied) over baseline.
+        self.shear_stats.add_data(0, e1_sel)
+        self.shear_stats.add_data(1, e2_sel)
 
         return select
 
@@ -998,32 +1014,24 @@ class AnaCalCalculator(CalibrationCalculator):
         count = _reduce(self.count)
         sum_weights = _reduce(self.sum_weights)
         sum_sq_weights = _reduce(self.sum_sq_weights)
-        S_e1 = _reduce(self.shape_response_e1)
-        S_e2 = _reduce(self.shape_response_e2)
-        W_e1 = _reduce(self.weight_response_e1)
-        W_e2 = _reduce(self.weight_response_e2)
-        sel_e1p1 = _reduce(self.sel_response_e1p1)
-        sel_e1m1 = _reduce(self.sel_response_e1m1)
-        sel_e2p2 = _reduce(self.sel_response_e2p2)
-        sel_e2m2 = _reduce(self.sel_response_e2m2)
 
-        # shear_stats has its own MPI reduction inside .collect()
+        # Each ParallelXxx does its own MPI reduction inside .collect().
         mode = "allgather" if allgather else "gather"
+        _, shape_means = self.shape_response.collect(comm, mode)   # (2,) means
+        _, detect_means = self.detect_response.collect(comm, mode) # (2,) means
+        _, sel_means = self.sel_response.collect(comm, mode)       # (4,) means
         _, mean_e, var_e = self.shear_stats.collect(comm, mode)
 
-        # All three responses in one consistent shape:
-        #     term = 0.5 * (accum_e1 + accum_e2) / sum_weights
-        # (R_sel picks up the extra 2·delta_gamma from the finite diff).
-        R_shape = 0.5 * (S_e1 + S_e2) / sum_weights
-        R_weight = 0.5 * (W_e1 + W_e2) / sum_weights
-        R_sel_1  = (
-            (sel_e1p1 - sel_e1m1) / (2.0 * self.delta_gamma) / sum_weights
-        )
-        R_sel_2  = (
-            (sel_e2p2 - sel_e2m2) / (2.0 * self.delta_gamma) / sum_weights
-        )
-        R_sel    = 0.5 * (R_sel_1 + R_sel_2)
-        R_total  = R_shape + R_weight + R_sel
+        # Convention A: every mean is a plain sample mean ⟨wsel · X⟩ over
+        # the baseline (shape, detect, μ) or ±γ variant (sel) sample.
+        # No ⟨wsel⟩ denominator anywhere — R_total already contains wsel
+        # via the pre-multiplication in add_data.
+        R_shape = 0.5 * (shape_means[0] + shape_means[1])
+        R_detect = 0.5 * (detect_means[0] + detect_means[1])
+        R_sel_1 = (sel_means[0] - sel_means[1]) / (2.0 * self.delta_gamma)
+        R_sel_2 = (sel_means[2] - sel_means[3]) / (2.0 * self.delta_gamma)
+        R_sel = 0.5 * (R_sel_1 + R_sel_2)
+        R_total = R_shape + R_detect + R_sel
 
         Neff = None if sum_weights is None else sum_weights ** 2 / sum_sq_weights
 
