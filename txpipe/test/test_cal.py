@@ -176,9 +176,19 @@ def core_anacal(comm):
     R_shape_true = 0.4 # known test value
     R_weight_true = 0.3
 
+    # Convention A: TXIngestAnacal exposes the pre-multiplied observable
+    # "e1"/"e2" (= wsel · e_raw), plus separate "e1_raw"/"e2_raw" and "wsel"
+    # columns.  With wsel=1 uniformly (as in this test) the pre-multiplied
+    # and raw shapes coincide, and Σweight_dg·e / Σweight equals the plain
+    # ⟨weight_dg · e_raw⟩ that the new R_detect accumulator computes.
+    e1 = np.random.normal(0, 0.1, size=N)
+    e2 = np.random.normal(0, 0.1, size=N)
     base_data = {
-        "e1": np.random.normal(0, 0.1, size=N),
-        "e2": np.random.normal(0, 0.1, size=N),
+        "e1": e1,
+        "e2": e2,
+        "e1_raw": e1,
+        "e2_raw": e2,
+        "wsel": np.ones(N),
         "weight": np.ones(N),
         "weight_dg1": np.zeros(N),
         "weight_dg2": np.zeros(N),
