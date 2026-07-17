@@ -385,7 +385,7 @@ class TXDeltaSigma(PipelineStage):
         nbin_source = Nz.shape[1]
 
         for i in range(nbin_source):
-            name = f"source_{i}" if i < nbin_source - 1 else "all"
+            name = "source_all" if i == nbin_source - 1 else f"source_{i}"
             s.add_tracer("NZ", name, z, Nz[:, i])
 
         # Create tracers for the lens sample
@@ -394,8 +394,7 @@ class TXDeltaSigma(PipelineStage):
         Nz = lens_photoz_stack["n"]
         nbin_lens = Nz.shape[1]
         for i in range(nbin_lens):
-            name = f"lens_{i}" if i < nbin_lens - 1 else "all"
-
+            name = "lens_all" if i == nbin_lens - 1 else f"lens_{i}"
             s.add_tracer("NZ", name, z, Nz[:, i])
 
         # for each bin pair's results, add all the
