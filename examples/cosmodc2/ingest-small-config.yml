@@ -51,11 +51,16 @@ TXExternalLensNoiseMaps:
     chunk_rows:  100000
     pixelization: healpix
 
-TXAuxiliarySourceMaps:
+TXPSFMaps:
     chunk_rows:  100000
     sparse:  True
 
-TXAuxiliaryLensMaps:
+
+TXFlagMaps: {}
+TXDepthMaps:
+    chunk_rows:  100000
+    sparse:  True
+TXBrightObjectMaps:
     chunk_rows:  100000
     sparse:  True
     bright_obj_threshold:  22.0

@@ -127,7 +127,8 @@ stages:
   # MAPPING
   
   # Make PSF and similar maps for the sources
-  - name: TXAuxiliarySourceMaps
+  - name: TXPSFMaps
+  - name: TXFlagMaps
 
   # Make maps of the lens counts
   - name: TXLensMaps

@@ -53,10 +53,14 @@ TXExternalLensMaps:
     pixelization: healpix
 
 
-TXAuxiliarySourceMaps:
+TXPSFMaps:
     sparse: true
 
-TXAuxiliaryLensMaps:
+
+TXFlagMaps: {}
+TXDepthMaps:
+    sparse: true
+TXBrightObjectMaps:
     sparse: true
     bright_obj_threshold: 22.0
 

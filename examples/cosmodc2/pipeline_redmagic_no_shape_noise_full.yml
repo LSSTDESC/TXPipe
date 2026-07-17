@@ -33,11 +33,16 @@ stages:
       threads_per_process: 1
       nodes: 2
     - name: TXExternalLensMaps
-    - name: TXAuxiliarySourceMaps
+    - name: TXPSFMaps
+    - name: TXFlagMaps
       nprocess: 16
       threads_per_process: 1
       nodes: 2
-    - name: TXAuxiliaryLensMaps
+    - name: TXDepthMaps
+      nprocess: 16
+      threads_per_process: 1
+      nodes: 2
+    - name: TXBrightObjectMaps
       nprocess: 16
       threads_per_process: 1
       nodes: 2

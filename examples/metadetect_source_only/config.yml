@@ -149,9 +149,10 @@ TXSourceMaps:
 
 TXMainMaps: {}
 
-TXAuxiliarySourceMaps:
-    flag_exponent_max: 8
+TXPSFMaps:
 
+TXFlagMaps:
+    flag_exponent_max: 8
 TXRealGaussianCovariance:
     min_sep: 2.5
     max_sep: 60.

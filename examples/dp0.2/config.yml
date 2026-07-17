@@ -75,10 +75,12 @@ TXPhotozLensStack: {}
 TXSourceMaps: {}
 TXLensMaps: {}
 
-TXAuxiliarySourceMaps: {}
+TXPSFMaps: {}
 
-TXAuxiliaryLensMaps: {}
 
+TXFlagMaps: {}
+TXDepthMaps: {}
+TXBrightObjectMaps: {}
 TXSimpleMask: {}
 
 TXTracerMetadata: {}

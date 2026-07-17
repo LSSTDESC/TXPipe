@@ -27,8 +27,10 @@ class TXMapPlots(PipelineStage):
         ("lens_maps", MapsFile),
         ("density_maps", MapsFile),
         ("mask", MapsFile),
-        ("aux_source_maps", MapsFile),
-        ("aux_lens_maps", MapsFile),
+        ("psf_maps", MapsFile),
+        ("flag_maps", MapsFile),
+        ("depth_map", MapsFile),
+        ("bright_object_map", MapsFile),
     ]
 
     outputs = [
@@ -83,57 +85,62 @@ class TXMapPlots(PipelineStage):
         """
         import matplotlib.pyplot as plt
 
-        if self.get_input("aux_source_maps") == "none":
-            # Make empty plots if no data available, so that the
-            # pipeline thinks it is complete.
-            for map_type in ["flag_map", "psf_map"]:
-                with self.open_output(map_type, wrapper=True) as f:
-                    plt.title(f"No map generated for {map_type}")
-            return
+        has_psf_maps = self.get_input("psf_maps") != "none"
+        has_flag_maps = self.get_input("flag_maps") != "none"
 
-        m = self.open_input("aux_source_maps", wrapper=True)
+        if has_flag_maps:
+            flag_maps = self.open_input("flag_maps", wrapper=True)
+            flag_max = flag_maps.file["maps"].attrs["flag_exponent_max"]
 
-        # Get these two config options from the maps where
-        # they were originally saved
-        nbin_source = m.file["maps"].attrs["nbin_source"]
-        flag_max = m.file["maps"].attrs["flag_exponent_max"]
+            # Flag count plots - flags are assumed to be bitsets, so
+            # we make maps of 1, 2, 4, 8, 16, ...
+            fig = self.open_output("flag_map", wrapper=True, figsize=(5 * flag_max, 5))
+            for i in range(flag_max):
+                plt.subplot(1, flag_max, i + 1)
+                f = 2**i
+                flag_maps.plot(
+                    f"flags/flag_{f}",
+                    view=self.config["projection"],
+                    nside=self.config["nside"],
+                    reduction="sum",
+                    rot180=self.config["rot180"],
+                )
+            fig.close()
+        else:
+            with self.open_output("flag_map", wrapper=True) as f:
+                plt.title("No map generated for flag_map")
 
-        # Flag count plots - flags are assumed to be bitsets, so
-        # we make maps of 1, 2, 4, 8, 16, ...
-        fig = self.open_output("flag_map", wrapper=True, figsize=(5 * flag_max, 5))
-        for i in range(flag_max):
-            plt.subplot(1, flag_max, i + 1)
-            f = 2**i
-            m.plot(
-                f"flags/flag_{f}",
-                view=self.config["projection"],
-                nside=self.config["nside"],
-                reduction="sum",
-                rot180=self.config["rot180"],
-            )
-        fig.close()
+        if has_psf_maps:
+            psf_maps = self.open_input("psf_maps", wrapper=True)
+            # Get this config option from the maps where
+            # it was originally saved
+            nbin_source = psf_maps.file["maps"].attrs["nbin_source"]
 
-        # PSF plots - 2 x n, for g1 and g2
-        fig = self.open_output("psf_map", wrapper=True, figsize=(5 * nbin_source, 10))
-        _, axes = plt.subplots(2, nbin_source, squeeze=False, num=fig.file.number)
-        for i in range(nbin_source):
-            plt.sca(axes[0, i])
-            m.plot(
-                f"psf/g1_{i}",
-                view=self.config["projection"],
-                nside=self.config["nside"],
-                reduction="mean",
-                rot180=self.config["rot180"],
-            )
-            plt.sca(axes[1, i])
-            m.plot(
-                f"psf/g2_{i}",
-                view=self.config["projection"],
-                nside=self.config["nside"],
-                reduction="mean",
-                rot180=self.config["rot180"],
-            )
-        fig.close()
+            # PSF plots - 2 x n, for g1 and g2
+            fig = self.open_output("psf_map", wrapper=True, figsize=(5 * nbin_source, 10))
+            _, axes = plt.subplots(2, nbin_source, squeeze=False, num=fig.file.number)
+            for i in range(nbin_source):
+                plt.sca(axes[0, i])
+                psf_maps.plot(
+                    f"psf/g1_{i}",
+                    view=self.config["projection"],
+                    nside=self.config["nside"],
+                    reduction="mean",
+                    rot180=self.config["rot180"],
+                )
+                plt.sca(axes[1, i])
+                psf_maps.plot(
+                    f"psf/g2_{i}",
+                    view=self.config["projection"],
+                    nside=self.config["nside"],
+                    reduction="mean",
+                    rot180=self.config["rot180"],
+                )
+
+            fig.close()
+        else:
+            with self.open_output("psf_map", wrapper=True) as f:
+                plt.title("No map generated for psf_map")
 
     def aux_lens_plots(self):
         """
@@ -143,33 +150,36 @@ class TXMapPlots(PipelineStage):
         """
         import matplotlib.pyplot as plt
 
-        if self.get_input("aux_lens_maps") == "none":
-            for map_type in ["depth_map", "bright_object_map"]:
-                with self.open_output(map_type, wrapper=True) as f:
-                    plt.title(f"No map generated for {map_type}")
-            return
+        has_depth_map = self.get_input("depth_map") != "none"
+        has_bright_object_map = self.get_input("bright_object_map") != "none"
 
-        m = self.open_input("aux_lens_maps", wrapper=True)
+        if has_depth_map:
+            depth_maps = self.open_input("depth_map", wrapper=True)
+            with self.open_output("depth_map", wrapper=True, figsize=(5, 5)) as fig:
+                depth_maps.plot(
+                    "depth/depth",
+                    view=self.config["projection"],
+                    nside=self.config["nside"],
+                    reduction="mean",
+                    rot180=self.config["rot180"],
+                )
+        else:
+            with self.open_output("depth_map", wrapper=True) as f:
+                plt.title("No map generated for depth_map")
 
-        # Depth plots
-        with self.open_output("depth_map", wrapper=True, figsize=(5, 5)) as fig:
-            m.plot(
-                "depth/depth",
-                view=self.config["projection"],
-                nside=self.config["nside"],
-                reduction="mean",
-                rot180=self.config["rot180"],
-            )
-
-        # Bright objects
-        with self.open_output("bright_object_map", wrapper=True, figsize=(5, 5)) as fig:
-            m.plot(
-                "bright_objects/count",
-                view=self.config["projection"],
-                nside=self.config["nside"],
-                reduction="mean",
-                rot180=self.config["rot180"],
-            )
+        if has_bright_object_map:
+            bright_object_maps = self.open_input("bright_object_map", wrapper=True)
+            with self.open_output("bright_object_map", wrapper=True, figsize=(5, 5)) as fig:
+                bright_object_maps.plot(
+                    "bright_objects/count",
+                    view=self.config["projection"],
+                    nside=self.config["nside"],
+                    reduction="mean",
+                    rot180=self.config["rot180"],
+                )
+        else:
+            with self.open_output("bright_object_map", wrapper=True) as f:
+                plt.title("No map generated for bright_object_map")
 
     def source_plots(self):
         """

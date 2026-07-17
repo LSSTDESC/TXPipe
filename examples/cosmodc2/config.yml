@@ -58,10 +58,16 @@ TXExternalLensNoiseMaps:
     nside: 2048
     pixelization: healpix
 
-TXAuxiliarySourceMaps:
+TXPSFMaps:
     sparse: true
 
-TXAuxiliaryLensMaps:
+
+TXFlagMaps: {}
+TXDepthMaps:
+    sparse: true
+    nside: 2048
+    pixelization: healpix
+TXBrightObjectMaps:
     sparse: true
     nside: 2048
     pixelization: healpix
