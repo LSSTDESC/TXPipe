@@ -71,7 +71,10 @@ class TXTwoPointFourier(PipelineStage):
         ("lens_noise_maps", ClusteringNoiseMaps),
     ]
     output_main = "twopoint_data_fourier"
-    outputs = [(output_main, SACCFile)]
+    outputs = [
+        (output_main, SACCFile),
+        ("twopoint_data_fourier_no_deproj", SACCFile),
+    ]
 
     config_options = {
         "mask_threshold": StageParameter(float, 0.0, msg="Threshold for masking pixels"),
@@ -81,6 +84,10 @@ class TXTwoPointFourier(PipelineStage):
         "low_mem": StageParameter(bool, False, msg="Whether to use low memory mode"),
         "deproject_syst_clustering": StageParameter(
             bool, False, msg="Whether to deproject systematic modes from clustering"
+        ),
+        "also_compute_no_deproj": StageParameter(
+            bool, False,
+            msg="When deproject_syst_clustering=True, also compute and save power spectra without deprojection to twopoint_data_fourier_no_deproj"
         ),
         "systmaps_clustering_dir": StageParameter(str, "", msg="Directory containing systematic maps for clustering"),
         "systmaps_healsparse_reduction": StageParameter(
@@ -172,6 +179,17 @@ class TXTwoPointFourier(PipelineStage):
         for i, j, k in calcs:
             self.compute_power_spectra(pixel_scheme, i, j, k, maps, workspace_cache, ell_bins, theory_sacc, f_sky)
 
+        # Save shear-shear results locally before MPI gather so they can be
+        # seeded into the no-deproj second pass (shear-shear is mask-only and
+        # does not involve density fields, so it is identical in both passes).
+        shear_shear_results_local = [
+            r for r in self.results if r.corr_type not in (
+                sacc.standard_types.galaxy_shearDensity_cl_e,
+                sacc.standard_types.galaxy_shearDensity_cl_b,
+                sacc.standard_types.galaxy_density_cl,
+            )
+        ]
+
         if self.rank == 0:
             print(f"Collecting results together")
         # Pull all the results together to the master process.
@@ -181,6 +199,40 @@ class TXTwoPointFourier(PipelineStage):
         if self.rank == 0:
             self.save_power_spectra(tracer_sacc, nbin_source, nbin_lens)
             print("Saved power spectra")
+
+        # ------------------------------------------------------------------
+        # Optional second pass: power spectra WITHOUT systematics deprojection
+        # Only shear-pos and pos-pos need to be recomputed; shear-shear results
+        # are identical (no density fields) and are carried over from the first pass.
+        # ------------------------------------------------------------------
+        if (self.config["deproject_syst_clustering"]
+                and self.config["also_compute_no_deproj"]
+                and maps["df_no_deproj"] is not None):
+
+            if self.rank == 0:
+                print("Computing no-deprojection power spectra (second pass) ...")
+
+            # Seed second pass with the per-rank shear-shear results from pass 1
+            self.results = list(shear_shear_results_local)
+
+            # Swap density fields to the no-deproj variants
+            maps["df"] = maps["df_no_deproj"]
+
+            # Only recompute density-involving calculations
+            calcs_no_ss = [c for c in calcs if c[2] != SHEAR_SHEAR]
+            for i, j, k in calcs_no_ss:
+                self.compute_power_spectra(pixel_scheme, i, j, k, maps, workspace_cache, ell_bins, theory_sacc, f_sky)
+
+            if self.rank == 0:
+                print("Collecting no-deprojection results together")
+            self.collect_results()
+
+            if self.rank == 0:
+                self.save_power_spectra(
+                    tracer_sacc, nbin_source, nbin_lens,
+                    output_name="twopoint_data_fourier_no_deproj",
+                )
+                print("Saved no-deprojection power spectra")
 
     def load_maps(self):
         import pymaster as nmt
@@ -274,10 +326,18 @@ class TXTwoPointFourier(PipelineStage):
                 density_fields = [
                     (nmt.NmtField(clustering_weight, [d], templates=s_maps, n_iter=0, lmax=lmax1)) for d in d_maps
                 ]
+                if self.config["also_compute_no_deproj"]:
+                    density_fields_no_deproj = [
+                        (nmt.NmtField(clustering_weight, [d], n_iter=0, lmax=lmax1)) for d in d_maps
+                    ]
+                else:
+                    density_fields_no_deproj = None
             else:
                 density_fields = [(nmt.NmtField(clustering_weight, [d], n_iter=0, lmax=lmax1)) for d in d_maps]
+                density_fields_no_deproj = None
         else:
             density_fields = []
+            density_fields_no_deproj = None
 
         if self.config["do_shear_pos"] or self.config["do_shear_shear"]:
             lensing_fields = [
@@ -295,6 +355,7 @@ class TXTwoPointFourier(PipelineStage):
             "d": d_maps,
             "lf": lensing_fields,
             "df": density_fields,
+            "df_no_deproj": density_fields_no_deproj,
             "nbin_source": nbin_source,
             "nbin_lens": nbin_lens,
         }
@@ -317,7 +378,12 @@ class TXTwoPointFourier(PipelineStage):
 
                     if suffix == ".fits":
                         print("Reading clustering systematics map (HEALPix):", systmap_file)
-                        syst_map = hp.read_map(systmap_file, verbose=False)
+                        syst_map = hp.read_map(systmap_file, verbose=False).astype(float)
+                        nside_fits = hp.get_nside(syst_map)
+                        nside_target = hp.get_nside(mask_gc)
+                        if nside_fits != nside_target:
+                            print(f"  Resampling FITS nside {nside_fits} → {nside_target}")
+                            syst_map = hp.ud_grade(syst_map, nside_target).astype(float)
                     elif suffix == ".hs":
                         import healsparse
                         print("Reading clustering systematics map (HealSparse):", systmap_file)
@@ -353,15 +419,34 @@ class TXTwoPointFourier(PipelineStage):
                     # normalize map for Namaster
                     # calculate the mean, accounting for case where mask isn't binary
                     unmasked = mask_gc > 0.0
+
+                    # Zero-fill all NaN/Inf globally — NaN × 0 = NaN in IEEE arithmetic, so NaN pixels
+                    # outside the mask propagate through NaMaster's SHT and corrupt the deprojection matrix
+                    non_finite = ~np.isfinite(syst_map)
+                    if (unmasked & non_finite).any():
+                        warnings.warn(
+                            f"Systematics map {systmap_file} has NaN/Inf pixels within the mask; "
+                            f"setting to zero."
+                        )
+                    syst_map[non_finite] = 0.0
+
                     mean = (syst_map[unmasked] * mask_gc[unmasked]).sum() / mask_gc[unmasked].sum()
                     print("Syst map: mean value = ", mean)
                     # subtract the mean rather than normalise by it, as some systematics will have ~0 mean
-                    # (other pixels can stay as hp.UNSEEN since they are masked anyway)
                     syst_map[unmasked] -= mean
+
+                    # Skip constant maps — they produce a zero-vector template that makes the
+                    # deprojection matrix singular
+                    if syst_map[unmasked].std() == 0.0:
+                        warnings.warn(
+                            f"Systematics map {systmap_file} is constant within the mask; skipping."
+                        )
+                        continue
+
                     s_maps.append(syst_map)
                     n_systmaps += 1
-            except:
-                print("Warning: Problem with systematics map file", systmap)
+            except Exception as exc:
+                print(f"Warning: Problem with systematics map file {systmap}: {exc}")
                 print("Ignoring", systmap)
 
         print("Number of systematics maps read: ", n_systmaps)
@@ -764,7 +849,7 @@ class TXTwoPointFourier(PipelineStage):
 
         return sacc_data
 
-    def save_power_spectra(self, tracer_sacc, nbin_source, nbin_lens):
+    def save_power_spectra(self, tracer_sacc, nbin_source, nbin_lens, output_name=None):
         import sacc
         from sacc.windows import BandpowerWindow
 
@@ -889,9 +974,8 @@ class TXTwoPointFourier(PipelineStage):
         S.metadata["binning/ell_spacing"] = self.config["ell_spacing"]
         S.metadata["binning/n_ell"] = self.config["n_ell"]
 
-        # Get output name (will be different if subclass used)
-        output = self.output_main
-        # And we're all done!
+        # Get output name (overridable for no-deproj second pass or subclass)
+        output = output_name if output_name is not None else self.output_main
         output_filename = self.get_output(output)
         S.save_fits(output_filename, overwrite=True)
 

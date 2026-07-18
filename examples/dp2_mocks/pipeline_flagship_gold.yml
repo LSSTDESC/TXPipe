@@ -1,0 +1,120 @@
+# =============================================================================
+# TXPipe pipeline: Flagship Gold (24-pixel) run with i-band SNR > 5 cut
+#
+# Data: /global/cfs/cdirs/lsst/groups/PZ/Flagship/dp2_mock_run_flagship_gold_test/
+#       24 HEALPix-like pixels, ~480M total galaxies
+#       Same RAIL pipeline output as the old 8-tile run.
+#
+# Differences from pipeline_lens.yml:
+#   - Points to config_flagship_gold.yml
+#   - Output directory: data/outputs/flagship_gold_snri5
+#   - TXSystematicsTwoPointFourier added after TXTracerMetadata
+# =============================================================================
+
+stages:
+  # --------------------------------------------------------------------------
+  # Ingestion
+  # --------------------------------------------------------------------------
+  - name: TXIngestParquetCatalog
+
+  # --------------------------------------------------------------------------
+  # Lens selection (uses true redshifts from the simulation)
+  # --------------------------------------------------------------------------
+  - name: TXTruthLensSelector
+
+  - name: TXTruthLensCatalogSplitter
+
+  - name: TXLSSWeightsUnit
+
+  # --------------------------------------------------------------------------
+  # Maps
+  # --------------------------------------------------------------------------
+  - name: TXLensMaps
+  # - name: TXSimpleMask
+  - name: TXDensityMaps
+
+  # --------------------------------------------------------------------------
+  # Metadata & null tests
+  # --------------------------------------------------------------------------
+  - name: TXTracerMetadata
+  - name: TXLSSDensityNullTests
+
+  # --------------------------------------------------------------------------
+  # Systematics cross-correlations (with and without deprojection)
+  # --------------------------------------------------------------------------
+  - name: TXSystematicsTwoPointFourier
+
+  # --------------------------------------------------------------------------
+  # Two-point statistics
+  # --------------------------------------------------------------------------
+  - name: TXTwoPointFourier
+    threads_per_process: 2
+
+  - name: TXFourierNamasterCovariance
+
+  # - name: TXIngestPlanckLensingMaps
+  #   threads_per_process: 4
+
+  # - name: TXCMBLensingCrossMonteCarloCorrection
+
+  # - name: TXTwoPointFourierCMBLensingCrossDensity
+  #   threads_per_process: 4
+
+# =============================================================================
+# Python modules that define the pipeline stages
+# =============================================================================
+modules: >
+    txpipe
+    txpipe.extensions
+
+# =============================================================================
+# Output directory
+# =============================================================================
+output_dir: data/outputs/flagship_gold_snri5
+
+# =============================================================================
+# Launcher
+# =============================================================================
+launcher:
+  name: mini
+  interval: 1.0
+
+# =============================================================================
+# Execution site
+# =============================================================================
+site:
+  name: local
+  max_threads: 4
+
+# =============================================================================
+# Configuration file
+# =============================================================================
+config: examples/dp2_mocks/config_flagship_gold.yml
+
+# =============================================================================
+# Pipeline-level inputs
+# =============================================================================
+inputs:
+  fiducial_cosmology: data/fiducial_cosmology.yml
+
+  mask: /pscratch/sd/a/anicola/DP2/data/masks/flagship_gold_snri5_mask_m5ext_final_nside512.hdf5
+  density_masks: /pscratch/sd/a/anicola/DP2/code/TXPipe/data/outputs/dp2_23p5_nmin500_deproj_highz_combined_mask/density_masks.hdf5
+
+  lens_photoz_stack:   data/outputs/flagship_gold_snri5/lens_photoz_stack.hdf5
+  shear_photoz_stack:  data/inputs/shear_photoz_stack.hdf5
+
+  shear_tomography_catalog: none
+  shear_catalog: none
+
+  source_maps:         data/inputs/source_maps.hdf5
+  source_noise_maps:   data/inputs/source_noise_maps.hdf5
+  lens_noise_maps:     data/inputs/source_noise_maps.hdf5
+
+  cmb_lensing_beam: data/cmb/unit_transfer_function.txt
+
+# =============================================================================
+# Ceci bookkeeping
+# =============================================================================
+resume: True
+log_dir: data/logs
+pipeline_log: data/pipeline_log.txt

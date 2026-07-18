@@ -112,6 +112,7 @@ TXTruthLensSelector:
   selection_type: maglim
   maglim_band: r
   maglim_limit: 23.5
+  snr_i_cut: 5.0   # require i-band SNR > 5 (cuts objects with mag_i_err > ~0.217)
 
 
 # -----------------------------------------------------------------------------
@@ -172,6 +173,22 @@ TXLSSDensityNullTests:
 
 
 # -----------------------------------------------------------------------------
+# TXSystematicsTwoPointFourier
+# Cross-correlates galaxy density maps with all systematics maps,
+# both with and without mode deprojection, and computes Gaussian covariance.
+# -----------------------------------------------------------------------------
+TXSystematicsTwoPointFourier:
+  systmaps_clustering_dir: /global/cfs/cdirs/lsst/groups/PZ/users/qhang/dp2_maps_may/
+  systmaps_healsparse_reduction: mean
+  mask_threshold: 0.0
+  ell_min: 10
+  ell_max: 1500
+  n_ell: 20
+  ell_spacing: log
+  cache_dir: data/cache/systematics_twopoint_fourier
+
+
+# -----------------------------------------------------------------------------
 # TXLensNoiseMaps
 # Generates shot-noise realisations for the lens bins.
 # Used internally by TXTwoPointFourier for noise bias subtraction.
@@ -211,6 +228,7 @@ TXTwoPointFourier:
 
   # Optional: systematics deprojection for number counts
   deproject_syst_clustering: True
+  also_compute_no_deproj: True
   systmaps_clustering_dir: /global/cfs/cdirs/lsst/groups/PZ/users/qhang/dp2_maps_may/
 
   # Optional NaMaster workspace cache (speeds up repeated runs)

@@ -51,6 +51,7 @@ class TXBaseLensSelector(PipelineStage):
         "selection_type": StageParameter(str, "boss", msg="Type of lens selection (e.g., boss)."),
         "maglim_band": StageParameter(str, "i", msg="Band for magnitude limit."),
         "maglim_limit": StageParameter(float, 24.1, msg="Magnitude limit value."),
+        "snr_i_cut": StageParameter(float, 0.0, msg="Minimum i-band SNR (2.5 / (ln(10) * mag_i_err)). Set to 0 to disable."),
         "extra_cols": StageParameter(list, [""], msg="Extra columns to include in output."),
         "apply_mask": StageParameter(bool, False, msg="Whether to apply a mask to the selection."),
     }
@@ -293,8 +294,15 @@ class TXBaseLensSelector(PipelineStage):
     def select_lens_maglim(self, phot_data):
         band = self.config["maglim_band"]
         limit = self.config["maglim_limit"]
-        mag_i = phot_data[f"mag_{band}"]
-        s = (mag_i < limit).astype(np.int8)
+        s = (phot_data[f"mag_{band}"] < limit).astype(np.int8)
+
+        snr_i_cut = self.config["snr_i_cut"]
+        if snr_i_cut > 0.0:
+            mag_i_err = phot_data["mag_i_err"]
+            safe_err = np.where(mag_i_err > 0, mag_i_err, np.inf)
+            snr_i = 2.5 / (np.log(10) * safe_err)
+            s &= (snr_i > snr_i_cut).astype(np.int8)
+
         return s
 
     def select_lens_DESmaglim(self, phot_data):
@@ -377,6 +385,8 @@ class TXTruthLensSelector(TXBaseLensSelector):
         print(f"We are cheating and using the true redshift.")
         chunk_rows = self.config["chunk_rows"]
         phot_cols = ["mag_i", "mag_r", "mag_g", "redshift_true"]
+        if self.config["snr_i_cut"] > 0.0:
+            phot_cols.append("mag_i_err")
         extra_cols = [c for c in self.config["extra_cols"] if c]
         phot_cols += extra_cols
         # Input data.  These are iterators - they lazily load chunks

@@ -41,6 +41,7 @@ from .lssweights import TXLSSWeights
 from .simulation import TXLogNormalGlass
 from .magnification import TXSSIMagnification
 from .covariance_nmt import TXFourierNamasterCovariance, TXRealNamasterCovariance
+from .systematics_twopoint_fourier import TXSystematicsTwoPointFourier
 
 # We no longer import all the extensions automatically here to avoid
 # some dependency problems when running under the LSST environment on NERSC.

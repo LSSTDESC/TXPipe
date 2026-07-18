@@ -48,6 +48,11 @@ stages:
   - name: TXLSSDensityNullTests    # density field null / systematics tests
 
   # --------------------------------------------------------------------------
+  # Systematics cross-correlations (with and without deprojection)
+  # --------------------------------------------------------------------------
+  - name: TXSystematicsTwoPointFourier
+
+  # --------------------------------------------------------------------------
   # Noise maps
   # --------------------------------------------------------------------------
   # - name: TXLensNoiseMaps          # shot-noise realisations for C_ell errors
@@ -78,7 +83,7 @@ modules: >
 # =============================================================================
 # Output directory  (created automatically if absent)
 # =============================================================================
-output_dir: data/outputs/dp2_23p5_deproj_highz_cardinal
+output_dir: data/outputs/cardinal_gold_snri5
 
 # =============================================================================
 # Launcher  –  "mini" is the simplest single-machine scheduler
@@ -117,7 +122,7 @@ inputs:
   density_masks: /pscratch/sd/a/anicola/DP2/code/TXPipe/data/outputs/dp2_23p5_deproj_highz_cardinal/density_masks.hdf5
 
   # Pre-computed photoz n(z) stacks.
-  lens_photoz_stack:   data/outputs/dp2_23p5_deproj_highz_cardinal/lens_photoz_stack.hdf5
+  lens_photoz_stack:   data/outputs/cardinal_gold_snri5/lens_photoz_stack.hdf5
   shear_photoz_stack:  data/inputs/shear_photoz_stack.hdf5
 
   shear_tomography_catalog: none
