@@ -33,6 +33,7 @@ from .rail import PZRailSummarize, PZRealizationsPlot, TXParqetToHDF
 from .theory import TXTwoPointTheoryReal, TXTwoPointTheoryFourier
 from .jackknife import TXJackknifeCenters
 from .twopoint_null_tests import TXGammaTFieldCenters
+from .survey_property_null_tests import TXMeanShearSurveyProperties
 from .twopoint_plots import TXTwoPointPlots, TXTwoPointPlotsFourier, TXTwoPointPlotsTheory
 from .calibrate import TXShearCalibration
 from .ingest import *
