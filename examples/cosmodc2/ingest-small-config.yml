@@ -40,7 +40,7 @@ TXSourceMaps:
     pixelization: healpix
     true_shear: False
 
-TXExternalLensMaps:
+TXLensMaps:
     nside: 2048
     sparse: True
     chunk_rows:  100000

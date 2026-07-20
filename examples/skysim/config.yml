@@ -47,11 +47,6 @@ TXSourceMaps:
     pixelization: healpix
     true_shear: false
 
-TXExternalLensMaps:
-    nside: 512
-    sparse: true
-    pixelization: healpix
-
 
 TXPSFMaps:
     sparse: true

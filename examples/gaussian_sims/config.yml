@@ -31,11 +31,6 @@ TXSourceMaps:
     pixelization: healpix
     true_shear: False
 
-TXExternalLensMaps:
-    nside: 4096
-    sparse: True
-    chunk_rows:  100000
-    pixelization: healpix
 
 TXExternalLensNoiseMaps:
     nside: 4096

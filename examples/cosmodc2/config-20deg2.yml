@@ -52,14 +52,11 @@ TXSourceMaps:
     pixelization: healpix
     true_shear: false
 
-TXExternalLensMaps:
+TXLensMaps:
     sparse: true
     chunk_rows: 100000
     pixelization: healpix
 
-TXExternalLensNoiseMaps:
-    chunk_rows: 100000
-    pixelization: healpix
 
 TXPSFMaps:
     chunk_rows: 100000

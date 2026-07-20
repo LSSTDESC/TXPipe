@@ -273,15 +273,6 @@ TXMapPlots:
 TXLSSWeightsUnit:
     nside: *nside_high
 
-# For redmagic mapping
-TXExternalLensMaps:
-    chunk_rows: 100000
-    sparse: true
-    pixelization: healpix
-    nside: 512
-
-
-
 TXPSFMaps:
     nside: *nside_high
 

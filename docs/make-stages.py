@@ -87,7 +87,6 @@ Maps:
         - TXBaseMaps
         - TXSourceMaps
         - TXLensMaps
-        - TXExternalLensMaps
         - TXDensityMaps
         - TXSourceNoiseMaps
         - TXLensNoiseMaps

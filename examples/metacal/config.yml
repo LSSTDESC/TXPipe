@@ -242,10 +242,7 @@ TXSourceMaps:
     sparse: true  # Generate sparse maps - faster if using small areas
 
 TXLensMaps:
-    sparse: true  # Generate sparse maps - faster if using small areas
 
-# For redmagic mapping
-TXExternalLensMaps:
     chunk_rows: 100000
     sparse: true
     pixelization: healpix

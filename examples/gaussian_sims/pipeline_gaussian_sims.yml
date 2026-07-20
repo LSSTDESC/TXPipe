@@ -38,7 +38,7 @@ stages:
       nprocess: 4
       threads_per_process: 10
       nodes: 4
-    - name: TXExternalLensMaps
+    - name: TXLensMaps
     #- name: TXPSFMaps
     #- name: TXFlagMaps
     #  nprocess: 4
