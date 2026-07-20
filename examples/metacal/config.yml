@@ -253,7 +253,7 @@ TXExternalLensMaps:
 
 
 
-TXPSFMaps:
+TXPSFMaps: {}
 
 TXFlagMaps:
     flag_exponent_max: 8

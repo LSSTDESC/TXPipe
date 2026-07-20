@@ -285,7 +285,7 @@ TXDensityMaps:
     nside: 1024
 
 
-TXPSFMaps:
+TXPSFMaps: {}
 
 TXFlagMaps:
     flag_exponent_max: 8
