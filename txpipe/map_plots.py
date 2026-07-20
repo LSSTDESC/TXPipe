@@ -34,13 +34,13 @@ class TXMapPlots(PipelineStage):
     ]
 
     outputs = [
-        ("depth_map", PNGFile),
-        ("lens_map", PNGFile),
-        ("shear_map", PNGFile),
-        ("flag_map", PNGFile),
-        ("psf_map", PNGFile),
-        ("mask_map", PNGFile),
-        ("bright_object_map", PNGFile),
+        ("depth_map_plot", PNGFile),
+        ("lens_map_plot", PNGFile),
+        ("shear_map_plot", PNGFile),
+        ("flag_map_plot", PNGFile),
+        ("psf_map_plot", PNGFile),
+        ("mask_map_plot", PNGFile),
+        ("bright_object_map_plot", PNGFile),
     ]
     config_options = {
         "projection": StageParameter(str, "cart", msg="Projection type for map plots (e.g., cart, moll)"),
@@ -94,7 +94,7 @@ class TXMapPlots(PipelineStage):
 
             # Flag count plots - flags are assumed to be bitsets, so
             # we make maps of 1, 2, 4, 8, 16, ...
-            fig = self.open_output("flag_map", wrapper=True, figsize=(5 * flag_max, 5))
+            fig = self.open_output("flag_map_plot", wrapper=True, figsize=(5 * flag_max, 5))
             for i in range(flag_max):
                 plt.subplot(1, flag_max, i + 1)
                 f = 2**i
@@ -107,8 +107,8 @@ class TXMapPlots(PipelineStage):
                 )
             fig.close()
         else:
-            with self.open_output("flag_map", wrapper=True) as f:
-                plt.title("No map generated for flag_map")
+            with self.open_output("flag_maps_plot", wrapper=True) as f:
+                plt.title("No map generated for flag_maps")
 
         if has_psf_maps:
             psf_maps = self.open_input("psf_maps", wrapper=True)
@@ -117,7 +117,7 @@ class TXMapPlots(PipelineStage):
             nbin_source = psf_maps.file["maps"].attrs["nbin_source"]
 
             # PSF plots - 2 x n, for g1 and g2
-            fig = self.open_output("psf_map", wrapper=True, figsize=(5 * nbin_source, 10))
+            fig = self.open_output("psf_map_plot", wrapper=True, figsize=(5 * nbin_source, 10))
             _, axes = plt.subplots(2, nbin_source, squeeze=False, num=fig.file.number)
             for i in range(nbin_source):
                 plt.sca(axes[0, i])
@@ -139,7 +139,7 @@ class TXMapPlots(PipelineStage):
 
             fig.close()
         else:
-            with self.open_output("psf_map", wrapper=True) as f:
+            with self.open_output("psf_map_plot", wrapper=True) as f:
                 plt.title("No map generated for psf_map")
 
     def aux_lens_plots(self):
@@ -155,7 +155,7 @@ class TXMapPlots(PipelineStage):
 
         if has_depth_map:
             depth_maps = self.open_input("depth_map", wrapper=True)
-            with self.open_output("depth_map", wrapper=True, figsize=(5, 5)) as fig:
+            with self.open_output("depth_map_plot", wrapper=True, figsize=(5, 5)) as fig:
                 depth_maps.plot(
                     "depth/depth",
                     view=self.config["projection"],
@@ -164,12 +164,12 @@ class TXMapPlots(PipelineStage):
                     rot180=self.config["rot180"],
                 )
         else:
-            with self.open_output("depth_map", wrapper=True) as f:
+            with self.open_output("depth_map_plot", wrapper=True) as f:
                 plt.title("No map generated for depth_map")
 
         if has_bright_object_map:
             bright_object_maps = self.open_input("bright_object_map", wrapper=True)
-            with self.open_output("bright_object_map", wrapper=True, figsize=(5, 5)) as fig:
+            with self.open_output("bright_object_map_plot", wrapper=True, figsize=(5, 5)) as fig:
                 bright_object_maps.plot(
                     "bright_objects/count",
                     view=self.config["projection"],
@@ -178,7 +178,7 @@ class TXMapPlots(PipelineStage):
                     rot180=self.config["rot180"],
                 )
         else:
-            with self.open_output("bright_object_map", wrapper=True) as f:
+            with self.open_output("bright_object_map_plot", wrapper=True) as f:
                 plt.title("No map generated for bright_object_map")
 
     def source_plots(self):
@@ -192,7 +192,7 @@ class TXMapPlots(PipelineStage):
 
         if self.get_input("source_maps") == "none":
             for map_type in ["shear_map"]:
-                with self.open_output(map_type, wrapper=True) as f:
+                with self.open_output(map_type + "_plot", wrapper=True) as f:
                     plt.title(f"No map generated for {map_type}")
             return
 
@@ -208,7 +208,7 @@ class TXMapPlots(PipelineStage):
 
         nbin_source = m.file["maps"].attrs["nbin_source"]
 
-        fig = self.open_output("shear_map", wrapper=True, figsize=(5 * nbin_source, 10))
+        fig = self.open_output("shear_map_plot", wrapper=True, figsize=(5 * nbin_source, 10))
 
         # Plot 2 x nbin, g1 and g2
         _, axes = plt.subplots(2, nbin_source, squeeze=False, num=fig.file.number)
@@ -252,7 +252,7 @@ class TXMapPlots(PipelineStage):
 
         if self.get_input("lens_maps") == "none":
             for map_type in ["lens_map"]:
-                with self.open_output(map_type, wrapper=True) as f:
+                with self.open_output(map_type = "_plot", wrapper=True) as f:
                     plt.title(f"No map generated for {map_type}")
             return
 
@@ -269,7 +269,7 @@ class TXMapPlots(PipelineStage):
             )
 
         # Plot both density and ngal as 2 x n
-        fig = self.open_output("lens_map", wrapper=True, figsize=(5 * nbin_lens, 5))
+        fig = self.open_output("lens_map_plot", wrapper=True, figsize=(5 * nbin_lens, 5))
         _, axes = plt.subplots(2, nbin_lens, squeeze=False, num=fig.file.number)
 
         for i in range(nbin_lens):
@@ -300,13 +300,13 @@ class TXMapPlots(PipelineStage):
 
         if self.get_input("mask") == "none":
             for map_type in ["mask_map"]:
-                with self.open_output(map_type, wrapper=True) as f:
+                with self.open_output(map_type + "_plot", wrapper=True) as f:
                     plt.title(f"No map generated for {map_type}")
             return
 
         m = self.open_input("mask", wrapper=True)
 
-        fig = self.open_output("mask_map", wrapper=True, figsize=(5, 5))
+        fig = self.open_output("mask_map_plot", wrapper=True, figsize=(5, 5))
         m.plot(
             "mask",
             view=self.config["projection"],
