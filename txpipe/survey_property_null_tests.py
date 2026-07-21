@@ -455,14 +455,29 @@ class TXMeanShearSurveyProperties(PipelineStage):
             # right of each bin and g2 to the left, matching TXDiagnosticPlots.
             dx = _marker_offset(mu[idx])
             ax.axhline(0, color="k", lw=0.8, ls="--")
-            ax.errorbar(
-                mu[idx] + dx, g1[idx], sigma1[idx],
-                fmt="s", markersize=4, color="tab:blue",
+            # Error bars are drawn in black *on top of* the markers rather than
+            # in the series colour underneath them. A bin holding a single
+            # galaxy has sigma exactly zero, and one holding two or three that
+            # happen to agree has a sigma far smaller than the marker: both look
+            # identical when the bar is hidden behind the point. Drawn this way,
+            # a true zero shows no black at all, while a tiny error shows a
+            # short black line through the marker.
+            for x_off, g_arr, s_arr in [
+                (mu[idx] + dx, g1[idx], sigma1[idx]),
+                (mu[idx] - dx, g2[idx], sigma2[idx]),
+            ]:
+                ax.errorbar(
+                    x_off, g_arr, s_arr,
+                    fmt="none", ecolor="k", elinewidth=0.8, zorder=3,
+                )
+            ax.plot(
+                mu[idx] + dx, g1[idx], "s", markersize=4, color="tab:blue",
+                linestyle="none", zorder=2,
                 label=f"g1  (m={slope1:.2e} $\\pm$ {slope1_err:.2e})",
             )
-            ax.errorbar(
-                mu[idx] - dx, g2[idx], sigma2[idx],
-                fmt="o", markersize=4, color="tab:orange",
+            ax.plot(
+                mu[idx] - dx, g2[idx], "o", markersize=4, color="tab:orange",
+                linestyle="none", zorder=2,
                 label=f"g2  (m={slope2:.2e} $\\pm$ {slope2_err:.2e})",
             )
 
