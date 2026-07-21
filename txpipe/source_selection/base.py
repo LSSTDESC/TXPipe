@@ -55,13 +55,6 @@ class TXSourceSelectorBase(PipelineStage):
             required=True,
             msg="Signal-to-noise cut threshold for object selection",
         ),
-        "mag_g_cut": StageParameter(float, required=True, msg="Magnitude cut threshold for object selection"),
-        "mag_r_cut": StageParameter(float, required=True, msg="Magnitude cut threshold for object selection"),
-        "mag_i_cut": StageParameter(float, required=True, msg="Magnitude cut threshold for object selection"),
-        "mag_z_cut": StageParameter(float, required=True, msg="Magnitude cut threshold for object selection"),
-        "g-r_cut": StageParameter(float, required=True, msg="Color cut threshold for object selection"),
-        "r-i_cut": StageParameter(float, required=True, msg="Color cut threshold for object selection"),
-        "i-z_cut": StageParameter(float, required=True, msg="Color cut threshold for object selection"),
         "chunk_rows": StageParameter(int, 10000, msg="Number of rows to process in each chunk"),
         "source_zbin_edges": StageParameter(list, required=True, msg="Redshift bin edges for source tomography"),
     }
