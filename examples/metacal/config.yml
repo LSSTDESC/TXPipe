@@ -7,7 +7,7 @@ global:
     chunk_rows: 100000
     # These mapping options are also read by a range of stages
     pixelization: healpix
-    nside: 64
+    nside: 512
     sparse: true  # Generate sparse maps - faster if using small areas
 
 TXGCRTwoCatalogInput:
