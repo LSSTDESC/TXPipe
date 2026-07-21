@@ -242,7 +242,6 @@ TXSourceMaps:
     sparse: true  # Generate sparse maps - faster if using small areas
 
 TXLensMaps:
-
     chunk_rows: 100000
     sparse: true
     pixelization: healpix
@@ -352,3 +351,6 @@ NZDirInformerLens:
     name: NZDirInformerLens
     usecols: ugrizy
     hdf5_groupname: photometry
+
+TXDensityMaps:
+    nside: 512
