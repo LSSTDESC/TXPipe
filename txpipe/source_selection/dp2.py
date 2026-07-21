@@ -1,7 +1,7 @@
 from .metadetect import TXSourceSelectorMetadetect
 from .base import select_weak_lensing_sample
 from ..shear_calibration import MetaDetectCalculator
-
+import numpy as np
 
 class TXSourceSelectorMetadetectDP2(TXSourceSelectorMetadetect):
     """
@@ -43,6 +43,23 @@ def select_weak_lensing_sample_metadetect_dp2(data, config, calling_from_select=
     n0 = sel.size
 
     # --- metadetect-specific cuts go here ---
+    mag_g_cut = config["mag_g_cut"]
+    mag_r_cut = config["mag_r_cut"]
+    mag_i_cut = config["mag_i_cut"]
+    mag_z_cut = config["mag_z_cut"]
+    gmr_cut = config["g-r_cut"]
+    rmi_cut = config["r-i_cut"]
+    imz_cut = config["i-z_cut"]
+
+    # We should also have some crazy color cuts and magnitude cuts which should come from PZ group
+    sel &= (data["mag_g"] < mag_g_cut) & \
+        (data["mag_r"] < mag_r_cut) & \
+        (data["mag_i"] < mag_i_cut) & \
+        (data["mag_z"] < mag_z_cut) & \
+        (np.abs(data["mag_g"] - data["mag_r"]) < gmr_cut) & \
+        (np.abs(data["mag_r"] - data["mag_i"]) < rmi_cut) & \
+        (np.abs(data["mag_i"] - data["mag_z"]) < imz_cut)
+
     # Follow the same pattern as select_weak_lensing_sample, but add extra cuts for metadetect catalogs.:
     mfrac_cut = config["mfrac_cut"]
     mfrac = data["object_mask_fraction"]
