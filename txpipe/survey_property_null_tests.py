@@ -5,7 +5,7 @@ from ceci.config import StageParameter
 
 from .base_stage import PipelineStage
 from .data_types import ShearCatalog, TomographyCatalog, MapsFile, FileCollection, HDFFile
-from .shear_calibration import MeanShearInBins, metadetect_variants
+from .shear_calibration import MeanShearInBins, metadetect_variants, META_VARIANTS
 from .utils import read_shear_catalog_type
 
 
@@ -151,7 +151,8 @@ class TXMeanShearSurveyProperties(PipelineStage):
         properties_filter = self.config["properties"]
 
         # Build shear column list for each catalog type.
-        # For metadetect, ra/dec live in the "00" (unsheared) variant subgroup.
+        # For metadetect, ra/dec live in the unsheared variant subgroup, whose
+        # name comes from META_VARIANTS[0] rather than being hard-coded.
         if cat_type == "metacal":
             shear_cols = [
                 "ra", "dec",
@@ -162,14 +163,26 @@ class TXMeanShearSurveyProperties(PipelineStage):
             extra_iters = ["shear_tomography_catalog", "response", ["R_gamma"]]
             ra_key, dec_key = "ra", "dec"
         elif cat_type == "metadetect":
-            shear_cols = ["00/ra", "00/dec"] + metadetect_variants("g1", "g2", "weight")
+            unsheared = META_VARIANTS[0]
+            shear_cols = [f"{unsheared}/ra", f"{unsheared}/dec"] + metadetect_variants(
+                "g1", "g2", "weight"
+            )
             extra_iters = []
-            ra_key, dec_key = "00/ra", "00/dec"
+            ra_key, dec_key = f"{unsheared}/ra", f"{unsheared}/dec"
         else:
             # lensfit, hsc
             shear_cols = ["ra", "dec", "g1", "g2", "weight", "m"]
             extra_iters = []
             ra_key, dec_key = "ra", "dec"
+
+        # MeanShearInBins cuts down to the source sample using a bin column.
+        # For metadetect that column is per-variant (bin_ns, bin_1p, ...), since
+        # the selector runs once per sheared variant; the other catalog types
+        # have a single "bin". Compare TXDiagnosticPlots, which does the same.
+        if cat_type == "metadetect":
+            tomo_cols = [f"bin_{v}" for v in META_VARIANTS]
+        else:
+            tomo_cols = ["bin"]
 
         # Read the survey mask as a boolean footprint map. The null test is only
         # computed for galaxies (and map pixels) inside this footprint, so that
@@ -233,7 +246,7 @@ class TXMeanShearSurveyProperties(PipelineStage):
         it = self.combined_iterators(
             chunk_rows,
             "shear_catalog", "shear", shear_cols,
-            "shear_tomography_catalog", "tomography", ["bin"],
+            "shear_tomography_catalog", "tomography", tomo_cols,
             *extra_iters,
             longest=True,
         )
