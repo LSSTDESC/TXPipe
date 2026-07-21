@@ -32,8 +32,18 @@ def _compute_bin_edges(hsp_map, nside, nbins, outlier_fraction, mask):
 
     Only map pixels that lie inside ``mask`` contribute to the percentile
     range, so per-band coverage that extends beyond the shear footprint does
-    not skew the binning. Returns ``None`` if the map does not overlap the
-    footprint (that map is then skipped).
+    not skew the binning.
+
+    Maps taking only a few distinct values (integer counts such as
+    ``bright_objects/count``, or flag maps) are binned with one bin per value,
+    centred on that value. Evenly spaced edges would instead land exactly *on*
+    the integers, and since ``MeanShearInBins.selector`` selects with strict
+    inequalities on both sides, every galaxy would then fall into no bin at all
+    and the test would silently come out empty.
+
+    Returns ``None`` if the map has no usable range inside the footprint --
+    because it does not overlap the footprint, or because it is constant there
+    and so carries no trend to test. That map is then skipped.
     """
     import healpy as hp
 
@@ -51,6 +61,25 @@ def _compute_bin_edges(hsp_map, nside, nbins, outlier_fraction, mask):
 
     lo = np.percentile(vals, 100 * outlier_fraction)
     hi = np.percentile(vals, 100 * (1 - outlier_fraction))
+
+    # Discrete-valued map: put the edges between the values so each value sits
+    # at a bin centre. Checked on the values that survive the outlier trim, and
+    # on their number rather than the dtype, so that float maps which happen to
+    # be discrete are handled too.
+    uniq = np.unique(vals[(vals >= lo) & (vals <= hi)])
+    if uniq.size < 2:
+        # Constant inside the footprint: no trend can be measured.
+        return None
+    if uniq.size <= nbins:
+        mids = 0.5 * (uniq[1:] + uniq[:-1])
+        return np.concatenate(
+            (
+                [uniq[0] - 0.5 * (uniq[1] - uniq[0])],
+                mids,
+                [uniq[-1] + 0.5 * (uniq[-1] - uniq[-2])],
+            )
+        )
+
     return np.linspace(lo, hi, nbins + 1)
 
 
@@ -79,6 +108,74 @@ def _property_values_at(hsp_map, nside, ra, dec, in_footprint):
     prop_vals[~valid] = np.nan
     prop_vals[~in_footprint] = np.nan
     return prop_vals
+
+
+def _marker_offset(mu):
+    """
+    Horizontal offset used to separate the g1 and g2 series in the plots.
+
+    ``mu`` holds the *mean* property value of the galaxies in each populated
+    bin, not the bin midpoint, so the points are not evenly spaced. The offset
+    is therefore scaled from the narrowest gap rather than a typical one: an
+    offset wider than half a gap would push a point past its neighbour and show
+    the series in the wrong order.
+
+    Empty bins (``NaN`` from ``collect``) must be removed before calling, or the
+    spacing is undefined. Returns 0 when there is no spacing to work with -- a
+    single point, or several points sharing one value -- in which case the two
+    series simply sit on top of each other.
+    """
+    gaps = np.diff(np.sort(mu))
+    gaps = gaps[gaps > 0]
+    return 0.1 * gaps.min() if gaps.size else 0.0
+
+
+def _plot_property_map(hsp_map, nside, mask, title, plot_nside=0):
+    """
+    Draw a survey property map into the current matplotlib axes.
+
+    Only pixels inside ``mask`` are shown, so the map covers the same footprint
+    the null test is computed over and the two panels can be compared directly.
+
+    Maps finer than ``plot_nside`` are degraded first: healpy needs a full-sky
+    array to plot, which is large at high nside, and the extra detail is not
+    visible at plot size anyway. ``plot_nside=0`` keeps the native resolution.
+    """
+    import healpy as hp
+    import matplotlib.pyplot as plt
+
+    # Degrade before building the full-sky array, not after.
+    if plot_nside and nside > plot_nside:
+        hsp_map = hsp_map.degrade(plot_nside, reduction="mean")
+        nside = plot_nside
+
+    pixels = hsp_map.valid_pixels
+    ra, dec = hp.pix2ang(nside, pixels, nest=True, lonlat=True)
+    keep = _in_footprint(ra, dec, mask)
+    pixels, ra, dec = pixels[keep], ra[keep], dec[keep]
+
+    if pixels.size == 0:
+        plt.title(f"{title}\n(no pixels inside footprint)")
+        plt.axis("off")
+        return
+
+    m = np.full(hp.nside2npix(nside), hp.UNSEEN)
+    m[pixels] = hsp_map[pixels].astype(float)
+
+    # Zoom to the footprint rather than showing the whole sky.
+    lonra = np.clip([ra.min() - 0.1, ra.max() + 0.1], 0.0, 360.0)
+    latra = np.clip([dec.min() - 0.1, dec.max() + 0.1], -90.0, 90.0)
+    hp.cartview(
+        m,
+        lonra=list(lonra),
+        latra=list(latra),
+        title=title,
+        hold=True,
+        nest=True,
+        # cartview pads generously by default, which leaves the map panel much
+        # smaller than the plot panel beside it.
+        margins=(0.02, 0.02, 0.02, 0.04),
+    )
 
 
 class TXMeanShearSurveyProperties(PipelineStage):
@@ -135,6 +232,11 @@ class TXMeanShearSurveyProperties(PipelineStage):
         "external_maps_dir": StageParameter(
             str, "",
             msg="Optional directory containing .hs healsparse files to also test"
+        ),
+        "map_plot_nside": StageParameter(
+            int, 256,
+            msg="Nside to degrade survey property maps to for the map panel "
+                "(0 to plot at the map's native resolution)"
         ),
     }
 
@@ -204,7 +306,7 @@ class TXMeanShearSurveyProperties(PipelineStage):
                 if self.rank == 0:
                     print(
                         f"TXMeanShearSurveyProperties: skipping '{name}' "
-                        "(no overlap with mask footprint)."
+                        "(no usable range inside the mask footprint)."
                     )
                 return
             all_maps[name] = (hsp_map, nside, edges)
@@ -296,25 +398,50 @@ class TXMeanShearSurveyProperties(PipelineStage):
                 n_dof += int(good.sum())
             chi2_dof = chi2 / n_dof if n_dof > 0 else np.nan
 
-            fig, ax = plt.subplots(figsize=(7, 4))
-            # Small horizontal offset so the g1/g2 series don't overlap. Derive
-            # it from the finite bins only: empty bins (NaN from collect) at the
-            # start would otherwise poison dx and blank the whole scatter.
-            dx = 0.1 * np.median(np.diff(np.sort(mu[idx]))) if idx.sum() > 1 else 0
+            # An empty plot is otherwise the only sign that a map produced no
+            # usable bins at all, so say so explicitly.
+            if not idx.any():
+                print(
+                    f"TXMeanShearSurveyProperties: WARNING - every bin is empty "
+                    f"for '{name}'; the plot will have no points."
+                )
+
+            # Two panels: the property map itself on the left, so the trend on
+            # the right can be read against the spatial structure driving it.
+            fig = plt.figure(figsize=(11.5, 4.5))
+            # The map panel is narrower: a sky patch keeps its aspect ratio, so
+            # given equal widths it would sit small in a sea of white space.
+            gs = fig.add_gridspec(1, 2, width_ratios=[1.0, 1.45])
+
+            plt.subplot(gs[0])
+            hsp_map, map_nside, _ = all_maps[name]
+            _plot_property_map(
+                hsp_map, map_nside, mask, safe_name,
+                plot_nside=self.config["map_plot_nside"],
+            )
+
+            ax = fig.add_subplot(gs[1])
+            # Small horizontal offset so the g1/g2 series don't overlap, taken
+            # over the finite bins only: empty bins (NaN from collect) would
+            # otherwise poison it and blank the whole scatter. g1 goes on the
+            # left of each bin and g2 on the right, to read in that order.
+            dx = _marker_offset(mu[idx])
             ax.axhline(0, color="k", lw=0.8, ls="--")
             ax.errorbar(
-                mu[idx] + dx, g1[idx], sigma1[idx],
+                mu[idx] - dx, g1[idx], sigma1[idx],
                 fmt="s", markersize=4, label="g1", color="tab:blue",
             )
             ax.errorbar(
-                mu[idx] - dx, g2[idx], sigma2[idx],
+                mu[idx] + dx, g2[idx], sigma2[idx],
                 fmt="o", markersize=4, label="g2", color="tab:orange",
             )
             ax.set_xlabel(safe_name)
             ax.set_ylabel("Mean shear")
             ax.set_title(f"{safe_name}  (χ²/dof = {chi2_dof:.2f})")
             ax.legend(fontsize=8)
-            fig.tight_layout()
+            # Not tight_layout: healpy's cartview axes are not compatible with
+            # it and it warns and mislays the panels.
+            fig.subplots_adjust(left=0.02, right=0.97, bottom=0.15, wspace=0.12)
 
             png_name = f"{safe_name}.png"
             fig.savefig(output_dir.path_for_file(png_name))
