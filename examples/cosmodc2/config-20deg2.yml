@@ -15,7 +15,7 @@ TXExposureInfo:
 
 TXCosmoDC2Mock:
     cat_name: cosmoDC2_v1.1.4_image
-    visits_per_band: 16
+    years: 1.0
     extra_cols: redshift_true size_true shear_1 shear_2 Mag_true_r_sdss_z0
     flip_g2: true # to match metacal
     snr_limit: 4.0
@@ -31,8 +31,8 @@ TXSourceTrueNumberDensity:
     nz: 601
     zmax: 3.0
     chunk_rows: 100000
-    weight_col: shear/00/weight
-    redshift_group: shear/00
+    weight_col: shear/ns/weight
+    redshift_group: shear/ns
 
 TXLensTrueNumberDensity:
     name: TXLensTrueNumberDensity

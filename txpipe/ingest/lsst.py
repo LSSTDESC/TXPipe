@@ -1,6 +1,7 @@
 from ..utils import nanojansky_err_to_mag_ab, nanojansky_to_mag_ab, moments_to_shear, mag_ab_to_nanojansky
 import numpy as np
-
+import h5py
+from ..shear_calibration.names import META_VARIANTS
 
 def process_photometry_data(data):
     cut = data["refExtendedness"] == 1
@@ -66,11 +67,17 @@ def process_shear_data(data):
     return output
 
 
-def process_metadetect_data(data):
+def process_metadetect_data(data, flag_list, flag_exclusion):
     output = {}
-    for variant in ["ns", "1p", "1m", "2p", "2m"]:
+    for variant in META_VARIANTS:
         var_data = data[data["metaStep"] == variant]
         var_data = sanitize(var_data)
+
+        flags = combined_flag(var_data, flag_list)
+        if flag_exclusion:
+            keep = flags == 0
+            var_data = var_data[keep]
+            flags = flags[keep]
 
         var_output = {
             "ra": var_data["ra"],
@@ -80,8 +87,8 @@ def process_metadetect_data(data):
             #"n_epoch": var_data["nEpochCell"],
             "g1": var_data["gauss_g1"],
             "g2": var_data["gauss_g2"],
-            "g1_err": var_data["gauss_g1_g1_Cov"],
-            "g2_err": var_data["gauss_g2_g2_Cov"],
+            "g1_var": var_data["gauss_g1_g1_Cov"],
+            "g2_var": var_data["gauss_g2_g2_Cov"],
             "g_cross": var_data["gauss_g1_g2_Cov"],
             "T": var_data["gauss_T"],
             "s2n": var_data["gauss_snr"],
@@ -92,7 +99,7 @@ def process_metadetect_data(data):
             "psf_g1": var_data["gauss_psfReconvolved_g1"],
             "psf_g2": var_data["gauss_psfReconvolved_g2"],
             "psf_T_mean": var_data["gauss_psfReconvolved_T"],
-            "flags": combined_flag(var_data),
+            "flags": flags,
             "weight": 1 / (0.5 * (var_data["gauss_g1_g1_Cov"] + var_data["gauss_g2_g2_Cov"])),
             "gauss_flags": var_data["gauss_flags"],
             "pgauss_flags": var_data["pgauss_flags"],
@@ -118,31 +125,35 @@ def sanitize(data):
     """
     Convert unicode arrays into types that h5py can save
     """
+    # following loop is for structured arrays, and will correct them.
+    if data.dtype.names is not None:
+        cols = {name: sanitize(data[name]) for name in data.dtype.names}
+        out = np.empty(data.shape, dtype=[(name, col.dtype) for name, col in cols.items()])
+        for name, col in cols.items():
+            out[name] = col
+        return out
     # convert unicode to strings
     if data.dtype.kind == "U":
         data = data.astype("S")
     # convert dates to integers
     elif data.dtype.kind == "M":
-        data = data.astype(int)
+        data = data.astype(h5py.opaque_dtype(data.dtype))
 
     return data
 
 
-def combined_flag(data):
+def combined_flag(data, flag_list, bands="riz"):
     """
     generate a combined flag for the metadetect catalog,
     this could also become initial cut if we want it to.
     """
-    flag = np.ones(len(data), dtype=bool)
-    flag &= data["gauss_object_flags"] == 0
-    flag &= data["pgauss_object_flags"] == 0
-    flag &= data["is_primary"]
-    flag &= data["psfOriginal_flags"] == 0
-    flag &= data["gauss_psfReconvolved_flags"] == 0
-    flag &= data["gauss_shape_flags"] == 0
-    flag &= data["gauss_flags"] == 0
-    flag &= data["pgauss_flags"] == 0
-    for band in "griz":
-        flag &= data[f"{band}_gaussFlux_flags"] == 0
-        flag &= data[f"{band}_pgaussFlux_flags"] == 0
-    return (~flag).astype(int)
+    flag = np.zeros(len(data), dtype=bool)
+    for name in flag_list:
+        columns = [name] if name in data.dtype.names else [f"{band}_{name}" for band in bands]
+        for col in columns:
+            if col == "is_primary":
+                flag |= ~data[col]
+            else:
+                flag |= data[col] != 0 
+    return flag.astype(int)
+

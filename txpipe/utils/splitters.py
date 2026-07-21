@@ -213,14 +213,12 @@ class MetaDetectSplitter(DynamicSplitter):
     A splitter for splitting the metadetect data into subgroups for the different variants
     """
     def __init__(self, group, columns, bin_sizes, dtypes=None):
-        """Create a fixed-size splitter
+        """Create a splitter
 
         Parameters
         ----------
         group: h5py.Group
             The group where the output data will be written
-        name: str
-            The base name of the different bins to write
         columns: list
             The str names of the columns to be split
         bin_sizes: dict

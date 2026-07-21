@@ -26,7 +26,7 @@ TXExposureInfo:
 
 TXCosmoDC2Mock:
     cat_name: cosmoDC2_v1.1.4_image
-    visits_per_band: 16
+    years: 1.0
     extra_cols: redshift_true size_true shear_1 shear_2
     flip_g2: true # to match metacal
 
@@ -360,7 +360,7 @@ PZRailSummarizeSource:
     zmax: 3.0
     nzbins: 50
     nsamples: 100
-    mag_prefix: /shear/00/mag_
+    mag_prefix: /shear/ns/mag_
     catalog_group: shear
     tomography_name: source
     bands: [r, i, z]
@@ -401,7 +401,7 @@ PZRealizationsPlotLens:
 TXShearCalibration:
     add_fiducial_distance: True
     copy_redshift: True
-    redshift_name: '00/redshift_true'
+    redshift_name: 'ns/redshift_true'
 
 TXTwoPointSCIA:
     do_pos_pos: False
