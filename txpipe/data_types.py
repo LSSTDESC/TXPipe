@@ -347,10 +347,16 @@ class MapsFile(HDFFile):
             mask = mask_in
 
         # degrade if requested and nessesary
-        if (degrade_nside is not None) and (degrade_nside != mask.nside_sparse):
+        if (degrade_nside is not None) and (degrade_nside < mask.nside_sparse):
+            # In this case we need a float mask to allow the mask-like
+            # degrading to work
+            mask = mask.astype("float")
             mask = degrade_healsparse(
                 mask, reduction="mask", degrade_nside=degrade_nside
             )
+        elif (degrade_nside is not None) and (degrade_nside > mask.nside_sparse):
+            mask = mask.upgrade(degrade_nside)
+
 
         if returnbool and not np.issubdtype(mask.dtype, np.bool_):
             # make a boolean mask from a frac map
