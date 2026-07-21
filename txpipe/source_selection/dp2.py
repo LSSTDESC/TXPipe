@@ -17,7 +17,8 @@ class TXSourceSelectorMetadetectDP2(TXSourceSelectorMetadetect):
 
     name = "TXSourceSelectorMetadetectDP2"
 
-    config_options = TXSourceSelectorBase.config_options | {
+    config_options = {
+        **TXSourceSelectorMetadetect.config_options,
         "mag_g_cut": StageParameter(float, required=True, msg="Magnitude cut threshold for object selection"),
         "mag_r_cut": StageParameter(float, required=True, msg="Magnitude cut threshold for object selection"),
         "mag_i_cut": StageParameter(float, required=True, msg="Magnitude cut threshold for object selection"),
@@ -74,7 +75,7 @@ def select_weak_lensing_sample_metadetect_dp2(data, config, calling_from_select=
 
     # Follow the same pattern as select_weak_lensing_sample, but add extra cuts for metadetect catalogs.:
     mfrac_cut = config["mfrac_cut"]
-    mfrac = data["object_mask_fraction"]
+    mfrac = data["mfrac"]
     sel &= mfrac < mfrac_cut
     f_new = sel.sum() / n0
 
