@@ -1,5 +1,5 @@
 from .metadetect import TXSourceSelectorMetadetect
-from .base import select_weak_lensing_sample
+from .base import select_weak_lensing_sample, TXSourceSelectorBase
 from ..shear_calibration import MetaDetectCalculator
 import numpy as np
 
