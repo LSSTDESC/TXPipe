@@ -29,6 +29,32 @@ class TXSourceSelectorMetadetectDP2(TXSourceSelectorMetadetect):
         "mfrac_cut": StageParameter(float, required=True, msg="mfrac threshold for object selection"),
     }
 
+    def data_iterator(self):
+        # As above, this is where we work out which columns we need.
+        chunk_rows = self.config["chunk_rows"]
+        bands = self.config["bands"]
+
+        # Core quantities we need
+        shear_cols = metadetect_variants("T", "s2n", "g1", "g2", "ra", "dec", "weight", "psf_T_mean", "flags", "object_mask_fraction", "pgauss_T", "pgauss_TErr", "gauss_flags", "pgauss_flags", "gauss_shape_flags", "is_primary", "gauss_object_flags", "pgauss_object_flags", "psfOriginal_flags", "gauss_psfReconvolved_flags", "g_gaussFlux_flags", "g_pgaussFlux_flags", "r_gaussFlux_flags", "r_pgaussFlux_flags", "i_gaussFlux_flags", "i_pgaussFlux_flags", "z_gaussFlux_flags", "z_pgaussFlux_flags")
+
+        # Magnitudes and errors
+        shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="metadetect")
+
+        # We need truth shears and/or PZ point-estimates for each shear too
+        if self.config["input_pz"]:
+            shear_cols += metadetect_variants("mean_z")
+        elif self.config["true_z"]:
+            shear_cols += metadetect_variants("redshift_true")
+
+        # This is a parent ceci.PipelineStage method.
+        # It returns an iterator we loop through.
+        # The "longest=True" option means that the iterator will
+        # continue looping even when some of the columns have been exhausted, which is 
+        # what we want here since the different shear variants have different lengths.
+        # The calibration calculation needs to deal with this.
+        it = self.iterate_hdf("shear_catalog", "shear", shear_cols, chunk_rows, longest=True)
+        return it
+
     def setup_response_calculators(self, nbin_source):
         delta_gamma = self.config["delta_gamma"]
         calculators = [
@@ -75,7 +101,7 @@ def select_weak_lensing_sample_metadetect_dp2(data, config, calling_from_select=
 
     # Follow the same pattern as select_weak_lensing_sample, but add extra cuts for metadetect catalogs.:
     mfrac_cut = config["mfrac_cut"]
-    mfrac = data["mfrac"]
+    mfrac = data["object_mask_fraction"]
     sel &= mfrac < mfrac_cut
     f_new = sel.sum() / n0
 

@@ -41,7 +41,7 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         bands = self.config["bands"]
 
         # Core quantities we need
-        shear_cols = metadetect_variants("T", "s2n", "g1", "g2", "ra", "dec", "weight", "psf_T_mean", "flags", "object_mask_fraction", "pgauss_T", "pgauss_TErr", "gauss_flags", "pgauss_flags", "gauss_shape_flags", "is_primary", "gauss_object_flags", "pgauss_object_flags", "psfOriginal_flags", "gauss_psfReconvolved_flags", "g_gaussFlux_flags", "g_pgaussFlux_flags", "r_gaussFlux_flags", "r_pgaussFlux_flags", "i_gaussFlux_flags", "i_pgaussFlux_flags", "z_gaussFlux_flags", "z_pgaussFlux_flags")
+        shear_cols = metadetect_variants("T", "s2n", "g1", "g2", "ra", "dec", "weight", "psf_T_mean", "flags")
 
         # Magnitudes and errors
         shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="metadetect")
