@@ -7,6 +7,8 @@ from .base_stage import PipelineStage
 from .data_types import ShearCatalog, TomographyCatalog, MapsFile, FileCollection, HDFFile
 from .shear_calibration import MeanShearInBins, metadetect_variants, META_VARIANTS
 from .utils import read_shear_catalog_type
+from .utils.fitting import fit_straight_line, calc_chi2
+from .diagnostics import where_all_finite
 
 
 def _in_footprint(ra, dec, mask):
@@ -368,9 +370,13 @@ class TXMeanShearSurveyProperties(PipelineStage):
                 )
                 binned_shears[name].add_data(data)
 
-        # Collect across MPI ranks and write outputs (rank 0 writes).
-        output_dir = self.open_output("shear_survey_property_plots", wrapper=True)
-        hdf_out = self.open_output("shear_survey_property_null")
+        # Only rank 0 writes, so only rank 0 opens the outputs -- every rank
+        # opening the same file would race. The loop below still runs on all
+        # ranks, because binner.collect is collective and would deadlock if
+        # some ranks skipped it.
+        if self.rank == 0:
+            output_dir = self.open_output("shear_survey_property_plots", wrapper=True)
+            hdf_out = self.open_output("shear_survey_property_null")
 
         png_files = []
         for name, binner in binned_shears.items():
@@ -389,18 +395,40 @@ class TXMeanShearSurveyProperties(PipelineStage):
             grp.create_dataset("sigma_g1", data=sigma1)
             grp.create_dataset("sigma_g2", data=sigma2)
 
-            # Plot with chi2/dof annotation
-            idx = np.isfinite(mu) & np.isfinite(g1) & np.isfinite(g2)
+            # Bins with a usable value in everything we plot. where_all_finite
+            # returns indices, not a mask, and is the helper the other TXPipe
+            # mean-shear null tests use.
+            idx = where_all_finite(mu, g1, g2, sigma1, sigma2)
+
+            # Two complementary statistics, as discussed for the other null
+            # tests: chi2 against zero catches any departure from zero, while
+            # the slope of a straight-line fit is the trend statistic the rest
+            # of TXPipe quotes. Bins holding a single galaxy have sigma == 0
+            # and are dropped from both, as they would divide by zero.
             chi2, n_dof = 0.0, 0
+            fits = []
             for g_arr, s_arr in [(g1[idx], sigma1[idx]), (g2[idx], sigma2[idx])]:
                 good = s_arr > 0
-                chi2 += np.sum((g_arr[good] / s_arr[good]) ** 2)
+                chi2 += calc_chi2(g_arr[good], s_arr[good], np.zeros(int(good.sum())))
                 n_dof += int(good.sum())
+                slope, intercept, cov = fit_straight_line(
+                    mu[idx][good], g_arr[good], y_err=s_arr[good]
+                )
+                fits.append((slope, intercept, cov[0, 0] ** 0.5))
             chi2_dof = chi2 / n_dof if n_dof > 0 else np.nan
+            (slope1, intercept1, slope1_err), (slope2, intercept2, slope2_err) = fits
+
+            grp.attrs["chi2"] = chi2
+            grp.attrs["n_dof"] = n_dof
+            grp.attrs["chi2_per_dof"] = chi2_dof
+            grp.attrs["slope_g1"] = slope1
+            grp.attrs["slope_g1_err"] = slope1_err
+            grp.attrs["slope_g2"] = slope2
+            grp.attrs["slope_g2_err"] = slope2_err
 
             # An empty plot is otherwise the only sign that a map produced no
             # usable bins at all, so say so explicitly.
-            if not idx.any():
+            if idx.size == 0:
                 print(
                     f"TXMeanShearSurveyProperties: WARNING - every bin is empty "
                     f"for '{name}'; the plot will have no points."
@@ -423,18 +451,27 @@ class TXMeanShearSurveyProperties(PipelineStage):
             ax = fig.add_subplot(gs[1])
             # Small horizontal offset so the g1/g2 series don't overlap, taken
             # over the finite bins only: empty bins (NaN from collect) would
-            # otherwise poison it and blank the whole scatter. g1 goes on the
-            # left of each bin and g2 on the right, to read in that order.
+            # otherwise poison it and blank the whole scatter. g1 sits to the
+            # right of each bin and g2 to the left, matching TXDiagnosticPlots.
             dx = _marker_offset(mu[idx])
             ax.axhline(0, color="k", lw=0.8, ls="--")
             ax.errorbar(
-                mu[idx] - dx, g1[idx], sigma1[idx],
-                fmt="s", markersize=4, label="g1", color="tab:blue",
+                mu[idx] + dx, g1[idx], sigma1[idx],
+                fmt="s", markersize=4, color="tab:blue",
+                label=f"g1  (m={slope1:.2e} $\\pm$ {slope1_err:.2e})",
             )
             ax.errorbar(
-                mu[idx] + dx, g2[idx], sigma2[idx],
-                fmt="o", markersize=4, label="g2", color="tab:orange",
+                mu[idx] - dx, g2[idx], sigma2[idx],
+                fmt="o", markersize=4, color="tab:orange",
+                label=f"g2  (m={slope2:.2e} $\\pm$ {slope2_err:.2e})",
             )
+
+            # The fitted lines, drawn across the range that was actually fitted.
+            if idx.size > 1:
+                x_line = np.array([mu[idx].min(), mu[idx].max()])
+                ax.plot(x_line, slope1 * x_line + intercept1, color="tab:blue", lw=1)
+                ax.plot(x_line, slope2 * x_line + intercept2, color="tab:orange", lw=1)
+
             ax.set_xlabel(safe_name)
             ax.set_ylabel("Mean shear")
             ax.set_title(f"{safe_name}  (χ²/dof = {chi2_dof:.2f})")
@@ -450,5 +487,4 @@ class TXMeanShearSurveyProperties(PipelineStage):
 
         if self.rank == 0:
             output_dir.write_listing(png_files)
-
-        hdf_out.close()
+            hdf_out.close()
