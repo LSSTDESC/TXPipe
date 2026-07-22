@@ -75,9 +75,6 @@ def select_weak_lensing_sample_metadetect_dp2(data, config, calling_from_select=
     and re-run to iterate.
     """
 
-    verbose = config["verbose"]
-    variant = data.suffix
-
     sel = select_weak_lensing_sample(data, config, calling_from_select=calling_from_select)
     n0 = sel.size
 
@@ -103,7 +100,6 @@ def select_weak_lensing_sample_metadetect_dp2(data, config, calling_from_select=
     mfrac_cut = config["mfrac_cut"]
     mfrac = data["object_mask_fraction"]
     sel &= mfrac < mfrac_cut
-    f_new = sel.sum() / n0
 
     # Adding all the flags cut to make sure we are not using any objects with flags set.
     sel &= (data["gauss_flags"] == 0) & \
