@@ -21,8 +21,8 @@ config: examples/anacal/config.yml
 
 inputs:
     # Butler-mode ingest doesn't read this FITS, but ceci requires every
-    # declared input to have a path — pointed at the DP1-v2 published
+    # declared input to have a path — pointed at the DP1-v3 published
     # per-field catalog to satisfy the graph builder.
-    anacal_catalog: /pscratch/sd/x/xiangchl/data/DP1/catalogs/anacal_catalog_a360.fits
+    anacal_catalog: /global/cfs/cdirs/desc-wl/projects/anacal/DP1-v3/catalogs/anacal_catalog_a360.fits
 
 resume: False
