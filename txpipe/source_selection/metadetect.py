@@ -63,7 +63,10 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
 
     def setup_response_calculators(self, nbin_source):
         delta_gamma = self.config["delta_gamma"]
-        calculators = [MetaDetectCalculator(select_tomographic_weak_lensing_sample, delta_gamma) for i in range(nbin_source)]
+        calculators = [
+            MetaDetectCalculator(select_tomographic_weak_lensing_sample, delta_gamma)
+            for i in range(nbin_source)
+        ]
         calculators.append(MetaDetectCalculator(select_weak_lensing_sample, delta_gamma))
         return calculators
 
