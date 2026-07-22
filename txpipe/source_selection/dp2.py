@@ -23,9 +23,9 @@ class TXSourceSelectorMetadetectDP2(TXSourceSelectorMetadetect):
         "mag_r_cut": StageParameter(float, required=True, msg="Magnitude cut threshold for object selection"),
         "mag_i_cut": StageParameter(float, required=True, msg="Magnitude cut threshold for object selection"),
         "mag_z_cut": StageParameter(float, required=True, msg="Magnitude cut threshold for object selection"),
-        "g-r_cut": StageParameter(float, required=True, msg="Color cut threshold for object selection"),
-        "r-i_cut": StageParameter(float, required=True, msg="Color cut threshold for object selection"),
-        "i-z_cut": StageParameter(float, required=True, msg="Color cut threshold for object selection"),
+        "gr_cut": StageParameter(float, required=True, msg="Color cut threshold for object selection"),
+        "ri_cut": StageParameter(float, required=True, msg="Color cut threshold for object selection"),
+        "iz_cut": StageParameter(float, required=True, msg="Color cut threshold for object selection"),
         "mfrac_cut": StageParameter(float, required=True, msg="mfrac threshold for object selection"),
     }
 
@@ -86,9 +86,9 @@ def select_weak_lensing_sample_metadetect_dp2(data, config, calling_from_select=
     mag_r_cut = config["mag_r_cut"]
     mag_i_cut = config["mag_i_cut"]
     mag_z_cut = config["mag_z_cut"]
-    gmr_cut = config["g-r_cut"]
-    rmi_cut = config["r-i_cut"]
-    imz_cut = config["i-z_cut"]
+    gmr_cut = config["gr_cut"]
+    rmi_cut = config["ri_cut"]
+    imz_cut = config["iz_cut"]
 
     # We should also have some crazy color cuts and magnitude cuts which should come from PZ group
     sel &= (data["mag_g"] < mag_g_cut) & \
