@@ -314,7 +314,7 @@ class TXCustomMask(TXSimpleMaskFrac):
     name = "TXCustomMask"
     # make a mask from the auxiliary maps
     inputs = [
-        ("des_footprint_maps", MapsFile),
+        ("footprint_maps", MapsFile),
     ]
     outputs = [("mask", MapsFile)]
     config_options = {
@@ -397,7 +397,7 @@ class TXCustomMask(TXSimpleMaskFrac):
             operator = OP_MAP[operator_string]
 
             # load map
-            with self.open_input("des_footprint_maps", wrapper=True) as f:
+            with self.open_input("footprint_maps", wrapper=True) as f:
                 metadata = dict(f.file["maps"].attrs)
                 m = f.read_map(map_name)
             pixel_scheme = choose_pixelization(**metadata)
@@ -444,7 +444,7 @@ class TXCustomMask(TXSimpleMaskFrac):
         fracdet : hsp.HealSparseMap
             Fracdet array.
         """
-        with self.open_input("des_footprint_maps", wrapper=True) as f:
+        with self.open_input("footprint_maps", wrapper=True) as f:
             fracdet = f.read_map(self.config["fracdet_name"])
         return fracdet
 

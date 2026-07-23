@@ -7,6 +7,8 @@ stages:
   - name: TXIngestDESY3SpeczCat
   - name: TXIngestDESY3Shear
   - name: TXCustomMask
+    aliases:
+      footprint_maps: des_footprint_maps
   - name: TXIngestDESY3SourceRedshift
 
   # PER-OBJECT PHOTO-Z
