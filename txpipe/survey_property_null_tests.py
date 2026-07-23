@@ -16,8 +16,8 @@ def _bin_edges_from_values(vals, nbins, outlier_fraction):
     Compute bin edges for a survey property from the values it takes within the
     shear catalog footprint.
 
-    ``vals`` is the property sampled at ``{galaxies with defined shear in a
-    source bin} ∩ {pixels where that map is observed}`` -- exactly the sample
+    ``vals`` is the survey property sampled at ``{galaxies with defined shear 
+    in a source bin} ∩ {pixels where that map is observed}`` -- exactly the sample
     the mean shear is measured over -- so the bins span the region actually
     being tested, with no separate mask needed. Non-finite entries must already
     be removed by the caller.
