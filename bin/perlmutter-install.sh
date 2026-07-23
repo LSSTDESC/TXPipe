@@ -12,7 +12,9 @@ mamba activate ./conda
 
 # we manually install firecrown as we have to remove numcosmo to avoid clashes
 FIRECROWN_DIR=firecrown-tmp-${RANDOM}
-git clone --branch v1.7.5 https://github.com/LSSTDESC/firecrown  ${FIRECROWN_DIR}
+
+# TODO: check if this is still needed.
+git clone --branch v1.14.0 https://github.com/LSSTDESC/firecrown  ${FIRECROWN_DIR}
 cd ${FIRECROWN_DIR}
 sed -i '/numcosmo/d' setup.cfg
 pip install .

@@ -2,7 +2,6 @@ import pathlib
 import numpy as np
 import warnings
 import yaml
-import pathlib
 
 # same convention as elsewhere
 SHEAR_SHEAR = 0
@@ -10,6 +9,27 @@ SHEAR_POS = 1
 POS_POS = 2
 
 default_theory_model = str(pathlib.Path(__file__).parents[0] / "theory_model.py")
+
+
+def _make_firecrown_build_parameters(sacc_data):
+    """Create Firecrown build parameters compatible with multiple versions.
+
+    Firecrown >=1.14 expects a NamedParameters instance, while some legacy
+    likelihood scripts still access build parameters with dict-style syntax.
+    """
+    try:
+        from firecrown.likelihood.likelihood import NamedParameters
+    except ImportError:
+        return {"sacc_data": sacc_data}
+
+    class TxBuildParameters(NamedParameters):
+        def __getitem__(self, key):
+            return self.data[key]
+
+        def get(self, key, default=None):
+            return self.data.get(key, default)
+
+    return TxBuildParameters({"sacc_data": sacc_data})
 
 
 def ccl_read_yaml(filename, **kwargs):
@@ -175,18 +195,18 @@ def theory_3x2pt(
 
     # Use the FireCrown machinery to compute the likelihood and as
     # a by-product the theory
-    build_parameters = {
-        "sacc_data": sacc_data,
-    }
+    build_parameters = _make_firecrown_build_parameters(sacc_data)
 
     # These stages are a copy of what is done inside the FireCrown connectors
     likelihood, tools = load_likelihood_from_script(theory_model, build_parameters)
 
-    systematic_params = {**make_bias_parameters(bias, sacc_data, cosmo)}
+    cosmo_params = {k: v for (k, v) in cosmo.to_dict().items() if isinstance(v, (int, float))}
+    params_values = {**make_bias_parameters(bias, sacc_data, cosmo), **cosmo_params}
     # Apply the systematics parameters
-    likelihood.update(ParamsMap(systematic_params))
-    tools.update(ParamsMap(systematic_params))
-    tools.prepare(cosmo)
+    params = ParamsMap(params_values)
+    likelihood.update(params)
+    tools.update(params)
+    tools.prepare()
 
     # Ask the likelihood for a theory vector. We don't want
     # to print the actual likelihood because for many applications

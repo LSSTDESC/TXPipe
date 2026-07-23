@@ -1,14 +1,37 @@
-import os
 import pathlib
 
-import firecrown.likelihood.gauss_family.statistic.source.weak_lensing as wl
-import firecrown.likelihood.gauss_family.statistic.source.number_counts as nc
-from firecrown.likelihood.gauss_family.statistic.two_point import TwoPoint
-from firecrown.likelihood.gauss_family.gaussian import ConstGaussian
+try:
+    from firecrown.likelihood.weak_lensing import WeakLensing
+    from firecrown.likelihood.number_counts import LinearBiasSystematic, NumberCounts
+    from firecrown.likelihood.two_point import TwoPoint
+    from firecrown.likelihood.gaussian import ConstGaussian
+except ImportError:
+    import firecrown.likelihood.gauss_family.statistic.source.weak_lensing as wl
+    import firecrown.likelihood.gauss_family.statistic.source.number_counts as nc
+    from firecrown.likelihood.gauss_family.statistic.two_point import TwoPoint
+    from firecrown.likelihood.gauss_family.gaussian import ConstGaussian
+
+    WeakLensing = wl.WeakLensing
+    LinearBiasSystematic = nc.LinearBiasSystematic
+    NumberCounts = nc.NumberCounts
+
 from firecrown.modeling_tools import ModelingTools
 import sacc
-import pyccl as ccl
 import numpy as np
+
+
+def _get_build_parameter(build_parameters, key):
+    """Read build parameters from either a dict-like object or NamedParameters."""
+    try:
+        return build_parameters[key]
+    except (KeyError, TypeError):
+        pass
+
+    data = getattr(build_parameters, "data", None)
+    if data is not None and key in data:
+        return data[key]
+
+    raise KeyError(key)
 
 
 def build_likelihood(build_parameters):
@@ -17,7 +40,7 @@ def build_likelihood(build_parameters):
     bias as a systematic.
 
     """
-    sacc_data = build_parameters["sacc_data"]
+    sacc_data = _get_build_parameter(build_parameters, "sacc_data")
 
     # items in the build_parameters are supposed to be
     # just str, int, etc, not complicated parameters.
@@ -41,10 +64,10 @@ def build_likelihood(build_parameters):
 
     for tracer_name in sacc_data.tracers.keys():
         if tracer_name.startswith("source"):
-            tr = wl.WeakLensing(sacc_tracer=tracer_name)
+            tr = WeakLensing(sacc_tracer=tracer_name)
         elif tracer_name.startswith("lens"):
-            bias_systematic = nc.LinearBiasSystematic(sacc_tracer=tracer_name)
-            tr = nc.NumberCounts(sacc_tracer=tracer_name, systematics=[bias_systematic])
+            bias_systematic = LinearBiasSystematic(sacc_tracer=tracer_name)
+            tr = NumberCounts(sacc_tracer=tracer_name, systematics=[bias_systematic])
         else:
             raise ValueError(f"Unknown tracer in sacc file, non-3x2pt: {tracer_name}")
         sources[tracer_name] = tr
