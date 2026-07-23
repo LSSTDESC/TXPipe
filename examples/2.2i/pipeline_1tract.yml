@@ -37,8 +37,10 @@ stages:
   - name: TXPhotozPlot
   - name: TXSourceMaps
   - name: TXLensMaps
-  - name: TXAuxiliarySourceMaps
-  - name: TXAuxiliaryLensMaps
+  - name: TXPSFMaps
+  - name: TXFlagMaps
+  - name: TXDepthMaps
+  - name: TXBrightObjectMaps
   - name: TXSimpleMask
   - name: TXDensityMaps
   - name: TXMapPlots

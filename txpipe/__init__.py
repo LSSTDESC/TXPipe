@@ -23,7 +23,12 @@ from .exposure_info import TXExposureInfo
 from .psf_diagnostics import TXPSFDiagnostics, TXRoweStatistics
 from .noise_maps import TXSourceNoiseMaps, TXLensNoiseMaps, TXNoiseMapsJax
 from .maps import TXSourceMaps, TXLensMaps
-from .auxiliary_maps import TXAuxiliarySourceMaps, TXAuxiliaryLensMaps
+from .auxiliary_maps import (
+    TXPSFMaps,
+    TXFlagMaps,
+    TXDepthMaps,
+    TXBrightObjectMaps,
+)
 from .map_plots import TXMapPlots
 from .masks import TXSimpleMask, TXSimpleMaskFrac
 from .metadata import TXTracerMetadata

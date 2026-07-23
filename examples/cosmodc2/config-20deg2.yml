@@ -52,20 +52,22 @@ TXSourceMaps:
     pixelization: healpix
     true_shear: false
 
-TXExternalLensMaps:
+TXLensMaps:
     sparse: true
     chunk_rows: 100000
     pixelization: healpix
 
-TXExternalLensNoiseMaps:
-    chunk_rows: 100000
-    pixelization: healpix
 
-TXAuxiliarySourceMaps:
+TXPSFMaps:
     chunk_rows: 100000
     sparse: true
 
-TXAuxiliaryLensMaps:
+
+TXFlagMaps: {}
+TXDepthMaps:
+    chunk_rows: 100000
+    sparse: true
+TXBrightObjectMaps:
     chunk_rows: 100000
     sparse: true
     bright_obj_threshold: 22.0

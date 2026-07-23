@@ -82,8 +82,10 @@ stages:
   - name: TXSourceMaps
   - name: TXLensMaps
   - name: TXDensityMaps
-  - name: TXAuxiliarySourceMaps    # make PSF and flag maps
-  - name: TXAuxiliaryLensMaps      # make depth and bright object maps
+  - name: TXPSFMaps    # make PSF maps
+  - name: TXFlagMaps
+  - name: TXDepthMaps      # make depth and bright object maps
+  - name: TXBrightObjectMaps      # make depth and bright object maps
   - name: TXSimpleMask           # combine maps to make a simple mask
   - name: TXMapPlots
 

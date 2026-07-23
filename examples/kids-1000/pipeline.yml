@@ -13,7 +13,8 @@ stages:
       #threads_per_process: 1
       #nodes: 1
     #- name: TXLensMaps
-    #- name: TXAuxiliarySourceMaps  # make PSF and flag maps
+    #- name: TXPSFMaps
+    #- name: TXFlagMaps
     #- name: TXAuxiliaryLensMaps    # make depth and bright object maps
     #- name: TXSourceNoiseMaps    # noise maps for sources using random rotations
     # stage below is not working because TXAuxiliaryLensMaps is broken
