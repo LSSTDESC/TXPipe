@@ -11,30 +11,16 @@ from .utils.fitting import fit_straight_line, calc_chi2
 from .diagnostics import where_all_finite
 
 
-def _in_footprint(ra, dec, mask):
+def _bin_edges_from_values(vals, nbins, outlier_fraction):
     """
-    Boolean array flagging which (ra, dec) positions fall inside the mask
-    footprint.
+    Compute bin edges for a survey property from the values it takes within the
+    shear catalog footprint.
 
-    ``mask`` is a boolean HealSparse map (as returned by
-    ``read_mask(..., returnbool=True)``). Positions outside the footprint land
-    on unobserved pixels, for which HealSparse returns the ``False`` sentinel,
-    so a direct lookup gives the in/out flag we want.
-    """
-    import healpy as hp
-
-    pix = hp.ang2pix(mask.nside_sparse, ra, dec, lonlat=True, nest=True)
-    return mask[pix]
-
-
-def _compute_bin_edges(hsp_map, nside, nbins, outlier_fraction, mask):
-    """
-    Compute bin edges for a survey property map, restricted to the mask
-    footprint.
-
-    Only map pixels that lie inside ``mask`` contribute to the percentile
-    range, so per-band coverage that extends beyond the shear footprint does
-    not skew the binning.
+    ``vals`` is the property sampled at ``{galaxies with defined shear in a
+    source bin} ∩ {pixels where that map is observed}`` -- exactly the sample
+    the mean shear is measured over -- so the bins span the region actually
+    being tested, with no separate mask needed. Non-finite entries must already
+    be removed by the caller.
 
     Maps taking only a few distinct values (integer counts such as
     ``bright_objects/count``, or flag maps) are binned with one bin per value,
@@ -43,21 +29,10 @@ def _compute_bin_edges(hsp_map, nside, nbins, outlier_fraction, mask):
     inequalities on both sides, every galaxy would then fall into no bin at all
     and the test would silently come out empty.
 
-    Returns ``None`` if the map has no usable range inside the footprint --
-    because it does not overlap the footprint, or because it is constant there
-    and so carries no trend to test. That map is then skipped.
+    Returns ``None`` if the sample has no usable range -- because no galaxy
+    sampled the map, or because the property is constant across the sample and
+    so carries no trend to test. That map is then skipped.
     """
-    import healpy as hp
-
-    valid = hsp_map.valid_pixels
-    # Restrict to pixels inside the footprint before choosing the range.
-    ra, dec = hp.pix2ang(nside, valid, nest=True, lonlat=True)
-    valid = valid[_in_footprint(ra, dec, mask)]
-    if valid.size == 0:
-        return None
-
-    vals = hsp_map[valid].astype(float)
-    vals = vals[np.isfinite(vals)]
     if vals.size == 0:
         return None
 
@@ -70,7 +45,7 @@ def _compute_bin_edges(hsp_map, nside, nbins, outlier_fraction, mask):
     # be discrete are handled too.
     uniq = np.unique(vals[(vals >= lo) & (vals <= hi)])
     if uniq.size < 2:
-        # Constant inside the footprint: no trend can be measured.
+        # Constant across the sample: no trend can be measured.
         return None
     if uniq.size <= nbins:
         mids = 0.5 * (uniq[1:] + uniq[:-1])
@@ -85,21 +60,17 @@ def _compute_bin_edges(hsp_map, nside, nbins, outlier_fraction, mask):
     return np.linspace(lo, hi, nbins + 1)
 
 
-def _property_values_at(hsp_map, nside, ra, dec, in_footprint):
+def _property_values_at(hsp_map, nside, ra, dec):
     """
     Look up a survey property map at galaxy positions, returning float values
-    with ``NaN`` for galaxies that should be excluded from the test.
-
-    A value is set to ``NaN`` when the galaxy falls either
-
-    * on a pixel the map does not observe, or
-    * outside the survey footprint (``in_footprint`` is False).
+    with ``NaN`` for galaxies on pixels the map does not observe.
 
     Unobserved pixels are detected with HealSparse's own validity mask rather
     than by comparing against ``hp.UNSEEN``: the unobserved sentinel differs by
     dtype (``hp.UNSEEN`` for float64, but a distinct value for integer and
     float32 maps), so an equality test would silently miss them. ``NaN`` values
-    fall outside every bin and are dropped by ``MeanShearInBins``.
+    fall outside every bin and are dropped by ``MeanShearInBins``, so each
+    property is tested only where it is actually observed.
     """
     import healpy as hp
 
@@ -108,7 +79,6 @@ def _property_values_at(hsp_map, nside, ra, dec, in_footprint):
     valid = hsp_map.get_values_pix(pixels, valid_mask=True)
     prop_vals = hsp_map[pixels].astype(float)
     prop_vals[~valid] = np.nan
-    prop_vals[~in_footprint] = np.nan
     return prop_vals
 
 
@@ -132,12 +102,12 @@ def _marker_offset(mu):
     return 0.1 * gaps.min() if gaps.size else 0.0
 
 
-def _plot_property_map(hsp_map, nside, mask, title, plot_nside=0):
+def _plot_property_map(hsp_map, nside, title, plot_nside=0):
     """
     Draw a survey property map into the current matplotlib axes.
 
-    Only pixels inside ``mask`` are shown, so the map covers the same footprint
-    the null test is computed over and the two panels can be compared directly.
+    All observed pixels of the map are shown, covering the same area the null
+    test samples, so the two panels can be compared directly.
 
     Maps finer than ``plot_nside`` are degraded first: healpy needs a full-sky
     array to plot, which is large at high nside, and the extra detail is not
@@ -153,18 +123,16 @@ def _plot_property_map(hsp_map, nside, mask, title, plot_nside=0):
 
     pixels = hsp_map.valid_pixels
     ra, dec = hp.pix2ang(nside, pixels, nest=True, lonlat=True)
-    keep = _in_footprint(ra, dec, mask)
-    pixels, ra, dec = pixels[keep], ra[keep], dec[keep]
 
     if pixels.size == 0:
-        plt.title(f"{title}\n(no pixels inside footprint)")
+        plt.title(f"{title}\n(no observed pixels)")
         plt.axis("off")
         return
 
     m = np.full(hp.nside2npix(nside), hp.UNSEEN)
     m[pixels] = hsp_map[pixels].astype(float)
 
-    # Zoom to the footprint rather than showing the whole sky.
+    # Zoom to the observed area rather than showing the whole sky.
     lonra = np.clip([ra.min() - 0.1, ra.max() + 0.1], 0.0, 360.0)
     latra = np.clip([dec.min() - 0.1, dec.max() + 0.1], -90.0, 90.0)
     hp.cartview(
@@ -192,11 +160,15 @@ class TXMeanShearSurveyProperties(PipelineStage):
     An optional directory of external .hs healsparse files can also be
     provided via the external_maps_dir config option.
 
-    The test is restricted to the survey footprint defined by the mask input:
-    galaxies outside the footprint, and map pixels outside it when choosing bin
-    edges, are excluded. This ensures every survey property is tested over the
-    same region even when the individual property maps (e.g. in different bands)
-    have different coverage.
+    The aux_source_maps and aux_lens_maps inputs are optional: alias either (or
+    both) to "none" in the pipeline to skip it. This lets the test run on the
+    external_maps_dir maps alone, without having built the aux maps earlier.
+
+    For each property the bin edges are chosen from the values it takes at the
+    galaxies that enter the measurement -- galaxies in a source bin, on pixels
+    the map observes -- so the bins span exactly the region being tested. Every
+    property is therefore self-consistently binned and tested over its own
+    observed sample, with no survey mask required.
     """
 
     name = "TXMeanShearSurveyProperties"
@@ -207,7 +179,6 @@ class TXMeanShearSurveyProperties(PipelineStage):
         ("shear_tomography_catalog", TomographyCatalog),
         ("aux_source_maps", MapsFile),
         ("aux_lens_maps", MapsFile),
-        ("mask", MapsFile),
     ]
 
     outputs = [
@@ -221,11 +192,7 @@ class TXMeanShearSurveyProperties(PipelineStage):
         "delta_gamma": StageParameter(float, 0.02, msg="Metacal delta_gamma for shear response"),
         "outlier_fraction": StageParameter(
             float, 0.05,
-            msg="Fraction of map pixels excluded as outliers at each tail when computing bin edges"
-        ),
-        "mask_threshold": StageParameter(
-            float, 0.0,
-            msg="Minimum fractional coverage for a mask pixel to count as inside the footprint"
+            msg="Fraction of sampled galaxies excluded as outliers at each tail when computing bin edges"
         ),
         "properties": StageParameter(
             list, [],
@@ -288,32 +255,19 @@ class TXMeanShearSurveyProperties(PipelineStage):
         else:
             tomo_cols = ["bin"]
 
-        # Read the survey mask as a boolean footprint map. The null test is only
-        # computed for galaxies (and map pixels) inside this footprint, so that
-        # every survey property is tested over the same region even when the
-        # individual property maps have different (e.g. per-band) coverage.
-        with self.open_input("mask", wrapper=True) as f:
-            mask = f.read_mask(
-                thresh=self.config["mask_threshold"], returnbool=True
-            )
-
         # Load all maps from the two aux map files, then optional external files.
-        all_maps = {}  # name -> (hsp_map, nside, bin_edges)
+        all_maps = {}  # name -> (hsp_map, nside)
 
         def _register_map(name, hsp_map, nside):
             if properties_filter and name not in properties_filter:
                 return
-            edges = _compute_bin_edges(hsp_map, nside, nbins, outlier_fraction, mask)
-            if edges is None:
-                if self.rank == 0:
-                    print(
-                        f"TXMeanShearSurveyProperties: skipping '{name}' "
-                        "(no usable range inside the mask footprint)."
-                    )
-                return
-            all_maps[name] = (hsp_map, nside, edges)
+            all_maps[name] = (hsp_map, nside)
 
+        # Both aux map inputs are optional: aliased to "none" they are skipped,
+        # letting the test run on external_maps_dir alone.
         for tag in ("aux_source_maps", "aux_lens_maps"):
+            if self.get_input(tag) == "none":
+                continue
             with self.open_input(tag, wrapper=True) as f:
                 for name in f.list_maps():
                     hsp_map = f.read_map(name)
@@ -334,39 +288,94 @@ class TXMeanShearSurveyProperties(PipelineStage):
                 print("TXMeanShearSurveyProperties: no survey property maps found.")
             return
 
-        # One MeanShearInBins accumulator per map.
+        def _catalog_iterator():
+            return self.combined_iterators(
+                chunk_rows,
+                "shear_catalog", "shear", shear_cols,
+                "shear_tomography_catalog", "tomography", tomo_cols,
+                *extra_iters,
+                longest=True,
+            )
+
+        # Galaxies in a source bin are the ones the measurement uses (the
+        # MeanShearInBins source-bin cut). The bin column is per-variant for
+        # metadetect -- the unsheared variant "ns" -- and a single "bin"
+        # otherwise; see MeanShearInBins.selector.
+        source_bin_key = "bin_ns" if cat_type == "metadetect" else "bin"
+
+        # Pass 1: choose bin edges from the property values at the galaxy
+        # positions that actually enter the measurement, i.e. galaxies in a
+        # source bin where the map is observed. This is the same
+        # {galaxies with defined shear in a source bin} ∩ {observed pixels}
+        # region the mean shear is measured over, so the bins match the tested
+        # region without needing a separate mask.
+        sampled = {name: [] for name in all_maps}
+        for s, e, data in _catalog_iterator():
+            if self.rank == 0:
+                print(f"TXMeanShearSurveyProperties: bin-edge pass rows {s:,} – {e:,}")
+            in_source_bin = data[source_bin_key] != -1
+            for name, (hsp_map, nside) in all_maps.items():
+                vals = _property_values_at(
+                    hsp_map, nside, data[ra_key], data[dec_key]
+                )
+                # Keep only source-sample galaxies with an observed value: this
+                # is the sample the mean shear is binned over.
+                keep = in_source_bin & np.isfinite(vals)
+                sampled[name].append(vals[keep])
+
+        # Combine the sampled values across chunks and MPI ranks, then set the
+        # edges. allgather so every rank builds identical binners below (their
+        # construction is collective through the calibrators).
+        bin_edges = {}
+        for name in list(all_maps):
+            local = (
+                np.concatenate(sampled[name]) if sampled[name] else np.empty(0)
+            )
+            del sampled[name]
+            if self.comm is not None:
+                local = np.concatenate(self.comm.allgather(local))
+            edges = _bin_edges_from_values(local, nbins, outlier_fraction)
+            if edges is None:
+                if self.rank == 0:
+                    print(
+                        f"TXMeanShearSurveyProperties: skipping '{name}' (no "
+                        "usable range among the galaxies that sample it)."
+                    )
+                del all_maps[name]
+                continue
+            bin_edges[name] = edges
+
+        if not all_maps:
+            if self.rank == 0:
+                print(
+                    "TXMeanShearSurveyProperties: no survey property map has a "
+                    "usable range among the measured galaxies."
+                )
+            return
+
+        # One MeanShearInBins accumulator per surviving map.
         binned_shears = {
             name: MeanShearInBins(
                 "survey_prop",
-                edges,
+                bin_edges[name],
                 delta_gamma,
                 cut_source_bin=True,
                 shear_catalog_type=cat_type,
             )
-            for name, (_, _, edges) in all_maps.items()
+            for name in all_maps
         }
 
-        # Single pass through the shear catalog, processing all maps per chunk.
-        it = self.combined_iterators(
-            chunk_rows,
-            "shear_catalog", "shear", shear_cols,
-            "shear_tomography_catalog", "tomography", tomo_cols,
-            *extra_iters,
-            longest=True,
-        )
-
-        for s, e, data in it:
+        # Pass 2: accumulate mean shear in those bins, processing all maps per
+        # chunk in a single sweep of the catalog.
+        for s, e, data in _catalog_iterator():
             if self.rank == 0:
-                print(f"TXMeanShearSurveyProperties: rows {s:,} – {e:,}")
-            # Galaxies outside the mask footprint are excluded from every map's
-            # test, giving all survey properties a single consistent footprint.
-            in_footprint = _in_footprint(data[ra_key], data[dec_key], mask)
-            for name, (hsp_map, nside, _) in all_maps.items():
+                print(f"TXMeanShearSurveyProperties: measurement pass rows {s:,} – {e:,}")
+            for name, (hsp_map, nside) in all_maps.items():
                 # Look up the property at each galaxy, with NaN for galaxies on
-                # unobserved pixels or outside the footprint (dropped by the
-                # binner). See _property_values_at for the dtype handling.
+                # pixels the map does not observe (dropped by the binner). See
+                # _property_values_at for the dtype handling.
                 data["survey_prop"] = _property_values_at(
-                    hsp_map, nside, data[ra_key], data[dec_key], in_footprint
+                    hsp_map, nside, data[ra_key], data[dec_key]
                 )
                 binned_shears[name].add_data(data)
 
@@ -442,9 +451,9 @@ class TXMeanShearSurveyProperties(PipelineStage):
             gs = fig.add_gridspec(1, 2, width_ratios=[1.0, 1.45])
 
             plt.subplot(gs[0])
-            hsp_map, map_nside, _ = all_maps[name]
+            hsp_map, map_nside = all_maps[name]
             _plot_property_map(
-                hsp_map, map_nside, mask, safe_name,
+                hsp_map, map_nside, safe_name,
                 plot_nside=self.config["map_plot_nside"],
             )
 
