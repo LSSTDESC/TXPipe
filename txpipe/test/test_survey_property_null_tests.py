@@ -5,7 +5,9 @@ import healsparse as hsp
 from ..survey_property_null_tests import (
     _bin_edges_from_values,
     _property_values_at,
+    _assign_property_column,
     _marker_offset,
+    META_VARIANTS,
 )
 
 # A small patch: a disc of radius 10 deg centred at (ra, dec) = (30, 10),
@@ -170,6 +172,68 @@ def test_property_values_at_inrange_sentinel():
     vals = _property_values_at(prop, NSIDE, ra, dec)
     assert vals[0] == 1.0
     assert np.isnan(vals[1])  # unobserved -> NaN even though sentinel is in range
+
+
+# ---------------------------------------------------------------------------
+# _assign_property_column
+#
+# Regression for the metadetect broadcast bug: each shear variant is a separate
+# detection catalogue with its own length, and MeanShearInBins runs the bin
+# selector on every variant. A single unsheared-length survey_prop column cannot
+# be broadcast against the per-variant bin_1p etc. columns, which raised
+# "operands could not be broadcast together". _assign_property_column must write
+# one property column per variant, each matching that variant's length.
+# ---------------------------------------------------------------------------
+def _observed_map(value=1.0):
+    prop = hsp.HealSparseMap.make_empty(NSIDE_COV, NSIDE, np.float64)
+    prop[_patch_pixels()] = value
+    return prop
+
+
+def test_assign_property_column_metadetect_per_variant_lengths():
+    prop = _observed_map(1.0)
+    patch_pix = _patch_pixels()
+    rng = np.random.default_rng(0)
+
+    # Give every variant a DIFFERENT length, like the real (48297 vs 48673) case.
+    data = {}
+    lengths = {}
+    for i, v in enumerate(META_VARIANTS):
+        n = 100 + 13 * i  # ns=100, 1p=113, 1m=126, ... all distinct
+        ra, dec = _positions(rng.choice(patch_pix, size=n))
+        data[f"{v}/ra"], data[f"{v}/dec"] = ra, dec
+        lengths[v] = n
+
+    _assign_property_column(data, "metadetect", prop, NSIDE, "ns/ra", "ns/dec")
+
+    # One property column per variant, each at that variant's own length.
+    for v in META_VARIANTS:
+        assert data[f"{v}/survey_prop"].shape == (lengths[v],)
+
+    # The plain column MeanShearInBins.add_data indexes mirrors the unsheared one.
+    assert data["survey_prop"].shape == (lengths["ns"],)
+    assert np.array_equal(
+        data["survey_prop"], data[f"{META_VARIANTS[0]}/survey_prop"], equal_nan=True
+    )
+
+    # The selection that used to crash now broadcasts for every variant:
+    # (survey_prop in range) & (per-variant bin != -1).
+    for v in META_VARIANTS:
+        bin_col = np.zeros(lengths[v], dtype=int)
+        w = (data[f"{v}/survey_prop"] > 0.0) & (bin_col != -1)
+        assert w.shape == (lengths[v],)
+
+
+def test_assign_property_column_single_for_non_metadetect():
+    """metacal/lensfit/hsc share one length across variants: one column only."""
+    prop = _observed_map(2.5)
+    ra, dec = _positions(_patch_pixels()[:200])
+    data = {"ra": ra, "dec": dec}
+
+    _assign_property_column(data, "metacal", prop, NSIDE, "ra", "dec")
+
+    assert data["survey_prop"].shape == (200,)
+    assert [k for k in data if "survey_prop" in k] == ["survey_prop"]
 
 
 # ---------------------------------------------------------------------------

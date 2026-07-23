@@ -82,6 +82,36 @@ def _property_values_at(hsp_map, nside, ra, dec):
     return prop_vals
 
 
+def _assign_property_column(data, cat_type, hsp_map, nside, ra_key, dec_key):
+    """
+    Set the ``survey_prop`` column(s) on a data chunk for ``MeanShearInBins``.
+
+    For metadetect each shear variant (ns/1p/1m/2p/2m) is a *separate* detection
+    catalogue with its own positions and its own length, and the calibrator
+    evaluates the bin selector once per variant. A single property column sized
+    to the unsheared variant therefore cannot be broadcast against the per-
+    variant ``bin_1p`` etc. columns. So one ``{variant}/survey_prop`` column is
+    written per variant, each looked up at that variant's own positions, matched
+    by ``_DataWrapper`` in the calibrator. ``MeanShearInBins.add_data`` also
+    reads a plain ``survey_prop`` indexed by the *unsheared* selection when it
+    accumulates the mean property value, so that is mirrored from the unsheared
+    variant.
+
+    Other catalogue types (metacal, lensfit, hsc) share one position array and
+    length across variants, so a single ``survey_prop`` column suffices.
+    """
+    if cat_type == "metadetect":
+        for v in META_VARIANTS:
+            data[f"{v}/survey_prop"] = _property_values_at(
+                hsp_map, nside, data[f"{v}/ra"], data[f"{v}/dec"]
+            )
+        data["survey_prop"] = data[f"{META_VARIANTS[0]}/survey_prop"]
+    else:
+        data["survey_prop"] = _property_values_at(
+            hsp_map, nside, data[ra_key], data[dec_key]
+        )
+
+
 def _marker_offset(mu):
     """
     Horizontal offset used to separate the g1 and g2 series in the plots.
@@ -235,9 +265,11 @@ class TXMeanShearSurveyProperties(PipelineStage):
             ra_key, dec_key = "ra", "dec"
         elif cat_type == "metadetect":
             unsheared = META_VARIANTS[0]
-            shear_cols = [f"{unsheared}/ra", f"{unsheared}/dec"] + metadetect_variants(
-                "g1", "g2", "weight"
-            )
+            # ra/dec are read for every variant, not just the unsheared one:
+            # each metadetect variant is a separate detection catalogue with its
+            # own positions and length, and the property must be looked up at
+            # each variant's positions (see _assign_property_column).
+            shear_cols = metadetect_variants("ra", "dec", "g1", "g2", "weight")
             extra_iters = []
             ra_key, dec_key = f"{unsheared}/ra", f"{unsheared}/dec"
         else:
@@ -372,10 +404,11 @@ class TXMeanShearSurveyProperties(PipelineStage):
                 print(f"TXMeanShearSurveyProperties: measurement pass rows {s:,} – {e:,}")
             for name, (hsp_map, nside) in all_maps.items():
                 # Look up the property at each galaxy, with NaN for galaxies on
-                # pixels the map does not observe (dropped by the binner). See
-                # _property_values_at for the dtype handling.
-                data["survey_prop"] = _property_values_at(
-                    hsp_map, nside, data[ra_key], data[dec_key]
+                # pixels the map does not observe (dropped by the binner). For
+                # metadetect this writes one column per shear variant; see
+                # _assign_property_column for why.
+                _assign_property_column(
+                    data, cat_type, hsp_map, nside, ra_key, dec_key
                 )
                 binned_shears[name].add_data(data)
 
