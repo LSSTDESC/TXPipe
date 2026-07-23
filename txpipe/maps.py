@@ -276,7 +276,7 @@ class TXLensMaps(PipelineStage):
     """
     Make tomographic lens number count maps
 
-    Uses photometry and lens tomography catalogs.
+    Reads from a pre-binned lens catalog and generates lens number count maps.
 
     Density maps are made later once masks are generated.
     """
@@ -285,8 +285,7 @@ class TXLensMaps(PipelineStage):
     dask_parallel = True
 
     inputs = [
-        ("photometry_catalog", HDFFile),
-        ("lens_tomography_catalog", TomographyCatalog),
+        ("binned_lens_catalog", HDFFile),
     ]
     outputs = [
         ("lens_maps", MapsFile),
@@ -297,24 +296,15 @@ class TXLensMaps(PipelineStage):
         **map_config_options,
     }
 
-    def ra_dec_inputs(self):
-        return "photometry_catalog", "photometry"
-
     def run(self):
         import healsparse as hsp
 
         _, da = import_dask()
 
-        # The subclass reads the ra and dec of the lenses
-        # from a different input file, so we allow that here
-        # using this method which is overwrites
-        cat_name, cat_group = self.ra_dec_inputs()
+        # Open the binned lens catalog
+        lens_cat = self.open_input("binned_lens_catalog", wrapper=True)
 
-        # open our two input files. They will be read lazily
-        tomo_cat = self.open_input("lens_tomography_catalog", wrapper=True)
-        photo_cat = self.open_input(cat_name, wrapper=True)
-
-        nbin_lens = tomo_cat.read_nbin()
+        nbin_lens = lens_cat.file["lens"].attrs["nbin_lens"]
         self.config["nbin_lens"] = nbin_lens
 
         # Other config info.
@@ -323,28 +313,42 @@ class TXLensMaps(PipelineStage):
         if block_size == 0:
             block_size = "auto"
 
-        # Lazily open input data sets
-        ra = da.from_array(photo_cat.file[f"{cat_group}/ra"], block_size)
-        block_size = ra.chunksize
-        dec = da.from_array(photo_cat.file[f"{cat_group}/dec"], block_size)
-        weight = da.from_array(tomo_cat.file["tomography/lens_weight"], block_size)
-        tomo_bin = da.from_array(tomo_cat.file["tomography/bin"], block_size)
-
         # Build a "master" coverage map using all the ra and dec values in the catalog
         # This way we can use the same coverage mask for all the maps
+        ra = da.from_array(lens_cat.file["lens/bin_all/ra"], block_size)
+        block_size = ra.chunksize
+        dec = da.from_array(lens_cat.file["lens/bin_all/dec"], block_size)
         cov_map = make_coverage_map(ra, dec, pixel_scheme)
 
         # bins to generate maps for
-        bins = list(range(nbin_lens)) + ["2D"]
+        bins = list(range(nbin_lens)) + ["all"]
         maps = {}
 
         # Generate the maps with dask. This is lazy until we do da.compute
         for b in bins:
+            bin_name = b
+            ra = da.from_array(lens_cat.file[f"lens/bin_{bin_name}/ra"], block_size)
+            dec = da.from_array(lens_cat.file[f"lens/bin_{bin_name}/dec"], block_size)
+            weight = da.from_array(lens_cat.file[f"lens/bin_{bin_name}/weight"], block_size)
+
+            # Create the maps for this bin. The data is pre-selected, so all objects
+            # belong to this bin. Create dummy tomo_bin array where all values equal the bin index.
+            if b == "all":
+                tomo_bin = da.full_like(weight, -1, dtype=int)
+                b_index = -1
+            else:
+                tomo_bin = da.full_like(weight, b, dtype=int)
+                b_index = b
+
             lens_map_results = make_dask_lens_maps(
-                ra, dec, weight, tomo_bin, b, pixel_scheme, cov_map, sentinel=0.0
+                ra, dec, weight, tomo_bin, b_index, pixel_scheme, cov_map, sentinel=0.0
             )
-            maps[f"ngal_{b}"] = lens_map_results["count_map"]
-            maps[f"weighted_ngal_{b}"] = lens_map_results["weight_map"]
+
+            # Rename "all" to "2D" in output
+            output_bin = "2D" if b == "all" else b
+
+            maps[f"ngal_{output_bin}"] = lens_map_results["count_map"]
+            maps[f"weighted_ngal_{output_bin}"] = lens_map_results["weight_map"]
 
         # Actually run everything
         (maps,) = da.compute(maps)
@@ -370,25 +374,6 @@ class TXLensMaps(PipelineStage):
             for name, map in maps_hsp.items():
                 out.write_map(name, map, metadata)
             out.file["maps"].attrs.update(metadata)
-
-
-class TXExternalLensMaps(TXLensMaps):
-    """
-    Make tomographic lens number count maps from external data
-
-    Same as TXLensMaps except it reads from an external
-    lens catalog.
-    """
-
-    name = "TXExternalLensMaps"
-
-    inputs = [
-        ("lens_catalog", HDFFile),
-        ("lens_tomography_catalog", TomographyCatalog),
-    ]
-
-    def ra_dec_inputs(self):
-        return "lens_catalog", "lens"
 
 
 class TXDensityMaps(PipelineStage):

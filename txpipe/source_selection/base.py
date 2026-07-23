@@ -352,6 +352,7 @@ def select_weak_lensing_sample(data, config, calling_from_select=False):
     # output is different in each case
     s2n_cut = config["s2n_cut"]
     T_cut = config["T_cut"]
+
     verbose = config["verbose"]
     variant = data.suffix
 
@@ -386,7 +387,7 @@ def select_weak_lensing_sample(data, config, calling_from_select=False):
     # as above
     if verbose and calling_from_select:
         print(
-            f"Tomo selection ({variant}) {f1:.2%} flag, {f2:.2%} size, {f3:.2%} SNR, ",
+            f"Tomo selection ({variant}) {f1:.2%} flag, {f2:.2%} size, {f3:.2%} SNR",
             end="",
         )
     elif verbose:

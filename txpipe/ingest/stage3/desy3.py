@@ -90,7 +90,7 @@ class TXIngestDESY3Footprint(TXIngestMapsHsp):
     inputs = []
 
     outputs = [
-        ("aux_lens_maps", MapsFile),
+        ("des_footprint_maps", MapsFile),
     ]
 
     config_options = {
@@ -108,7 +108,7 @@ class TXIngestDESY3Footprint(TXIngestMapsHsp):
         print(self.config["input_labels"])
         assert len(self.config["input_filepaths"]) == len(self.config["input_labels"])
 
-        self.process_maps(self.config["input_filepaths"], self.config["input_labels"], "aux_lens_maps")
+        self.process_maps(self.config["input_filepaths"], self.config["input_labels"], "des_footprint_maps")
 
 
 class TXIngestDESY3SpeczCat(TXIngestCatalogFits):

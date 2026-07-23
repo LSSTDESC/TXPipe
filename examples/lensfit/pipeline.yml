@@ -44,8 +44,10 @@ stages:
         photoz_stack: lens_photoz_stack
   - name: TXSourceMaps
   - name: TXLensMaps
-  - name: TXAuxiliarySourceMaps
-  - name: TXAuxiliaryLensMaps
+  - name: TXPSFMaps
+  - name: TXFlagMaps
+  - name: TXDepthMaps
+  - name: TXBrightObjectMaps
   - name: TXSimpleMask
   - name: TXLSSWeightsUnit
   - name: TXDensityMaps
