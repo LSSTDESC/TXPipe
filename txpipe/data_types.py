@@ -108,6 +108,9 @@ class ShearCatalog(HDFFile):
         elif self.catalog_type == "metadetect":
             shear_cols = ["ns/g1", "ns/g2", "ns/ra", "ns/dec", "ns/weight"]
             rename = {c: c[3:] for c in shear_cols}
+        elif self.catalog_type == "anacal":
+            shear_cols = ["e1", "e2", "ra", "dec", "weight"]
+            rename = {"e1":"g1", "e2":"g2"}
         else:
             shear_cols = ["g1", "g2", "ra", "dec", "weight"]
             rename = {}

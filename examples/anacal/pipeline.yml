@@ -1,0 +1,34 @@
+# AnaCal selector + calibrator pipeline — reads the shear catalog produced
+# by ``examples/anacal/ingest.yml``.
+
+stages:
+  - name: TXSourceSelectorAnaCal
+
+output_dir: data/example/output_anacal
+
+launcher:
+    name: mini
+    interval: 1.0
+
+site:
+    name: local
+    max_threads: 2
+
+modules: >
+    txpipe
+
+config: examples/anacal/config.yml
+
+inputs:
+    shear_catalog: data/example/anacal_inputs/shear_catalog.hdf5
+
+    # Selector-side inputs.  With ``input_pz: true`` in config.yml the
+    # selector reads ``mean_z`` from the shear catalog (populated by
+    # TXIngestAnacal from ``zmode_0``), so these two are only exercised
+    # under ``input_pz: false`` (random-forest tomography).  Kept here to
+    # satisfy the ceci graph builder — ceci checks every declared input
+    # has a path, even when the stage doesn't open it.
+    spectroscopic_catalog: /pscratch/sd/x/xiangchl/data/DP1/catalogs/spec_catalog_a360.hdf5
+    shear_tomography_classifier: /pscratch/sd/x/xiangchl/data/DP1/catalogs/shear_tomography_classifier_a360.pkl
+
+resume: False

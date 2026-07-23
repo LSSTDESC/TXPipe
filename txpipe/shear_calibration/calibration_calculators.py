@@ -1,6 +1,6 @@
 import numpy as np
 from .names import META_VARIANTS
-from .calibrators import MetaCalibrator, LensfitCalibrator, HSCCalibrator, MetaDetectCalibrator, NullCalibrator
+from .calibrators import MetaCalibrator, LensfitCalibrator, HSCCalibrator, MetaDetectCalibrator, NullCalibrator, AnaCalibrator
 from .utils import BinStats
 
 class _DataWrapper:
@@ -58,7 +58,7 @@ class CalibrationCalculator:
     The selection function does not need to know about all these variants. The calculator
     will wrap the data dictionary passed in in a special class that chooses variant
     columns when they are looked up. So your selection function can just ask for, e.g.,
-    "T", "s2n", or "mag_r", and the calculator will make sure it gets the right variant of 
+    "T", "s2n", or "mag_r", and the calculator will make sure it gets the right variant of
     that column for each selection.
 
     The final results are in the form of a BinStats object, which contains:
@@ -314,8 +314,8 @@ class MetaDetectCalculator(CalibrationCalculator):
     """A calibration and stats calculator for metadetect catalogs.
 
     See the CalibrationCalculator class for the use and contents of this class,
-    but note that the attributes of the class are different because we have to 
-    keep track of 5 variants separately, and the shear_stats keeps track of the 
+    but note that the attributes of the class are different because we have to
+    keep track of 5 variants separately, and the shear_stats keeps track of the
     mean and std dev of all of the variants.
     """
 
@@ -849,3 +849,192 @@ class MockCalculator(CalibrationCalculator):
         return bin_stats
 
 
+class AnaCalCalculator(CalibrationCalculator):
+    """Calibration and stats calculator for AnaCal catalogs
+
+    See the CalibrationCalculator class for the use and contents of this class
+    """
+
+    def __init__(self, selector, delta_gamma):
+        """
+        Initialize the Calibrator using the funtion you will use to select
+        objects. That function should take at least one argument,
+        the chunk of data to select on. It should look up the original
+        names of the columns to select on; the calculator wraps the data
+        with _DataWrapper so the same call also picks up ±γ variants when
+        needed (mask + s2n + size + zbin cuts all go through this single
+        code path).
+
+        The selector can take further *args and **kwargs, passed in when
+        adding data.
+
+        Parameters
+        ----------
+        selector: function
+            Function that selects objects. Must apply every cut whose
+            shear response contributes to the selection bias (mask, s2n,
+            size, zbin) — the calculator no longer applies any cut of its
+            own.
+        delta_gamma: float
+            Half-difference in applied g between the ±1 variants
+            (each variant is at ±delta_gamma from baseline).
+        """
+        from parallel_statistics import ParallelMean
+        super().__init__(selector)
+
+        self.delta_gamma = delta_gamma
+        # e_meas ≡ wsel · e is the observable.  All accumulators
+        # use uniform weight=1 and per-source values are pre-multiplied by wsel
+        # where the chain-rule term needs it, so each collect() returns a
+        # plain sample mean ⟨wsel · X⟩ (never divided by ⟨wsel⟩).
+        # Note that wsel is smooth detection weight and 96% of them are 1.
+        # Ensemble shear estimator:
+        #     γ = ⟨e_meas⟩ / R_total,  R_total = R_shape + R_detect + R_sel
+        # 0: ⟨wsel · de1/dg1⟩, 1: ⟨wsel · de2/dg2⟩
+        self.shape_response = ParallelMean(size=2)
+        # 0: ⟨(dwsel/dg1)·e1⟩, 1: ⟨(dwsel/dg2)·e2⟩
+        self.detect_response = ParallelMean(size=2)
+        # 0..3: ⟨wsel · e · 𝟙[sel_±]⟩
+        self.sel_response = ParallelMean(size=4)
+
+    def add_data(self, data, *args, **kwargs):
+        """Select objects from a new chunk of data and tally their responses
+
+        Parameters
+        ----------
+        data: dict
+            Dictionary of data columns to select on and add
+        *args
+            Positional arguments to be passed to the selection function
+        **kwargs
+            Keyword arguments to be passed to the selection function.
+
+        Returns
+        -------
+        sel: array
+            The indicies of the objects selected from this chunk of data
+        """
+        # Baseline + four shifted views on the same chunk. _DataWrapper
+        # routes ``data_1p["s2n"] -> data["s2n_1p"]``,
+        # ``data_1p["m00"] -> data["m00_1p"]``,
+        # ``data_1p["zbin"] -> data["zbin_1p"]``, etc.
+        # Columns without a matching variant (mask_value, e1, weight, ...)
+        # fall back to baseline.
+        data_00 = _DataWrapper(data, "")
+        data_1p = _DataWrapper(data, "_1p")
+        data_1m = _DataWrapper(data, "_1m")
+        data_2p = _DataWrapper(data, "_2p")
+        data_2m = _DataWrapper(data, "_2m")
+
+        # A single selector call per variant applies mask + s2n + size +
+        # zbin cuts uniformly.  No per-cut special casing lives here now.
+        select = self.selector(data_00, *args, **kwargs)
+        sel_1p = self.selector(data_1p, *args, **kwargs)
+        sel_1m = self.selector(data_1m, *args, **kwargs)
+        sel_2p = self.selector(data_2p, *args, **kwargs)
+        sel_2m = self.selector(data_2m, *args, **kwargs)
+
+        # Convention-A column plan (see TXIngestAnacal):
+        #   e1, e2      – e_meas ≡ wsel · e_raw (pre-multiplied, feed treecorr)
+        #   e1_raw, e2_raw – raw shape (needed for R_detect numerator)
+        #   wsel        – raw wsel (needed for R_shape numerator, Neff, μ)
+        #   weight      – uniform 1 (feed treecorr's weight_column)
+        e1 = data_00["e1"]                # = wsel · e_raw
+        e2 = data_00["e2"]
+        e1_raw = data_00["e1_raw"]
+        e2_raw = data_00["e2_raw"]
+        wsel = data_00["wsel"]
+        weight_dg1 = data_00["weight_dg1"]
+        weight_dg2 = data_00["weight_dg2"]
+        de1_dg1 = data_00["de1_dg1"]
+        de2_dg2 = data_00["de2_dg2"]
+
+        # Baseline slices.
+        w_sel = wsel[select]
+        e1_sel = e1[select]              # already wsel · e_raw
+        e2_sel = e2[select]
+
+        # Bookkeeping: raw count + wsel sums (used for Kish's Neff).
+        self.count += e1_sel.size
+        self.sum_weights += np.sum(w_sel)
+        self.sum_sq_weights += np.sum(w_sel ** 2)
+
+        # All accumulators use weight=1 (uniform).  Per-source values are
+        # pre-multiplied by wsel where the chain-rule term needs it, so each
+        # ParallelMean returns ⟨wsel · X⟩ over the fed sample.
+
+        # R_shape numerator: ⟨wsel · de_raw/dg⟩ over the baseline sample.
+        self.shape_response.add_data(0, w_sel * de1_dg1[select])
+        self.shape_response.add_data(1, w_sel * de2_dg2[select])
+        # R_detect numerator: ⟨(dwsel/dg) · e_raw⟩ over the baseline sample.
+        self.detect_response.add_data(0, weight_dg1[select] * e1_raw[select])
+        self.detect_response.add_data(1, weight_dg2[select] * e2_raw[select])
+        # R_sel numerator: ⟨wsel · e_raw⟩ over each ±γ variant sample —
+        # equivalently ⟨e_meas⟩ since e1, e2 are already pre-multiplied.
+        # (Spin-2 argument: N_1p, N_1m, N_2p, N_2m converge in the large-N
+        # ensemble, so per-subset means telescope cleanly under the finite
+        # difference; residual bias ~ (δN/N)·⟨e⟩, zero in ensemble.)
+        self.sel_response.add_data(0, e1[sel_1p])
+        self.sel_response.add_data(1, e1[sel_1m])
+        self.sel_response.add_data(2, e2[sel_2p])
+        self.sel_response.add_data(3, e2[sel_2m])
+
+        # μ numerator: mean of e_meas (already pre-multiplied) over baseline.
+        self.shear_stats.add_data(0, e1_sel)
+        self.shear_stats.add_data(1, e2_sel)
+
+        return select
+
+    def collect(self, comm=None, allgather=False) -> BinStats:
+        """
+        Finalize and sum up all the response values, and return a BinStats
+        obejct that collections calibration and statistics.
+
+        Parameters
+        ----------
+        comm: MPI Communicator
+            If supplied, all processors response values will be combined together.
+            All processes will return the same final value
+        allgather: bool
+            If True, the response values will be returned for all the processors.
+
+        Returns
+        -------
+        bin_stats: BinStats
+            An object containing the final calibration and statistics for this bin.
+        """
+        # One helper for every scalar accumulator; comm.reduce returns
+        # None on non-root ranks, which we let propagate through Neff.
+        def _reduce(x):
+            if comm is None:
+                return x
+            return comm.allreduce(x) if allgather else comm.reduce(x)
+
+        count = _reduce(self.count)
+        sum_weights = _reduce(self.sum_weights)
+        sum_sq_weights = _reduce(self.sum_sq_weights)
+
+        # Each ParallelXxx does its own MPI reduction inside .collect().
+        mode = "allgather" if allgather else "gather"
+        _, shape_means = self.shape_response.collect(comm, mode)   # (2,) means
+        _, detect_means = self.detect_response.collect(comm, mode) # (2,) means
+        _, sel_means = self.sel_response.collect(comm, mode)       # (4,) means
+        _, mean_e, var_e = self.shear_stats.collect(comm, mode)
+
+        # Convention A: every mean is a plain sample mean ⟨wsel · X⟩ over
+        # the baseline (shape, detect, μ) or ±γ variant (sel) sample.
+        # No ⟨wsel⟩ denominator anywhere — R_total already contains wsel
+        # via the pre-multiplication in add_data.
+        R_shape = 0.5 * (shape_means[0] + shape_means[1])
+        R_detect = 0.5 * (detect_means[0] + detect_means[1])
+        R_sel_1 = (sel_means[0] - sel_means[1]) / (2.0 * self.delta_gamma)
+        R_sel_2 = (sel_means[2] - sel_means[3]) / (2.0 * self.delta_gamma)
+        R_sel = 0.5 * (R_sel_1 + R_sel_2)
+        R_total = R_shape + R_detect + R_sel
+
+        Neff = None if sum_weights is None else sum_weights ** 2 / sum_sq_weights
+
+        calibrator = AnaCalibrator(R_total, mean_e, mu_is_weighted=False)
+        sigma_e = calibrator.calibrate_variance_to_sigma_e(var_e)
+        sigma = calibrator.calibrate_sigma(np.sqrt(var_e))
+        return BinStats(count, Neff, calibrator.mu, sigma_e, sigma, calibrator)
