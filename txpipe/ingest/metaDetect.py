@@ -1,7 +1,7 @@
 from ..base_stage import PipelineStage
 from ..data_types import ShearCatalog, PhotometryCatalog, HDFFile, FileCollection
 from .lsst import process_metadetect_data, sanitize
-from .dp1_info import DP1_COSMOLOGY_TRACTS, ALL_TRACTS, DP1_TRACTS
+from .dp1_info import DP1_COSMOLOGY_TRACTS, ALL_TRACTS, DP1_TRACTS, TXPPIPE_COLUMNS
 from ceci.config import StageParameter
 from ..utils.hdf_tools import h5py_shorten, repack
 from ..utils.splitters import MetaDetectSplitter
@@ -9,9 +9,6 @@ from ..shear_calibration.names import META_VARIANTS
 import numpy as np
 import os
 import pyarrow.parquet as pq
-
-
-
 
 class TXIngestRubinMetaDetect(PipelineStage):
     """
@@ -34,7 +31,8 @@ class TXIngestRubinMetaDetect(PipelineStage):
         "select_tracts": StageParameter(list, [], msg="list of tracts (overrides cosmology_tracts_only, but not select_field)."),
         "collections": StageParameter(str, "LSSTComCam/DP1", msg="Butler collections to use."),
         "exclusion_flag": StageParameter(bool, False, msg="Decide if flags are used for exclusion or just flagged."),
-        "flag_list": StageParameter(list, ["is_primary"], msg="list of flags to use for combined.")
+        "flag_list": StageParameter(list, ["is_primary"], msg="list of flags to use for combined."),
+        "all_columns": StageParameter(bool, False, msg="do we want to save all columns or just the ones TXPipe needs.")
         }
 
     def run(self):
@@ -76,7 +74,7 @@ class TXIngestRubinMetaDetect(PipelineStage):
         created_files = False
         data_set_refs = butler.query_datasets('object_shear_all')
         n_chunks = len(data_set_refs)
-        input_columns = self.get_input_columns()
+        all_columns_flag = self.config["all_columns"]
         exclusion_flag = self.config["exclusion_flag"]
         flag_list = self.config["flag_list"]
         for i, ref in enumerate(data_set_refs):
@@ -87,7 +85,6 @@ class TXIngestRubinMetaDetect(PipelineStage):
 
             d = butler.get('object_shear_all',
                            dataId=ref.dataId,
-                           parameters={"columns": input_columns}
                            )
             chunk_size = len(d)
 
@@ -95,7 +92,8 @@ class TXIngestRubinMetaDetect(PipelineStage):
                 print(f"Skipping chunk {i + 1} / {n_chunks} since it is empty")
                 continue
 
-            shear_data = process_metadetect_data(d, flag_list, exclusion_flag)
+            shear_data = process_metadetect_data(d, flag_list, exclusion_flag, 
+                                                 full_columns=all_columns_flag)
             if not created_files:
                 created_files = True
                 variants = {
@@ -114,60 +112,16 @@ class TXIngestRubinMetaDetect(PipelineStage):
             print(f"Processing chunk {i + 1} / {n_chunks}")
 
         splitter.finish()
+        print("adding in aliases")
+        self.aliasing(shear_outfile, group)
         shear_outfile.close()
         print("Repacking files")
         repack(self.get_output("shear_catalog"))
 
-    def get_input_columns(self):
-        input_columns = [
-            "shearObjectId",
-            'cell_x',
-            'cell_y',
-            "metaStep",
-            "ra",
-            "dec",
-            "mfrac",
-            "gauss_g1",
-            "gauss_g2",
-            "gauss_g1_g1_Cov",
-            "gauss_g1_g2_Cov",
-            "gauss_g2_g2_Cov",
-            "gauss_T",
-            "gauss_snr",
-            "gauss_TErr",
-            "gauss_psfReconvolved_g1", 
-            "gauss_psfReconvolved_g2",
-            'gauss_psfReconvolved_T',
-            "psfOriginal_g1",
-            "psfOriginal_g2",
-            "psfOriginal_T",
-            #Next follows the fluxes:
-            "g_pgaussFlux",
-            "r_pgaussFlux",
-            "i_pgaussFlux",
-            "z_pgaussFlux",
-            "g_pgaussFluxErr",
-            "r_pgaussFluxErr",
-            "i_pgaussFluxErr",
-            "z_pgaussFluxErr",
-            "pgauss_T",
-            "pgauss_TErr",
-            #Various flags
-            "psfOriginal_flags",
-            "gauss_psfReconvolved_flags",
-            "gauss_object_flags",
-            "pgauss_object_flags",
-            "g_gaussFlux_flags",
-            "r_gaussFlux_flags",
-            "i_gaussFlux_flags",
-            "z_gaussFlux_flags",
-            "g_pgaussFlux_flags",
-            "r_pgaussFlux_flags",
-            "i_pgaussFlux_flags",
-            "z_pgaussFlux_flags",
-            "gauss_flags",
-            "pgauss_flags",
-            "gauss_shape_flags",
-            "is_primary"
-        ]
-        return input_columns
+    def aliasing(self, outfile, group):
+        g = group
+        for variant in ["ns", "1p", "1m", "2p", "2m"]:
+            k = g[variant]
+            for txname, original in TXPPIPE_COLUMNS.items():
+                k[txname] = k[original]
+

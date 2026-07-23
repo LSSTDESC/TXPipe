@@ -2,6 +2,7 @@ from ..utils import nanojansky_err_to_mag_ab, nanojansky_to_mag_ab, moments_to_s
 import numpy as np
 import h5py
 from ..shear_calibration.names import META_VARIANTS
+from .dp1_info import TXPPIPE_COLUMNS
 
 def process_photometry_data(data):
     cut = data["refExtendedness"] == 1
@@ -67,7 +68,7 @@ def process_shear_data(data):
     return output
 
 
-def process_metadetect_data(data, flag_list, flag_exclusion):
+def process_metadetect_data(data, flag_list, flag_exclusion, full_columns=False):
     output = {}
     for variant in META_VARIANTS:
         var_data = data[data["metaStep"] == variant]
@@ -78,38 +79,14 @@ def process_metadetect_data(data, flag_list, flag_exclusion):
             keep = flags == 0
             var_data = var_data[keep]
             flags = flags[keep]
-
-        var_output = {
-            "ra": var_data["ra"],
-            "dec": var_data["dec"],
-            "id": var_data["shearObjectId"],
-            "object_mask_fraction": var_data["mfrac"],
-            #"n_epoch": var_data["nEpochCell"],
-            "g1": var_data["gauss_g1"],
-            "g2": var_data["gauss_g2"],
-            "g1_var": var_data["gauss_g1_g1_Cov"],
-            "g2_var": var_data["gauss_g2_g2_Cov"],
-            "g_cross": var_data["gauss_g1_g2_Cov"],
-            "T": var_data["gauss_T"],
-            "s2n": var_data["gauss_snr"],
-            "T_err": var_data["gauss_TErr"],
-            "psf_g1_original": var_data["psfOriginal_g1"],
-            "psf_g2_original": var_data["psfOriginal_g2"],
-            "psf_T_mean_original": var_data["psfOriginal_T"],
-            "psf_g1": var_data["gauss_psfReconvolved_g1"],
-            "psf_g2": var_data["gauss_psfReconvolved_g2"],
-            "psf_T_mean": var_data["gauss_psfReconvolved_T"],
-            "flags": flags,
-            "weight": 1 / (0.5 * (var_data["gauss_g1_g1_Cov"] + var_data["gauss_g2_g2_Cov"])),
-            "gauss_flags": var_data["gauss_flags"],
-            "pgauss_flags": var_data["pgauss_flags"],
-            "gauss_shape_flags": var_data["gauss_shape_flags"],
-            "is_primary": var_data["is_primary"],
-            "gauss_object_flags": var_data["gauss_object_flags"],
-            "pgauss_object_flags": var_data["pgauss_object_flags"],
-            "psfOriginal_flags": var_data["psfOriginal_flags"],
-            "gauss_psfReconvolved_flags": var_data["gauss_psfReconvolved_flags"],
-        }
+        if full_columns:
+            var_output = {name: var_data[name] for name in var_data.dtype.names} #just process all columns
+            var_output.pop("metaStep", None)
+        else:
+            var_output = {origin_name: var_data[origin_name] for origin_name in set(TXPPIPE_COLUMNS.values())}
+        # extra columns we are still adding:
+        var_output["flags"] = flags
+        var_output["weight"] = 1 / (0.5 * (var_data["gauss_g1_g1_Cov"] + var_data["gauss_g2_g2_Cov"]))
         for band in "griz": # For DP2, we only expect 4 bands
             f = var_data[f"{band}_pgaussFlux"]
             f_err = var_data[f"{band}_pgaussFluxErr"]
@@ -128,7 +105,7 @@ def sanitize(data):
     # following loop is for structured arrays, and will correct them.
     if data.dtype.names is not None:
         cols = {name: sanitize(data[name]) for name in data.dtype.names}
-        out = np.empty(data.shape, dtype=[(name, col.dtype) for name, col in cols.items()])
+        out = np.empty((len(data),), dtype=[(name, col.dtype) for name, col in cols.items()])
         for name, col in cols.items():
             out[name] = col
         return out
