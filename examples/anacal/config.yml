@@ -5,9 +5,9 @@ global:
     nside: 512
 
 TXIngestAnacal:
-    # DP1-v2 AnaCal outputs for the a360 cluster field (mergePatches per-tract).
+    # DP1-v3 AnaCal outputs for the a360 cluster field (per-tract).
     butler_config_file: /global/cfs/cdirs/lsst/production/gen3/rubin/DP1/repo/butler.yaml
-    collections: "u/xiangchl/dp1-v2/a360_anacal2"
+    collections: "u/xiangchl/dp1-v3/a360_anacal2"
 
     # a360 sits in the "Low Ecliptic Latitude Field" (LELF).  DP1_TRACTS["LELF"]
     # contains the two live tracts 10463, 10464 (plus four never-processed).
@@ -15,7 +15,10 @@ TXIngestAnacal:
     cosmology_tracts_only: False
 
     # Merged catalog carries band-combined shape moments under the "fpfs1_*"
-    # prefix and Gaussian-aperture fluxes at scale "gauss2".  a360 was
+    # prefix and Gaussian-aperture fluxes at scale "gauss2".  Per-band
+    # columns are survey-prefixed as ``lsst_{band}_...`` (v3 schema) and
+    # carry pre-computed magnitudes + dmag/dg responses, so no
+    # nanojansky→mag conversion happens inside the ingest.  a360 was
     # measured on griz only (no u/y coadds).
     prefix: "fpfs1"
     scale: "gauss2"
@@ -32,11 +35,24 @@ TXSourceSelectorAnaCal:
     # AnaCal reports a bit-packed flag; 1 means "any bit set" (strictest).
     mask_threshold: 40
 
-    # AnaCal S/N cut (i-band flux / flux_err).  Default in code is 5.0.
+    # AnaCal S/N cut (flux / flux_err).  Default in code is 5.0.
     s2n_cut: 5.0
 
-    # AnaCal size cut: (m00 + m20) / m00 > T_cut.  Default in code is 0.1.
+    # Band-combined size cut (m00 + m20) / m00 > T_cut on fpfs1 moments.
+    # Default 0.1.
     T_cut: 0.1
+
+    # Band-combined shape magnitude cut |e| < emax (selector applies
+    # esq < emax**2 on the ``esq`` column).
+    emax: 0.5
+
+    # Per-band AB mag upper bounds (uses pre-computed mag_{b} from v3
+    # ingest). Default 50 is above the xlens smooth-truncation cap
+    # (mag=40) so no cut is applied; set per band to gate on brightness.
+    g_hi_cut: 50.0
+    r_hi_cut: 50.0
+    i_hi_cut: 50.0
+    z_hi_cut: 50.0
 
     # Bands available in the a360 ingest.
     bands: [g, r, i, z]
