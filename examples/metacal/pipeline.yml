@@ -58,8 +58,10 @@ stages:
   - name: TXStarCatalogSplitter    # Split the star catalog into separate bins (psf/non-psf)
   - name: TXSourceMaps             # make source g1 and g2 maps
   - name: TXLensMaps               # make source lens and n_gal maps
-  - name: TXAuxiliarySourceMaps    # make PSF and flag maps
-  - name: TXAuxiliaryLensMaps      # make depth and bright object maps
+  - name: TXPSFMaps    # make PSF maps
+  - name: TXFlagMaps
+  - name: TXDepthMaps      # make depth and bright object maps
+  - name: TXBrightObjectMaps      # make depth and bright object maps
   - name: TXSimpleMask           # combine maps to make a simple mask
   - name: TXLSSWeightsUnit       # add systematic weights to the lens sample (weight=1 for this example)
   - name: TXSourceNoiseMaps      # Compute shear noise using rotations

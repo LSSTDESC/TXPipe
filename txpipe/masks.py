@@ -129,7 +129,10 @@ class TXSimpleMask(TXBaseMask):
     """
 
     name = "TXSimpleMask"
-    inputs = [("aux_lens_maps", MapsFile)]
+    inputs = [
+        ("depth_map", MapsFile),
+        ("bright_object_map", MapsFile),
+    ]
     config_options = {
         "depth_cut": StageParameter(float, 23.5, msg="Depth cut for mask creation."),
         "bright_object_max": StageParameter(float, 10.0, msg="Maximum allowed bright object count."),
@@ -150,10 +153,12 @@ class TXSimpleMask(TXBaseMask):
         """
         import healsparse as hsp
 
-        with self.open_input("aux_lens_maps", wrapper=True) as f:
-            metadata = dict(f.file["maps"].attrs)
-            bright_obj = f.read_map("bright_objects/count")
-            depth = f.read_map("depth/depth")
+        with self.open_input("bright_object_map", wrapper=True) as f_bright:
+            bright_obj = f_bright.read_map("bright_objects/count")
+
+        with self.open_input("depth_map", wrapper=True) as f_depth:
+            metadata = dict(f_depth.file["maps"].attrs)
+            depth = f_depth.read_map("depth/depth")
             pixel_scheme = choose_pixelization(**metadata)
 
         valid_pix = depth.valid_pixels
@@ -250,7 +255,8 @@ class TXSimpleMaskFrac(TXSimpleMask):
     parallel = False
     # make a mask from the auxiliary maps
     inputs = [
-        ("aux_lens_maps", MapsFile),
+        ("depth_map", MapsFile),
+        ("bright_object_map", MapsFile),
     ]
     outputs = [("mask", MapsFile)]
     config_options = {
@@ -302,13 +308,13 @@ class TXCustomMask(TXSimpleMaskFrac):
     """
     Make a mask from a custom list of cuts to aux maps (e.g depth cut and bright object cuts)
 
-    Fracdet currently taken from aux_lens_maps TODO: add option to compute this from hsp map
+    Fracdet currently taken from custom DES footprint maps
     """
 
     name = "TXCustomMask"
     # make a mask from the auxiliary maps
     inputs = [
-        ("aux_lens_maps", MapsFile),
+        ("footprint_maps", MapsFile),
     ]
     outputs = [("mask", MapsFile)]
     config_options = {
@@ -391,7 +397,7 @@ class TXCustomMask(TXSimpleMaskFrac):
             operator = OP_MAP[operator_string]
 
             # load map
-            with self.open_input("aux_lens_maps", wrapper=True) as f:
+            with self.open_input("footprint_maps", wrapper=True) as f:
                 metadata = dict(f.file["maps"].attrs)
                 m = f.read_map(map_name)
             pixel_scheme = choose_pixelization(**metadata)
@@ -438,7 +444,7 @@ class TXCustomMask(TXSimpleMaskFrac):
         fracdet : hsp.HealSparseMap
             Fracdet array.
         """
-        with self.open_input("aux_lens_maps", wrapper=True) as f:
+        with self.open_input("footprint_maps", wrapper=True) as f:
             fracdet = f.read_map(self.config["fracdet_name"])
         return fracdet
 

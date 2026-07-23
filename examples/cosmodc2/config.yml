@@ -14,7 +14,7 @@ TXShearCalibration: {}
 
 TXCosmoDC2Mock:
     cat_name: cosmoDC2_v1.1.4_image
-    visits_per_band: 16
+    years: 1.0
     extra_cols: redshift_true size_true shear_1 shear_2 Mag_true_r_sdss_z0
     flip_g2: true # to match metacal
     snr_limit: 4.0
@@ -49,19 +49,21 @@ TXSourceMaps:
     pixelization: healpix
     true_shear: false
 
-TXExternalLensMaps:
-    nside: 2048
-    sparse: true
-    pixelization: healpix
 
 TXExternalLensNoiseMaps:
     nside: 2048
     pixelization: healpix
 
-TXAuxiliarySourceMaps:
+TXPSFMaps:
     sparse: true
 
-TXAuxiliaryLensMaps:
+
+TXFlagMaps: {}
+TXDepthMaps:
+    sparse: true
+    nside: 2048
+    pixelization: healpix
+TXBrightObjectMaps:
     sparse: true
     nside: 2048
     pixelization: healpix

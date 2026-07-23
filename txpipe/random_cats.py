@@ -23,7 +23,7 @@ class TXRandomCat(PipelineStage):
 
     name = "TXRandomCat"
     inputs = [
-        ("aux_lens_maps", MapsFile),
+        ("depth_map", MapsFile),
         ("mask", MapsFile),
         ("lens_photoz_stack", QPNOfZFile),
         ("fiducial_cosmology", FiducialCosmology),
@@ -60,7 +60,7 @@ class TXRandomCat(PipelineStage):
         depth_band = self.config["depth_band"]
         if depth_band:
             depth_band = "_" + depth_band
-        with self.open_input("aux_lens_maps", wrapper=True) as maps_file:
+        with self.open_input("depth_map", wrapper=True) as maps_file:
             depth = maps_file.read_map(f"depth/depth{depth_band}")
             info = maps_file.read_map_info(f"depth/depth{depth_band}")
             nside = info["nside"]

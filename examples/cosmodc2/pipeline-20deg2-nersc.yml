@@ -60,9 +60,12 @@ stages:
     nprocess: 8
   - name: TXLensMaps
     nprocess: 8
-  - name: TXAuxiliarySourceMaps
+  - name: TXPSFMaps
+  - name: TXFlagMaps
     nprocess: 8
-  - name: TXAuxiliaryLensMaps
+  - name: TXDepthMaps
+    nprocess: 8
+  - name: TXBrightObjectMaps
     nprocess: 8
   - name: TXDensityMaps
   - name: TXSourceNoiseMaps

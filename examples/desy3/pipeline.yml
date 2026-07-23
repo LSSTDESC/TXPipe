@@ -7,6 +7,8 @@ stages:
   - name: TXIngestDESY3SpeczCat
   - name: TXIngestDESY3Shear
   - name: TXCustomMask
+    aliases:
+      footprint_maps: des_footprint_maps
   - name: TXIngestDESY3SourceRedshift
 
   # PER-OBJECT PHOTO-Z
@@ -127,7 +129,8 @@ stages:
   # MAPPING
   
   # Make PSF and similar maps for the sources
-  - name: TXAuxiliarySourceMaps
+  - name: TXPSFMaps
+  - name: TXFlagMaps
 
   # Make maps of the lens counts
   - name: TXLensMaps

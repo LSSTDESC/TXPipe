@@ -13,7 +13,7 @@ TXIngestStars:
 
 TXCosmoDC2Mock:
     cat_name: cosmoDC2_v1.1.4_image
-    visits_per_band: 16
+    years: 1.0
     extra_cols: redshift_true size_true shear_1 shear_2
     flip_g2: true # to match metacal
 
@@ -98,11 +98,16 @@ TXLensMaps:
     sparse: true
 
 
-TXAuxiliarySourceMaps:
+TXPSFMaps:
     chunk_rows: 100000
     sparse: true
 
-TXAuxiliaryLensMaps:
+
+TXFlagMaps: {}
+TXDepthMaps:
+    chunk_rows: 100000
+    sparse: true
+TXBrightObjectMaps:
     chunk_rows: 100000
     sparse: true
     bright_obj_threshold: 22.0
