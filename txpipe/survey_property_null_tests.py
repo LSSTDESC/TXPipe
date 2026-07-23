@@ -261,7 +261,11 @@ class TXMeanShearSurveyProperties(PipelineStage):
                 "g2", "g2_1p", "g2_2p", "g2_1m", "g2_2m",
                 "weight",
             ]
-            extra_iters = ["shear_tomography_catalog", "response", ["R_gamma"]]
+            # No stored response is read: MetacalCalculator recomputes R per
+            # survey-property bin from the sheared columns above, since the
+            # response of a re-binned selection differs from the tomographic-bin
+            # response saved in the catalog.
+            extra_iters = []
             ra_key, dec_key = "ra", "dec"
         elif cat_type == "metadetect":
             unsheared = META_VARIANTS[0]
