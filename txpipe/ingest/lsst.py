@@ -2,6 +2,7 @@ from ..utils import nanojansky_err_to_mag_ab, nanojansky_to_mag_ab, moments_to_s
 import numpy as np
 import h5py
 from ..shear_calibration.names import META_VARIANTS
+from .metaDetect import TXPPIPE_COLUMNS
 
 def process_photometry_data(data):
     cut = data["refExtendedness"] == 1
@@ -67,7 +68,7 @@ def process_shear_data(data):
     return output
 
 
-def process_metadetect_data(data, flag_list, flag_exclusion):
+def process_metadetect_data(data, flag_list, flag_exclusion, full_columns=False):
     output = {}
     for variant in META_VARIANTS:
         var_data = data[data["metaStep"] == variant]
@@ -78,9 +79,11 @@ def process_metadetect_data(data, flag_list, flag_exclusion):
             keep = flags == 0
             var_data = var_data[keep]
             flags = flags[keep]
-
-        var_output = {name: var_data[name] for name in var_data.dtype.names} #just process all columns
-        var_output.pop("metaStep", None)
+        if full_columns:
+            var_output = {name: var_data[name] for name in var_data.dtype.names} #just process all columns
+            var_output.pop("metaStep", None)
+        else:
+            var_output = {origin_name: var_data[origin_name] for origin_name in set(TXPPIPE_COLUMNS.values())}
         # extra columns we are still adding:
         var_output["flags"] = flags
         var_output["weight"] = 1 / (0.5 * (var_data["gauss_g1_g1_Cov"] + var_data["gauss_g2_g2_Cov"]))

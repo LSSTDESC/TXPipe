@@ -11,21 +11,21 @@ import os
 import pyarrow.parquet as pq
 
 TXPPIPE_COLUMNS = {
-    "g1":"gauss_g1",
-    "g2":"gauss_g2",
-    "g1_err":"gauss_g1_g1_Cov",
-    "g2_err":"gauss_g1_g2_Cov",
-    "g_cross":"gauss_g1_g2_Cov",
-    "T":"gauss_T",
-    "s2n":"gauss_snr",
-    "psf_g1_original":"psfOriginal_g1",
-    "psf_g2_original":"psfOriginal_g2",
-    "psf_T_mean_original":"psfOriginal_T",
-    "psf_g1":"gauss_psfReconvolved_g1",
-    "psf_g2":"gauss_psfReconvolved_g2",
-    "psf_T_mean":"gauss_psfReconvolved_T",
-    "object_mask_fraction":"mfrac",
-    "id":"shearObjectId", 
+    "g1": "gauss_g1",
+    "g2": "gauss_g2",
+    "g1_err": "gauss_g1_g1_Cov",
+    "g2_err": "gauss_g2_g2_Cov",
+    "g_cross": "gauss_g1_g2_Cov",
+    "T": "gauss_T",
+    "s2n": "gauss_snr",
+    "psf_g1_original": "psfOriginal_g1",
+    "psf_g2_original": "psfOriginal_g2",
+    "psf_T_mean_original": "psfOriginal_T",
+    "psf_g1": "gauss_psfReconvolved_g1",
+    "psf_g2": "gauss_psfReconvolved_g2",
+    "psf_T_mean": "gauss_psfReconvolved_T",
+    "object_mask_fraction": "mfrac",
+    "id": "shearObjectId",
 }
 
 
@@ -50,7 +50,8 @@ class TXIngestRubinMetaDetect(PipelineStage):
         "select_tracts": StageParameter(list, [], msg="list of tracts (overrides cosmology_tracts_only, but not select_field)."),
         "collections": StageParameter(str, "LSSTComCam/DP1", msg="Butler collections to use."),
         "exclusion_flag": StageParameter(bool, False, msg="Decide if flags are used for exclusion or just flagged."),
-        "flag_list": StageParameter(list, ["is_primary"], msg="list of flags to use for combined.")
+        "flag_list": StageParameter(list, ["is_primary"], msg="list of flags to use for combined."),
+        "all_columns": StageParameter(bool, False, msg="do we want to save all columns or just the ones TXPipe needs.")
         }
 
     def run(self):
@@ -92,7 +93,7 @@ class TXIngestRubinMetaDetect(PipelineStage):
         created_files = False
         data_set_refs = butler.query_datasets('object_shear_all')
         n_chunks = len(data_set_refs)
-        
+        all_columns_flag = self.config["all_columns"]
         exclusion_flag = self.config["exclusion_flag"]
         flag_list = self.config["flag_list"]
         for i, ref in enumerate(data_set_refs):
@@ -110,7 +111,8 @@ class TXIngestRubinMetaDetect(PipelineStage):
                 print(f"Skipping chunk {i + 1} / {n_chunks} since it is empty")
                 continue
 
-            shear_data = process_metadetect_data(d, flag_list, exclusion_flag)
+            shear_data = process_metadetect_data(d, flag_list, exclusion_flag, 
+                                                 full_columns=all_columns_flag)
             if not created_files:
                 created_files = True
                 variants = {
