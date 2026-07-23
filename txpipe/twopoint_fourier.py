@@ -815,15 +815,14 @@ class TXTwoPointFourier(PipelineStage):
             # the coupled noise is constant
             tr = S.tracers[tracer1]
             if (tracer1 == tracer2) and ("n_ell_coupled" not in tr.metadata):
-                if self.config["analytic_noise"] is False:
-                    # If computed through simulations, it might be better to
-                    # take the mean since, for now, only a float can be passed
-                    i = 0 if "lens" in tracer1 else 2
-                    tr.metadata["n_ell_coupled"] = np.mean(d.noise_coupled)
-                else:
+                if self.config["analytic_noise"]:
                     # Save the last element because the first one is zero for
                     # shear
                     tr.metadata["n_ell_coupled"] = d.noise_coupled[-1]
+                else:
+                    # If computed through simulations, it might be better to
+                    # take the mean since, for now, only a float can be passed
+                    tr.metadata["n_ell_coupled"] = np.mean(d.noise_coupled)
 
                 if self.config["gaussian_sims_factor"] != [1.0] and "lens" in tracer1:
                     print(tracer1)

@@ -76,6 +76,51 @@ jobs:
       run: |
         ./bin/install.sh
 
+  Notebook:
+    runs-on: ubuntu-latest
+    needs: [Run_Installer, Download_Data]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: Restore conda environment
+      id: restore-conda
+      uses: actions/cache@v4
+      env:
+        cache-name: cache-conda-environment
+      with:
+        path: ./conda
+        key: ubuntu-latest-conda-${{ hashFiles('bin/install.sh','bin/environment*.yml' ) }}
+        fail-on-cache-miss: true
+
+    - name: Restore example data
+      uses: actions/cache@v4
+      with:
+        path: |
+          example.tar.gz
+          example-cmb-lensing.tar.gz
+        key: example-data-${{ env.EXAMPLE_DATA_FILE_VERSION }}
+        fail-on-cache-miss: true
+
+    - name: Extract test data
+      run: |
+        tar -zxvf example.tar.gz
+
+    - name: Execute notebook
+      run: |
+        source conda/bin/activate
+        jupyter execute notebooks/Welcome\ to\ TXPipe.ipynb
+
+    - name: Show logs
+      if: always()
+      run: |
+        # always run
+        cat data/example/logs_metadetect/*
+
+
   Unit_Tests:
     runs-on: ${{ matrix.os }}
     needs: Run_Installer

@@ -112,6 +112,7 @@ class TXTracerMetadata(PipelineStage):
             metadata["n_eff_2d"] = n_eff_2d.tolist()
             metadata["source_density_2d"] = source_density_2d.tolist()
             metadata["source_density"] = source_density.tolist()
+            metadata["nbin_source"] = len(source_density)
 
             copy_attrs(shear_tomo_file, "tomography", "tracers", meta_file, metadata)
 
@@ -138,6 +139,7 @@ class TXTracerMetadata(PipelineStage):
             meta_file["tracers"].attrs["density_unit"] = "arcmin^{-2}"
             metadata["lens_density"] = lens_density.tolist()
             metadata["lens_density_2d"] = lens_density_2d.tolist()
+            metadata["nbin_lens"] = len(lens_density)
 
             copy_attrs(lens_tomo_file, "tomography", "tracers", meta_file, metadata)
 

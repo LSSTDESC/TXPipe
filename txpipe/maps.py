@@ -411,7 +411,7 @@ class TXDensityMaps(PipelineStage):
     outputs = [
         ("density_maps", MapsFile),
     ]
-    config_options = {"mask_threshold": StageParameter(float, 0.0, msg="Threshold for masking pixels")}
+    config_options = {"mask_threshold": StageParameter(float, 1e-14, msg="Threshold for masking pixels")}
 
     def run(self):
         import healpy
