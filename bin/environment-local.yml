@@ -23,6 +23,7 @@ dependencies:
   - namaster=2.5.*
   - numpy=2.3.*
   - pandas=2.3.*
+  - photerr=1.5.*
   - pip=25.*
   - psutil=7.1.*
   - pyccl=3.2.*

@@ -71,7 +71,8 @@ inputs:
     source_maps: None
     lens_maps: None
     density_maps: None
-    aux_source_maps: None
+    psf_maps: None
+    flag_maps: None
     
     
 # if supported by the launcher, restart the pipeline where it left off

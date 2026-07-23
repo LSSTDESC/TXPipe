@@ -29,7 +29,8 @@ stages:
         model: source_direct_calibration_model
   - name: TXShearCalibration       # Calibrate and split the source sample tomographically
   - name: TXSourceMaps             # make source g1 and g2 maps
-  - name: TXAuxiliarySourceMaps    # make PSF and flag maps
+  - name: TXPSFMaps    # make PSF maps
+  - name: TXFlagMaps
   - name: TXSimpleMaskSource       # combine maps to make a simple mask
   - name: TXSourceNoiseMaps      # Compute shear noise using rotations
   - name: TXMapPlots             # make pictures of all the maps
@@ -114,7 +115,8 @@ inputs:
     # So it is set to Null, so the yaml intepreter returns a None value to python. 
     flow: data/example/inputs/example_flow.pkl
     lens_maps: none
-    aux_lens_maps: none
+    depth_map: none
+    bright_object_map: none
     density_maps: none
     lens_tomography_catalog: none
     binned_lens_catalog: none

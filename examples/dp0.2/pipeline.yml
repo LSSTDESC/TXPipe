@@ -47,10 +47,14 @@ stages:
   - name: TXLensMaps
     nprocess: 8
     threads_per_process: 8
-  - name: TXAuxiliarySourceMaps    # make PSF and flag maps
+  - name: TXPSFMaps    # make PSF maps
+  - name: TXFlagMaps
     nprocess: 8
     threads_per_process: 8
-  - name: TXAuxiliaryLensMaps      # make depth and bright object maps
+  - name: TXDepthMaps      # make depth and bright object maps
+    nprocess: 8
+    threads_per_process: 8
+  - name: TXBrightObjectMaps      # make depth and bright object maps
     nprocess: 8
     threads_per_process: 8
   - name: TXSimpleMask           # combine maps to make a simple mask
