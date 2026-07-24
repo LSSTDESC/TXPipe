@@ -214,17 +214,42 @@ class TXDP2CombineBasicAndRailSelections(TXSourceSelectorMetadetect):
     def data_iterator(self):
         # As above, this is where we work out which columns we need.
         chunk_rows = self.config["chunk_rows"]
-        for variant in META_VARIANTS:
+        tomo_file = self.open_input('rail_bhat_thing_rename_me')
+
+        for variant in META_VARIANTS[:]:
             # we need to iterate both the mask we saved in TXDP2BasicSelectionMetadetect
             # and the tomographic bin choices that RAIL made for us.
-            it1 = self.iterate_hdf()
-            it2 = self.iterate_hdf()
+            # they are different lengths! we should read a chunk of the base selection
+            # mask, then count how many objects are selected and read that many rows
+            # of the tomo bin data.
+            select_col = "select_" + variant
+            chunk_rows = self.config["chunk_rows"]
+            tomo_index = 0
+            for mask_data in self.iterate_hdf("base_shear_selection_catalog", "selection", [select_col], chunk_rows):
+                sel1 = mask_data[select_col]
+                nsel1 = sel1.sum()
+                # now read that much data from the RAIL output
+                # assume we have collated the variant bhat values I think
+                tomo_bin = tomo_file[variant]["bhat_for_wide_data"][tomo_index : tomo_index + nsel1]
+                full_tomo_bin = np.full(sel1.size, -1)
+                full_tomo_bin[np.where(sel1)] = tomo_bin
+                # empty selections for all the other variants.
+                # this should be less messy. It comes from how the metadetect calculator
+                # was designed assuming that all the variants are mixed up together.
+                data = {}
+                for v in META_VARIANTS:
+                    data["bin_" + v] = np.zeros([], dtype=int)
+                    data["base_selection_" + v] = np.zeros([], dtype=bool)
+                data["bin_" + variant] = tomo_bin
+                data["base_selection_" + variant] = sel1
+                yield data
+
     
     def select(self, data, config, bin_index):
         sel = (data["bin"] == bin_index) & (data["base_selection"] == True)
 
     def select_2d(self, data, config):
-        pass
+        sel = (data["bin"] >= 0) &  (data["base_selection"] == True)
 
     
 
