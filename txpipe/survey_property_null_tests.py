@@ -132,50 +132,169 @@ def _marker_offset(mu):
     return 0.1 * gaps.min() if gaps.size else 0.0
 
 
-def _plot_property_map(hsp_map, nside, title, plot_nside=0):
+# Above this angular span (degrees, in RA or Dec) a footprint no longer fits a
+# zoomed flat panel -- e.g. several DP1 fields scattered across the sky -- and
+# an all-sky projection reads better than two specks in a sea of white.
+_WIDE_FOOTPRINT_DEG = 90.0
+
+
+def _footprint_ra_span(ra):
     """
-    Draw a survey property map into the current matplotlib axes.
+    Angular RA extent of a footprint, accounting for the 0/360 wrap.
+
+    The footprint occupies the complement of its single largest empty RA gap,
+    so the true span is 360 minus that gap. Computing it this way is correct
+    whether or not the footprint straddles RA=0, where a naive ``max - min``
+    would wrongly report almost the whole sky.
+    """
+    if ra.size < 2:
+        return 0.0
+    ra_sorted = np.sort(ra)
+    interior_gap = np.diff(ra_sorted).max()
+    wrap_gap = 360.0 - (ra_sorted[-1] - ra_sorted[0])
+    return 360.0 - max(interior_gap, wrap_gap)
+
+
+def _plot_property_map(ax, fig, hsp_map, nside, title, plot_nside=0, width=600):
+    """
+    Draw a survey property map into ``ax`` with a white, gridded background.
 
     All observed pixels of the map are shown, covering the same area the null
-    test samples, so the two panels can be compared directly.
+    test samples, so the two panels can be compared directly. Unobserved sky is
+    left white (not grey) and a light grid is drawn over it.
 
-    Maps finer than ``plot_nside`` are degraded first: healpy needs a full-sky
-    array to plot, which is large at high nside, and the extra detail is not
-    visible at plot size anyway. ``plot_nside=0`` keeps the native resolution.
+    A compact single footprint is drawn zoomed in flat RA/Dec; a footprint that
+    spans a large area or splits into fields far apart on the sky -- where a
+    zoomed box would be mostly empty -- is drawn all-sky in Mollweide instead.
+    Both rasterise the map to a fixed-size image the same way healpy's cartview
+    does (one map lookup per output pixel), so the cost is set by the image size
+    and does not grow with the map nside.
+
+    Maps finer than ``plot_nside`` are degraded first, which only smooths the
+    displayed values; it is not needed for speed. ``plot_nside=0`` keeps the
+    native resolution.
     """
     import healpy as hp
-    import matplotlib.pyplot as plt
+    from matplotlib import colormaps
 
-    # Degrade before building the full-sky array, not after.
+    # Degrade purely to smooth the displayed values; the projections below are
+    # already nside-independent in cost.
     if plot_nside and nside > plot_nside:
         hsp_map = hsp_map.degrade(plot_nside, reduction="mean")
         nside = plot_nside
 
     pixels = hsp_map.valid_pixels
-    ra, dec = hp.pix2ang(nside, pixels, nest=True, lonlat=True)
-
     if pixels.size == 0:
-        plt.title(f"{title}\n(no observed pixels)")
-        plt.axis("off")
+        ax.set_title(f"{title}\n(no observed pixels)")
+        ax.axis("off")
         return
+
+    ra, dec = hp.pix2ang(nside, pixels, nest=True, lonlat=True)
+    cmap = colormaps["viridis"].copy()
+    cmap.set_bad("white")
+
+    ra_span = _footprint_ra_span(ra)
+    dec_span = float(dec.max() - dec.min())
+    if ra_span > _WIDE_FOOTPRINT_DEG or dec_span > _WIDE_FOOTPRINT_DEG:
+        _draw_allsky_map(ax, fig, hsp_map, nside, pixels, title, cmap, width)
+    else:
+        _draw_zoomed_map(ax, fig, hsp_map, ra, dec, title, cmap, width)
+
+
+def _draw_zoomed_map(ax, fig, hsp_map, ra, dec, title, cmap, width):
+    """
+    Flat RA/Dec image zoomed to a compact footprint.
+
+    RA is centred first so a footprint crossing RA=0 stays contiguous rather
+    than splitting to the two edges; the axis then labels the true RA, wrapped
+    back into [0, 360).
+    """
+    from matplotlib.ticker import FuncFormatter
+
+    ra_center = np.degrees(np.arctan2(
+        np.sin(np.radians(ra)).mean(), np.cos(np.radians(ra)).mean())) % 360.0
+    dra = (ra - ra_center + 180.0) % 360.0 - 180.0
+    ra_lo, ra_hi = ra_center + dra.min(), ra_center + dra.max()
+    dec_lo, dec_hi = float(dec.min()), float(dec.max())
+
+    # Size the image to the footprint's true sky proportions: a degree of RA
+    # subtends cos(dec) less on the sky than a degree of Dec.
+    cosd = np.cos(np.radians(0.5 * (dec_lo + dec_hi)))
+    span_ra = max((ra_hi - ra_lo) * cosd, 1e-6)
+    height = int(np.clip(round(width * (dec_hi - dec_lo) / span_ra), 2, 4 * width))
+
+    # RA runs high -> low across the columns so it increases to the left, as on
+    # the sky. Each image pixel takes the value of the map pixel covering it
+    # (lookups wrapped into [0, 360)); positions off the footprint come back
+    # invalid and are set to NaN so the colormap paints them white.
+    ra_grid = np.linspace(ra_hi, ra_lo, width)
+    dec_grid = np.linspace(dec_lo, dec_hi, height)
+    RA, DEC = np.meshgrid(ra_grid, dec_grid)
+    lon = RA.ravel() % 360.0
+    vals = hsp_map.get_values_pos(lon, DEC.ravel(), lonlat=True)
+    good = hsp_map.get_values_pos(lon, DEC.ravel(), lonlat=True, valid_mask=True)
+    img = np.where(good, vals, np.nan).reshape(RA.shape).astype(float)
+
+    im = ax.imshow(
+        img,
+        origin="lower",
+        extent=(ra_hi, ra_lo, dec_lo, dec_hi),
+        cmap=cmap,
+        aspect="auto",
+        interpolation="nearest",
+    )
+    ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _p: f"{x % 360.0:g}"))
+    ax.set_title(title)
+    ax.set_xlabel("RA [deg]")
+    ax.set_ylabel("Dec [deg]")
+    ax.grid(True, color="0.7", lw=0.5, alpha=0.6)
+    ax.set_axisbelow(False)  # imshow covers the footprint; keep the grid on top
+    fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+
+
+def _draw_allsky_map(ax, fig, hsp_map, nside, pixels, title, cmap, width):
+    """
+    All-sky Mollweide image for a wide or multi-field footprint.
+
+    healpy's projector needs a full-sky array, whose size grows with nside, and
+    an all-sky panel cannot resolve fine detail anyway, so the map is capped at
+    a modest nside first. Meridians and parallels are projected through the same
+    projector to draw the graticule, and the map's own axes are turned off.
+    """
+    import healpy as hp
+
+    allsky_nside = min(nside, 256)
+    if nside > allsky_nside:
+        hsp_map = hsp_map.degrade(allsky_nside, reduction="mean")
+        nside = allsky_nside
+        pixels = hsp_map.valid_pixels
 
     m = np.full(hp.nside2npix(nside), hp.UNSEEN)
     m[pixels] = hsp_map[pixels].astype(float)
-
-    # Zoom to the observed area rather than showing the whole sky.
-    lonra = np.clip([ra.min() - 0.1, ra.max() + 0.1], 0.0, 360.0)
-    latra = np.clip([dec.min() - 0.1, dec.max() + 0.1], -90.0, 90.0)
-    hp.cartview(
-        m,
-        lonra=list(lonra),
-        latra=list(latra),
-        title=title,
-        hold=True,
-        nest=True,
-        # cartview pads generously by default, which leaves the map panel much
-        # smaller than the plot panel beside it.
-        margins=(0.02, 0.02, 0.02, 0.04),
+    proj = hp.projector.MollweideProj(xsize=2 * width)
+    img = np.ma.masked_equal(
+        proj.projmap(m, lambda x, y, z: hp.vec2pix(nside, x, y, z, nest=True)),
+        hp.UNSEEN,
     )
+    im = ax.imshow(img, extent=proj.get_extent(), origin="lower", cmap=cmap,
+                   aspect="equal", interpolation="nearest")
+    ax.axis("off")
+
+    for lon in range(0, 360, 60):
+        lat = np.linspace(-89.9, 89.9, 200)
+        x, y = proj.ang2xy(np.full_like(lat, lon), lat, lonlat=True)
+        ax.plot(x, y, color="0.7", lw=0.5, alpha=0.7, zorder=1)
+    for lat in range(-60, 61, 30):
+        lon = np.linspace(0.0, 360.0, 400)
+        x, y = proj.ang2xy(lon, np.full_like(lon, lat), lonlat=True)
+        ax.plot(x, y, color="0.7", lw=0.5, alpha=0.7, zorder=1)
+    # Outer ellipse boundary of the Mollweide projection.
+    t = np.linspace(0.0, 2 * np.pi, 400)
+    ax.plot(2.0 * np.cos(t), np.sin(t), color="0.5", lw=0.8, zorder=1)
+
+    ax.set_title(f"{title}  (all-sky)")
+    # shrink so the bar tracks the short Mollweide ellipse, not the tall axes.
+    fig.colorbar(im, ax=ax, fraction=0.046, pad=0.02, shrink=0.6)
 
 
 class TXMeanShearSurveyProperties(PipelineStage):
@@ -265,7 +384,6 @@ class TXMeanShearSurveyProperties(PipelineStage):
             # survey-property bin from the sheared columns above, since the
             # response of a re-binned selection differs from the tomographic-bin
             # response saved in the catalog.
-            extra_iters = []
             ra_key, dec_key = "ra", "dec"
         elif cat_type == "metadetect":
             unsheared = META_VARIANTS[0]
@@ -274,12 +392,10 @@ class TXMeanShearSurveyProperties(PipelineStage):
             # own positions and length, and the property must be looked up at
             # each variant's positions (see _assign_property_column).
             shear_cols = metadetect_variants("ra", "dec", "g1", "g2", "weight")
-            extra_iters = []
             ra_key, dec_key = f"{unsheared}/ra", f"{unsheared}/dec"
         else:
             # lensfit, hsc
             shear_cols = ["ra", "dec", "g1", "g2", "weight", "m"]
-            extra_iters = []
             ra_key, dec_key = "ra", "dec"
 
         # MeanShearInBins cuts down to the source sample using a bin column.
@@ -329,7 +445,6 @@ class TXMeanShearSurveyProperties(PipelineStage):
                 chunk_rows,
                 "shear_catalog", "shear", shear_cols,
                 "shear_tomography_catalog", "tomography", tomo_cols,
-                *extra_iters,
                 longest=True,
             )
 
@@ -482,15 +597,15 @@ class TXMeanShearSurveyProperties(PipelineStage):
 
             # Two panels: the property map itself on the left, so the trend on
             # the right can be read against the spatial structure driving it.
-            fig = plt.figure(figsize=(11.5, 4.5))
-            # The map panel is narrower: a sky patch keeps its aspect ratio, so
-            # given equal widths it would sit small in a sea of white space.
-            gs = fig.add_gridspec(1, 2, width_ratios=[1.0, 1.45])
+            fig = plt.figure(figsize=(12.0, 4.5))
+            # The map panel is a touch narrower: a sky patch keeps its aspect
+            # ratio, so given equal widths it would sit small beside the trend.
+            gs = fig.add_gridspec(1, 2, width_ratios=[1.0, 1.35])
 
-            plt.subplot(gs[0])
+            map_ax = fig.add_subplot(gs[0])
             hsp_map, map_nside = all_maps[name]
             _plot_property_map(
-                hsp_map, map_nside, safe_name,
+                map_ax, fig, hsp_map, map_nside, safe_name,
                 plot_nside=self.config["map_plot_nside"],
             )
 
@@ -537,9 +652,10 @@ class TXMeanShearSurveyProperties(PipelineStage):
             ax.set_ylabel("Mean shear")
             ax.set_title(f"{safe_name}  (χ²/dof = {chi2_dof:.2f})")
             ax.legend(fontsize=8)
-            # Not tight_layout: healpy's cartview axes are not compatible with
-            # it and it warns and mislays the panels.
-            fig.subplots_adjust(left=0.02, right=0.97, bottom=0.15, wspace=0.12)
+            # Explicit spacing rather than tight_layout: the map colorbar and
+            # the trend panel need a wide gap between them to stop the map's
+            # Dec axis crowding the trend's y-axis.
+            fig.subplots_adjust(left=0.06, right=0.96, bottom=0.15, wspace=0.32)
 
             png_name = f"{safe_name}.png"
             fig.savefig(output_dir.path_for_file(png_name))
