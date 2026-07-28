@@ -1,0 +1,25 @@
+# This is a draft ingestion pipeline, for DP2. Initially intended to be run on the RSP
+
+
+
+stages:
+  - name: TXIngestRubinMetaDetect
+
+
+output_dir: data/metadetect_dp2
+
+launcher:
+    name: mini
+    interval: 1.0
+
+site:
+    name: local
+
+modules: >
+    txpipe
+
+config: examples/dp2/config.yml
+inputs: {}
+resume: true
+log_dir: data/dp2/logs
+pipeline_log: data/dp2/ingest_log.txt
