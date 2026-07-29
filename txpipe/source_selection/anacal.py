@@ -91,6 +91,12 @@ class TXSourceSelectorAnacal(TXSourceSelectorBase):
             "weight_dg1",
             "weight_dg2",
         ]
+        # ±γ shifted variants of every quantity the selector cuts on,
+        # precomputed by TXIngestAnacal — consumed via _DataWrapper by
+        # AnaCalCalculator (data["s2n_1p"], data["m00_1p"], ...).
+        for suf in ("1p", "1m", "2p", "2m"):
+            shear_cols += [f"s2n_{suf}", f"m00_{suf}", f"m20_{suf}", f"esq_{suf}"]
+            shear_cols += [f"mag_{b}_{suf}" for b in bands]
         shear_cols += band_variants(
             bands, "mag", "mag_err", shear_catalog_type="anacal",
         )
@@ -127,9 +133,7 @@ class TXSourceSelectorAnacal(TXSourceSelectorBase):
     def apply_simple_redshift_cut(self, shear_data):
         """Override of the base hook that TXSourceSelectorBase.run() calls
         under ``input_pz`` / ``true_z``.  We keep the base name so
-        polymorphism fires, but the real work — injecting ±γ shifted
-        variants of every quantity the AnaCal selector cuts on — lives in
-        ``add_sheared_variant_columns`` for a more descriptive name.
+        polymorphism fires.
         """
         pz_data = super().apply_simple_redshift_cut(shear_data)
         self.add_sheared_variant_columns(pz_data, shear_data)
@@ -137,10 +141,7 @@ class TXSourceSelectorAnacal(TXSourceSelectorBase):
 
     def add_sheared_variant_columns(self, pz_data, shear_data):
         """Inject ±γ shifted variants of every quantity the AnaCal selector
-        cuts on: zbin (from mean_z), s2n (from ds2n_dg), size moments
-        m00/m20 (from dm00_dg/dm20_dg), band-combined shape magnitude
-        esq (from desq_dg{1,2}), and per-band mag_{b} (from
-        mag_{b}_dg{1,2}).
+        cuts on: zbin (from mean_z), 
 
         The additions land in ``pz_data`` — the base
         ``calculate_tomography`` will merge that dict into ``data`` before
@@ -152,8 +153,6 @@ class TXSourceSelectorAnacal(TXSourceSelectorBase):
         shear response); s2n / moment / esq / mag_{b} variants are always
         emitted since the selector applies those cuts in every mode.
         """
-        dg = self.config["delta_gamma"]
-
         # zbin_{1p,1m,2p,2m}: only under input_pz (from shifted photo-z).
         if self.config["input_pz"]:
             edges = self.config["source_zbin_edges"]
@@ -164,42 +163,6 @@ class TXSourceSelectorAnacal(TXSourceSelectorBase):
                     m = (zz >= edges[zi]) & (zz < edges[zi + 1])
                     b[m] = zi
                 pz_data[f"zbin_{suf}"] = b
-
-        # s2n_{1p,1m,2p,2m}: shifted S/N via ds2n_dg{1,2}.
-        s2n = shear_data["s2n"]
-        pz_data["s2n_1p"] = s2n + dg * shear_data["ds2n_dg1"]
-        pz_data["s2n_1m"] = s2n - dg * shear_data["ds2n_dg1"]
-        pz_data["s2n_2p"] = s2n + dg * shear_data["ds2n_dg2"]
-        pz_data["s2n_2m"] = s2n - dg * shear_data["ds2n_dg2"]
-
-        # m00 and m20 variants: needed for the size cut (m00+m20)/m00 > T_cut
-        # under ±γ.  Kept identical in form to the metacal variant scheme.
-        m00 = shear_data["m00"]
-        m20 = shear_data["m20"]
-        pz_data["m00_1p"] = m00 + dg * shear_data["dm00_dg1"]
-        pz_data["m00_1m"] = m00 - dg * shear_data["dm00_dg1"]
-        pz_data["m00_2p"] = m00 + dg * shear_data["dm00_dg2"]
-        pz_data["m00_2m"] = m00 - dg * shear_data["dm00_dg2"]
-        pz_data["m20_1p"] = m20 + dg * shear_data["dm20_dg1"]
-        pz_data["m20_1m"] = m20 - dg * shear_data["dm20_dg1"]
-        pz_data["m20_2p"] = m20 + dg * shear_data["dm20_dg2"]
-        pz_data["m20_2m"] = m20 - dg * shear_data["dm20_dg2"]
-
-        # esq variants: shape-magnitude cut |e|<emax at ±γ via desq_dg{1,2}
-        # (xlens.MergePipe emits both esq and its shear derivatives).
-        esq = shear_data["esq"]
-        pz_data["esq_1p"] = esq + dg * shear_data["desq_dg1"]
-        pz_data["esq_1m"] = esq - dg * shear_data["desq_dg1"]
-        pz_data["esq_2p"] = esq + dg * shear_data["desq_dg2"]
-        pz_data["esq_2m"] = esq - dg * shear_data["desq_dg2"]
-
-        # Per-band mag variants for the mag_{b} < {b}_hi_cut cut at ±γ.
-        for b in self.config["bands"]:
-            mag = shear_data[f"mag_{b}"]
-            pz_data[f"mag_{b}_1p"] = mag + dg * shear_data[f"dmag_{b}_dg1"]
-            pz_data[f"mag_{b}_1m"] = mag - dg * shear_data[f"dmag_{b}_dg1"]
-            pz_data[f"mag_{b}_2p"] = mag + dg * shear_data[f"dmag_{b}_dg2"]
-            pz_data[f"mag_{b}_2m"] = mag - dg * shear_data[f"dmag_{b}_dg2"]
 
     def setup_output(self):
         """

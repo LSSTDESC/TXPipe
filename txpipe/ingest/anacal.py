@@ -76,6 +76,10 @@ class TXIngestAnacal(TXIngestCatalogFits):
             str, "gauss2",
             msg="scale radius for the convolution with Gaussian PSF",
         ),
+        "delta_gamma": StageParameter(
+            float, 0.2,
+            msg="delta gamma value used for the analytical shearing."
+        )
     }
 
     def run(self):
@@ -256,6 +260,7 @@ class TXIngestAnacal(TXIngestCatalogFits):
         bands = self.config["bands"]
         s = self.config["scale"]
         prefix = self.config["prefix"]
+        dg = self.config["delta_gamma"]
         # The dm computed e1/e2 columns store the pre-multiplied observable
         # e_meas = wsel · e_raw, and "weight" is uniformly set to 1.
         # This way downstream GGCorrelation with weight_column="weight"
@@ -270,6 +275,9 @@ class TXIngestAnacal(TXIngestCatalogFits):
         wsel = data["wsel"][:]
         e1_raw = data[f"{prefix}_e1"][:]
         e2_raw = data[f"{prefix}_e2"][:]
+        m00 = data[f"{prefix}_m00"][:]
+        m20 = data[f"{prefix}_m20"][:]
+        
         output = {
             "ra": data["ra"][:],
             "dec": data["dec"][:],
@@ -282,8 +290,8 @@ class TXIngestAnacal(TXIngestCatalogFits):
             "e2": wsel * e2_raw,
             "e1_raw": e1_raw,               # raw shape (for R_detect)
             "e2_raw": e2_raw,
-            "m00": data[f"{prefix}_m00"][:],
-            "m20": data[f"{prefix}_m20"][:],
+            "m00": m00,
+            "m20": m20,
         }
         for delta in ["de1", "de2", "dm00", "dm20"]:
             output[f"{delta}_dg1"] = data[f"{prefix}_{delta}_dg1"][:]
@@ -292,9 +300,12 @@ class TXIngestAnacal(TXIngestCatalogFits):
         # i-band S/N + shear response — passed through from the
         # pre-computed fpfs1 columns. ``scale`` only picks the flux
         # family for magnitudes, not S/N.
-        output["s2n"] = data["lsst_i_s2n_fpfs1"][:]
-        output["ds2n_dg1"] = data["lsst_i_ds2n_fpfs1_dg1"][:]
-        output["ds2n_dg2"] = data["lsst_i_ds2n_fpfs1_dg2"][:]
+        s2n = data["lsst_i_s2n_fpfs1"][:]
+        ds2n_dg1 = data["lsst_i_ds2n_fpfs1_dg1"][:]
+        ds2n_dg2 = data["lsst_i_ds2n_fpfs1_dg2"][:]
+        output["s2n"] = s2n
+        output["ds2n_dg1"] = ds2n_dg1
+        output["ds2n_dg2"] = ds2n_dg2
 
         # Per-band AB magnitudes come pre-computed on the v3 merged
         # catalog (xlens.add_magnitude_columns writes them at the fixed
@@ -317,9 +328,12 @@ class TXIngestAnacal(TXIngestCatalogFits):
 
         # Band-combined shape magnitude + shear derivatives — feeds the
         # |e|<emax cut and its ±γ variants in TXSourceSelectorAnaCal.
-        output["esq"] = data["esq"][:]
-        output["desq_dg1"] = data["desq_dg1"][:]
-        output["desq_dg2"] = data["desq_dg2"][:]
+        esq = data["esq"][:]
+        desq_dg1 = data["desq_dg1"][:]
+        desq_dg2 = data["desq_dg2"][:]
+        output["esq"] = esq
+        output["desq_dg1"] = desq_dg1
+        output["desq_dg2"] = desq_dg2
 
         # zmode_0 → mean_z (baseline photo-z used by TXSourceSelectorAnaCal
         # in input_pz mode for tomographic binning).
@@ -330,6 +344,42 @@ class TXIngestAnacal(TXIngestCatalogFits):
         output["mean_z"] = data["zmode_0"][:]
         for suf in ("1p", "1m", "2p", "2m"):
             output[f"mean_z_{suf}"] = data[f"zmode_{suf}"][:]
+        
+        # shifted values that are needed for selection
+        output["s2n_1p"] = s2n + dg * ds2n_dg1
+        output["s2n_1m"] = s2n - dg * ds2n_dg1
+        output["s2n_2p"] = s2n + dg * ds2n_dg2
+        output["s2n_2m"] = s2n - dg * ds2n_dg2
+
+        # values needed already saved into output earlier
+        dm00_dg1 = data[f"{prefix}_dm00_dg1"][:]
+        dm00_dg2 = data[f"{prefix}_dm00_dg2"][:]
+        dm20_dg1 = data[f"{prefix}_dm20_dg1"][:]
+        dm20_dg2 = data[f"{prefix}_dm20_dg2"][:]
+
+        output["m00_1p"] = m00 + dg * dm00_dg1
+        output["m00_1m"] = m00 - dg * dm00_dg1
+        output["m00_2p"] = m00 + dg * dm00_dg2
+        output["m00_2m"] = m00 - dg * dm00_dg2
+        output["m20_1p"] = m20 + dg * dm20_dg1
+        output["m20_1m"] = m20 - dg * dm20_dg1
+        output["m20_2p"] = m20 + dg * dm20_dg2
+        output["m20_2m"] = m20 - dg * dm20_dg2
+
+        output["esq_1p"] = esq + dg * desq_dg1
+        output["esq_1m"] = esq - dg * desq_dg1
+        output["esq_2p"] = esq + dg * desq_dg2
+        output["esq_2m"] = esq - dg * desq_dg2
+
+        for band in bands:
+            b = f"lsst_{band}"
+            mag = data[f"{b}_mag_{s}"][:]
+            dmag_dg1 = data[f"{b}_dmag_{s}_dg1"][:]
+            dmag_dg2 =  data[f"{b}_dmag_{s}_dg2"][:]
+            output[f"mag_{band}_1p"] = mag + dg * dmag_dg1
+            output[f"mag_{band}_1m"] = mag - dg * dmag_dg1
+            output[f"mag_{band}_2p"] = mag + dg * dmag_dg2
+            output[f"mag_{band}_2m"] = mag - dg * dmag_dg2
 
         return output
 
