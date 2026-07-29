@@ -1,0 +1,104 @@
+global:
+    calculated_point_estimates: []
+    zbins_min: 0.0 
+    zbins_max: 3.0
+    zbins_dz: 0.01
+    redshift_col: Z
+    zero_points: 
+    - 30
+    - 30
+    - 30
+    - 30
+    - 30  
+    - 30
+    - 30
+    - 30
+    - 30  
+    bin_edges: &source_bin_edges
+    - 0.0
+    - 0.340136
+    - 0.51417369
+    - 0.675139
+    - 0.85570544
+    - 2.35
+    rail_mag_cols: &mag_cols
+    - TRUEMAG_lsst_u
+    - TRUEMAG_lsst_g
+    - TRUEMAG_lsst_r
+    - TRUEMAG_lsst_i
+    - TRUEMAG_lsst_z
+    - TRUEMAG_lsst_y
+    - TRUEMAG_J129
+    - TRUEMAG_H158
+    - TRUEMAG_F184  
+    rail_mag_err_cols: &rail_mag_err_cols
+    - TRUEMAG_ERR_lsst_u
+    - TRUEMAG_ERR_lsst_g
+    - TRUEMAG_ERR_lsst_r
+    - TRUEMAG_ERR_lsst_i
+    - TRUEMAG_ERR_lsst_z
+    - TRUEMAG_ERR_lsst_y
+    - TRUEMAG_ERR_J129
+    - TRUEMAG_ERR_H158
+    - TRUEMAG_ERR_F184  
+    som_shape:
+    - 128
+    - 128
+    som_wrap: false
+    som_take_log: false
+    convert_to_flux: true
+
+
+SOMPZEstimatorDeepSpec:
+    output_mode: default
+    chunk_size: 10000
+    hdf5_groupname: ''
+    recompute_point_estimates: false
+    inputs: *rail_mag_cols
+    input_errs: *rail_mag_err_cols
+    som_minerror: 0.001
+    set_threshold: true
+    thresh_val: 1.0e-05
+    debug: *id016
+    thresh_val_err: 1.0e-05
+    config: null
+
+
+SOMPZPzc:
+    output_mode: default
+    chunk_size: 10000
+    hdf5_groupname: ''
+    recompute_point_estimates: false
+    deep_groupname: ''
+    bin_edges: *source_bin_edges
+    overlap_weighted_pzc: true
+    config: null
+
+{% for variant in ["ns", "1p", "1m", "2s", "2p"] %}
+SOMPZEstimatorDeep_{{ variant }}:
+    output_mode: default
+    chunk_size: 10000
+    hdf5_groupname: ''
+    recompute_point_estimates: false
+    inputs: *rail_mag_cols
+    input_errs: *rail_mag_err_cols
+    som_minerror: 0.001
+    set_threshold: true
+    thresh_val: 1.0e-05
+    debug: false
+    thresh_val_err: 1.0e-05
+    config: null
+
+
+SOMPZ_tomobin_and_nz_onesom_{{ variant }}:
+    output_mode: default
+    chunk_size: 10000
+    hdf5_groupname: ''
+    recompute_point_estimates: false
+    redshift_col: *id017
+    bin_edges: *source_bin_edges
+    overlap_weighted: true
+    deep_som_size: 16384
+    wide_som_size: 1024
+    config: null
+{% endfor %}

@@ -1,0 +1,50 @@
+inputs:
+  rail_deep_model: model_deep.pkl
+  input_deep_data: /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/output_deredden_lsst_obs_cond_dp2_select_v0_for_sompz.hdf5
+  rail_spectroscopic_data: /global/cfs/cdirs/lsst/groups/PZ/Cardinal/parquet_files/dp2_mock_run_cardinal_gold_test/output_deredden_lsst_obs_cond_dp2_select_v0_for_sompz.hdf5
+
+output_dir: data/dp2/outputs
+log_dir: data/dp2/logs
+resume: resume
+config: examples/dp2/config.yml
+modules:
+  - txpipe
+  - rail.estimation.algos.sompz
+
+
+
+stages:
+- name: SOMPZEstimatorDeepSpec
+  clasname: SOMPZEstimatorDeep
+  nprocess: 32
+  module_name: rail.estimation.algos.sompz
+  aliases:
+    assignment: assignment_som_deepspec_estimator
+    deep_model: rail_deep_model
+    data: rail_spectroscopic_data
+- name: SOMPZPzc
+  module_name: rail.estimation.algos.sompz
+  aliases:
+    cell_deep_spec_data: assignment_som_deepspec_estimator
+    spec_data: rail_spectroscopic_data
+    pz_c: pz_c_som_pzc
+# These are the two stages that need to be run once for each cariant
+{% for variant in ["ns", "1p", "1m", "2p", "2m"] %}
+- name: SOMPZEstimatorDeep_{{ variant }}
+  classname: SOMPZEstimatorDeep
+  nprocess: 32
+  aliases:
+    data: input_deep_data_{{ variant }}
+    assignment: assignment_som_deepdeep_estimator_{{ variant }}
+    deep_model: rail_deep_model
+- name: SOMPZ_tomobin_and_nz_onesom_{{ variant }}
+  aliases:
+    spec_data: rail_spectroscopic_data
+    cell_deep_spec_data: assignment_som_deepspec_estimator
+    balrog_data: input_deep_data_{{ variant }}
+    cell_deep_balrog_data: assignment_som_deepdeep_estimator_{{ variant }}
+    pz_c: pz_c_som_pzc
+    tomo_bins_wide: tomo_bins_wide_{{ variant }}
+    bhat_for_wide_data: bhat_for_ wide_data{{ variant }}
+    nz: source_nz_{{ variant }}
+{% endfor %}
