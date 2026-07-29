@@ -1134,6 +1134,11 @@ class TXGalaxyStarShear(PipelineStage):
                 g2 = g["g2"][:][mask]
                 weight = g["weight"][:][mask]
 
+            elif cat_type == "anacal":
+                g1 = g["e1"][:][mask]
+                g2 = g["e2"][:][mask]
+                weight = g["weight"][:][mask]
+
             else:
                 g1 = g["g1"][:][mask]
                 g2 = g["g2"][:][mask]
