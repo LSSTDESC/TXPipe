@@ -86,11 +86,18 @@ class TXDiagnosticQuantiles(PipelineStage):
                 # method is called below does anything actually happen.
                 col = da.from_array(f[old_name], chunks=chunk_rows)
 
+                # Boolean-masking a dask array leaves it with unknown chunk
+                # sizes, which biases da.percentile's chunk-weighted merge
+                # (it can't tell how many rows survived per chunk). Force
+                # dask to recompute the real sizes before percentiling.
+                masked = col[selected]
+                masked = masked.compute_chunk_sizes()
+
                 # Ask dask to compute the percentiles of this column.
                 # Again, it will not actually do anything until the "compute"
                 # method is called below. When that happens, it will
                 # chunk up the data and calculate the percentiles in parallel.
-                quantile_values[new_name] = da.percentile(col[selected], percentiles)
+                quantile_values[new_name] = da.percentile(masked, percentiles)
 
             # Now ask dask to actually do the calculations
             (quantile_values,) = da.compute(quantile_values)
