@@ -43,6 +43,7 @@ class TXDiagnosticQuantiles(PipelineStage):
         "nbins": StageParameter(int, 20, msg="Number of quantile bins to compute."),
         "chunk_rows": StageParameter(int, 0, msg="Number of rows to process in each chunk (0 means auto)."),
         "bands": StageParameter(list, ["r", "i", "z"], msg="Bands to use for diagnostics."),
+        "use_psf_originals": StageParameter(bool, False, msg="instruct the Metadetect version to use the original psf"),
     }
 
     def run(self):
@@ -57,13 +58,23 @@ class TXDiagnosticQuantiles(PipelineStage):
         with self.open_input("shear_catalog", wrapper=True) as f:
             group = f.get_primary_catalog_group()
 
+        cat_type = read_shear_catalog_type(self)
         # We canonicalise the names here
-        col_names = {
-            "psf_g1": f"{group}/psf_g1",
-            "psf_T_mean": f"{group}/psf_T_mean",
-            "s2n": f"{group}/s2n",
-            "T": f"{group}/T",
-        }
+        if cat_type == "metadetect":
+            psf_suffix = "_original" if self.config["use_psf_originals"] else ""
+            col_names = {
+                "psf_g1": f"{group}/psf_g1{psf_suffix}",
+                "psf_T_mean": f"{group}/psf_T_mean",
+                "s2n": f"{group}/s2n",
+                "T": f"{group}/T",
+            }
+        else:
+            col_names = {
+                            "psf_g1": f"{group}/psf_g1",
+                            "psf_T_mean": f"{group}/psf_T_mean",
+                            "s2n": f"{group}/s2n",
+                            "T": f"{group}/T",
+                        }
 
         for band in self.config["bands"]:
             col_names[f"mag_{band}"] = f"{group}/mag_{band}"
@@ -86,11 +97,18 @@ class TXDiagnosticQuantiles(PipelineStage):
                 # method is called below does anything actually happen.
                 col = da.from_array(f[old_name], chunks=chunk_rows)
 
+                # Boolean-masking a dask array leaves it with unknown chunk
+                # sizes, which biases da.percentile's chunk-weighted merge
+                # (it can't tell how many rows survived per chunk). Force
+                # dask to recompute the real sizes before percentiling.
+                masked = col[selected]
+                masked = masked.compute_chunk_sizes()
+
                 # Ask dask to compute the percentiles of this column.
                 # Again, it will not actually do anything until the "compute"
                 # method is called below. When that happens, it will
                 # chunk up the data and calculate the percentiles in parallel.
-                quantile_values[new_name] = da.percentile(col[selected], percentiles)
+                quantile_values[new_name] = da.percentile(masked, percentiles)
 
             # Now ask dask to actually do the calculations
             (quantile_values,) = da.compute(quantile_values)
@@ -153,6 +171,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         "s2n_max": StageParameter(float, 300, msg="Maximum S/N value for plots."),
         "psf_unit_conv": StageParameter(bool, False, msg="Whether to convert PSF units."),
         "bands": StageParameter(list, ["r", "i", "z"], msg="Bands to use for diagnostics."),
+        "use_psf_originals": StageParameter(bool, False, msg="instruct the Metadetect version to use the original psf"),
     }
 
     def run(self):
@@ -212,12 +231,13 @@ class TXSourceDiagnosticPlots(PipelineStage):
             ] + [f"mag_{b}" for b in bands]
         elif cat_type == "metadetect":
             # g1, g2, T, psf_g1, psf_g2, T, s2n, weight, magnitudes
+            psf_suffix = "_original" if self.config["use_psf_originals"] else ""
             shear_cols = metadetect_variants(
                 "g1",
                 "g2",
                 "T",
-                "psf_g1",
-                "psf_g2",
+                f"psf_g1{psf_suffix}",
+                f"psf_g2{psf_suffix}",
                 "psf_T_mean",
                 "s2n",
                 "weight",
@@ -296,16 +316,17 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         psf_g_edges = self.get_bin_edges("psf_g1")
         shear_prefix = "ns/" if self.config["shear_catalog_type"] == "metadetect" else ""
+        psf_suffix = psf_suffix = "_original" if self.config["use_psf_originals"] else ""
 
         p1 = MeanShearInBins(
-            f"{shear_prefix}psf_g1",
+            f"{shear_prefix}psf_g1{psf_suffix}",
             psf_g_edges,
             delta_gamma,
             cut_source_bin=True,
             shear_catalog_type=self.config["shear_catalog_type"],
         )
         p2 = MeanShearInBins(
-            f"{shear_prefix}psf_g2",
+            f"{shear_prefix}psf_g2{psf_suffix}",
             psf_g_edges,
             delta_gamma,
             cut_source_bin=True,
