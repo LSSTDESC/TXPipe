@@ -43,6 +43,7 @@ class TXDiagnosticQuantiles(PipelineStage):
         "nbins": StageParameter(int, 20, msg="Number of quantile bins to compute."),
         "chunk_rows": StageParameter(int, 0, msg="Number of rows to process in each chunk (0 means auto)."),
         "bands": StageParameter(list, ["r", "i", "z"], msg="Bands to use for diagnostics."),
+        "use_psf_originals": StageParameter(bool, False, msg="instruct the Metadetect version to use the original psf"),
     }
 
     def run(self):
@@ -60,8 +61,9 @@ class TXDiagnosticQuantiles(PipelineStage):
         cat_type = read_shear_catalog_type(self)
         # We canonicalise the names here
         if cat_type == "metadetect":
+            psf_suffix = "_original" if self.config["use_psf_originals"] else ""
             col_names = {
-                "psf_g1": f"{group}/psf_g1_original",
+                "psf_g1": f"{group}/psf_g1{psf_suffix}",
                 "psf_T_mean": f"{group}/psf_T_mean",
                 "s2n": f"{group}/s2n",
                 "T": f"{group}/T",
@@ -169,6 +171,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         "s2n_max": StageParameter(float, 300, msg="Maximum S/N value for plots."),
         "psf_unit_conv": StageParameter(bool, False, msg="Whether to convert PSF units."),
         "bands": StageParameter(list, ["r", "i", "z"], msg="Bands to use for diagnostics."),
+        "use_psf_originals": StageParameter(bool, False, msg="instruct the Metadetect version to use the original psf"),
     }
 
     def run(self):
@@ -228,12 +231,13 @@ class TXSourceDiagnosticPlots(PipelineStage):
             ] + [f"mag_{b}" for b in bands]
         elif cat_type == "metadetect":
             # g1, g2, T, psf_g1, psf_g2, T, s2n, weight, magnitudes
+            psf_suffix = "_original" if self.config["use_psf_originals"] else ""
             shear_cols = metadetect_variants(
                 "g1",
                 "g2",
                 "T",
-                "psf_g1_original",
-                "psf_g2_original",
+                f"psf_g1{psf_suffix}",
+                f"psf_g2{psf_suffix}",
                 "psf_T_mean",
                 "s2n",
                 "weight",
@@ -312,7 +316,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         psf_g_edges = self.get_bin_edges("psf_g1")
         shear_prefix = "ns/" if self.config["shear_catalog_type"] == "metadetect" else ""
-        psf_suffix = "_original" if self.config["shear_catalog_type"] == "metadetect" else ""
+        psf_suffix = psf_suffix = "_original" if self.config["use_psf_originals"] else ""
 
         p1 = MeanShearInBins(
             f"{shear_prefix}psf_g1{psf_suffix}",
