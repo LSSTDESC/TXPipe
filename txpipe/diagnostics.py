@@ -59,7 +59,7 @@ class TXDiagnosticQuantiles(PipelineStage):
 
         # We canonicalise the names here
         col_names = {
-            "psf_g1": f"{group}/psf_g1",
+            "psf_g1_original": f"{group}/psf_g1_original",
             "psf_T_mean": f"{group}/psf_T_mean",
             "s2n": f"{group}/s2n",
             "T": f"{group}/T",
@@ -219,6 +219,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 "psf_g1",
                 "psf_g2",
                 "psf_T_mean",
+                "psf_g1_original",
+                "psf_g2_original",
                 "s2n",
                 "weight",
             )
@@ -294,18 +296,18 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         delta_gamma = self.config["delta_gamma"]
 
-        psf_g_edges = self.get_bin_edges("psf_g1")
+        psf_g_edges = self.get_bin_edges("psf_g1_original")
         shear_prefix = "ns/" if self.config["shear_catalog_type"] == "metadetect" else ""
 
         p1 = MeanShearInBins(
-            f"{shear_prefix}psf_g1",
+            f"{shear_prefix}psf_g1_original",
             psf_g_edges,
             delta_gamma,
             cut_source_bin=True,
             shear_catalog_type=self.config["shear_catalog_type"],
         )
         p2 = MeanShearInBins(
-            f"{shear_prefix}psf_g2",
+            f"{shear_prefix}psf_g2_original",
             psf_g_edges,
             delta_gamma,
             cut_source_bin=True,
@@ -364,6 +366,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.xlabel("PSF g1")
         plt.ylabel("Mean g")
         plt.legend()
+        #plt.yscale("log")
 
         plt.subplot(2, 1, 2)
 
@@ -376,6 +379,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.xlabel("PSF g2")
         plt.ylabel("Mean g")
         plt.legend()
+        #plt.yscale("log")
         plt.tight_layout()
 
         # This also saves the figure
@@ -507,6 +511,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.xlabel("SNR")
         plt.ylabel("Mean g")
         plt.legend()
+        plt.xscale("log")
         plt.tight_layout()
         fig.close()
 
