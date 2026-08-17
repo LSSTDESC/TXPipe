@@ -239,8 +239,6 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 f"psf_g1{psf_suffix}",
                 f"psf_g2{psf_suffix}",
                 "psf_T_mean",
-                "psf_g1_original",
-                "psf_g2_original",
                 "s2n",
                 "weight",
             )
