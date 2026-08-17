@@ -316,7 +316,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         delta_gamma = self.config["delta_gamma"]
 
-        psf_g_edges = self.get_bin_edges("psf_g1_original")
+        psf_g_edges = self.get_bin_edges("psf_g1")
         shear_prefix = "ns/" if self.config["shear_catalog_type"] == "metadetect" else ""
         psf_suffix = psf_suffix = "_original" if self.config["use_psf_originals"] else ""
 
