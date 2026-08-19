@@ -385,7 +385,6 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.xlabel("PSF g1")
         plt.ylabel("Mean g")
         plt.legend()
-        #plt.yscale("log")
 
         plt.subplot(2, 1, 2)
 
@@ -398,7 +397,6 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.xlabel("PSF g2")
         plt.ylabel("Mean g")
         plt.legend()
-        #plt.yscale("log")
         plt.tight_layout()
 
         # This also saves the figure
