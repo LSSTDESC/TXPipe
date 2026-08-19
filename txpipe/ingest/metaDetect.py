@@ -1,7 +1,7 @@
 from ..base_stage import PipelineStage
 from ..data_types import ShearCatalog, PhotometryCatalog, HDFFile, FileCollection
 from .lsst import process_metadetect_data, sanitize
-from .dp1_info import DP1_COSMOLOGY_TRACTS, ALL_TRACTS, DP1_TRACTS, TXPPIPE_COLUMNS
+from .dp_info import DP1_COSMOLOGY_TRACTS, ALL_TRACTS, DP1_TRACTS, TXPIPE_COLUMNS
 from ceci.config import StageParameter
 from ..utils.hdf_tools import h5py_shorten, repack
 from ..utils.splitters import MetaDetectSplitter
@@ -111,9 +111,12 @@ class TXIngestRubinMetaDetect(PipelineStage):
                 splitter.write_bin(shear_data[variant], variant)
             print(f"Processing chunk {i + 1} / {n_chunks}")
 
-        splitter.finish()
-        print("adding in aliases")
-        self.aliasing(shear_outfile, group)
+        if created_files:    
+            splitter.finish()
+            print("adding in aliases")
+            self.aliasing(shear_outfile, group)
+        else:
+            print("No metadetect data written; skipping splitter.finish/aliasing")
         shear_outfile.close()
         print("Repacking files")
         repack(self.get_output("shear_catalog"))
@@ -122,6 +125,6 @@ class TXIngestRubinMetaDetect(PipelineStage):
         g = group
         for variant in ["ns", "1p", "1m", "2p", "2m"]:
             k = g[variant]
-            for txname, original in TXPPIPE_COLUMNS.items():
+            for txname, original in TXPIPE_COLUMNS.items():
                 k[txname] = k[original]
 
