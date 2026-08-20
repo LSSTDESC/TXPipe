@@ -32,7 +32,8 @@ class TXIngestRubinMetaDetect(PipelineStage):
         "collections": StageParameter(str, "LSSTComCam/DP1", msg="Butler collections to use."),
         "exclusion_flag": StageParameter(bool, False, msg="Decide if flags are used for exclusion or just flagged."),
         "flag_list": StageParameter(list, ["is_primary"], msg="list of flags to use for combined."),
-        "all_columns": StageParameter(bool, False, msg="do we want to save all columns or just the ones TXPipe needs.")
+        "all_columns": StageParameter(bool, False, msg="do we want to save all columns or just the ones TXPipe needs."),
+        "blinding": StageParameter(str, "",  msg="Location of the blinding passphrase, if it exists catalogs will be blinded.")
         }
 
     def run(self):
@@ -77,6 +78,7 @@ class TXIngestRubinMetaDetect(PipelineStage):
         all_columns_flag = self.config["all_columns"]
         exclusion_flag = self.config["exclusion_flag"]
         flag_list = self.config["flag_list"]
+
         for i, ref in enumerate(data_set_refs):
             tract = ref.dataId["tract"]
             if tract not in tracts:
@@ -93,7 +95,8 @@ class TXIngestRubinMetaDetect(PipelineStage):
                 continue
 
             shear_data = process_metadetect_data(d, flag_list, exclusion_flag, 
-                                                 full_columns=all_columns_flag)
+                                                 full_columns=all_columns_flag
+                                                 )
             if not created_files:
                 created_files = True
                 variants = {
@@ -123,8 +126,43 @@ class TXIngestRubinMetaDetect(PipelineStage):
 
     def aliasing(self, outfile, group):
         g = group
+        blinding_path = self.config["blinding"]
+        if blinding_path !="":
+            scale_factor = self._get_blinding_factor(blinding_path)
         for variant in ["ns", "1p", "1m", "2p", "2m"]:
             k = g[variant]
             for txname, original in TXPIPE_COLUMNS.items():
+                if blinding_path != "" and txname in ("g1", "g2"):
+                    self._scale_in_place(k[original], scale_factor)
                 k[txname] = k[original]
 
+    def _get_blinding_factor(self, path):
+        """ Generating a masking factor by hashing a passphrase. 
+        Code inspired by work from Joe Zuntz and Matt Becker. 
+        Parameters
+        ----------
+        path : str
+            path to a textfile with the passphrase as its only content.
+
+        Returns
+        -------
+        scale_factor : float
+            The masking factor as a float in the range 0.9 to 1.1
+        """
+        import hashlib
+        # get the passphrase from file
+        passphrase = open(path).read().strip()
+        # make it into a hex
+        m = hashlib.md5(passphrase.encode("utf-8")).hexdigest()
+        # convert it to decimal
+        s = int(m, 16)
+        # get the last 8 digits
+        f = s % 100_000_000
+        # turn 8 digit number into a value between 0 and 1
+        g = f / 1e8 
+        # scale value between 0.9 and 1.1
+        return 0.9 + 0.2*g
+
+    def _scale_in_place(self, dset, factor):
+        for chunk_slice in dset.iter_chunks():
+            dset[chunk_slice] = dset[chunk_slice] * factor
