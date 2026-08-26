@@ -821,8 +821,8 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
     
             # Perform multilinear fit of galaxy density vs SP maps and iteratively increase outlier
             # fraction for any SP map where the reduced chi^2 is above the threshold value
-            above_max = np.ones(nsysmaps, dtype=bool)
-            while np.any(above_max):
+            chi2_red = np.inf
+            while chi2_red > self.chisq_max:
                 f = 0.5 * outfrac
                 percentiles = np.linspace(f, 1 - f, nsysbins + 1).T
 
@@ -915,12 +915,13 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
                 ndens_pred = density_corrs.linear_model(alphas)
                 density_corrs.add_model(ndens_pred, "multilinear")
                 dof = len(A) - np.linalg.matrix_rank(A)
-                chi2_red = np.array([density_corrs.chi2["multilinear"][imap] for imap in range(nsysmaps)])
-                chi2_red /= dof
+                chi2 = np.array([density_corrs.chi2["multilinear"][imap] for imap in range(nsysmaps)])
+                chi2_red = chi2.sum() / dof
 
                 print(chi2_red)
-                above_max = chi2_red > self.chisq_max
-                outfrac[above_max] += self.config["outlier_frac_step"]
+                # Increase the outlier fraction for the SP with the highest chi^2
+                imax = np.argmax(chi2)
+                outfrac[imax] += self.config["outlier_frac_step"]
 
             # Append the cut mask to the list
             mask_inter.append(mask_bin)
