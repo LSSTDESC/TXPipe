@@ -479,7 +479,7 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
         filepath = output_dir.path_for_file(f"chi2_hist_lens{ibin}.png")
         density_correlation.plot_chi2_hist(filepath, chi2_threshold=None)
 
-    def calc_covariance(self, density_correlation):
+    def calc_covariance(self, density_correlation, mask=None):
         """
         Construct the covariance matrix of the ndens vs SP data-vector
 
@@ -487,6 +487,11 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
         ----------
         density_correlation: lsstools.DensityCorrelation
 
+        mask: hsp.HealSparseMap or None
+            Mask for identifying which pixels to include when computing the sample variance
+            component of the covariance. This is useful e.g. in TXLSSDensitySkyCuts, where
+            the covariance needs to be computed repeatedly with updated masks. If None, will
+            use the valid pixels of each survey property map instead.
         """
         s = time.time()
 
@@ -504,6 +509,7 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
                 density_correlation,
                 self.sys_maps,
                 diag_blocks_only=self.config["diag_blocks_only"],
+                mask=mask
             )
             density_correlation.add_external_covariance(cov_sample_variance_full, assert_empty=False)
 
@@ -584,7 +590,7 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
 
         return covmat_ndens
 
-    def calc_covariance_sample_variance(self, density_correlation, sys_maps, diag_blocks_only=False):
+    def calc_covariance_sample_variance(self, density_correlation, sys_maps, diag_blocks_only=False, mask=None):
         """
         Sample variance term in 1d binned covariance
 
@@ -597,6 +603,9 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
 
         sys_maps: array of healsparse maps
 
+        mask: hsp.HealSparseMap or None
+            Mask for identifying which pixels to include. If None, will use the valid pixels of each
+            survey property map instead.
         """
         import treecorr
         import healpy as hp
@@ -641,7 +650,10 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
         # TODO: test how the memory use scales with NSIDE
         cats = {}
         for imap in map_list:
-            ra_i, dec_i = sys_maps[imap].valid_pixels_pos(lonlat=True)
+            if mask is None:
+                ra_i, dec_i = sys_maps[imap].valid_pixels_pos(lonlat=True)
+            else:
+                ra_i, dec_i = mask.valid_pixels_pos(lonlat=True)
             edges_i = density_correlation.get_edges(imap)
             for isp in range(len(edges_i) - 1):
                 selecti = density_correlation.precomputed_array[imap][isp]
@@ -724,6 +736,247 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
         Nothing to verify for the null tests
         """
         pass
+
+
+class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
+    """
+    Use correlations between lens sample density and survey property maps to define cuts on the sky.
+    
+    Fits a multilinear relation between the lens sample density and survey property values and
+    iteratively trims the mask until the reduced chi-squared of the fit falls below a user-defined
+    threshold. 
+    """
+
+    name = "TXLSSDensitySkyCuts"
+    parallel = True
+
+    outputs = [
+        ("lss_density_plots", FileCollection),  # output files and summary statistics will go here
+        ("unweighted_density_correlation", HDFFile),
+        ("cut_mask", MapsFile)
+    ]
+
+    config_options = {
+        **TXLSSDensityNullTests.config_options,
+        "chisq_max" : StageParameter(
+            float,
+            2.,
+            msg="Threshold reduced chi-squared used to assess goodness of fit for linear model."
+        ),
+        "outlier_frac_step": StageParameter(
+            float,
+            0.01,
+            msg="Increment by which the outlier fraction will be raised in the case of a bad linear fit."
+        )
+    }
+
+    def run(self):
+        import healpy as hp
+        import healsparse as hsp
+        from . import lsstools
+        import scipy.stats
+
+        pixel_scheme = choose_pixelization(**self.config)
+        self.pixel_metadata = pixel_scheme.metadata
+        self.pixel_metadata["nest"] = True #This stage uses healsparse maps which always use nested ordering
+        self.chisq_max = self.config["chisq_max"]
+
+        # check the metadata nside matches the mask (might not be true if you use an external mask)
+        with self.open_input("mask", wrapper=True) as map_file:
+            mask = map_file.read_map("mask")
+            mask_meta = mask.metadata
+            mask_nside = map_file.read_map_info("mask")["nside"]
+            nest = map_file.read_map_info("mask")["nest"]
+        assert self.pixel_metadata["nside"] == mask_nside
+
+        # get number of tomographic lens bins
+        with self.open_input("binned_lens_catalog_unweighted", wrapper=False) as f:
+            self.Ntomo = f["lens"].attrs["nbin_lens"]
+
+        # output directory for the plots and summary stats
+        # open in parallel so that each process can write to it as needed.
+        output_dir = self.open_output("lss_density_plots", wrapper=True, parallel=True)
+
+        # load the SP maps, apply the mask, normalize the maps (as needed by the method)
+        self.sys_maps, self.sys_names, self.sys_meta = self.prepare_sys_maps()
+        nsysbins = self.config["nbin"]
+        nsysmaps = len(self.sys_maps)
+
+        # Construct mask for each tomographic bin; the final mask will be a intersection of all of them
+        mask_inter = []
+        results = []
+        for ibin in self.split_tasks_by_rank(range(self.Ntomo)):
+            print("Computing density correlations for lens bin {0}/{1}".format(ibin + 1, self.Ntomo))
+
+            # Initialise outlier fraction at zero for all survey property maps
+            outfrac = np.zeros(nsysmaps)
+
+            # Retrieve RA, Dec and weights for current tomographic bin
+            with self.open_input("binned_lens_catalog_unweighted", wrapper=False) as f:
+                ra = f[f"lens/bin_{ibin}/ra"][:]
+                dec = f[f"lens/bin_{ibin}/dec"][:]
+                weight = f[f"lens/bin_{ibin}/weight"][:]
+            # Convert coordinates to pixels
+            obj_pix = hp.ang2pix(mask_nside, ra, dec, lonlat=True, nest=True)            
+    
+            # Perform multilinear fit of galaxy density vs SP maps and iteratively increase outlier
+            # fraction for any SP map where the reduced chi^2 is above the threshold value
+            above_max = np.ones(nsysmaps, dtype=bool)
+            while np.any(above_max):
+                f = 0.5 * outfrac
+                percentiles = np.linspace(f, 1 - f, nsysbins + 1).T
+
+                # Retrieve unmasked pixels from mask
+                vpix = mask.valid_pixels
+                print(len(vpix))
+                # Keep track of pixels to keep after fitting to all SP maps
+                vpix_common = []
+                for imap in range(nsysmaps):
+                    sys_map = self.sys_maps[imap]
+                    sys_vals = sys_map[vpix]
+
+                    if self.config["equal_area_bins"]:
+                        edges = scipy.stats.mstats.mquantiles(sys_vals, percentiles[imap])
+                    else:
+                        edges = np.linspace(
+                            np.percentile(sys_vals, 100.0 * percentiles[imap][0]),
+                            np.percentile(sys_vals, 100.0 * percentiles[imap][-1]),
+                            nsysbins + 1,
+                        )
+                    # Remove empty bins
+                    counts, _ = np.histogram(sys_vals, bins=edges)
+                    nonempty = counts > 0
+                    keep = np.concatenate(([True], nonempty))  # always keep 1st and last bin edge
+                    edges = edges[keep]
+            
+                    self.sys_meta[f"edges_{imap}"] = edges
+
+                    # Identify and remove outlier pixels
+                    vpix = vpix[
+                        (sys_vals >= edges.min())
+                        * (sys_vals <= edges.max())
+                    ]
+                    vpix_common.append(set(vpix))
+
+                # Construct binary version of the mask showing which pixels are valid
+                vpix_common = list(set.intersection(*vpix_common))
+                print(len(vpix_common))
+                mask_bin = hsp.HealSparseMap.make_empty_like(mask, dtype=np.int8, sentinel=-128)
+                mask_bin[vpix_common] = 1
+
+                # Identify galaxies that lie in unmasked pixels
+                unmasked = np.isin(obj_pix, vpix_common)
+                obj_pix_cut = obj_pix[unmasked]
+
+                # Perform multilinear fit of galaxy density w.r.t. all SP maps
+                density_corrs = lsstools.DensityCorrelation(tomobin=ibin)
+                for imap, sys_map in enumerate(self.sys_maps):
+                    sys_vals = sys_map[vpix_common]  # SP value in each valid pixel
+                    data = sys_map[obj_pix_cut]  # SP value at each galaxy's position
+
+                    if nest:  # ideally we dont want if statements like this....
+                        frac = mask[vpix_common]
+                    else:
+                        frac = mask[hp.nest2ring(mask_nside, vpix_common)]
+
+                    sys_name = imap if self.sys_names is None else self.sys_names[imap]
+                    sys_name = f'{sys_name}_fout{outfrac[imap]:.3f}'
+
+                    edges = self.sys_meta[f"edges_{imap}"]
+
+                    density_corrs.add_correlation(
+                        imap,
+                        edges,
+                        sys_vals,
+                        data,
+                        frac=frac,
+                        weight=weight[unmasked],
+                        sys_name=sys_name
+                    )
+
+                    # also precompute the SP bined arrays and pixel counts
+                    density_corrs.precompute(imap, edges, sys_vals, frac=frac)
+
+                density_corrs.sys_meta.update(self.sys_meta)
+
+                # compute design matrix for linear regression
+                sys_map_table = np.array([s[mask_bin.valid_pixels] for s in self.sys_maps])
+                A = density_corrs.precompute_design_matrix(sys_map_table)
+                # compute covariance of data vector and add to DensityCorrelation object
+                self.calc_covariance(density_corrs, mask_bin)
+
+                # linear model predictions
+                icov = np.linalg.inv(density_corrs.covmat)
+                ATCA = A.T @ icov @ A
+                ATCy = A.T @ icov @ density_corrs.ndens
+                alphas = np.linalg.solve(ATCA, ATCy)
+
+                # add model predictions and compute reduced chi^2
+                ndens_pred = density_corrs.linear_model(alphas)
+                density_corrs.add_model(ndens_pred, "multilinear")
+                dof = len(A) - np.linalg.matrix_rank(A)
+                chi2_red = np.array([density_corrs.chi2["multilinear"][imap] for imap in range(nsysmaps)])
+                chi2_red /= dof
+
+                print(chi2_red)
+                above_max = chi2_red > self.chisq_max
+                outfrac[above_max] += self.config["outlier_frac_step"]
+
+            # Append the cut mask to the list
+            mask_inter.append(mask_bin)
+            results.append(density_corrs)
+
+        # gather all results on root process
+        if self.comm is not None:
+            results = self.comm.gather(results, root=0)
+        # Compute the intersection of masks from all tomographic bins
+        if self.rank == 0:
+            # Flatten list of lists
+            if self.comm is not None:
+                results = [result for sublist in results for result in sublist]
+                mask_inter = [result for sublist in mask_inter for result in sublist]
+            mask_inter = hsp.operations.and_intersection(mask_inter)
+
+            # Get valid pixels from intersection and construct final mask with only these pixels
+            vpix_final = mask_inter.valid_pixels
+            mask_cut = hsp.HealSparseMap.make_empty_like(mask)
+            mask_cut[vpix_final] = mask[vpix_final]
+
+            # Update metadata with area and f_sky
+            area = mask_cut[vpix_final].sum() * pixel_scheme.pixel_area(degrees=True)
+            f_sky = area / 41252.96125
+            mask_meta["area"] = area
+            mask_meta["f_sky"] = f_sky
+            print(f_sky)
+
+            # Save mask
+            with self.open_output("cut_mask", wrapper=True) as f:
+                f.file.create_group("maps")
+                f.write_map("mask", mask_cut, mask_meta)
+
+            # open outdir density correlation file.
+            # only the root process does any writing.
+            with self.open_output("unweighted_density_correlation", wrapper=False) as dens_output:
+                for density_corrs in results:
+                    ibin = density_corrs.tomobin
+                    
+                    # save the 1D density trends
+                    # tomo bin label is taken from density_corrs
+                    density_corrs.save_to_group(dens_output)
+            
+                    # plot 1d density trends
+                    for imap in np.unique(density_corrs.map_index):
+                        try:
+                            splabel = density_corrs.mapnames[imap]
+                        except KeyError:
+                            splabel = imap
+                        filepath = output_dir.path_for_file(f"sys1D_lens{ibin}_SP{splabel}.png")
+                        density_corrs.plot1d_singlemap(
+                            filepath,
+                            imap,
+                            plot_hist=True,
+                        )
+
 
 class TXLSSWeights(TXLSSDensityBase):
     """
