@@ -860,7 +860,6 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
 
                 # Construct binary version of the mask showing which pixels are valid
                 vpix_common = list(set.intersection(*vpix_common))
-                print(len(vpix_common))
                 mask_bin = hsp.HealSparseMap.make_empty_like(mask, dtype=np.int8, sentinel=-128)
                 mask_bin[vpix_common] = 1
 
@@ -918,7 +917,7 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
                 chi2 = np.array([density_corrs.chi2["multilinear"][imap] for imap in range(nsysmaps)])
                 chi2_red = chi2.sum() / dof
 
-                print(chi2_red)
+                print(f'Reduced chi^2 = {chi2_red}')
                 # Increase the outlier fraction for the SP with the highest chi^2
                 imax = np.argmax(chi2)
                 outfrac[imax] += self.config["outlier_frac_step"]
