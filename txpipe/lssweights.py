@@ -779,6 +779,8 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
         pixel_scheme = choose_pixelization(**self.config)
         self.pixel_metadata = pixel_scheme.metadata
         self.pixel_metadata["nest"] = True #This stage uses healsparse maps which always use nested ordering
+
+        # Max reduced chi^2 allowed for a multilinear fit to be considered valid
         self.chisq_max = self.config["chisq_max"]
 
         # check the metadata nside matches the mask (might not be true if you use an external mask)
@@ -820,7 +822,8 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
             obj_pix = hp.ang2pix(mask_nside, ra, dec, lonlat=True, nest=True)            
     
             # Perform multilinear fit of galaxy density vs SP maps and iteratively increase outlier
-            # fraction for any SP map where the reduced chi^2 is above the threshold value
+            # fraction for the SP map with the highest chi^2 value if the reduced chi^2 for the
+            # multilinear is above the threshold value
             chi2_red = np.inf
             while chi2_red > self.chisq_max:
                 f = 0.5 * outfrac
@@ -828,7 +831,6 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
 
                 # Retrieve unmasked pixels from mask
                 vpix = mask.valid_pixels
-                print(len(vpix))
                 # Keep track of pixels to keep after fitting to all SP maps
                 vpix_common = []
                 for imap in range(nsysmaps):
