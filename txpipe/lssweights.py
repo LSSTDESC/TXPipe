@@ -827,9 +827,6 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
             # multilinear is above the threshold value
             chi2_red = np.inf
             while chi2_red > self.chisq_max:
-                f = 0.5 * outfrac
-                percentiles = np.linspace(f, 1 - f, nsysbins + 1).T
-
                 # Retrieve unmasked pixels from mask
                 vpix = mask.valid_pixels
                 # Keep track of pixels to keep after fitting to all SP maps
@@ -838,20 +835,10 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
                     sys_map = self.sys_maps[imap]
                     sys_vals = sys_map[vpix]
 
-                    if self.config["equal_area_bins"]:
-                        edges = scipy.stats.mstats.mquantiles(sys_vals, percentiles[imap])
-                    else:
-                        edges = np.linspace(
-                            np.percentile(sys_vals, 100.0 * percentiles[imap][0]),
-                            np.percentile(sys_vals, 100.0 * percentiles[imap][-1]),
-                            nsysbins + 1,
-                        )
-                    # Remove empty bins
-                    counts, _ = np.histogram(sys_vals, bins=edges)
-                    nonempty = counts > 0
-                    keep = np.concatenate(([True], nonempty))  # always keep 1st and last bin edge
-                    edges = edges[keep]
-            
+                    # Update outlier fraction in config to value for current SP map
+                    self.config["outlier_fraction"] = outfrac[imap]
+                    # Compute SP bin edges
+                    edges = self.compute_bin_edges(sys_map)
                     self.sys_meta[f"edges_{imap}"] = edges
 
                     # Identify and remove outlier pixels
