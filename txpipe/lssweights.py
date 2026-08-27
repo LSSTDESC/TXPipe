@@ -202,7 +202,7 @@ class TXLSSDensityBase(TXMapCorrelations):
 
         return np.array(sys_maps), np.array(sys_names)
 
-    def calculate_1d_density_correlations(self, tomobin, mean_density_map=None):
+    def calculate_1d_density_correlations(self, tomobin, mean_density_map=None, pixels=None, suffix=""):
         """
         compute the binned 1d density correlations for a single tomographic lens bin
 
@@ -213,6 +213,11 @@ class TXLSSDensityBase(TXMapCorrelations):
         mean_density_map: healsparse map (None)
             map of inverse weight to be applied to the galaxies
             if None, will use unweighted lens catalog
+        pixels: list[int] (None)
+            list of pixels to include when computing the correlations
+            if None, will use the vali pixels from each survey property map
+        suffix: str ("")
+            suffix to be included when labelling survey property maps
 
         Returns
         -------
@@ -254,15 +259,25 @@ class TXLSSDensityBase(TXMapCorrelations):
 
         density_corrs = lsstools.DensityCorrelation(tomobin=tomobin)  # keeps track of the 1d plots
         for imap, sys_map in enumerate(self.sys_maps):
-            sys_vals = sys_map[sys_map.valid_pixels]  # SP value in each valid pixel
-            sys_obj = sys_map[obj_pix]  # SP value for each object in catalog
+            if pixels is None:
+                vpix = sys_map.valid_pixels
+            else:
+                vpix = pixels
+            # Only include sources within the valid pixels
+            valid = np.isin(obj_pix, vpix)
+            vobj_pix = obj_pix[valid]
+
+            sys_vals = sys_map[vpix]  # SP value in each valid pixel
+            sys_obj = sys_map[vobj_pix]  # SP value for each object in catalog within valid pixels
 
             if nest:  # ideally we dont want if statements like this....
-                frac = mask[sys_map.valid_pixels]
+                frac = mask[vpix]
             else:
-                frac = mask[hp.nest2ring(nside, sys_map.valid_pixels)]
+                frac = mask[hp.nest2ring(nside, vpix)]
 
-            sys_name = None if self.sys_names is None else self.sys_names[imap]
+            # I don't think there's any reason for sys_name to be None in the current implementation.
+            # Have removed the if statement here accordingly.
+            sys_name = self.sys_names[imap] + suffix
 
             edges = self.sys_meta[f"edges_{imap}"]
 
@@ -272,7 +287,7 @@ class TXLSSDensityBase(TXMapCorrelations):
                 sys_vals,
                 sys_obj,
                 frac=frac,
-                weight=weight,
+                weight=weight[valid],
                 sys_name=sys_name,
             )
 
@@ -812,21 +827,15 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
             print("Computing density correlations for lens bin {0}/{1}".format(ibin + 1, self.Ntomo))
 
             # Initialise outlier fraction at zero for all survey property maps
-            outfrac = np.zeros(nsysmaps)
-
-            # Retrieve RA, Dec and weights for current tomographic bin
-            with self.open_input("binned_lens_catalog_unweighted", wrapper=False) as f:
-                ra = f[f"lens/bin_{ibin}/ra"][:]
-                dec = f[f"lens/bin_{ibin}/dec"][:]
-                weight = f[f"lens/bin_{ibin}/weight"][:]
-            # Convert coordinates to pixels
-            obj_pix = hp.ang2pix(mask_nside, ra, dec, lonlat=True, nest=True)            
+            outfrac = np.zeros(nsysmaps)          
     
             # Perform multilinear fit of galaxy density vs SP maps and iteratively increase outlier
             # fraction for the SP map with the highest chi^2 value if the reduced chi^2 for the
             # multilinear is above the threshold value
             chi2_red = np.inf
+            n_iter = 0
             while chi2_red > self.chisq_max:
+                print(f'Outlier fractions: {outfrac}')
                 # Retrieve unmasked pixels from mask
                 vpix = mask.valid_pixels
                 # Keep track of pixels to keep after fitting to all SP maps
@@ -853,40 +862,19 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
                 mask_bin = hsp.HealSparseMap.make_empty_like(mask, dtype=np.int8, sentinel=-128)
                 mask_bin[vpix_common] = 1
 
-                # Identify galaxies that lie in unmasked pixels
-                unmasked = np.isin(obj_pix, vpix_common)
-                obj_pix_cut = obj_pix[unmasked]
+                # Retrieve RA, Dec and weights for current tomographic bin
+                with self.open_input("binned_lens_catalog_unweighted", wrapper=False) as f:
+                    ra = f[f"lens/bin_{ibin}/ra"][:]
+                    dec = f[f"lens/bin_{ibin}/dec"][:]
+                    weight = f[f"lens/bin_{ibin}/weight"][:]
 
-                # Perform multilinear fit of galaxy density w.r.t. all SP maps
-                density_corrs = lsstools.DensityCorrelation(tomobin=ibin)
-                for imap, sys_map in enumerate(self.sys_maps):
-                    sys_vals = sys_map[vpix_common]  # SP value in each valid pixel
-                    data = sys_map[obj_pix_cut]  # SP value at each galaxy's position
-
-                    if nest:  # ideally we dont want if statements like this....
-                        frac = mask[vpix_common]
-                    else:
-                        frac = mask[hp.nest2ring(mask_nside, vpix_common)]
-
-                    sys_name = imap if self.sys_names is None else self.sys_names[imap]
-                    sys_name = f'{sys_name}_fout{outfrac[imap]:.3f}'
-
-                    edges = self.sys_meta[f"edges_{imap}"]
-
-                    density_corrs.add_correlation(
-                        imap,
-                        edges,
-                        sys_vals,
-                        data,
-                        frac=frac,
-                        weight=weight[unmasked],
-                        sys_name=sys_name
-                    )
-
-                    # also precompute the SP bined arrays and pixel counts
-                    density_corrs.precompute(imap, edges, sys_vals, frac=frac)
-
-                density_corrs.sys_meta.update(self.sys_meta)
+                # Compute binned 1D density correlations 
+                density_corrs = self.calculate_1d_density_correlations(
+                    ibin,
+                    mean_density_map=None,
+                    pixels=vpix_common,
+                    suffix=f'_iter{n_iter}'
+                )
 
                 # compute design matrix for linear regression
                 sys_map_table = np.array([s[mask_bin.valid_pixels] for s in self.sys_maps])
@@ -915,6 +903,7 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
                 # Increase the outlier fraction for the SP with the highest individual chi^2
                 imax = np.argmax([density_corrs.chi2["multilinear"][imap] for imap in range(nsysmaps)])
                 outfrac[imax] += self.config["outlier_frac_step"]
+                n_iter += 1
 
             # Append the cut mask to the list
             mask_inter.append(mask_bin)
