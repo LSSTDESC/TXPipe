@@ -775,6 +775,7 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
         import healsparse as hsp
         from . import lsstools
         import scipy.stats
+        from .utils.fitting import calc_chi2
 
         pixel_scheme = choose_pixelization(**self.config)
         self.pixel_metadata = pixel_scheme.metadata
@@ -916,12 +917,16 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
                 ndens_pred = density_corrs.linear_model(alphas)
                 density_corrs.add_model(ndens_pred, "multilinear")
                 dof = len(A) - np.linalg.matrix_rank(A)
-                chi2 = np.array([density_corrs.chi2["multilinear"][imap] for imap in range(nsysmaps)])
-                chi2_red = chi2.sum() / dof
+                chi2 = calc_chi2(
+                    density_corrs.ndens,
+                    density_corrs.covmat,
+                    ndens_pred
+                )
+                chi2_red = chi2 / dof
 
                 print(f'Reduced chi^2 = {chi2_red}')
-                # Increase the outlier fraction for the SP with the highest chi^2
-                imax = np.argmax(chi2)
+                # Increase the outlier fraction for the SP with the highest individual chi^2
+                imax = np.argmax([density_corrs.chi2["multilinear"][imap] for imap in range(nsysmaps)])
                 outfrac[imax] += self.config["outlier_frac_step"]
 
             # Append the cut mask to the list
