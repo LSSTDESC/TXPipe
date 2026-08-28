@@ -789,6 +789,11 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
             float,
             0.01,
             msg="Increment by which the outlier fraction will be raised in the case of a bad linear fit."
+        ),
+        "max_frac_area_loss": StageParameter(
+            float,
+            1.0,
+            msg="Maximum fractional area loss allowed."
         )
     }
 
@@ -804,7 +809,9 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
         (5) If reduced chi-squared is above threshold, exclude an outlying fraction of pixels
             from the SP map which deviates most from the model.
         (6) Repeat steps 3-5 until reduced chi-squared is below the threshold.
-        (7) Summarize (save plots, data points and covariance, etc)
+        (7) Construct a final mask as the intersection of the masks produced by this procedure
+            for each tomographic bin.
+        (8) Summarize (save plots, data points and covariance, etc)
         """
         import healsparse as hsp
 
@@ -814,15 +821,27 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
 
         # Max reduced chi^2 allowed for a multilinear fit to be considered valid
         self.chisq_max = self.config["chisq_max"]
+        # Max allowed fractional area loss
+        self.f_loss_max = self.config["max_frac_area_loss"]
 
         # check the metadata nside matches the mask (might not be true if you use an external mask)
         with self.open_input("mask", wrapper=True) as map_file:
             mask = map_file.read_map("mask")
             mask_meta = map_file.read_map_info("mask")
         mask_nside = mask_meta["nside"]
-
         assert self.pixel_metadata["nside"] == mask_nside
 
+        # Retrieve unmasked pixels from mask
+        vpix = mask.valid_pixels
+
+        # Compute initial coverage area
+        # NOTE: the area calculation in the TXBaseMask class assumes a binary mask, whereas
+        # here the mask is assumed to be a fractional detection map, hence we recalculate area
+        # for the initial mask here
+        area_sky = 4 * (180 ** 2) / np.pi
+        area_pix = pixel_scheme.pixel_area(degrees=True)
+        area_init = mask[vpix].sum() * area_pix
+        
         # get number of tomographic lens bins
         with self.open_input("binned_lens_catalog_unweighted", wrapper=False) as f:
             self.Ntomo = f["lens"].attrs["nbin_lens"]
@@ -851,9 +870,6 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
             chi2_red = np.inf
             n_iter = 0
             while chi2_red > self.chisq_max:
-                print(f'Outlier fractions: {outfrac}')
-                # Retrieve unmasked pixels from mask
-                vpix = mask.valid_pixels
                 # Keep track of pixels to keep after fitting to all SP maps
                 vpix_common = []
                 for imap in range(nsysmaps):
@@ -872,6 +888,19 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
 
                 # Construct binary version of the mask showing which pixels are valid
                 vpix_common = list(set.intersection(*vpix_common))
+                # Check area loss is below threshold
+                area_new = mask[vpix_common].sum() * area_pix
+                f_loss = 1. - area_new / area_init
+                if f_loss > self.f_loss_max:
+                    print(
+                        f"!!! WARNING !!!: fractional area loss ({f_loss:.4f}) for current outlier "
+                        f"fractions will exceed threshold ({self.f_loss_max:.4f}). Stopping "
+                        f"iterations here for tomographic bin {ibin}."
+                    )
+                    break
+
+                print(f'Outlier fractions: {outfrac}')
+                
                 mask_bin = hsp.HealSparseMap.make_empty_like(mask, dtype=bool, sentinel=False)
                 mask_bin[vpix_common] = True
 
@@ -928,18 +957,12 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
 
             # Get valid pixels from intersection and construct final mask with only these pixels
             vpix_final = mask_inter.valid_pixels
-            mask_cut = hsp.HealSparseMap.make_empty_like(mask)
-            mask_cut[vpix_final] = mask[vpix_final]
+            mask_final = hsp.HealSparseMap.make_empty_like(mask)
+            mask_final[vpix_final] = mask[vpix_final]
 
             # Compare initial and final f_sky
-            # NOTE: the f_sky calculation in the TXBaseMask class assumes a binary mask, whereas
-            # here the mask is assumed to be a fractional detection map, hence we recalculate f_sky
-            # for the initial mask here
-            area_sky = 4 * (180 ** 2) / np.pi
-            area_pix = pixel_scheme.pixel_area(degrees=True)
-            area_init = mask[vpix].sum() * area_pix
             f_sky_init = area_init / area_sky
-            area_final = mask_cut[vpix_final].sum() * area_pix
+            area_final = mask_final[vpix_final].sum() * area_pix
             f_sky_final = area_final / area_sky
 
             print(f'Initial f_sky: {f_sky_init}')
@@ -952,7 +975,7 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
             # Save mask
             with self.open_output("cut_mask", wrapper=True) as f:
                 f.file.create_group("maps")
-                f.write_map("mask", mask_cut, mask_meta)
+                f.write_map("mask", mask_final, mask_meta)
 
             with self.open_output("unweighted_density_correlation", wrapper=False) as dens_output:
                 for density_corrs in results:
