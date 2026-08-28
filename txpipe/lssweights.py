@@ -960,6 +960,11 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
 
         frac: np.ndarray
             Fractional pixel coverage, length N_pix.
+        
+        Returns
+        -------
+        chi2: float
+            Chi-squared of the fit.
         """
         # construct the design matrix for the fit
         A = density_corrs.precompute_design_matrix(sys_map_table, frac)
