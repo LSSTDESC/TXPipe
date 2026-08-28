@@ -466,7 +466,15 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
                 for density_corrs in results:
                     self.summarize_density(output_dir, dens_output, density_corrs)
 
-    def summarize_density(self, output_dir, dens_output, density_correlation, plot_chi2_hist=True):
+    def summarize_density(
+            self,
+            output_dir,
+            dens_output,
+            density_correlation,
+            save_1d_plots=True,
+            save_chi2_hist=True,
+            suffix=""
+        ):
         """
         make 1d density plots and other summary statistics and save them
 
@@ -475,6 +483,14 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
         output_dir: string
 
         density_correlation: lsstools.DensityCorrelation
+
+        save_1d_plots: bool (True)
+            If True, will produce and save plots of the correlations between galaxy
+            density and each survey property map.
+
+        save_chi2_hist: bool (True)
+            If will produce and save a histogram of the chi-squared values for each
+            survey property map (one plot per tomographc bin).
         """
         import scipy.stats
 
@@ -482,22 +498,23 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
 
         # save the 1D density trends
         # tomo bin label is taken from density_correlation
-        density_correlation.save_to_group(dens_output)
+        density_correlation.save_to_group(dens_output, suffix=suffix)
 
-        # plot 1d density trends
-        for imap in np.unique(density_correlation.map_index):
-            try:
-                splabel = density_correlation.mapnames[imap]
-            except KeyError:
-                splabel = imap
-            filepath = output_dir.path_for_file(f"sys1D_lens{ibin}_SP{splabel}.png")
-            density_correlation.plot1d_singlemap(
-                filepath,
-                imap,
-                plot_hist=True,
-            )
+        if save_1d_plots:
+            # plot 1d density trends
+            for imap in np.unique(density_correlation.map_index):
+                try:
+                    splabel = density_correlation.mapnames[imap]
+                except KeyError:
+                    splabel = imap
+                filepath = output_dir.path_for_file(f"sys1D_lens{ibin}_SP{splabel}.png")
+                density_correlation.plot1d_singlemap(
+                    filepath,
+                    imap,
+                    plot_hist=True,
+                )
 
-        if plot_chi2_hist:
+        if save_chi2_hist:
             filepath = output_dir.path_for_file(f"chi2_hist_lens{ibin}.png")
             density_correlation.plot_chi2_hist(filepath, chi2_threshold=None)
 
@@ -773,8 +790,8 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
     parallel = True
 
     outputs = [
-        ("lss_density_plots", FileCollection),  # output files and summary statistics will go here
-        ("unweighted_density_correlation", HDFFile),
+        ("lss_density_plots_sky_cuts", FileCollection),  # output files and summary statistics will go here
+        ("unweighted_density_correlation_sky_cuts", HDFFile),
         ("cut_mask", MapsFile)
     ]
 
@@ -808,7 +825,8 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
         (4) Fit a multilinear model of galaxy density w.r.t. SP maps and compute chi-squared.
         (5) If reduced chi-squared is above threshold, exclude an outlying fraction of pixels
             from the SP map which deviates most from the model.
-        (6) Repeat steps 3-5 until reduced chi-squared is below the threshold.
+        (6) Repeat steps 3-5 until reduced chi-squared is below the threshold, or until the
+            fractional area loss exceeds the threshold.
         (7) Construct a final mask as the intersection of the masks produced by this procedure
             for each tomographic bin.
         (8) Summarize (save plots, data points and covariance, etc)
@@ -848,7 +866,7 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
 
         # output directory for the plots and summary stats
         # open in parallel so that each process can write to it as needed.
-        output_dir = self.open_output("lss_density_plots", wrapper=True, parallel=True)
+        output_dir = self.open_output("lss_density_plots_sky_cuts", wrapper=True, parallel=True)
 
         # load the SP maps, apply the mask, normalize the maps (as needed by the method)
         self.sys_maps, self.sys_names, self.sys_meta = self.prepare_sys_maps()
@@ -856,8 +874,9 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
         print(f'Sys maps: {self.sys_names}')
 
         # Construct mask for each tomographic bin; the final mask will be a intersection of all of them
-        mask_inter = []
-        results = []
+        mask_inter = []  # for masks from each iteration
+        results = []     # for DensityCorrelation objects containing 1D correlation data
+        tags = []        # for labels to give the results from each iteration
         for ibin in self.split_tasks_by_rank(range(self.Ntomo)):
             print("Computing density correlations for lens bin {0}/{1}".format(ibin + 1, self.Ntomo))
 
@@ -911,13 +930,14 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
                     weight = f[f"lens/bin_{ibin}/weight"][:]
                 galaxy_info = np.array([ra, dec, weight])
 
-                # Compute binned 1D density correlations 
+                # Compute binned 1D density correlations
+                suffix = f'_iter{n_iter}'
                 density_corrs = self.calculate_1d_density_correlations(
                     ibin,
                     mean_density_map=None,
                     pixels=vpix_common,
                     galaxy_info=galaxy_info,
-                    suffix=f'_iter{n_iter}'
+                    suffix=suffix
                 )
 
                 # compute covariance of data vector and add to DensityCorrelation object
@@ -940,9 +960,11 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
                 outfrac[imax] += self.config["outlier_frac_step"]
                 n_iter += 1
 
+                results.append(density_corrs)
+                tags.append(suffix)
+
             # Append the cut mask to the list
             mask_inter.append(mask_bin)
-            results.append(density_corrs)
 
         # gather all results on root process
         if self.comm is not None:
@@ -953,6 +975,7 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
             if self.comm is not None:
                 results = [result for sublist in results for result in sublist]
                 mask_inter = [result for sublist in mask_inter for result in sublist]
+                tags = [result for sublist in tags for result in sublist]
             mask_inter = hsp.operations.and_intersection(mask_inter)
 
             # Get valid pixels from intersection and construct final mask with only these pixels
@@ -977,9 +1000,15 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
                 f.file.create_group("maps")
                 f.write_map("mask", mask_final, mask_meta)
 
-            with self.open_output("unweighted_density_correlation", wrapper=False) as dens_output:
-                for density_corrs in results:
-                    self.summarize_density(output_dir, dens_output, density_corrs, plot_chi2_hist=False)
+            with self.open_output("unweighted_density_correlation_sky_cuts", wrapper=False) as dens_output:
+                for density_corrs, tag in zip(results, tags):
+                    self.summarize_density(
+                        output_dir,
+                        dens_output,
+                        density_corrs,
+                        save_chi2_hist=False,
+                        suffix=tag
+                    )
 
     def multilinear_fit(self, density_corrs, sys_map_table, frac):
         """
