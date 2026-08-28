@@ -460,7 +460,7 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
                 for density_corrs in results:
                     self.summarize_density(output_dir, dens_output, density_corrs)
 
-    def summarize_density(self, output_dir, dens_output, density_correlation):
+    def summarize_density(self, output_dir, dens_output, density_correlation, plot_chi2_hist=True):
         """
         make 1d density plots and other summary statistics and save them
 
@@ -491,8 +491,9 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
                 plot_hist=True,
             )
 
-        filepath = output_dir.path_for_file(f"chi2_hist_lens{ibin}.png")
-        density_correlation.plot_chi2_hist(filepath, chi2_threshold=None)
+        if plot_chi2_hist:
+            filepath = output_dir.path_for_file(f"chi2_hist_lens{ibin}.png")
+            density_correlation.plot_chi2_hist(filepath, chi2_threshold=None)
 
     def calc_covariance(self, density_correlation, mask=None):
         """
@@ -937,28 +938,9 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
                 f.file.create_group("maps")
                 f.write_map("mask", mask_cut, mask_meta)
 
-            # open outdir density correlation file.
-            # only the root process does any writing.
             with self.open_output("unweighted_density_correlation", wrapper=False) as dens_output:
                 for density_corrs in results:
-                    ibin = density_corrs.tomobin
-                    
-                    # save the 1D density trends
-                    # tomo bin label is taken from density_corrs
-                    density_corrs.save_to_group(dens_output)
-            
-                    # plot 1d density trends
-                    for imap in np.unique(density_corrs.map_index):
-                        try:
-                            splabel = density_corrs.mapnames[imap]
-                        except KeyError:
-                            splabel = imap
-                        filepath = output_dir.path_for_file(f"sys1D_lens{ibin}_SP{splabel}.png")
-                        density_corrs.plot1d_singlemap(
-                            filepath,
-                            imap,
-                            plot_hist=True,
-                        )
+                    self.summarize_density(output_dir, dens_output, density_corrs, plot_chi2_hist=False)
 
     def multilinear_fit(self, density_corrs, sys_map_table, frac):
         """
