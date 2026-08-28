@@ -802,9 +802,9 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
         # check the metadata nside matches the mask (might not be true if you use an external mask)
         with self.open_input("mask", wrapper=True) as map_file:
             mask = map_file.read_map("mask")
-            mask_meta = mask.metadata
-            mask_nside = map_file.read_map_info("mask")["nside"]
-            nest = map_file.read_map_info("mask")["nest"]
+            mask_meta = map_file.read_map_info("mask")
+        mask_nside = mask_meta["nside"]
+        nest = mask_meta["nest"]
         assert self.pixel_metadata["nside"] == mask_nside
 
         # get number of tomographic lens bins
@@ -819,6 +819,7 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
         self.sys_maps, self.sys_names, self.sys_meta = self.prepare_sys_maps()
         nsysbins = self.config["nbin"]
         nsysmaps = len(self.sys_maps)
+        print(f'Sys maps: {self.sys_names}')
 
         # Construct mask for each tomographic bin; the final mask will be a intersection of all of them
         mask_inter = []
@@ -851,11 +852,8 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
                     self.sys_meta[f"edges_{imap}"] = edges
 
                     # Identify and remove outlier pixels
-                    vpix = vpix[
-                        (sys_vals >= edges.min())
-                        * (sys_vals <= edges.max())
-                    ]
-                    vpix_common.append(set(vpix))
+                    keep = (sys_vals >= edges.min()) * (sys_vals <= edges.max())
+                    vpix_common.append(set(vpix[keep]))
 
                 # Construct binary version of the mask showing which pixels are valid
                 vpix_common = list(set.intersection(*vpix_common))
@@ -925,12 +923,23 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
             mask_cut = hsp.HealSparseMap.make_empty_like(mask)
             mask_cut[vpix_final] = mask[vpix_final]
 
-            # Update metadata with area and f_sky
-            area = mask_cut[vpix_final].sum() * pixel_scheme.pixel_area(degrees=True)
-            f_sky = area / 41252.96125
-            mask_meta["area"] = area
-            mask_meta["f_sky"] = f_sky
-            print(f_sky)
+            # Compare initial and final f_sky
+            # NOTE: the f_sky calculation in the TXBaseMask class assumes a binary mask, whereas
+            # here the mask is assumed to be a fractional detection map, hence we recalculate f_sky
+            # for the initial mask here
+            area_sky = 4 * (180 ** 2) / np.pi
+            area_pix = pixel_scheme.pixel_area(degrees=True)
+            area_init = mask[vpix].sum() * area_pix
+            f_sky_init = area_init / area_sky
+            area_final = mask_cut[vpix_final].sum() * area_pix
+            f_sky_final = area_final / area_sky
+
+            print(f'Initial f_sky: {f_sky_init}')
+            print(f'Final f_sky: {f_sky_final}')
+
+            # Update mask metadata
+            mask_meta["area"] = area_final
+            mask_meta["f_sky"] = f_sky_final
 
             # Save mask
             with self.open_output("cut_mask", wrapper=True) as f:
