@@ -857,8 +857,8 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
 
                 # Construct binary version of the mask showing which pixels are valid
                 vpix_common = list(set.intersection(*vpix_common))
-                mask_bin = hsp.HealSparseMap.make_empty_like(mask, dtype=np.int8, sentinel=-128)
-                mask_bin[vpix_common] = 1
+                mask_bin = hsp.HealSparseMap.make_empty_like(mask, dtype=bool, sentinel=False)
+                mask_bin[vpix_common] = True
 
                 # Retrieve RA, Dec and weights for current tomographic bin
                 with self.open_input("binned_lens_catalog_unweighted", wrapper=False) as f:
