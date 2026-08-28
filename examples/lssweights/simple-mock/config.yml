@@ -13,6 +13,6 @@ global:
 TXLSSDensitySkyCuts:
     supreme_path_root: /global/cfs/cdirs/lsst/groups/WLSS/users/tcornish/simple-mock-data/sysmaps/
     nbin: 10                # number of bins per SP map to compute 1d trends
-    simple_cov: false        # If false will use diagonal shot noise covariance
+    simple_cov: true        # If false will use diagonal shot noise covariance
     diag_blocks_only: false  # If True and simple_cov=False, will compute only diagonal blocks of covariance
     b0: [1.]
