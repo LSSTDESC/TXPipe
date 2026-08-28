@@ -793,6 +793,19 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
     }
 
     def run(self):
+        """
+        Run the stage
+
+        Steps
+        (1) Prepare survey properties (SP maps) load, degrade, normalize, etc
+        (2) Compute 1d density trends Ngal vs SP, without excluding any outliers
+        (3) Compute the covariance matrix of the density trends
+        (4) Fit a multilinear model of galaxy density w.r.t. SP maps and compute chi-squared.
+        (5) If reduced chi-squared is above threshold, exclude an outlying fraction of pixels
+            from the SP map which deviates most from the model.
+        (6) Repeat steps 3-5 until reduced chi-squared is below the threshold.
+        (7) Summarize (save plots, data points and covariance, etc)
+        """
         import healsparse as hsp
 
         pixel_scheme = choose_pixelization(**self.config)
@@ -807,7 +820,7 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
             mask = map_file.read_map("mask")
             mask_meta = map_file.read_map_info("mask")
         mask_nside = mask_meta["nside"]
-        nest = mask_meta["nest"]
+
         assert self.pixel_metadata["nside"] == mask_nside
 
         # get number of tomographic lens bins
