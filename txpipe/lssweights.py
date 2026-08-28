@@ -874,30 +874,18 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
                     suffix=f'_iter{n_iter}'
                 )
 
-                # compute design matrix for linear regression
-                sys_map_table = np.array([s[mask_bin.valid_pixels] for s in self.sys_maps])
-                A = density_corrs.precompute_design_matrix(sys_map_table)
                 # compute covariance of data vector and add to DensityCorrelation object
                 self.calc_covariance(density_corrs, mask_bin)
 
-                # linear model predictions
-                icov = np.linalg.inv(density_corrs.covmat)
-                ATCA = A.T @ icov @ A
-                ATCy = A.T @ icov @ density_corrs.ndens
-                alphas = np.linalg.solve(ATCA, ATCy)
+                # perform linear regression
+                sys_map_table = np.array([s[vpix_common] for s in self.sys_maps])
+                chi2 = self.multilinear_fit(density_corrs, sys_map_table)
 
                 # Degrees of freedom for reduced chi^2 calculation; this can change with each
                 # iteration if the number of bins decreases (possible if many pixels in the SP
                 # map have similar values)
-                dof = A.shape[0] - A.shape[1]
-                # add model predictions and compute reduced chi^2
-                ndens_pred = density_corrs.linear_model(alphas)
-                density_corrs.add_model(ndens_pred, "multilinear")
-                chi2 = calc_chi2(
-                    density_corrs.ndens,
-                    density_corrs.covmat,
-                    ndens_pred
-                )
+                ndata, nparams = density_corrs.design_matrix.shape
+                dof = ndata - nparams
                 chi2_red = chi2 / dof
 
                 print(f'Reduced chi^2 = {chi2_red}')
@@ -972,6 +960,38 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
                             plot_hist=True,
                         )
 
+    def multilinear_fit(self, density_corrs, sys_map_table):
+        """
+        Performs a multilinear fit of galaxy density with respect to survey property maps.
+
+        Parameters
+        ----------
+        density_corrs : DensityCorrelation
+            Object containing the binned galaxy density information.
+        
+        sysmap_table_all : np.ndarray
+            Array of shape (N_maps, N_pix) containing systematic map values,
+            where the row index matches those in self.map_index
+        """
+        # construct the design matrix for the fit
+        A = density_corrs.precompute_design_matrix(sys_map_table)
+
+        # linear model predictions
+        icov = np.linalg.inv(density_corrs.covmat)
+        ATCA = A.T @ icov @ A
+        ATCy = A.T @ icov @ density_corrs.ndens
+        alphas = np.linalg.solve(ATCA, ATCy)
+        
+        # add model predictions and compute reduced chi^2
+        ndens_pred = density_corrs.linear_model(alphas)
+        density_corrs.add_model(ndens_pred, "multilinear")
+        chi2 = calc_chi2(
+            density_corrs.ndens,
+            density_corrs.covmat,
+            ndens_pred
+        )
+
+        return chi2
 
 class TXLSSWeights(TXLSSDensityBase):
     """
