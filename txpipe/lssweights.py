@@ -821,6 +821,10 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
         nsysmaps = len(self.sys_maps)
         print(f'Sys maps: {self.sys_names}')
 
+        # Degrees of freedom for reduced chi^2 calculation; for a multilinear fit to N SP maps with M bins
+        # each, this is taken as dof = N * M - (N + 1), where the +1 is for the intercept term
+        dof = nsysmaps * nsysbins - nsysmaps - 1
+
         # Construct mask for each tomographic bin; the final mask will be a intersection of all of them
         mask_inter = []
         results = []
@@ -889,7 +893,6 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
                 # add model predictions and compute reduced chi^2
                 ndens_pred = density_corrs.linear_model(alphas)
                 density_corrs.add_model(ndens_pred, "multilinear")
-                dof = len(A) - np.linalg.matrix_rank(A)
                 chi2 = calc_chi2(
                     density_corrs.ndens,
                     density_corrs.covmat,
