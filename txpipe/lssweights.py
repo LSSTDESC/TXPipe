@@ -202,7 +202,7 @@ class TXLSSDensityBase(TXMapCorrelations):
 
         return np.array(sys_maps), np.array(sys_names)
 
-    def calculate_1d_density_correlations(self, tomobin, mean_density_map=None, pixels=None, suffix=""):
+    def calculate_1d_density_correlations(self, tomobin, mean_density_map=None, pixels=None, galaxy_info=None, suffix=""):
         """
         compute the binned 1d density correlations for a single tomographic lens bin
 
@@ -216,6 +216,9 @@ class TXLSSDensityBase(TXMapCorrelations):
         pixels: list[int] (None)
             list of pixels to include when computing the correlations
             if None, will use the vali pixels from each survey property map
+        galaxy_info: np.ndarray (None)
+            2D array (dimensions 3 x N_gal) containing pre-loaded RA, Dec and weights for each galaxy.
+            If None, will read these from the input catalog.
         suffix: str ("")
             suffix to be included when labelling survey property maps
 
@@ -236,26 +239,29 @@ class TXLSSDensityBase(TXMapCorrelations):
         nside = mask_map_info["nside"]
         nest = mask_map_info["nest"]
 
-        # load the ra and dec of this lens bins
-        with self.open_input("binned_lens_catalog_unweighted", wrapper=False) as f:
-            ra = f[f"lens/bin_{tomobin}/ra"][:]
-            dec = f[f"lens/bin_{tomobin}/dec"][:]
+        if galaxy_info is None:
+            # load the ra and dec of this lens bins
+            with self.open_input("binned_lens_catalog_unweighted", wrapper=False) as f:
+                ra = f[f"lens/bin_{tomobin}/ra"][:]
+                dec = f[f"lens/bin_{tomobin}/dec"][:]
+                weight = f[f"lens/bin_{tomobin}/weight"][:]  # input object weights
+        else:
+            # use preloaded data
+            ra, dec, weight = galaxy_info
 
-            # pixel ID for each lens galaxy
-            obj_pix = hp.ang2pix(nside, ra, dec, lonlat=True, nest=True)
+        if self.config["allow_weighted_input"] == False:
+            assert (weight == 1.0).all()  # Lets assume the input weights have to be 1 by default
+        else:
+            if (weight == 1.0).all() == False:
+                print("WARNING: Your input lens catalog has weights != 1")
+                print("You have set allow_weighted_input==True so I will allow this")
+                print("Output weight=input_weight*sys_weight")
 
-            weight = f[f"lens/bin_{tomobin}/weight"][:]  # input object weights
-
-            if self.config["allow_weighted_input"] == False:
-                assert (weight == 1.0).all()  # Lets assume the input weights have to be 1 by default
-            else:
-                if (weight == 1.0).all() == False:
-                    print("WARNING: Your input lens catalog has weights != 1")
-                    print("You have set allow_weighted_input==True so I will allow this")
-                    print("Output weight=input_weight*sys_weight")
-
-            if mean_density_map is not None:
-                weight = weight * 1.0 / mean_density_map[obj_pix]
+        # pixel ID for each lens galaxy
+        obj_pix = hp.ang2pix(nside, ra, dec, lonlat=True, nest=True)
+        
+        if mean_density_map is not None:
+            weight = weight * 1.0 / mean_density_map[obj_pix]
 
         density_corrs = lsstools.DensityCorrelation(tomobin=tomobin)  # keeps track of the 1d plots
         for imap, sys_map in enumerate(self.sys_maps):
@@ -787,11 +793,7 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
     }
 
     def run(self):
-        import healpy as hp
         import healsparse as hsp
-        from . import lsstools
-        import scipy.stats
-        from .utils.fitting import calc_chi2
 
         pixel_scheme = choose_pixelization(**self.config)
         self.pixel_metadata = pixel_scheme.metadata
@@ -818,7 +820,6 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
 
         # load the SP maps, apply the mask, normalize the maps (as needed by the method)
         self.sys_maps, self.sys_names, self.sys_meta = self.prepare_sys_maps()
-        nsysbins = self.config["nbin"]
         nsysmaps = len(self.sys_maps)
         print(f'Sys maps: {self.sys_names}')
 
@@ -866,12 +867,14 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
                     ra = f[f"lens/bin_{ibin}/ra"][:]
                     dec = f[f"lens/bin_{ibin}/dec"][:]
                     weight = f[f"lens/bin_{ibin}/weight"][:]
+                galaxy_info = np.array([ra, dec, weight])
 
                 # Compute binned 1D density correlations 
                 density_corrs = self.calculate_1d_density_correlations(
                     ibin,
                     mean_density_map=None,
                     pixels=vpix_common,
+                    galaxy_info=galaxy_info,
                     suffix=f'_iter{n_iter}'
                 )
 
