@@ -879,7 +879,7 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
 
                 # perform linear regression
                 sys_map_table = np.array([s[vpix_common] for s in self.sys_maps])
-                chi2 = self.multilinear_fit(density_corrs, sys_map_table)
+                chi2 = self.multilinear_fit(density_corrs, sys_map_table, mask[vpix_common])
 
                 # Degrees of freedom for reduced chi^2 calculation; this can change with each
                 # iteration if the number of bins decreases (possible if many pixels in the SP
@@ -960,7 +960,7 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
                             plot_hist=True,
                         )
 
-    def multilinear_fit(self, density_corrs, sys_map_table):
+    def multilinear_fit(self, density_corrs, sys_map_table, frac):
         """
         Performs a multilinear fit of galaxy density with respect to survey property maps.
 
@@ -972,9 +972,12 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
         sysmap_table_all : np.ndarray
             Array of shape (N_maps, N_pix) containing systematic map values,
             where the row index matches those in self.map_index
+
+        frac: np.ndarray
+            Fractional pixel coverage, length N_pix.
         """
         # construct the design matrix for the fit
-        A = density_corrs.precompute_design_matrix(sys_map_table)
+        A = density_corrs.precompute_design_matrix(sys_map_table, frac)
 
         # linear model predictions
         icov = np.linalg.inv(density_corrs.covmat)
