@@ -79,7 +79,14 @@ class TXIngestAnacal(TXIngestCatalogFits):
         "delta_gamma": StageParameter(
             float, 0.2,
             msg="delta gamma value used for the analytical shearing."
-        )
+        ),
+        "add_psf_properties": StageParameter(
+            bool, True,
+            msg="Emit per-band psf_g1/psf_g2/psf_T_mean (one set per band in "
+                "'bands') from the PSF HSM second moments "
+                "(lsst_<band>_ext_shapeHSM_HsmPsfMoments_*). Set False for "
+                "catalogs that predate doPsfHsmMoments.",
+        ),
     }
 
     def run(self):
@@ -249,6 +256,19 @@ class TXIngestAnacal(TXIngestCatalogFits):
         # TXSourceSelectorAnaCal.
         cols += ["esq", "desq_dg1", "desq_dg2"]
 
+        # PSF second moments -> per-band psf_g1/psf_g2/psf_T_mean (see
+        # process_anacal_shear_data), one set per band in ``bands``. The
+        # flag column lets us NaN out failed HSM measurements.
+        if self.config["add_psf_properties"]:
+            for b in bands:
+                base = f"lsst_{b}_ext_shapeHSM_HsmPsfMoments"
+                cols += [
+                    f"{base}_xx",
+                    f"{base}_yy",
+                    f"{base}_xy",
+                    f"{base}_flag",
+                ]
+
         # zmode_0 → mean_z; zmode_1p, zmode_1m, zmode_2p, zmode_2m → the
         # metacal-style shifted variants (built with dg=0.01 in xlens'
         # photoZPipe, so TXSourceSelectorAnaCal must use delta_gamma=0.01).
@@ -261,6 +281,9 @@ class TXIngestAnacal(TXIngestCatalogFits):
         s = self.config["scale"]
         prefix = self.config["prefix"]
         dg = self.config["delta_gamma"]
+        # Column names work for both an astropy Table (butler mode) and a
+        # numpy/FITS structured array (file mode).
+        colnames = list(getattr(data, "colnames", None) or data.dtype.names)
         # The dm computed e1/e2 columns store the pre-multiplied observable
         # e_meas = wsel · e_raw, and "weight" is uniformly set to 1.
         # This way downstream GGCorrelation with weight_column="weight"
@@ -341,10 +364,39 @@ class TXIngestAnacal(TXIngestCatalogFits):
         # used by the AnaCal calculator's ±γ selection response — the
         # _DataWrapper suffix lookup routes them into the selector when it
         # runs on the shifted samples).
+        # Photo-z point estimates from the merged catalog itself:
+        # zmode_0 → mean_z (baseline for tomographic binning), and the four
+        # shifted variants zmode_{1p,1m,2p,2m} → mean_z_{...} (photoZPipe
+        # built them at dg=0.01, so the selector must use delta_gamma=0.01).
         output["mean_z"] = data["zmode_0"][:]
         for suf in ("1p", "1m", "2p", "2m"):
             output[f"mean_z_{suf}"] = data[f"zmode_{suf}"][:]
-        
+
+        # PSF ellipticity + size per band, from each band's PSF HSM second
+        # moments: psf_g1_{b}=(xx-yy)/(xx+yy), psf_g2_{b}=2xy/(xx+yy),
+        # psf_T_mean_{b}=xx+yy. Failed HSM fits (flag set) are NaN'd.
+        if self.config["add_psf_properties"]:
+            for b in bands:
+                base = f"lsst_{b}_ext_shapeHSM_HsmPsfMoments"
+                pxx = np.asarray(data[f"{base}_xx"][:], dtype=np.float64)
+                pyy = np.asarray(data[f"{base}_yy"][:], dtype=np.float64)
+                pxy = np.asarray(data[f"{base}_xy"][:], dtype=np.float64)
+                ptr = pxx + pyy
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    psf_g1 = (pxx - pyy) / ptr
+                    psf_g2 = 2.0 * pxy / ptr
+                bad = ~np.isfinite(ptr) | (ptr <= 0)
+                flag_col = f"{base}_flag"
+                if flag_col in colnames:
+                    bad |= np.asarray(data[flag_col][:], dtype=bool)
+                psf_g1[bad] = np.nan
+                psf_g2[bad] = np.nan
+                ptr = ptr.copy()
+                ptr[bad] = np.nan
+                output[f"psf_g1_{b}"] = psf_g1
+                output[f"psf_g2_{b}"] = psf_g2
+                output[f"psf_T_mean_{b}"] = ptr
+
         # shifted values that are needed for selection
         output["s2n_1p"] = s2n + dg * ds2n_dg1
         output["s2n_1m"] = s2n - dg * ds2n_dg1
