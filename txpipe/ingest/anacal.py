@@ -259,6 +259,9 @@ class TXIngestAnacal(TXIngestCatalogFits):
         # TXSourceSelectorAnaCal.
         cols += ["esq", "desq_dg1", "desq_dg2"]
 
+        # Per-band extinction lsst_a_<band> from the merged catalog.
+        cols += self._extinction_source_columns()
+
         # PSF second moments -> per-band psf_g1/psf_g2/psf_T_mean (see
         # process_anacal_shear_data), one set per band in ``bands``. The
         # flag column lets us NaN out failed HSM measurements.
@@ -351,6 +354,12 @@ class TXIngestAnacal(TXIngestCatalogFits):
                 output[f"dmag_err_{band}_{d}"] = (
                     data[f"{b}_dmag_{s}_err_{d}"][:]
                 )
+
+        # Per-band extinction a_<band>, from the merged catalog's
+        # lsst_a_<band> column (the mags above are NOT dereddened, so these
+        # give downstream a place to apply extinction).
+        for band in bands:
+            output[f"a_{band}"] = data[f"lsst_a_{band}"][:]
 
         # Band-combined shape magnitude + shear derivatives — feeds the
         # |e|<emax cut and its ±γ variants in TXSourceSelectorAnaCal.
@@ -453,6 +462,11 @@ class TXIngestAnacal(TXIngestCatalogFits):
             if np.ma.isMaskedArray(col):
                 col = col.filled(np.nan)
             g[name][start:end] = col
+
+    def _extinction_source_columns(self):
+        """Catalog columns that hold per-band extinction, if present:
+        ``lsst_a_<band>`` for each band in the config ``bands``."""
+        return [f"lsst_a_{band}" for band in self.config["bands"]]
 
     def get_catalog_size(self, butler, dataset_type):
         import pyarrow.parquet
