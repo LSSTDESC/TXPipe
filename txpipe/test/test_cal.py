@@ -200,7 +200,7 @@ def core_anacal(comm):
         "dm00_dg2": np.zeros(N),
         "dm20_dg1": np.zeros(N),
         "dm20_dg2": np.zeros(N),
-        "mask_value": np.zeros(N)
+        "n_mask_base": np.zeros(N)
     }
 
     # case 1: pure shape response

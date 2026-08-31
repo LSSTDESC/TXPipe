@@ -207,7 +207,7 @@ class TXIngestAnacal(TXIngestCatalogFits):
             "ra",
             "dec",
             "wsel",
-            "mask_value",
+            "n_mask_base",
             f"{prefix}_e1",
             f"{prefix}_e2",
             f"{prefix}_m00",
@@ -277,13 +277,13 @@ class TXIngestAnacal(TXIngestCatalogFits):
         e2_raw = data[f"{prefix}_e2"][:]
         m00 = data[f"{prefix}_m00"][:]
         m20 = data[f"{prefix}_m20"][:]
-        
+
         output = {
             "ra": data["ra"][:],
             "dec": data["dec"][:],
             "weight": np.ones_like(wsel),   # uniform 1 for treecorr
             "wsel": wsel,                   # raw wsel (for R_shape)
-            "mask_value": data["mask_value"][:],
+            "n_mask_base": data["n_mask_base"][:],
             "weight_dg1": data["dwsel_dg1"][:],
             "weight_dg2": data["dwsel_dg2"][:],
             "e1": wsel * e1_raw,            # e_meas ≡ wsel · e_raw

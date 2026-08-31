@@ -72,7 +72,7 @@ class TXSourceSelectorAnacal(TXSourceSelectorBase):
             "dec",
             "weight",
             "wsel",          # raw wsel — needed by R_shape numerator
-            "mask_value",
+            "n_mask_base",
             "e1",            # e_meas ≡ wsel · e_raw (pre-multiplied)
             "e2",
             "e1_raw",        # raw e — needed by R_detect numerator
@@ -204,7 +204,7 @@ def select_anacal_weak_lensing_sample(
     ±γ shifted variants (esq_1p, mag_g_1p, m00_1p, s2n_1p, zbin_1p, ...)
     are used automatically when the caller wraps ``data`` with a suffix:
 
-    1. mask_value < mask_threshold (shear-independent, no variants).
+    1. n_mask_base < mask_threshold (shear-independent, no variants).
     2. s2n > s2n_cut (variants from ds2n_dg{1,2}).
     3. Band-combined size cut (m00 + m20) / m00 > T_cut on the fpfs1
        moments (variants automatically use m00_{1p,...}/m20_{1p,...} =
@@ -221,7 +221,7 @@ def select_anacal_weak_lensing_sample(
     esq_max = config["emax"] ** 2
     verbose = config["verbose"]
 
-    flag = data["mask_value"] < config["mask_threshold"]
+    flag = data["n_mask_base"] < config["mask_threshold"]
     n0 = len(flag)
     sel = flag
     f1 = sel.sum() / n0
