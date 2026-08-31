@@ -3,7 +3,6 @@ from ..data_types import ShearCatalog, FitsFile
 from .dp1_details import (
     DP1_TRACTS,
     DP1_COSMOLOGY_TRACTS,
-    ALL_TRACTS,
 )
 from ceci.config import StageParameter
 import numpy as np
@@ -130,7 +129,11 @@ class TXIngestAnacal(TXIngestCatalogFits):
         elif self.config["cosmology_tracts_only"]:
             tracts = DP1_COSMOLOGY_TRACTS
         else:
-            tracts = ALL_TRACTS
+            # No explicit selection: ingest every tract present in the
+            # collection (works for any survey, incl. DP2). Previously this
+            # fell back to the DP1 ALL_TRACTS list, which selects nothing on
+            # a DP2 collection.
+            tracts = None
 
         object_name = self.config["butler_object_name"]
         n = self.get_catalog_size(butler, object_name)
@@ -143,7 +146,7 @@ class TXIngestAnacal(TXIngestCatalogFits):
         shear_start = 0
         for i, ref in enumerate(data_set_refs):
             tract = ref.dataId["tract"]
-            if tract not in tracts:
+            if tracts is not None and tract not in tracts:
                 print(
                     f"Skipping chunk {i + 1} / {n_chunks} since tract "
                     f"{tract} is not selected"
