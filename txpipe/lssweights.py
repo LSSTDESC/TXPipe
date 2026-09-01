@@ -490,7 +490,7 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
 
         save_chi2_hist: bool (True)
             If will produce and save a histogram of the chi-squared values for each
-            survey property map (one plot per tomographc bin).
+            survey property map (one plot per tomographic bin).
         """
         import scipy.stats
 
