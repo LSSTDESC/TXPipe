@@ -973,6 +973,8 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
         # gather all results on root process
         if self.comm is not None:
             results = self.comm.gather(results, root=0)
+            mask_inter = self.comm.gather(mask_inter, root=0)
+            tags = self.comm.gather(tags, root=0)
         # Compute the intersection of masks from all tomographic bins
         if self.rank == 0:
             # Flatten list of lists
