@@ -956,6 +956,13 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
                 # map have similar values)
                 ndata, nparams = density_corrs.design_matrix.shape
                 dof = ndata - nparams
+                # Check degrees of freedom is at least 1
+                if dof <= 0:
+                    raise ValueError(
+                        f"Degrees of freedom for tomographic bin {ibin} is either zero or negative. "
+                        "Try increasing the number of bins and/or switching binning scheme via the "
+                        "`equal_area_bins` config option."
+                    )
                 chi2_red = chi2 / dof
 
                 print(f'Reduced chi^2 = {chi2_red}')
