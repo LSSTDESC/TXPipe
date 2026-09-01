@@ -974,6 +974,15 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
                 results.append(density_corrs)
                 tags.append(suffix)
 
+                # Break here if the newly increased outlier fraction >= 1 for any SP map
+                if (outfrac >= 0.9999999).any():
+                    print(
+                        f"!!! WARNING !!!: Reduced chi^2 is still above threshold value of {self.chisq_max}, "
+                        "but any further iteration will result in complete loss of available pixels. Stopping "
+                        "iterations here."
+                    )
+                    break
+
             # Append the cut mask to the list
             mask_inter.append(mask_bin)
 
