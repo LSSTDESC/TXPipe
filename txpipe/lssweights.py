@@ -851,6 +851,10 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
 
         # Retrieve unmasked pixels from mask
         vpix = mask.valid_pixels
+        # Initialise binary mask here (avoids error if the current mask already satisfies the
+        # reduced chi-squared constraint)
+        mask_bin = hsp.HealSparseMap.make_empty_like(mask, dtype=bool, sentinel=False)
+        mask_bin[vpix] = True
 
         # Compute initial coverage area
         # NOTE: the area calculation in the TXBaseMask class assumes a binary mask, whereas
