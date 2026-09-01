@@ -215,7 +215,7 @@ class TXLSSDensityBase(TXMapCorrelations):
             if None, will use unweighted lens catalog
         pixels: list[int] (None)
             list of pixels to include when computing the correlations
-            if None, will use the vali pixels from each survey property map
+            if None, will use the valid pixels from each survey property map
         galaxy_info: np.ndarray (None)
             2D array (dimensions 3 x N_gal) containing pre-loaded RA, Dec and weights for each galaxy.
             If None, will read these from the input catalog.
