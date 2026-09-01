@@ -910,7 +910,7 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
                     vpix_common.append(set(vpix[keep]))
 
                 # Construct binary version of the mask showing which pixels are valid
-                vpix_common = list(set.intersection(*vpix_common))
+                vpix_common = sorted(list(set.intersection(*vpix_common)))
                 # Check area loss is below threshold
                 area_new = mask[vpix_common].sum() * area_pix
                 f_loss = 1. - area_new / area_init
