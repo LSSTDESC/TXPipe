@@ -1,0 +1,57 @@
+
+# Stages to run
+stages:
+    - name: TXLensMaps
+      threads_per_process: 64
+      nprocess: 1
+      nodes: 1
+    - name: TXLSSDensitySkyCuts
+      threads_per_process: 64
+      nprocess: 1
+      nodes: 1
+    - name: TXDensityMaps
+      threads_per_process: 64
+      nprocess: 1
+      nodes: 1
+      aliases:
+        mask: cut_mask
+
+
+# modules and packages to import that have pipeline
+# stages defined in them
+modules: txpipe 
+
+# Where to put outputs
+output_dir: data/example/outputs_density_sky_cuts/
+
+# How to run the pipeline: mini, parsl, or cwl
+launcher:
+    name: mini
+    interval: 1.0
+
+# Where to run the pipeline: cori-interactive, cori-batch, or local
+site:
+    name: local
+
+# configuration settings
+config: examples/lssweights/simple-mock/config.yml
+
+inputs:
+    # See README for paths to download these files
+    binned_lens_catalog: /global/cfs/cdirs/lsst/groups/WLSS/users/tcornish/simple-mock-data/binned_lens_catalog.h5
+    binned_lens_catalog_unweighted: /global/cfs/cdirs/lsst/groups/WLSS/users/tcornish/simple-mock-data/binned_lens_catalog.h5
+    mask: /global/cfs/cdirs/lsst/groups/WLSS/users/tcornish/simple-mock-data/mask.hdf5
+    lens_photoz_stack: /global/cfs/cdirs/lsst/groups/WLSS/users/tcornish/simple-mock-data/lens_photoz_stack.hdf5
+    fiducial_cosmology: data/fiducial_cosmology.yml
+    #shear_catalog: none
+    #shear_tomography_catalog: none
+    #binned_shear_catalog: none
+    #shear_photoz_stack: none
+
+# if supported by the launcher, restart the pipeline where it left off
+# if interrupted
+resume: False
+# where to put output logs for individual stages
+log_dir: data/example/outputs_density_sky_cuts/logs/
+# where to put an overall parsl pipeline log
+pipeline_log: /log.txt
