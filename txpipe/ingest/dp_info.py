@@ -56,7 +56,7 @@ DP1_SURVEY_PROPERTIES = {
     "deepCoadd_dcr_e2_consolidated_map_weighted_mean": "Weighted mean of DCR-induced change in PSF ellipticity (e2), expressed as a proportionality factor",
 }
 
-TXPPIPE_COLUMNS = {
+TXPIPE_COLUMNS = {
     "g1": "gauss_g1",
     "g2": "gauss_g2",
     "g1_err": "gauss_g1_g1_Cov",
