@@ -9,6 +9,7 @@ from ..shear_calibration.names import META_VARIANTS
 import numpy as np
 import os
 import pyarrow.parquet as pq
+import pyarrow.dataset as ds
 
 class TXIngestRubinMetaDetect(PipelineStage):
     """
@@ -128,3 +129,93 @@ class TXIngestRubinMetaDetect(PipelineStage):
             for txname, original in TXPIPE_COLUMNS.items():
                 k[txname] = k[original]
 
+
+class TXIngestDESCMetaDetect(PipelineStage):
+    """
+    First attempt at ingesting the DESC version of the MetaDetect catalog from parquet files
+    """
+    name = "TXIngestDESCMetaDetect"
+    inputs = []
+    outputs = [
+        ("shear_catalog", ShearCatalog)
+    ]
+    config_options = {
+        "folder_location": StageParameter(
+            str, "",
+            msg="path to folder containing one subfolder per tract."
+        ),
+        "tract_file": StageParameter(
+            str, "",
+            msg="location of file with list of tracts to use"
+        ),
+        "flag_list": StageParameter(list, ["is_primary"], msg="list of flags to use"),
+        "exclusion_flag": StageParameter(bool, False, msg="decide if flags are used for exclusion or combi flag."),
+        "all_columns": StageParameter(bool, True, msg="do we want to save all columns or just the ones TXPipe needs.")
+    }
+
+    def run(self):
+        with open(self.config["tract_file"]) as f:
+            tracts = [int(line.strip()) for line in f if line.strip()]
+
+        shear_outfile = self.open_output("shear_catalog")
+        group = shear_outfile.create_group("shear")
+        shear_outfile["shear"].attrs["catalog_type"] = "metadetect"
+
+        created_files = False
+        exclusion_flag = self.config["exclusion_flag"]
+        flag_list = self.config["flag_list"]
+        folder_location = self.config["folder_location"]
+        all_columns_flag = self.config["all_columns"]
+
+        tracts_avail = _get_subfolders(folder_location)
+        n_tracts = len(tracts_avail)
+
+        for i, tract in enumerate(tracts_avail):
+            if int(tract) not in tracts:
+                print(f"skipping tract {i+1}/ {n_tracts}, since {tract} is not selected")
+                continue
+
+            tract_dataset = ds.dataset(os.path.join(folder_location, tract))
+
+            for batch in tract_dataset.to_batches():
+                if batch.num_rows == 0:
+                    continue
+
+                d = batch.to_pandas().to_records(index=False)
+                shear_data = process_metadetect_data(d, flag_list, exclusion_flag,
+                                                     full_columns=all_columns_flag)
+
+                if not created_files:
+                    created_files = True
+                    variants = { variant: len(shear_data[variant]) for variant in META_VARIANTS}
+                    columns = list(shear_data["ns"].keys())
+                    dtypes = {key: shear_data["ns"][key].dtype for key in shear_data["ns"]}
+                    splitter = MetaDetectSplitter(group, columns, variants, dtypes=dtypes)
+
+                for variant in META_VARIANTS:
+                    splitter.write_bin(shear_data[variant], variant)
+
+            print(f"Processing tract {i + 1} / {n_tracts}")
+
+        if created_files:    
+            splitter.finish()
+            print("adding in aliases")
+            self.aliasing(shear_outfile, group)
+        else:
+            print("No metadetect data written; skipping splitter.finish/aliasing")
+        shear_outfile.close()
+        print("Repacking files")
+        repack(self.get_output("shear_catalog"))
+
+    def aliasing(self, outfile, group):
+        g = group
+        for variant in ["ns", "1p", "1m", "2p", "2m"]:
+            k = g[variant]
+            for txname, original in TXPIPE_COLUMNS.items():
+                k[txname] = k[original]
+    
+
+
+def _get_subfolders(folder_location):
+    from pathlib import Path
+    return [p.name for p in Path(folder_location).iterdir() if p.is_dir()]
