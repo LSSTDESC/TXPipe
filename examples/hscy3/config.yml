@@ -25,7 +25,7 @@ TXExposureInfo:
 
 TXCosmoDC2Mock:
     cat_name: cosmoDC2_v1.1.4_image
-    visits_per_band: 16
+    years: 1.0
     extra_cols: redshift_true size_true shear_1 shear_2
     flip_g2: true # to match metacal
 
@@ -58,8 +58,8 @@ PZPrepareEstimatorLens:
     mag_err_min: 0.005
     inform_options: {save_train: false, load_model: false, modelfile: BPZpriormodel.out}
     madau_reddening: no
-    bands: riz
-    zp_errors: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+    bands: [r, i, z]
+    zp_errors: [0.01, 0.01, 0.01]
     hdf5_groupname: photometry
 
 
@@ -81,8 +81,8 @@ PZPrepareEstimatorSource:
     mag_err_min: 0.005
     inform_options: {save_train: false, load_model: false, modelfile: BPZpriormodel.out}
     madau_reddening: no
-    bands: riz
-    zp_errors: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+    bands: [r, i, z]
+    zp_errors: [0.01, 0.01, 0.01]
     hdf5_groupname: photometry
 
 
@@ -127,7 +127,7 @@ TXSourceTrueNumberDensity:
 TXSourceSelectorHSC:
     input_pz: true
     true_z: false
-    bands: i    #used for selection
+    bands: [i]    #used for selection
     T_cut: 0.0
     s2n_cut: 10.0
     max_rows: 10000000000
@@ -137,7 +137,7 @@ TXSourceSelectorHSC:
 TXSourceSelectorMetacal:
     input_pz: true
     true_z: false
-    bands: riz #used for selection
+    bands: [r, i, z] #used for selection
     T_cut: 0.5
     s2n_cut: 10.0
     max_rows: 10000000000
@@ -269,11 +269,6 @@ TXSourceMaps:
     sparse: true  # Generate sparse maps - faster if using small areas
 
 TXLensMaps:
-    sparse: true  # Generate sparse maps - faster if using small areas
-    nside: 1024
-
-# For redmagic mapping
-TXExternalLensMaps:
     chunk_rows: 100000
     sparse: true
     pixelization: healpix
@@ -285,15 +280,16 @@ TXDensityMaps:
     nside: 1024
 
 
-TXAuxiliarySourceMaps:
-    flag_exponent_max: 8
+TXPSFMaps: {}
 
-TXAuxiliaryLensMaps:
+TXFlagMaps:
     flag_exponent_max: 8
-    bright_obj_threshold: 22.0 # The magnitude threshold for a object to be counted as bright
+TXDepthMaps:
     depth_band: i
     snr_threshold: 10.0  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)
     snr_delta: 1.0  # The range threshold +/- delta is used for finding objects at the boundary
+TXBrightObjectMaps:
+    bright_obj_threshold: 22.0 # The magnitude threshold for a object to be counted as bright
 
 TXRealGaussianCovariance:
     min_sep: 2.5

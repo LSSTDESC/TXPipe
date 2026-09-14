@@ -27,7 +27,7 @@ class TXPhotozStack(PipelineStage):
     config_options = {
         "chunk_rows": StageParameter(int, 5000, msg="Number of rows to process in each chunk."),
         "tomo_name": StageParameter(str, "source", msg="Name of the tomographic binning."),
-        "weight_col": StageParameter(str, "shear/00/weight", msg="Column name for weights in the input catalog."),
+        "weight_col": StageParameter(str, "shear/ns/weight", msg="Column name for weights in the input catalog."),
         "zmax": StageParameter(float, 0.0, msg="Maximum redshift to use if not specified in input PDFs."),
         "nz": StageParameter(int, 0, msg="Number of redshift histogram bins."),
     }

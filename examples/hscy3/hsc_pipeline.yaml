@@ -5,7 +5,7 @@ stages:
       #- name: TXTauStatistics
       #- name: TXPSFDiagnostics
   - name: TXSimpleMask
-  - name: TXAuxiliaryLensMaps
+  - name: TXDepthMaps
       #- name: TXSourceNoiseMaps
   - name: TXTwoPoint             # Compute real-space 2-point correlations
     threads_per_process: 128

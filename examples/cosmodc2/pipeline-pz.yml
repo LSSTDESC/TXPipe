@@ -100,7 +100,9 @@ stages:
   - name: TXLensCatalogSplitter
     nprocess: 6
   - name: TXSimpleMask
-  - name: TXAuxiliaryLensMaps
+  - name: TXDepthMaps
+    nprocess: 8
+  - name: TXBrightObjectMaps
     nprocess: 8
 
 output_dir: data/cosmodc2/outputs

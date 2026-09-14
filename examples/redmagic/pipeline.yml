@@ -15,9 +15,11 @@ stages:
   - name: TXIngestRedmagic
   - name: TXTracerMetadata
   - name: TXSourceMaps
-  - name: TXExternalLensMaps
-  - name: TXAuxiliarySourceMaps
-  - name: TXAuxiliaryLensMaps
+  - name: TXLensMaps
+  - name: TXPSFMaps
+  - name: TXFlagMaps
+  - name: TXDepthMaps
+  - name: TXBrightObjectMaps
   - name: TXSimpleMask
   - name: TXLSSWeightsUnit
   - name: TXDensityMaps

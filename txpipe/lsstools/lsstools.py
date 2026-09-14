@@ -55,6 +55,7 @@ class DensityCorrelation:
         sys_name=None,
         use_precompute=False,
         do_grid_hist=True, 
+        normalize=True, 
     ):
         """
         Add a 1d density correlation
@@ -83,6 +84,9 @@ class DensityCorrelation:
             If False will compute the density in bins using numpy histogram
         do_grid_hist: bool
             if True, will also compute a histogram of the SP map values (on a fine grid, equal spaced bins)
+        normalize: bool
+            If True, ndens is in dimentionless units (Nobj/Npix)/(np.sum(Nobj)/np.sum(Npix))
+            If False, ndens is in in units of object per pixel area (Nobj/Npix)
         """
         if sys_name is not None:
             self.mapnames[map_index] = str(sys_name)
@@ -133,6 +137,11 @@ class DensityCorrelation:
         # do we want to include any excluded outliers in this normalization?
         norm = np.ones(len(edges) - 1) * 1.0 / (np.sum(nobj_sys) / np.sum(npix_sys))
 
+        if normalize:
+            ndens = norm * nobj_sys / npix_sys
+        else:
+            ndens = nobj_sys / npix_sys
+
         self.map_index = np.append(self.map_index, np.ones(len(edges) - 1) * map_index)
         self.smin = np.append(self.smin, edges[:-1])
         self.smax = np.append(self.smax, edges[1:])
@@ -141,7 +150,7 @@ class DensityCorrelation:
         self.npix = np.append(self.npix, npix_sys)
         self.ndens_perpixel = np.append(self.ndens_perpixel, nobj_sys / npix_sys)
         self.norm = np.append(self.norm, norm)
-        self.ndens = np.append(self.ndens, norm * nobj_sys / npix_sys)
+        self.ndens = np.append(self.ndens, ndens)
 
     def precompute(self, map_index, edges, sys_vals, frac=None):
         """
@@ -543,8 +552,110 @@ class DensityCorrelation:
         self.add_external_covariance(density_correlation.covmat, assert_empty=True)
         self.add_model(density_correlation.ndens_models["null"], "null")
 
+    def precompute_design_matrix(self, sysmap_table_all, frac=None, corr_map_indices=None):
+        """
+        Precompute the design matrix for linear systematics regression.
 
-def linear_model(
+        For a linear model in map space:
+            F(x) = beta + alpha_0 * s_0(x) + alpha_1 * s_1(x) + ...
+
+        the mean of F over pixels in bin b of map j is:
+            <F>_{j,b} = beta + sum_i alpha_i * <s_i>_{j,b}
+
+        where <s_i>_{j,b} is the weighted mean of systematic map i over pixels
+        in bin b of map j. The full predicted data vector is then just A @ params,
+        where params = [beta, alpha_0, alpha_1, ...].
+
+        Parameters
+        ----------
+        sysmap_table_all : np.ndarray
+            Array of shape (N_maps, N_pix) containing systematic map values,
+            where the row index matches those in self.map_index
+        frac : np.ndarray, optional
+            Fractional pixel coverage, length N_pix. Defaults to ones.
+        corr_map_indicies : np.ndarray of its, optional
+            the indices for which we will compute the model 
+            (in the order they appear in the parameters array)
+            Defaults to all maps in DensityCorrelation
+
+        Returns
+        -------
+        design_matrix : np.ndarray
+            Array of shape (N_corr_maps * N_bins, N_corr_maps + 1) where N_corr_maps
+            is the number of maps to be used in the model. Row j*N_bins + b corresponds to bin
+            b of the jth correlation map. Column 0 is the beta (intercept) term
+            (all ones). Columns 1..N_maps contain the weighted mean of each
+            systematic map over the pixels in that bin.
+        """
+        if frac is None:
+            frac = np.ones(sysmap_table_all.shape[1])
+
+        if corr_map_indices is None:
+            # unique map indices in the order they were added
+            # If the DensityCorrelation object only uses a subset of sysmap_table,
+            # this should select only those rows that are used
+            _, first_occurrence = np.unique(self.map_index, return_index=True)
+            corr_map_indices = self.map_index[np.sort(first_occurrence)].astype(int)
+
+        n_corr_maps = len(corr_map_indices)
+        n_bins = len(self.get_edges(corr_map_indices[0])) - 1
+        A = np.zeros((n_corr_maps * n_bins, n_corr_maps + 1))
+        A[:, 0] = 1.0  # beta column
+
+        for j, map_index_j in enumerate(corr_map_indices[:]): #For each map we are binning on...
+            print(f"Precomputing design matrix rows for map {j} / {n_corr_maps}")
+            edges_j = self.get_edges(map_index_j)
+            row_start = j * n_bins
+            row_end = row_start + n_bins
+
+            # weighted pixel count
+            weighted_pix_count, _ = np.histogram(
+                sysmap_table_all[map_index_j],
+                bins=edges_j,
+                weights=frac,
+            )
+
+            for i, map_index_i in enumerate(corr_map_indices): #... compute means of every other map in the model
+
+                #  weighted sum of systematic map i
+                sumsys, _ = np.histogram(
+                    sysmap_table_all[map_index_j],
+                    bins=edges_j,
+                    weights=sysmap_table_all[map_index_i] * frac,
+                )
+
+                A[row_start:row_end, i + 1] = np.divide(
+                    sumsys,
+                    weighted_pix_count,
+                    out=np.zeros_like(sumsys, dtype=float),
+                    where=weighted_pix_count != 0,
+                )
+
+        self.design_matrix_corr_map_indices = np.asarray(corr_map_indices)
+        self.design_matrix = A
+        return A
+    
+    def linear_model(self, params):
+        """
+        linear contamination model:
+        F(s) = alpha1*s1 + alpha2*s2 + ... + beta
+
+        computes the model using precomputed design matrix
+
+        Parameters
+        ----------
+        params : np.ndarray
+            the input parameters [beta, alpha1, alpha2, ...]
+        
+        Returns
+        ----------
+            predicted_mean_F : np.ndarray
+                the predicted density model for this set of parameters
+        """
+        predicted_mean_F = self.design_matrix @ params
+        return predicted_mean_F
+
+def linear_model_from_maps(
     beta,
     *alphas,
     density_correlation=None,
@@ -552,6 +663,7 @@ def linear_model(
     sysmap_table=None,
     map_index=None,
     frac=None,
+    do_grid_hist=True,
 ):
     """
     linear contamination model:
@@ -586,25 +698,28 @@ def linear_model(
     Fvals = np.sum(np.array([alphas]).T * sysmap_table[map_index], axis=0) + beta
     F.update_values_pix(validpixels, Fvals)
 
-    # normalize the map
-    meanF = np.mean(F[validpixels])  # TODO make this a weighted mean?
-    F.update_values_pix(validpixels, F[validpixels] / meanF)
-
     data_vals = F[validpixels]
-    frac_vals = frac[validpixels]
+    if frac is None:
+        frac_vals = np.ones(len(validpixels))
+    else:
+        frac_vals = frac[validpixels]
     F_density_corrs = lsstools.DensityCorrelation()
     F_density_corrs.set_precompute(density_correlation)
     for imap in map_index:
         sys_vals = sysmap_table[imap]
         edges = density_correlation.get_edges(imap)
+        #use the map correlation method to compute the mean F in s bins
         F_density_corrs.add_correlation(
             imap,
             edges,
             sys_vals,
             data_vals,
             map_input=True,
-            use_precompute=True,
+            use_precompute=False,
             frac=frac_vals,
+            weight=frac_vals,
+            do_grid_hist=do_grid_hist,
+            normalize=False
         )
 
     return F, F_density_corrs

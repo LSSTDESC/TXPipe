@@ -114,17 +114,17 @@ def core_metadet(comm):
     weight = np.ones(N)
 
     data = {
-        "00/g1": g[0],
+        "ns/g1": g[0],
         "1p/g1": g_1p[0],
         "1m/g1": g_1m[0],
         "2p/g1": g_2p[0],
         "2m/g1": g_2m[0],
-        "00/g2": g[1],
+        "ns/g2": g[1],
         "1p/g2": g_1p[1],
         "1m/g2": g_1m[1],
         "2p/g2": g_2p[1],
         "2m/g2": g_2m[1],
-        "00/weight": weight.copy(),
+        "ns/weight": weight.copy(),
         "1p/weight": weight.copy(),
         "1m/weight": weight.copy(),
         "2p/weight": weight.copy(),
@@ -143,7 +143,7 @@ def core_metadet(comm):
         assert stats.source_count == N * nproc
 
     # equal non-unit weights - everything should be the same.
-    data["00/weight"] *= 0.5
+    data["ns/weight"] *= 0.5
     data["1p/weight"] *= 0.5
     data["1m/weight"] *= 0.5
     data["2p/weight"] *= 0.5

@@ -5,7 +5,7 @@ metacal_filename = sys.argv[1]
 metadet_filename = sys.argv[2]
 
 bands = "riz"
-prefixes = {"00": "", "1p":"_1p", "1m":"_1m", "2p":"_2p", "2m":"_2m"}
+prefixes = {"ns": "", "1p":"_1p", "1m":"_1m", "2p":"_2p", "2m":"_2m"}
 cols = ["flags", "T", "T_err", "g1", "g2", "s2n"] +  [f"mag_{b}" for b in bands] + [f"mag_err_{b}" for b in bands]
 nonprefixed_cols = ["mcal_psf_T_mean","psf_g1", "psf_g2",  "mcal_psf_g1", "mcal_psf_g2", "weight", "redshift_true", "true_g1", "true_g2", "ra", "dec", "id"]
 truth_cols = []
