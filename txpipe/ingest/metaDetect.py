@@ -66,10 +66,12 @@ class TXIngestRubinMetaDetect(PipelineStage):
         elif self.config["cosmology_tracts_only"]:
             tracts = DP1_COSMOLOGY_TRACTS
         elif self.config["tracts_file"]:
+            print("using tracts_file")
             with open(self.config["tracts_file"]) as f:
                 tracts = [int(line.strip()) for line in f if line.strip()]
         else:
             tracts = ALL_TRACTS
+        print(f"ingesting using the following tracts:{tracts}")
 
         shear_outfile = self.open_output("shear_catalog")
         group = shear_outfile.create_group("shear")
