@@ -29,6 +29,7 @@ class TXIngestRubinMetaDetect(PipelineStage):
         "cosmology_tracts_only": StageParameter(bool, True, msg="Use only cosmology tracts."),
         "select_field": StageParameter(str, "", msg="Field to select (overrides cosmology_tracts_only)."),
         "select_tracts": StageParameter(list, [], msg="list of tracts (overrides cosmology_tracts_only, but not select_field)."),
+        "tracts_file": StageParameter(str, "", msg="path to tract list. "),
         "collections": StageParameter(str, "LSSTComCam/DP1", msg="Butler collections to use."),
         "exclusion_flag": StageParameter(bool, False, msg="Decide if flags are used for exclusion or just flagged."),
         "flag_list": StageParameter(list, ["is_primary"], msg="list of flags to use for combined."),
@@ -64,6 +65,9 @@ class TXIngestRubinMetaDetect(PipelineStage):
             tracts = self.config["select_tracts"]
         elif self.config["cosmology_tracts_only"]:
             tracts = DP1_COSMOLOGY_TRACTS
+        elif self.config["tracts_file"]:
+            with open(self.config["tracts_file"]) as f:
+                tracts = [int(line.strip()) for line in f if line.strip()]
         else:
             tracts = ALL_TRACTS
 
