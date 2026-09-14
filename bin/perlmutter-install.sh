@@ -14,12 +14,12 @@ mamba activate ./conda
 FIRECROWN_DIR=firecrown-tmp-${RANDOM}
 
 # TODO: check if this is still needed.
-git clone --branch v1.14.0 https://github.com/LSSTDESC/firecrown  ${FIRECROWN_DIR}
-cd ${FIRECROWN_DIR}
-sed -i '/numcosmo/d' setup.cfg
-pip install .
-cd ..
-rm -rf ${FIRECROWN_DIR}
+#git clone --branch v1.14.0 https://github.com/LSSTDESC/firecrown  ${FIRECROWN_DIR}
+#cd ${FIRECROWN_DIR}
+#sed -i '/numcosmo/d' setup.cfg
+#pip install .
+#cd ..
+#rm -rf ${FIRECROWN_DIR}
 
 # Now we remove the installed mpi4py version and replace it with our own.
 # We also remove libfabric which is installed as a dependency of mpich
