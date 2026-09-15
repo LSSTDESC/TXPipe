@@ -566,7 +566,9 @@ class TXDeltaSigmaPlots(PipelineStage):
     outputs = [
         ("delta_sigma_plot", PNGFile),
     ]
-    config_options = {}
+    config_options = {
+        "show_theory": StageParameter(bool, True, msg="Whether to show theory line"),
+    }
 
     def run(self):
         import sacc
@@ -575,7 +577,8 @@ class TXDeltaSigmaPlots(PipelineStage):
         matplotlib.use("agg")
         import matplotlib.pyplot as plt
         sacc_data = sacc.Sacc.load_hdf5(self.get_input("delta_sigma"))
-        sacc_theory = sacc.Sacc.load_hdf5(self.get_input("delta_sigma_theory"))
+        if self.config['show_theory']:
+            sacc_theory = sacc.Sacc.load_hdf5(self.get_input("delta_sigma_theory"))
 
         # Plot in theta coordinates
         nbin_source = sacc_data.metadata["nbin_source"]
@@ -593,13 +596,14 @@ class TXDeltaSigmaPlots(PipelineStage):
         with self.open_output("delta_sigma_plot", wrapper=True, figsize=(5 * nbin_lens, 4)) as fig:
             axes = fig.file.subplots(nbin_lens, 1, squeeze=False)
             for l in range(nbin_lens):
-                x_theory = np.array(sacc_theory.get_tag("rp", tracers=(f"lens_{l}",)))
-                y_theory = sacc_theory.get_mean(tracers=(f"lens_{l}",))
                 axes[l, 0].set_title(f"Lens {l}")
                 axes[l, 0].set_xlabel("Radius [Mpc/h]")
                 axes[l, 0].set_ylabel(r"$R \cdot \Delta \Sigma [(\mathrm{M}_{\mathrm{pc}}/h) \cdot (M_\odot h^2 / \mathrm{pc}^2)]$")
                 axes[l, 0].grid()
-                axes[l, 0].plot(x_theory, y_theory * x_theory, "-", label="Theory")
+                if self.config['show_theory']:
+                    x_theory = np.array(sacc_theory.get_tag("rp", tracers=(f"lens_{l}",)))
+                    y_theory = sacc_theory.get_mean(tracers=(f"lens_{l}",))
+                    axes[l, 0].plot(x_theory, y_theory * x_theory, "-", label="Theory")
                 for s in range(nbin_source):
                     x = sacc_data.get_tag("rp", tracers=(f"source_{s}", f"lens_{l}"))
                     x = np.array(x)

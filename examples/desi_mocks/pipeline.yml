@@ -17,6 +17,9 @@ stages:
       aux_source_maps: none
       aux_lens_maps: none
       lens_maps: none
+      psf_maps: none
+      flag_maps: none
+      bright_object_map: none
   - name: TXUniformDepthMap
   - name: TXRandomCat
   - name: TXTracerMetadata
