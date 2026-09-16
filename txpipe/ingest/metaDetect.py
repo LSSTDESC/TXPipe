@@ -9,6 +9,7 @@ from ..shear_calibration.names import META_VARIANTS
 import numpy as np
 import os
 import pyarrow.parquet as pq
+import sys
 
 class TXIngestRubinMetaDetect(PipelineStage):
     """
@@ -63,12 +64,12 @@ class TXIngestRubinMetaDetect(PipelineStage):
             tracts = DP1_TRACTS[self.config["select_field"]]
         elif self.config["select_tracts"]:
             tracts = self.config["select_tracts"]
-        elif self.config["cosmology_tracts_only"]:
-            tracts = DP1_COSMOLOGY_TRACTS
         elif self.config["tracts_file"]:
             print("using tracts_file")
             with open(self.config["tracts_file"]) as f:
                 tracts = [int(line.strip()) for line in f if line.strip()]
+        elif self.config["cosmology_tracts_only"]:
+            tracts = DP1_COSMOLOGY_TRACTS
         else:
             tracts = ALL_TRACTS
         print(f"ingesting using the following tracts:{tracts}")
@@ -83,20 +84,22 @@ class TXIngestRubinMetaDetect(PipelineStage):
         all_columns_flag = self.config["all_columns"]
         exclusion_flag = self.config["exclusion_flag"]
         flag_list = self.config["flag_list"]
-        for i, ref in enumerate(data_set_refs):
-            tract = ref.dataId["tract"]
-            if tract not in tracts:
-                print(f"Skipping chunk {i + 1} / {n_chunks} since tract {tract} is not selected")
-                continue
-
+        used_tracts = [ref for ref in data_set_refs if ref.dataId["tract"] in tracts]
+        n_used_tracts = len(used_tracts)
+        print(f"Processing {n_used_tracts} tracts")
+        for i, ref in enumerate(used_tracts):
+            print(f"Processing tract {i + 1} / {n_used_tracts}")
+            sys.stdout.flush()
             d = butler.get('object_shear_all',
                            dataId=ref.dataId,
                            )
             chunk_size = len(d)
 
             if chunk_size == 0:
-                print(f"Skipping chunk {i + 1} / {n_chunks} since it is empty")
+                print(f"  - skipping chunk since it is empty")
                 continue
+            else:
+                print(f"  - adding {chunk_size} rows")
 
             shear_data = process_metadetect_data(d, flag_list, exclusion_flag, 
                                                  full_columns=all_columns_flag)
@@ -115,8 +118,7 @@ class TXIngestRubinMetaDetect(PipelineStage):
 
             for variant in META_VARIANTS:
                 splitter.write_bin(shear_data[variant], variant)
-            print(f"Processing chunk {i + 1} / {n_chunks}")
-
+        print("Read complete; re-sizing files")
         if created_files:    
             splitter.finish()
             print("adding in aliases")
@@ -124,8 +126,8 @@ class TXIngestRubinMetaDetect(PipelineStage):
         else:
             print("No metadetect data written; skipping splitter.finish/aliasing")
         shear_outfile.close()
-        print("Repacking files")
-        repack(self.get_output("shear_catalog"))
+        # print("Repacking files")
+        # repack(self.get_output("shear_catalog"))
 
     def aliasing(self, outfile, group):
         g = group
