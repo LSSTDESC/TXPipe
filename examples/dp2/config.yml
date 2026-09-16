@@ -26,7 +26,7 @@ TXIngestRubinMetaDetect:
 
 TXGenerateTractList:
     dec_min: -40.0
-    collections: LSSTComCam/DP2
-    butler_config_file: /global/cfs/cdirs/lsst/production/gen3/rubin/DP2/repo/butler.yaml
+    collections: LSSTCam/runs/DRP/DP2
+    butler_config_file: dp2
 
 
