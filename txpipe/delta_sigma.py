@@ -96,7 +96,9 @@ class TXDeltaSigma(PipelineStage):
             # Add columns to two tables in-place to do most of the pre-computation work.
             # We should look at using the n_jobs multiprocessing option here
             # but I don't know if it will play well with MPI on NERSC that we are
-            # using to split the bin pairs across ranks
+            # using to split the bin pairs across ranks.
+            # We could also try modifying the code to use MPI for everything, it doesn't look too
+            # difficult.
             print(
                 f"Computing excess surface density for source = {source_bin}, lens = {lens_bin}, "
                 f"with {len(source_table)} sources, {len(lens_table)} lenses, {len(randoms_table)} randoms"
@@ -222,7 +224,7 @@ class TXDeltaSigma(PipelineStage):
 
     def load_source_table(self, bin_index):
         """
-        Load the lens table for a given bin index
+        Load the source table for a given bin index
         as an astropy table with the columns we need for dSigma.
 
         Parameters
@@ -452,6 +454,12 @@ class TXDeltaSigmaTheory(PipelineStage):
         "r_min": StageParameter(float, 0.1, msg="Minimum radius to use in Mpc"),
         "r_max": StageParameter(float, 60.0, msg="Maximum radius to use in Mpc"),
         "n_r": StageParameter(int, 200, msg="Number of radial bins"),
+        "k_min": StageParameter(float, 1.0e-3, msg="Min wavenumber to use in theory calculation"),
+        "k_max": StageParameter(float, 1.0e+2, msg="Max wavenumber to use in theory calculation"),
+        "nk": StageParameter(int, 128, msg="Number of wavenumber values to use in theory calculation"),
+        "a_min": StageParameter(float, 0.2, msg="Min scale factor to use in theory calculation"),
+        "a_max": StageParameter(float, 1.0, msg="Max scale factor to use in theory calculation"),
+        "na": StageParameter(int, 128, msg="Number of scale factor values to use in theory calculation"),
     }
 
     def run(self):
@@ -520,6 +528,9 @@ class TXDeltaSigmaTheory(PipelineStage):
         s.save_hdf5(output_filename)
 
     def build_calculator(self):
+        # DSF provides a theory calculator that we instantiate here.
+        # It depends a great deal on HOD parameters, so don't expect a close
+        # match without doing any fitting.
         from dsf.modelling import pk2d_hod
         from dsf.data_vector.delta_sigma_builder import DeltaSigmaCalculator
 
@@ -528,9 +539,14 @@ class TXDeltaSigmaTheory(PipelineStage):
 
         print("CCL Cosmology:", cosmo)
 
-        # TODO expose these as config options
-        k_array = np.geomspace(1.0e-3, 100.0, 128)
-        a_array = np.linspace(0.2, 1.0, 128)
+        k_min = self.config['k_min']
+        k_max = self.config['k_max']
+        nk = self.config['nk']
+        a_min = self.config['a_min']
+        a_max = self.config['a_max']
+        na = self.config['na']
+        k_array = np.geomspace(kmin, kmax, nk)
+        a_array = np.linspace(a_min, a_max, na)
 
         def pk2d_func(*, cosmo):
             return pk2d_hod(
@@ -600,15 +616,20 @@ class TXDeltaSigmaPlots(PipelineStage):
                 axes[l, 0].set_xlabel("Radius [Mpc/h]")
                 axes[l, 0].set_ylabel(r"$R \cdot \Delta \Sigma [(\mathrm{M}_{\mathrm{pc}}/h) \cdot (M_\odot h^2 / \mathrm{pc}^2)]$")
                 axes[l, 0].grid()
+                # Plot the theory lines - these are the same for all source bins,
+                # so we don't loop.
                 if self.config['show_theory']:
                     x_theory = np.array(sacc_theory.get_tag("rp", tracers=(f"lens_{l}",)))
                     y_theory = sacc_theory.get_mean(tracers=(f"lens_{l}",))
                     axes[l, 0].plot(x_theory, y_theory * x_theory, "-", label="Theory")
+
+                # Plot the actual measurements.
                 for s in range(nbin_source):
                     x = sacc_data.get_tag("rp", tracers=(f"source_{s}", f"lens_{l}"))
                     x = np.array(x)
                     y = sacc_data.get_mean(tracers=(f"source_{s}", f"lens_{l}"))
-                    # raw_y = sacc_data.get_tag("raw_value", tracers=(f"source_{s}", f"lens_{l}"))
+
+                    # Use error bars if available, otherwise just do points.
                     if cov is not None:
                         index = sacc_data.indices(tracers=(f"source_{s}", f"lens_{l}"))
                         cov_block = cov[index][:, index]
@@ -616,11 +637,8 @@ class TXDeltaSigmaPlots(PipelineStage):
                         axes[l, 0].errorbar(
                             x * shift[s], y * x, yerr=error * x, fmt="+", label=rf"$\Delta\Sigma$ s={s}"
                         )
-                        # Also plot the raw value with boost/randoms
-                        # axes[l, 0].plot(x, raw_y * x, 'x', label=r'Raw $\Delta\Sigma$')
                     else:
                         axes[l, 0].plot(x * shift[s], y * x, "+", label=rf"$\Delta\Sigma$ s={s}")
-                        # axes[l, 0].plot(x, raw_y * x, 'x', label=r'Raw $\Delta\Sigma$')
                     axes[l, 0].set_ylim(0, None)
                     axes[l, 0].set_xscale("log")
             axes[0, 0].legend(loc="upper left")

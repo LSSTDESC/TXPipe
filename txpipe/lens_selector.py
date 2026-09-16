@@ -860,8 +860,6 @@ class TXDESISelector(PipelineStage):
             with self.open_input("mask", wrapper=True) as f:
                 self.mask = f.read_mask("mask")
                 self.mask_nside = f.read_map_info("mask")["nside"]
-                # self.mask_fmt = f.read_map_info("mask")["nest"]
-                # print(self.mask_fmt)
         else:
             self.mask = self.mask_nside = None
 
@@ -975,6 +973,12 @@ class TXDESIMockSelector(TXDESISelector):
 
 
 class TXDESIMultiMockSelector(TXDESIMockSelector):
+    """
+    Select lens galaxies from a list of DESI mock Parquet catalogs.
+
+    This is the same as TXDESIMockSelector except that it loops through
+    a selection of files selected through a glob pattern to ingest from them all.
+    """
     name = "TXDESIMultiMockSelector"
 
     inputs = [

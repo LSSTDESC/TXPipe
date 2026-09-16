@@ -167,7 +167,6 @@ class TXIngestDESI(PipelineStage):
         ("lens_photoz_stack", QPNOfZFile),
     ]
 
-    # TODO: CHANGE CONFIG OPTIONS
     config_options = {
         "lens_zbin_edges": StageParameter(list, [float], msg="Edges of lens redshift bins."),
         "chunk_rows": StageParameter(int, 100_000, msg="Number of rows to process in each chunk."),
@@ -251,7 +250,7 @@ class TXIngestDESI(PipelineStage):
             zbin[zbin == nbin_lens] = -1
 
             # # can select on any other criterion here, e.g.
-            # # mag or chisq.  This is an example
+            # # mag or chisq.  This is an example for possible future usage:
             # sel = data["chisq"] < 10
             # # deselect these objects
             # zbin[~sel] = -1
