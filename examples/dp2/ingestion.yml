@@ -26,3 +26,4 @@ inputs:
 resume: true
 log_dir: data/dp2/logs
 pipeline_log: data/dp2/ingest_log.txt
+registry: {}
