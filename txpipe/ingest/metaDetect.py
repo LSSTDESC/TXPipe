@@ -169,7 +169,7 @@ class TXGenerateTractList(PipelineStage):
         npix = healpy.nside2npix(nside_low)
         butler_config_file = self.config['butler_config_file']
         collections = self.config['collections']
-        butler = Butler("dp2", collections=collections)
+        butler = Butler(butler_config_file, collections=collections)
         skymap = butler.get("skyMap")
 
 
