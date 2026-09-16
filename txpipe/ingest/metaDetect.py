@@ -1,5 +1,5 @@
 from ..base_stage import PipelineStage
-from ..data_types import ShearCatalog, PhotometryCatalog, HDFFile, FileCollection, MapsFile, TextFile
+from ..data_types import ShearCatalog, PhotometryCatalog, HDFFile, FileCollection, MapsFile, TextFile, PNGFile
 from .lsst import process_metadetect_data, sanitize
 from .dp_info import DP1_COSMOLOGY_TRACTS, ALL_TRACTS, DP1_TRACTS, TXPIPE_COLUMNS
 from ceci.config import StageParameter
@@ -9,6 +9,7 @@ from ..shear_calibration.names import META_VARIANTS
 import numpy as np
 import os
 import pyarrow.parquet as pq
+import sys
 
 class TXIngestRubinMetaDetect(PipelineStage):
     """
@@ -85,20 +86,22 @@ class TXIngestRubinMetaDetect(PipelineStage):
         all_columns_flag = self.config["all_columns"]
         exclusion_flag = self.config["exclusion_flag"]
         flag_list = self.config["flag_list"]
-        for i, ref in enumerate(data_set_refs):
-            tract = ref.dataId["tract"]
-            if tract not in tracts:
-                print(f"Skipping chunk {i + 1} / {n_chunks} since tract {tract} is not selected")
-                continue
-
+        used_tracts = [ref for ref in data_set_refs if ref.dataId["tract"] in tracts]
+        n_used_tracts = len(used_tracts)
+        print(f"Processing {n_used_tracts} tracts")
+        for i, ref in enumerate(used_tracts):
+            print(f"Processing tract {i + 1} / {n_used_tracts}")
+            sys.stdout.flush()
             d = butler.get('object_shear_all',
                            dataId=ref.dataId,
                            )
             chunk_size = len(d)
 
             if chunk_size == 0:
-                print(f"Skipping chunk {i + 1} / {n_chunks} since it is empty")
+                print(f"  - skipping chunk since it is empty")
                 continue
+            else:
+                print(f"  - adding {chunk_size} rows")
 
             shear_data = process_metadetect_data(d, flag_list, exclusion_flag, 
                                                  full_columns=all_columns_flag)
@@ -117,8 +120,7 @@ class TXIngestRubinMetaDetect(PipelineStage):
 
             for variant in META_VARIANTS:
                 splitter.write_bin(shear_data[variant], variant)
-            print(f"Processing chunk {i + 1} / {n_chunks}")
-
+        print("Read complete; re-sizing files")
         if created_files:    
             splitter.finish()
             print("adding in aliases")
@@ -126,9 +128,11 @@ class TXIngestRubinMetaDetect(PipelineStage):
         else:
             print("No metadetect data written; skipping splitter.finish/aliasing")
         shear_outfile.close()
-        print("Repacking files")
-        sys.stdout.flush()
-        repack(self.get_output("shear_catalog"))
+        # We have temporarily commented out the repack step
+        # as it was crazily slow, taking far longer than the original
+        # run.
+        # print("Repacking files")
+        # repack(self.get_output("shear_catalog"))
 
     def aliasing(self, outfile, group):
         g = group
@@ -145,6 +149,7 @@ class TXGenerateTractList(PipelineStage):
     ]
     outputs = [
         ("tract_list", TextFile),
+        ("tract_list_plot", PNGFile),
     ]
     config_options = {
         "nside_low": StageParameter(int, 512, msg="The nside resolution for finding tracts from "),
@@ -213,3 +218,23 @@ class TXGenerateTractList(PipelineStage):
         with self.open_output("tract_list") as f:
             np.savetxt(f, tracts, fmt='%i')
 
+        with self.open_output("tract_list_plot", wrapper=True, figsize=(8,6)) as fig:
+            healpy.mollview(low_rest_mask, nest=True, fig=fig)
+            for i, t in enumerate(tracts):
+                plot_tract(t)
+
+def get_vertices(skymap, tract_id):
+    ti = skymap.generateTract(tract_id)
+    vl = ti.getVertexList()
+    lons = []
+    lats = []
+    for v in vl:
+        ra = v.getLongitude().asDegrees()
+        dec = v.getLatitude().asDegrees()
+        lons.append(ra)
+        lats.append(dec)
+    return lons, lats
+
+def plot_tract(skymap, tract_id, fig):
+    lons, lats = get_vertices(skymap, tract_id)
+    healpy.projplot(lons, lats, 'r-', lonlat=True, linewidth=1, fig=fig)
