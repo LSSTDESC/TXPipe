@@ -38,7 +38,6 @@ class TXSourceSelectorBase(PipelineStage):
 
     inputs = [
         ("shear_catalog", ShearCatalog),
-        ("spectroscopic_catalog", HDFFile),
         ("shear_tomography_classifier", PickleFile),
     ]
 
