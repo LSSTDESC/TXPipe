@@ -1,5 +1,5 @@
 from ..base_stage import PipelineStage
-from ..data_types import ShearCatalog, PhotometryCatalog, HDFFile, FileCollection
+from ..data_types import ShearCatalog, PhotometryCatalog, HDFFile, FileCollection, MapsFile, TextFile
 from .lsst import process_metadetect_data, sanitize
 from .dp_info import DP1_COSMOLOGY_TRACTS, ALL_TRACTS, DP1_TRACTS, TXPIPE_COLUMNS
 from ceci.config import StageParameter
@@ -16,7 +16,9 @@ class TXIngestRubinMetaDetect(PipelineStage):
     """
 
     name = "TXIngestRubinMetaDetect"
-    inputs = []
+    inputs = [
+        ("tract_list", TextFile)
+    ]
     outputs = [
         ("shear_catalog", ShearCatalog),
     ]
@@ -29,7 +31,6 @@ class TXIngestRubinMetaDetect(PipelineStage):
         "cosmology_tracts_only": StageParameter(bool, True, msg="Use only cosmology tracts."),
         "select_field": StageParameter(str, "", msg="Field to select (overrides cosmology_tracts_only)."),
         "select_tracts": StageParameter(list, [], msg="list of tracts (overrides cosmology_tracts_only, but not select_field)."),
-        "tracts_file": StageParameter(str, "", msg="path to tract list. "),
         "collections": StageParameter(str, "LSSTComCam/DP1", msg="Butler collections to use."),
         "exclusion_flag": StageParameter(bool, False, msg="Decide if flags are used for exclusion or just flagged."),
         "flag_list": StageParameter(list, ["is_primary"], msg="list of flags to use for combined."),
@@ -59,16 +60,17 @@ class TXIngestRubinMetaDetect(PipelineStage):
         except Exception as e:
             raise RuntimeError(error_msg) from e
 
-        if self.config["select_field"]:
+        tracts_file = self.get_input('tract_list')
+        if tracts_file != "none":
+            print("Using tracts_file:", tracts_file)
+            tracts = np.loadtxt(tracts_file, dtype=int)
+        # TODO: Update these DP1 thing to make sense for DP2
+        elif self.config["select_field"]:
             tracts = DP1_TRACTS[self.config["select_field"]]
         elif self.config["select_tracts"]:
             tracts = self.config["select_tracts"]
         elif self.config["cosmology_tracts_only"]:
             tracts = DP1_COSMOLOGY_TRACTS
-        elif self.config["tracts_file"]:
-            print("using tracts_file")
-            with open(self.config["tracts_file"]) as f:
-                tracts = [int(line.strip()) for line in f if line.strip()]
         else:
             tracts = ALL_TRACTS
         print(f"ingesting using the following tracts:{tracts}")
@@ -125,6 +127,7 @@ class TXIngestRubinMetaDetect(PipelineStage):
             print("No metadetect data written; skipping splitter.finish/aliasing")
         shear_outfile.close()
         print("Repacking files")
+        sys.stdout.flush()
         repack(self.get_output("shear_catalog"))
 
     def aliasing(self, outfile, group):
@@ -133,4 +136,80 @@ class TXIngestRubinMetaDetect(PipelineStage):
             k = g[variant]
             for txname, original in TXPIPE_COLUMNS.items():
                 k[txname] = k[original]
+
+
+class TXGenerateTractList(PipelineStage):
+    name = "TXGenerateTractList"
+    inputs = [
+        ("shear_mask", MapsFile)
+    ]
+    outputs = [
+        ("tract_list", TextFile),
+    ]
+    config_options = {
+        "nside_low": StageParameter(int, 512, msg="The nside resolution for finding tracts from "),
+        "collections": StageParameter(str, "LSSTComCam/DP2", msg="Butler collections to use."),
+        "dec_min": StageParameter(float, -40, msg="Minimum declination to keep. Designed to cut out a little island from a deep field that snuck through"),
+        "butler_config_file": StageParameter(
+            str, 
+            "/global/cfs/cdirs/lsst/production/gen3/rubin/DP2/repo/butler.yaml",
+            msg="Path to the LSST butler config file."
+        ),
+    }
+    def run(self):
+        import healsparse
+        nside_low = self.config['nside_low']
+        npix = healpy.nside2npix(nside_low)
+        from lsst.daf.butler import Butler
+
+        butler = Butler(butler_config_file, collections=collections)
+        skymap = butler.get("skyMap")
+
+
+        # This input map is not currently a TXPipe maps file,
+        # it is a raw healsparse file, so we don't use open_input,
+        # just get the filename
+        mask_file_path = self.get_input("shear_mask")
+        shear_mask = healsparse.HealSparseMap.read(mask_file_path)
+        
+        # We make a map at low resolution and see what pixels hit it.
+        # I think there is or should be a better way than this. Possibly
+        # a newer healsparse version than the one in desc-stack makes this
+        # much more straightforward, but using degrade gave nonsensical results
+        # here.
+        low_res_mask = np.zeros(npix, dtype=bool)
+
+        # Loop through the large coverage pixels. I tried just looking at the
+        # coverage map directly, but it looked nothing like that actual high-res
+        # mask - lots of empty pixels were included. So instead we need to
+        # check in each coverage pixel if there are actually hit pixels there.
+        cov_pixels, = np.where(shear_mask._cov_map.coverage_mask)
+
+        # Loop through the top-level coverage pixels
+        for cov_pix in tqdm.tqdm(cov_pixels):
+            # get valid pixels in that large pixel
+            d = shear_mask.valid_pixels_single_covpix(cov_pix)
+            if d.size == 0:
+                continue
+            # cut down to True pixels. That's actually all of them in the current version,
+            # but let's not rely on that.
+            d = d[shear_mask[d]]
+            # convert to our resired nside from the high-res sparse maps
+            theta, phi = healpy.pix2ang(ipix=d, nside=shear_mask.nside_sparse, nest=True)
+            low_pix = healpy.ang2pix(nside_low, theta, phi, nest=True)
+            # mark in the medium-res map that this is selected.
+            low_res_mask[low_pix] = True
+
+        tracts = set()
+        hit_pix = np.where(low_res_mask)[0]
+        ra_all, dec_all = healpy.pix2ang(nside_low, hit_pix, nest=True, lonlat=True)
+        dec_min = self.config['dec_min']
+        cut = dec_all > dec_min
+        dec_all = dec_all[cut]
+        ra_all = ra_all[cut]
+        tracts = np.unique(skymap.findTractIdArray(ra_all, dec_all, degrees=True))
+    
+
+        with self.open_output("tract_list") as f:
+            np.savetxt(f, tracts, fmt='%i')
 
