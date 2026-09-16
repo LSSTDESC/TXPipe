@@ -163,10 +163,12 @@ class TXGenerateTractList(PipelineStage):
     }
     def run(self):
         import healsparse
+        import healpy
+        from lsst.daf.butler import Butler
         nside_low = self.config['nside_low']
         npix = healpy.nside2npix(nside_low)
-        from lsst.daf.butler import Butler
-
+        butler_config_file = self.config['butler_config_file']
+        collections = self.config['collections']
         butler = Butler(butler_config_file, collections=collections)
         skymap = butler.get("skyMap")
 
@@ -189,10 +191,11 @@ class TXGenerateTractList(PipelineStage):
         # mask - lots of empty pixels were included. So instead we need to
         # check in each coverage pixel if there are actually hit pixels there.
         cov_pixels, = np.where(shear_mask._cov_map.coverage_mask)
-
+        n_cov_pix = len(cov_pixels)
         # Loop through the top-level coverage pixels
-        for cov_pix in tqdm.tqdm(cov_pixels):
+        for i, cov_pix in enumerate(cov_pixels):
             # get valid pixels in that large pixel
+            print(f"Searching pixel {i+1}/{n_cov_pix}")
             d = shear_mask.valid_pixels_single_covpix(cov_pix)
             if d.size == 0:
                 continue
@@ -218,10 +221,10 @@ class TXGenerateTractList(PipelineStage):
         with self.open_output("tract_list") as f:
             np.savetxt(f, tracts, fmt='%i')
 
-        with self.open_output("tract_list_plot", wrapper=True, figsize=(8,6)) as fig:
-            healpy.mollview(low_rest_mask, nest=True, fig=fig)
+        with self.open_output("tract_list_plot", figsize=(8,6), wrapper=True) as fig:
+            healpy.mollview(low_res_mask, nest=True, fig=fig.file)
             for i, t in enumerate(tracts):
-                plot_tract(t)
+                plot_tract(skymap, t)
 
 def get_vertices(skymap, tract_id):
     ti = skymap.generateTract(tract_id)
@@ -235,6 +238,7 @@ def get_vertices(skymap, tract_id):
         lats.append(dec)
     return lons, lats
 
-def plot_tract(skymap, tract_id, fig):
+def plot_tract(skymap, tract_id):
+    import healpy
     lons, lats = get_vertices(skymap, tract_id)
-    healpy.projplot(lons, lats, 'r-', lonlat=True, linewidth=1, fig=fig)
+    healpy.projplot(lons, lats, 'r-', lonlat=True, linewidth=1)
