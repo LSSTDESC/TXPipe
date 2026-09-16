@@ -590,7 +590,7 @@ class TXCutCatalog(PipelineStage):
     outputs = [("cut_catalog", HDFFile)]
     config_options = {
         "chunk_rows": StageParameter(int, 100000, msg="Number of rows to read per chunk."),
-        "catalog_group": StageParameter(str, "catalog", msg="HDF5 group name in the input catalog."),
+        "catalog_groups": StageParameter(list, ["catalog"], msg="HDF5 group names in the input catalog."),
         "ra_col": StageParameter(str, "ra", msg="RA column name."),
         "dec_col": StageParameter(str, "dec", msg="Dec column name."),
     }
@@ -606,7 +606,7 @@ class TXCutCatalog(PipelineStage):
             mask = f.read_mask("mask", returnbool=True)
             nside = f.read_map_info("mask")["nside"]
 
-        group_name = self.config["catalog_group"]
+        group_names = self.config["catalog_groups"]
         ra_col = self.config["ra_col"]
         dec_col = self.config["dec_col"]
         chunk_rows = self.config["chunk_rows"]
@@ -615,41 +615,42 @@ class TXCutCatalog(PipelineStage):
         out_path = self.get_output(self.catalog_output_name)
 
         with h5py.File(in_path, "r") as f_in, h5py.File(out_path, "w") as f_out:
-            g_in = f_in[group_name]
-            n_total = g_in[ra_col].size
+            for group_name in group_names:
+                g_in = f_in[group_name]
+                n_total = g_in[ra_col].size
 
-            # First pass: collect indices of objects inside the mask footprint
-            selected = []
-            for start in range(0, n_total, chunk_rows):
-                end = min(start + chunk_rows, n_total)
-                ra = g_in[ra_col][start:end]
-                dec = g_in[dec_col][start:end]
-                pix = hp.ang2pix(nside, ra, dec, lonlat=True, nest=True)
-                sel = mask[pix].astype(bool)
-                selected.append(np.where(sel)[0] + start)
-                nsel = sel.sum()
-                ntot_chunk = ra.size
-                print(f"Rows {start:,}-{end:,} selected {nsel:,} / {ntot_chunk:,} rows")
+                # First pass: collect indices of objects inside the mask footprint
+                selected = []
+                for start in range(0, n_total, chunk_rows):
+                    end = min(start + chunk_rows, n_total)
+                    ra = g_in[ra_col][start:end]
+                    dec = g_in[dec_col][start:end]
+                    pix = hp.ang2pix(nside, ra, dec, lonlat=True, nest=True)
+                    sel = mask[pix].astype(bool)
+                    selected.append(np.where(sel)[0] + start)
+                    nsel = sel.sum()
+                    ntot_chunk = ra.size
+                    print(f"Rows {start:,}-{end:,} selected {nsel:,} / {ntot_chunk:,} rows")
 
-            selected = np.concatenate(selected)
-            print("")
-            print(f"Overall selected {len(selected):,} / {n_total:,} objects inside mask")
+                selected = np.concatenate(selected)
+                print("")
+                print(f"Overall selected {len(selected):,} / {n_total:,} objects inside mask")
 
-            # Write selected rows for every column in the group
-            g_out = f_out.create_group(group_name)
+                # Write selected rows for every column in the group
+                g_out = f_out.create_group(group_name)
 
-            # copy attributes, primarily the catalog_type
-            # property
-            attrs = g_in.attrs
-            for key, value in attrs.items():
-                g_out.attrs[key] = value
-            for col in g_in.keys():
-                print("Copying column", col)
-                # Random selection in h5py is painfully slow.
-                # Unless it's really too big it's better to load the whole
-                # column and then select out of it. If it is too big then you
-                # want to read in chunks and then select within each chunk
-                g_out.create_dataset(col, data=g_in[col][:][selected])
+                # copy attributes, primarily the catalog_type
+                # property
+                attrs = g_in.attrs
+                for key, value in attrs.items():
+                    g_out.attrs[key] = value
+                for col in g_in.keys():
+                    print("Copying column", col)
+                    # Random selection in h5py is painfully slow.
+                    # Unless it's really too big it's better to load the whole
+                    # column and then select out of it. If it is too big then you
+                    # want to read in chunks and then select within each chunk
+                    g_out.create_dataset(col, data=g_in[col][:][selected])
 
 
 class TXCutShearCatalog(TXCutCatalog):
@@ -663,10 +664,14 @@ class TXCutShearCatalog(TXCutCatalog):
         ("mask", MapsFile),
     ]
     outputs = [("cut_shear_catalog", HDFFile)]
-    config_options = {
-        **TXCutCatalog.config_options,
-        "catalog_group": StageParameter(str, "shear", msg="HDF5 group name in the input shear catalog."),
-    }
+    config_options = {k:v for k,v in TXCutCatalog.items() if k != "catalog_groups"}
 
     catalog_input_name = "shear_catalog"
     catalog_output_name = "cut_shear_catalog"
+
+    def run(self):
+        cat_type = read_shear_catalog_type(self)
+        if cat_type == "metadetect":
+            self.config["catalog_groups"] = ["shear/ns", "shear/1p", "shear/1m", "shear/2p", "shear/2m"]
+        else:
+            self.config["catalog_groups"] = ["shear"]

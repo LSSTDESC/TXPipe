@@ -8,6 +8,10 @@ stages:
   #       model: source_direct_calibration_model
   #       photoz_stack: shear_photoz_stack
   #       photoz_realizations: source_photoz_realizations
+  - name: TXCutShearCatalog
+    aliases:
+      shear_catalog: full_shear_catalog
+      cut_shear_catalog: shear_catalog
   - name: TXSourceSelectorMetadetect    # select and split objects into source bins
   - name: TXSourceTomography
   # - name: NZDirInformerSource       # Prepare the DIR method inputs for the source sample
@@ -20,7 +24,7 @@ stages:
   # - name: TXPSFMaps    # make PSF maps
   # - name: TXFlagMaps
   # - name: TXSimpleMaskSource       # combine maps to make a simple mask
-  - name: TXSourceNoiseMaps      # Compute shear noise using rotations
+  # - name: TXSourceNoiseMaps      # Compute shear noise using rotations
   - name: TXMapPlots             # make pictures of all the maps
   - name: TXTracerMetadata       # collate metadata
   - name: TXJackknifeCentersSource     # Split the area into jackknife regions
@@ -97,7 +101,7 @@ config: examples/metadetect_source_only/config.yml
 
 inputs:
     # See README for paths to download these files
-    shear_catalog: data/example/inputs/metadetect_shear_catalog.hdf5
+    full_shear_catalog: /path/to/full_shear_catalog.hdf5
     # star_catalog: data/example/inputs/star_catalog.hdf5
     # This file comes with the code
     fiducial_cosmology: data/fiducial_cosmology.yml
