@@ -3,6 +3,7 @@
 
 
 stages:
+  - name: TXGenerateTractList
   - name: TXIngestRubinMetaDetect
 
 
@@ -19,7 +20,9 @@ modules: >
     txpipe
 
 config: examples/dp2/config.yml
-inputs: {}
+inputs:
+    shear_mask:
+        name: rubin_dp2_shear_mask
 resume: true
 log_dir: data/dp2/logs
 pipeline_log: data/dp2/ingest_log.txt

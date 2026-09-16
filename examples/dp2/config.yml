@@ -6,7 +6,6 @@ global:
 TXIngestRubinMetaDetect:
     butler_config_file: "dp2"
     collections: "dp2"
-    tracts_file: ./tract-list-from-shear-mask.txt
     flag_list: ["gauss_object_flags",
                 "is_primary",
                 "psfOriginal_flags", 
@@ -23,5 +22,11 @@ TXIngestRubinMetaDetect:
                 "pgaussFlux_flags"
                 ]
     all_columns: True
+
+
+TXGenerateTractList:
+    dec_min: -40.0
+    collections: LSSTComCam/DP2
+    butler_config_file: /global/cfs/cdirs/lsst/production/gen3/rubin/DP2/repo/butler.yaml
 
 

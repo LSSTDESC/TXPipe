@@ -154,7 +154,7 @@ class TXGenerateTractList(PipelineStage):
     config_options = {
         "nside_low": StageParameter(int, 512, msg="The nside resolution for finding tracts from "),
         "collections": StageParameter(str, "LSSTComCam/DP2", msg="Butler collections to use."),
-        "dec_min": StageParameter(float, -40, msg="Minimum declination to keep. Designed to cut out a little island from a deep field that snuck through"),
+        "dec_min": StageParameter(float, -40.0, msg="Minimum declination to keep. Designed to cut out a little island from a deep field that snuck through"),
         "butler_config_file": StageParameter(
             str, 
             "/global/cfs/cdirs/lsst/production/gen3/rubin/DP2/repo/butler.yaml",
