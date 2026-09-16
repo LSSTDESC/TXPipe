@@ -545,7 +545,7 @@ class TXDeltaSigmaTheory(PipelineStage):
         a_min = self.config['a_min']
         a_max = self.config['a_max']
         na = self.config['na']
-        k_array = np.geomspace(kmin, kmax, nk)
+        k_array = np.geomspace(k_min, k_max, nk)
         a_array = np.linspace(a_min, a_max, na)
 
         def pk2d_func(*, cosmo):
