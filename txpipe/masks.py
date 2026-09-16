@@ -664,7 +664,7 @@ class TXCutShearCatalog(TXCutCatalog):
         ("mask", MapsFile),
     ]
     outputs = [("cut_shear_catalog", HDFFile)]
-    config_options = {k:v for k,v in TXCutCatalog.items() if k != "catalog_groups"}
+    config_options = {k:v for k,v in TXCutCatalog.config_options.items() if k != "catalog_groups"}
 
     catalog_input_name = "shear_catalog"
     catalog_output_name = "cut_shear_catalog"
