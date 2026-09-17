@@ -1,5 +1,33 @@
 # Stages to run
 stages:
+  - name: TXCutShearCatalog
+    aliases:
+      shear_catalog: full_shear_catalog
+      cut_shear_catalog: shear_catalog
+  - name: TXSourceSelectorMetadetect    # select and split objects into source bins
+    nprocess: 64
+  - name: TXSourceTomography
+    threads_per_process: 8
+  - name: TXShearCalibration       # Calibrate and split the source sample tomographically
+    nprocess: 64
+  - name: TXSourceMaps             # make source g1 and g2 maps
+    nprocess: 16
+  - name: TXMapPlots             # make pictures of all the maps
+  - name: TXTracerMetadata       # collate metadata
+  - name: TXJackknifeCentersSource     # Split the area into jackknife regions
+  - name: TXTwoPoint             # Compute real-space 2-point correlations
+    threads_per_process: 64
+    nprocess: 2
+    nodes: 1
+    threads_per_process: 2
+  - name: TXBlinding             # Blind the data following Muir et al
+    threads_per_process: 4
+  - name: TXTwoPointPlots        # Make plots of 2pt correlations
+  - name: TXPhotozPlotSource          # Plot the bin n(z)
+    classname: TXPhotozPlot
+    aliases:
+        photoz_stack: shear_photoz_stack
+        nz_plot: nz_source
   # - name: PZRailSummarizeSource    # Run the DIR method on the lens sample to find n(z)
   #   classname: PZRailSummarize
   #   aliases:
@@ -8,32 +36,15 @@ stages:
   #       model: source_direct_calibration_model
   #       photoz_stack: shear_photoz_stack
   #       photoz_realizations: source_photoz_realizations
-  - name: TXCutShearCatalog
-    aliases:
-      shear_catalog: full_shear_catalog
-      cut_shear_catalog: shear_catalog
-  - name: TXSourceSelectorMetadetect    # select and split objects into source bins
-  - name: TXSourceTomography
   # - name: NZDirInformerSource       # Prepare the DIR method inputs for the source sample
   #   classname: NZDirInformer
   #   aliases:
   #       input: spectroscopic_catalog
   #       model: source_direct_calibration_model
-  - name: TXShearCalibration       # Calibrate and split the source sample tomographically
-  - name: TXSourceMaps             # make source g1 and g2 maps
   # - name: TXPSFMaps    # make PSF maps
   # - name: TXFlagMaps
   # - name: TXSimpleMaskSource       # combine maps to make a simple mask
   # - name: TXSourceNoiseMaps      # Compute shear noise using rotations
-  - name: TXMapPlots             # make pictures of all the maps
-  - name: TXTracerMetadata       # collate metadata
-  - name: TXJackknifeCentersSource     # Split the area into jackknife regions
-  - name: TXTwoPoint             # Compute real-space 2-point correlations
-    threads_per_process: 2
-  - name: TXBlinding             # Blind the data following Muir et al
-    threads_per_process: 2
-  - name: TXTwoPointTheoryReal   # compute theory using CCL to save in sacc file and plot later
-  - name: TXTwoPointPlots        # Make plots of 2pt correlations
   # - name: TXPhotozStack
   #   aliases:
   #     tomography_catalog: shear_tomography_catalog
@@ -43,11 +54,6 @@ stages:
   # - name: TXRoweStatistics       # Compute and plot Rowe statistics
   #   threads_per_process: 2
   # - name: TXGalaxyStarShear      # Compute and plot the star-galaxy shear cross-correlation
-  - name: TXPhotozPlotSource          # Plot the bin n(z)
-    classname: TXPhotozPlot
-    aliases:
-        photoz_stack: shear_photoz_stack
-        nz_plot: nz_source
   # - name: PZRealizationsPlotSource     # Plot n(z) realizations
   #   classname: PZRealizationsPlot
   #   aliases:
@@ -70,18 +76,13 @@ stages:
 # stages defined in them
 modules: >
     txpipe
-    rail.creation.degraders.grid_selection
-    rail.creation.engines.flowEngine
-    rail.estimation.algos.nz_dir
-    rail.estimation.algos.bpz_lite
 
 # where to find any modules that are not in this repo,
 # and any other code we need.
-python_paths:
-  - submodules/WLMassMap/python/desc/
+python_paths: []
 
 # Where to put outputs
-output_dir: data/example/outputs_metadetect_source_only
+output_dir: data/metadetect_dp2
 
 # How to run the pipeline: mini, parsl, or cwl
 launcher:
@@ -90,18 +91,18 @@ launcher:
 
 # Where to run the pipeline: cori-interactive, cori-batch, or local
 site:
-    name: local
-    max_threads: 2
+    name: nersc-interactive
+
 
 # configuration settings
-config: examples/metadetect_source_only/config.yml
+config: examples/dp2/config.yml
 
 # On NERSC, set this before running:
 # export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
 
 inputs:
     # See README for paths to download these files
-    full_shear_catalog: /path/to/full_shear_catalog.hdf5
+    full_shear_catalog: data/metadetect_dp2/shear_catalog.hdf5
     # star_catalog: data/example/inputs/star_catalog.hdf5
     # This file comes with the code
     fiducial_cosmology: data/fiducial_cosmology.yml
@@ -118,14 +119,15 @@ inputs:
     binned_random_catalog: none
     binned_random_catalog_sub: none
     lens_photoz_stack: none
-    spectroscopic_catalog: /path/to/spec-cat-cosmodc2.hdf5
-    mask: /path/to/shear-mask.hdf5
+    spectroscopic_catalog: data/example/inputs/mock_spectroscopic_catalog.hdf5
+    # this is #48 - when everything is in the registry we should use that instead
+    mask: /global/cfs/cdirs/lsst/utilities/data-registry/lsst_desc_working/user/smau/rubin_dp2_shear_mask_0.1.0.hsp
     shear_photoz_stack: /path/to/photoz_stack
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted
 resume: true
 # where to put output logs for individual stages
-log_dir: data/example/logs_metadetect_source_only
+log_dir: data/metadetect_dp2/logs
 # where to put an overall parsl pipeline log
-pipeline_log: data/example/log.txt
+pipeline_log: data/metadetect_dp2/log.txt

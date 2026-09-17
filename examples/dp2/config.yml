@@ -30,3 +30,62 @@ TXGenerateTractList:
     butler_config_file: dp2
 
 
+TXCutShearCatalog:
+    ra_col: ra
+    dec_col: dec
+
+TXSourceSelectorMetadetect:
+    input_pz: false
+    true_z: false
+    bands: [r, i, z]
+    T_cut: 0.5
+    s2n_cut: 10.0
+    delta_gamma: 0.02
+    source_zbin_edges: [0.1, 0.4, 0.6, 0.8, 3.0]
+
+TXSourceTomography: 
+    bands: [r, i, z]
+    source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
+
+
+TXShearCalibration: {}
+
+# nside is inherited from global settings
+TXSourceMaps: {}
+
+
+TXMapPlots: {}
+
+TXTracerMetadata: {}
+
+TXJackknifeCentersSource:
+    npatch: 50
+    every_nth: 100
+
+TXTwoPoint:
+    bin_slop: 0.01
+    delta_gamma: 0.02
+    do_pos_pos: false
+    do_shear_shear: true
+    do_shear_pos: false
+    flip_g2: true
+    min_sep: 2.5
+    max_sep: 60.0
+    nbins: 20
+    verbose: 1
+    subtract_mean_shear: true
+
+TXBlinding:
+    seed: 1972  ## seed uniquely specifies the shift in parameters
+    Omega_b: [0.0485, 0.001] ## fiducial_model_value, shift_sigma
+    Omega_c: [0.2545, 0.05]
+    w0: [-1.0, 0.1]
+    h: [0.682, 0.05]
+    sigma8: [0.801, 0.05]
+    n_s: [0.971, 0.03]
+    b0: 0.95  ## we use bias of the form b0/g
+    delete_unblinded: false
+
+TXTwoPointPlots: {}
+
+TXPhotozPlotSource: {}
