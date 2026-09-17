@@ -1,7 +1,7 @@
 import numpy as np
-from .utils import choose_pixelization
+from .utils import choose_pixelization, read_shear_catalog_type
 from .base_stage import PipelineStage
-from .data_types import MapsFile, HDFFile
+from .data_types import MapsFile, HDFFile, ShearCatalog
 from ceci.config import StageParameter
 from .mapping import degrade_healsparse
 
@@ -660,7 +660,7 @@ class TXCutShearCatalog(TXCutCatalog):
 
     name = "TXCutShearCatalog"
     inputs = [
-        ("shear_catalog", HDFFile),
+        ("shear_catalog", ShearCatalog),
         ("mask", MapsFile),
     ]
     outputs = [("cut_shear_catalog", HDFFile)]
@@ -675,3 +675,4 @@ class TXCutShearCatalog(TXCutCatalog):
             self.config["catalog_groups"] = ["shear/ns", "shear/1p", "shear/1m", "shear/2p", "shear/2m"]
         else:
             self.config["catalog_groups"] = ["shear"]
+        super().run()

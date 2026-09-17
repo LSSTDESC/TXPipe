@@ -258,7 +258,7 @@ class TXIngestHealsparseMask(PipelineStage):
         import healsparse
 
         original_path = self.get_input("shear_mask")
-        mask = healsparse.read(original_mask)
+        mask = healsparse.HealSparseMap.read(original_path)
         metadata = {
             "pixelization": "healpix",
             "nside": mask.nside_sparse,

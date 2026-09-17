@@ -318,9 +318,11 @@ class TXMockGaussianPhotozStack(PipelineStage):
             raise ValueError("Inconsistent sizes in sigma and mu inputs")
         z_edges = np.linspace(0.0, zmax, nz)
         z_mid = (z_edges[1:] + z_edges[:-1]) * 0.5
-        histograms = np.zeros((nbin + 1, nz))
+        histograms = np.zeros((nbin + 1, nz - 1))
         for i in range(nbin):
-            histograms[:, i] = scipy.stats.norm.pdf(z_mid, loc=mu[i], scale=sigma[i])
+            histograms[i] = scipy.stats.norm.pdf(z_mid, loc=mu[i], scale=sigma[i])
+        histograms[nbin] = histograms[:nbin].sum(axis=0)
+
 
         q = qp.Ensemble(qp.hist, data={"bins": z_edges, "pdfs": histograms})
         with self.open_output("photoz_stack", wrapper=True) as f:
