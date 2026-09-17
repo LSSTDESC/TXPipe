@@ -34,6 +34,11 @@ TXCutShearCatalog:
     ra_col: ra
     dec_col: dec
 
+TXMockGaussianPhotozStack:
+    means: [0.31, 0.49, 0.72, 1.0]
+    sigmas: [0.1, 0.2, 0.3, 0.4]
+
+
 TXSourceSelectorMetadetect:
     input_pz: false
     true_z: false
@@ -88,4 +93,7 @@ TXBlinding:
 
 TXTwoPointPlots: {}
 
-TXPhotozPlotSource: {}
+TXPhotozPlotSource:
+    name: TXPhotozPlotSource
+
+

@@ -15,6 +15,9 @@ stages:
   - name: TXMapPlots             # make pictures of all the maps
   - name: TXTracerMetadata       # collate metadata
   - name: TXJackknifeCentersSource     # Split the area into jackknife regions
+  - name: TXMockGaussianPhotozStack
+    aliases:
+      photoz_stack: shear_photoz_stack
   - name: TXTwoPoint             # Compute real-space 2-point correlations
     threads_per_process: 64
     nprocess: 2
@@ -122,7 +125,6 @@ inputs:
     spectroscopic_catalog: data/example/inputs/mock_spectroscopic_catalog.hdf5
     # this is #48 - when everything is in the registry we should use that instead
     mask: /global/cfs/cdirs/lsst/utilities/data-registry/lsst_desc_working/user/smau/rubin_dp2_shear_mask_0.1.0.hsp
-    shear_photoz_stack: /path/to/photoz_stack
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted
