@@ -1,6 +1,7 @@
 # Stages to run
 stages:
   - name: TXCutShearCatalog
+    nprocess: 64
     aliases:
       shear_catalog: full_shear_catalog
       cut_shear_catalog: shear_catalog
@@ -11,7 +12,7 @@ stages:
   - name: TXShearCalibration       # Calibrate and split the source sample tomographically
     nprocess: 64
   - name: TXSourceMaps             # make source g1 and g2 maps
-    nprocess: 16
+    nprocess: 1
   - name: TXMapPlots             # make pictures of all the maps
   - name: TXTracerMetadata       # collate metadata
   - name: TXJackknifeCentersSource     # Split the area into jackknife regions
@@ -22,7 +23,6 @@ stages:
     threads_per_process: 64
     nprocess: 2
     nodes: 1
-    threads_per_process: 2
   - name: TXBlinding             # Blind the data following Muir et al
     threads_per_process: 4
   - name: TXTwoPointPlots        # Make plots of 2pt correlations
@@ -126,6 +126,7 @@ inputs:
     # this is #48 - when everything is in the registry we should use that instead
     shear_mask: /global/cfs/cdirs/lsst/utilities/data-registry/lsst_desc_working/user/smau/rubin_dp2_shear_mask_0.1.0.hsp
     mask: data/metadetect_dp2_ingest/mask.hdf5
+#    shear_catalog: data/metadetect_dp2/shear_catalog_25deg2.hdf5
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted

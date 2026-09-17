@@ -51,7 +51,7 @@ TXSourceSelectorMetadetect:
 
 TXSourceTomography: 
     bands: [r, i, z]
-    source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
+    source_zbin_edges: [0.1, 0.4, 0.6, 0.8, 3.0]
 
 
 TXShearCalibration: {}
