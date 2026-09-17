@@ -5,9 +5,10 @@
 stages:
   - name: TXGenerateTractList
   - name: TXIngestRubinMetaDetect
+  - name: TXIngestHealsparseMask
 
 
-output_dir: data/metadetect_dp2
+output_dir: data/metadetect_dp2_ingest
 
 launcher:
     name: mini

@@ -124,7 +124,8 @@ inputs:
     lens_photoz_stack: none
     spectroscopic_catalog: data/example/inputs/mock_spectroscopic_catalog.hdf5
     # this is #48 - when everything is in the registry we should use that instead
-    mask: /global/cfs/cdirs/lsst/utilities/data-registry/lsst_desc_working/user/smau/rubin_dp2_shear_mask_0.1.0.hsp
+    shear_mask: /global/cfs/cdirs/lsst/utilities/data-registry/lsst_desc_working/user/smau/rubin_dp2_shear_mask_0.1.0.hsp
+    mask: data/metadetect_dp2_ingest/mask.hdf5
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted

@@ -1,5 +1,5 @@
 from ..base_stage import PipelineStage
-from ..data_types import ShearCatalog, PhotometryCatalog, HDFFile, FileCollection, MapsFile, TextFile, PNGFile
+from ..data_types import ShearCatalog, PhotometryCatalog, HDFFile, FileCollection, MapsFile, TextFile, PNGFile, DataFile
 from .lsst import process_metadetect_data, sanitize
 from .dp_info import DP1_COSMOLOGY_TRACTS, ALL_TRACTS, DP1_TRACTS, TXPIPE_COLUMNS
 from ceci.config import StageParameter
@@ -145,7 +145,7 @@ class TXIngestRubinMetaDetect(PipelineStage):
 class TXGenerateTractList(PipelineStage):
     name = "TXGenerateTractList"
     inputs = [
-        ("shear_mask", MapsFile)
+        ("shear_mask", DataFile)
     ]
     outputs = [
         ("tract_list", TextFile),
@@ -242,3 +242,27 @@ def plot_tract(skymap, tract_id):
     import healpy
     lons, lats = get_vertices(skymap, tract_id)
     healpy.projplot(lons, lats, 'r-', lonlat=True, linewidth=1)
+
+
+class TXIngestHealsparseMask(PipelineStage):
+    name = "TXIngestHealsparseMask"
+    inputs = [
+        ("shear_mask", DataFile)
+    ]
+    outputs = [
+        ("mask", MapsFile)
+    ]
+    config_options = {}
+
+    def run(self):
+        import healsparse
+
+        original_path = self.get_input("shear_mask")
+        mask = healsparse.read(original_mask)
+        metadata = {
+            "pixelization": "healpix",
+            "nside": mask.nside_sparse,
+            "nest": True,
+        }
+        with self.open_output("mask", wrapper=True) as f:
+            f.write_map("mask", mask, metadata)

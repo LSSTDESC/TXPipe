@@ -29,6 +29,7 @@ TXGenerateTractList:
     collections: LSSTCam/runs/DRP/DP2
     butler_config_file: dp2
 
+TXIngestHealsparseMask: {}
 
 TXCutShearCatalog:
     ra_col: ra
