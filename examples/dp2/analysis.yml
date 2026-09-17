@@ -105,7 +105,7 @@ config: examples/dp2/config.yml
 
 inputs:
     # See README for paths to download these files
-    full_shear_catalog: data/metadetect_dp2/shear_catalog.hdf5
+    full_shear_catalog: data/metadetect_dp2_ingest/shear_catalog.hdf5
     # star_catalog: data/example/inputs/star_catalog.hdf5
     # This file comes with the code
     fiducial_cosmology: data/fiducial_cosmology.yml
