@@ -583,6 +583,7 @@ class TXCutCatalog(PipelineStage):
     """
 
     name = "TXCutCatalog"
+    parallel = True
     inputs = [
         ("catalog", HDFFile),
         ("mask", MapsFile),
@@ -612,31 +613,52 @@ class TXCutCatalog(PipelineStage):
         chunk_rows = self.config["chunk_rows"]
 
         in_path = self.get_input(self.catalog_input_name)
-        out_path = self.get_output(self.catalog_output_name)
 
-        with h5py.File(in_path, "r") as f_in, h5py.File(out_path, "w") as f_out:
+        with h5py.File(in_path, "r") as f_in, self.open_output(self.catalog_output_name, parallel=True) as f_out:
             for group_name in group_names:
                 g_in = f_in[group_name]
                 n_total = g_in[ra_col].size
 
-                # First pass: collect indices of objects inside the mask footprint
-                selected = []
-                for start in range(0, n_total, chunk_rows):
+                # Split the input rows across MPI ranks in contiguous blocks.
+                base = n_total // self.size
+                remainder = n_total % self.size
+                my_start = self.rank * base + min(self.rank, remainder)
+                my_count = base + (1 if self.rank < remainder else 0)
+                my_end = my_start + my_count
+
+                # First pass on each rank: determine per-chunk selected rows.
+                chunk_info = []
+                local_selected_total = 0
+                for start in range(my_start, my_end, chunk_rows):
                     end = min(start + chunk_rows, n_total)
                     ra = g_in[ra_col][start:end]
                     dec = g_in[dec_col][start:end]
                     pix = hp.ang2pix(nside, ra, dec, lonlat=True, nest=True)
                     sel = mask[pix].astype(bool)
-                    selected.append(np.where(sel)[0] + start)
-                    nsel = sel.sum()
+                    selected_local = np.where(sel)[0]
+                    nsel = int(selected_local.size)
+                    chunk_info.append((start, end, selected_local, nsel))
+                    local_selected_total += nsel
                     ntot_chunk = ra.size
-                    print(f"Rows {start:,}-{end:,} selected {nsel:,} / {ntot_chunk:,} rows")
+                    print(
+                        f"Rank {self.rank} rows {start:,}-{end:,} selected {nsel:,} / {ntot_chunk:,} rows"
+                    )
 
-                selected = np.concatenate(selected)
-                print("")
-                print(f"Overall selected {len(selected):,} / {n_total:,} objects inside mask")
+                if self.comm is None:
+                    rank_selected_totals = [local_selected_total]
+                else:
+                    rank_selected_totals = self.comm.allgather(local_selected_total)
 
-                # Write selected rows for every column in the group
+                group_selected_total = int(np.sum(rank_selected_totals))
+                output_start = int(np.sum(rank_selected_totals[: self.rank]))
+
+                if self.rank == 0:
+                    print("")
+                    print(
+                        f"Overall selected {group_selected_total:,} / {n_total:,} objects inside mask"
+                    )
+
+                # Create output group and datasets collectively on all ranks.
                 g_out = f_out.create_group(group_name)
 
                 # copy attributes, primarily the catalog_type
@@ -644,13 +666,27 @@ class TXCutCatalog(PipelineStage):
                 attrs = g_in.attrs
                 for key, value in attrs.items():
                     g_out.attrs[key] = value
+
                 for col in g_in.keys():
-                    print("Copying column", col)
-                    # Random selection in h5py is painfully slow.
-                    # Unless it's really too big it's better to load the whole
-                    # column and then select out of it. If it is too big then you
-                    # want to read in chunks and then select within each chunk
-                    g_out.create_dataset(col, data=g_in[col][:][selected])
+                    in_ds = g_in[col]
+                    out_shape = (group_selected_total,) + in_ds.shape[1:]
+                    out_ds = g_out.create_dataset(col, shape=out_shape, dtype=in_ds.dtype)
+
+                    print(f"Rank {self.rank} copying column {col}")
+                    write_pos = output_start
+                    for start, end, selected_local, nsel in chunk_info:
+                        if nsel == 0:
+                            continue
+                        chunk_data = in_ds[start:end]
+                        out_ds[write_pos : write_pos + nsel] = chunk_data[selected_local]
+                        write_pos += nsel
+
+                    expected_end = output_start + local_selected_total
+                    if write_pos != expected_end:
+                        raise RuntimeError(
+                            f"Rank {self.rank} wrote {write_pos - output_start} rows for column {col}, "
+                            f"expected {local_selected_total}"
+                        )
 
 
 class TXCutShearCatalog(TXCutCatalog):
