@@ -88,6 +88,8 @@ def process_metadetect_data(data, flag_list, flag_exclusion, full_columns=False)
         # extra columns we are still adding:
         var_output["flags"] = flags
         var_output["weight"] = 1 / (0.5 * (var_data["gauss_g1_g1_Cov"] + var_data["gauss_g2_g2_Cov"]))
+        var_output["g1_err"] = np.sqrt(var_data["gauss_g1_g1_Cov"])
+        var_output["g2_err"] = np.sqrt(var_data["gauss_g2_g2_Cov"])
         for band in "griz": # For DP2, we only expect 4 bands
             f = var_data[f"{band}_pgaussFlux"]
             f_err = var_data[f"{band}_pgaussFluxErr"]
