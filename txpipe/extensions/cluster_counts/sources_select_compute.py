@@ -31,7 +31,7 @@ class CLClusterShearCatalogs(PipelineStage):
         "max_radius": 10.0,  # Mpc
         "delta_z": 0.1,
         "redshift_cut_criterion": "zmode",  # pdf / mean / true / median / tomo_bins
-        "redshift_weight_criterion": "zmode",  # pdf or point
+        "redshift_weight_criterion": "zmode",  # pdf / mean / true / 
         "redshift_cut_criterion_pdf_fraction": 0.9,  # pdf / mean / true / median
         "subtract_mean_shear": False, # Not clear if this is useful for clusters
         "coordinate_system": "celestial",
@@ -416,6 +416,8 @@ class CLClusterShearCatalogs(PipelineStage):
             z_source = z_info[0]
             if is_deltasigma:
                 sigma_c = clmm_cosmo.eval_sigma_crit(z_cluster, z_source)
+        elif criterion is None:
+            pass
         else:
             raise NotImplementedError(f"Not implemented {criterion} weighting")
             
