@@ -143,7 +143,10 @@ class TXIngestRubinMetaDetect(PipelineStage):
     def get_maximum_size(self, butler, refs):
         from pyarrow.parquet import ParquetFile
         n = 0
-        for ref in refs:
+        nref = len(refs)
+        print("Calculating maximum possible catalog size")
+        for i, ref in enumerate(refs):
+            print(f"Getting file size {i+1} / {nref}")
             uri = butler.getURI('object_shear_all', dataId=ref.dataId)
             p = ParquetFile(uri.ospath)
             n += p.metadata.num_rows         
@@ -153,7 +156,9 @@ class TXIngestRubinMetaDetect(PipelineStage):
         # In theory one could be a little larger so we give it
         # some wiggle room. This is often not needed as we are
         # usually cutting down by flags anyway but doesn't hurt.
-        return int(n / 5 * 1.05)
+        n = int(n / 5 * 1.05)
+        print("Using max row count", n)
+        return n
 
 
     def aliasing(self, outfile, group):
