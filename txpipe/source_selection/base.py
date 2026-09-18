@@ -386,7 +386,7 @@ def select_weak_lensing_sample(data, config, calling_from_select=False):
     # as above
     if verbose and calling_from_select:
         print(
-            f"Tomo selection ({variant}) {f1:.2%} flag, {f2:.2%} size, {f3:.2%} SNR",
+            f"Tomo selection ({variant}) {f1:.2%} flag, {f2:.2%} size, {f3:.2%} SNR, ",
             end="",
         )
     elif verbose:
