@@ -139,7 +139,7 @@ class TXSourceSelectorBase(PipelineStage):
 
         if not self.config["do_tomography"]:
             def tomography_classifier(start, end, shear_data):
-                return {"zbin": np.zeros(shear_data['ra'].size, dtype=int)}
+                return self.apply_no_tomography_cut(shear_data)
             return tomography_classifier
     
         # Are we using a metacal or lensfit catalog?
@@ -204,6 +204,9 @@ class TXSourceSelectorBase(PipelineStage):
             pz_data_bin[mask_zbin] = zi
 
         return {"zbin": pz_data_bin}
+
+    def apply_no_tomography_cut(self, shear_data):
+        return {"zbin": np.zeros(shear_data['ra'].size, dtype=int)}
 
     def calculate_tomography(self, pz_data, shear_data, calculators):
         """

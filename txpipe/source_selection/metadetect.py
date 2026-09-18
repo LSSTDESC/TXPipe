@@ -102,6 +102,14 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
 
         return pz_data
 
+    def apply_no_tomography_cut(self, shear_data):
+        pz_data = {}
+        variants = ["ns/", "1p/", "2p/", "1m/", "2m/"]
+        for v in variants:
+            pz_data[f"{v}zbin"] = np.zeros(pz_data[f"{v}ra"], dtype=int)
+        return pz_data
+
+
     def setup_output(self, nbin_source):
         """
         MetaDetect outputs do not include per-object calibration values,

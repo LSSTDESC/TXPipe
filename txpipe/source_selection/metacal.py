@@ -145,6 +145,13 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
 
         return pz_data
 
+    def apply_no_tomography_cut(self, shear_data):
+        pz_data = {}
+        variants = ["", "_1p", "_2p", "_1m", "_2m"]
+        for v in variants:
+            pz_data[f"zbin{v}"] = np.zeros(pz_data["ra"], dtype=int)
+        return pz_data
+
 
 class TXSourceSelectorDESY3(TXSourceSelectorMetacal):
     """
