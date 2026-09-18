@@ -68,7 +68,7 @@ def process_shear_data(data):
     return output
 
 
-def process_metadetect_data(data, flag_list, flag_exclusion, full_columns=False):
+def process_metadetect_data(data, flag_list, flag_exclusion, shape_noise, full_columns=False):
     output = {}
     for variant in META_VARIANTS:
         var_data = data[data["metaStep"] == variant]
@@ -87,7 +87,10 @@ def process_metadetect_data(data, flag_list, flag_exclusion, full_columns=False)
             var_output = {name: var_data[name] for name in needed}
         # extra columns we are still adding:
         var_output["flags"] = flags
-        var_output["weight"] = 1 / (0.5 * (var_data["gauss_g1_g1_Cov"] + var_data["gauss_g2_g2_Cov"]))
+        var_output["weight"] = 1 / (2 * shape_noise ** 2 + var_data["gauss_g1_g1_Cov"] + var_data["gauss_g2_g2_Cov"])
+        var_output["g1_err"] = np.sqrt(var_data["gauss_g1_g1_Cov"])
+        var_output["g2_err"] = np.sqrt(var_data["gauss_g2_g2_Cov"])
+
         for band in "griz": # For DP2, we only expect 4 bands
             f = var_data[f"{band}_pgaussFlux"]
             f_err = var_data[f"{band}_pgaussFluxErr"]

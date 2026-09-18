@@ -6,6 +6,7 @@ global:
 TXIngestRubinMetaDetect:
     butler_config_file: "dp2"
     collections: "dp2"
+    pre_response_shape_noise: 0.22
     flag_list: ["gauss_object_flags",
                 "is_primary",
                 "psfOriginal_flags", 

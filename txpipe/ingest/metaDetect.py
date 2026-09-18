@@ -35,7 +35,8 @@ class TXIngestRubinMetaDetect(PipelineStage):
         "collections": StageParameter(str, "LSSTComCam/DP1", msg="Butler collections to use."),
         "exclusion_flag": StageParameter(bool, False, msg="Decide if flags are used for exclusion or just flagged."),
         "flag_list": StageParameter(list, ["is_primary"], msg="list of flags to use for combined."),
-        "all_columns": StageParameter(bool, False, msg="do we want to save all columns or just the ones TXPipe needs.")
+        "all_columns": StageParameter(bool, False, msg="do we want to save all columns or just the ones TXPipe needs."),
+        "pre_response_shape_noise": StageParameter(float, 0.22, msg="Estimate of shape noise before response for constructing weight.")
         }
 
     def run(self):
@@ -86,10 +87,15 @@ class TXIngestRubinMetaDetect(PipelineStage):
         all_columns_flag = self.config["all_columns"]
         exclusion_flag = self.config["exclusion_flag"]
         flag_list = self.config["flag_list"]
-        used_tracts = [ref for ref in data_set_refs if ref.dataId["tract"] in tracts]
-        n_used_tracts = len(used_tracts)
+        used_tract_refs = [ref for ref in data_set_refs if ref.dataId["tract"] in tracts]
+        n_used_tracts = len(used_tract_refs)
         print(f"Processing {n_used_tracts} tracts")
-        for i, ref in enumerate(used_tracts):
+
+        shape_noise = self.config['pre_response_shape_noise']
+
+        max_size = self.get_maximum_size(butler, used_tract_refs)
+
+        for i, ref in enumerate(used_tract_refs):
             print(f"Processing tract {i + 1} / {n_used_tracts}")
             sys.stdout.flush()
             d = butler.get('object_shear_all',
@@ -103,16 +109,16 @@ class TXIngestRubinMetaDetect(PipelineStage):
             else:
                 print(f"  - adding {chunk_size} rows")
 
-            shear_data = process_metadetect_data(d, flag_list, exclusion_flag, 
+            shear_data = process_metadetect_data(d, flag_list, exclusion_flag, shape_noise,
                                                  full_columns=all_columns_flag)
             if not created_files:
                 created_files = True
                 variants = {
-                    "ns": len(shear_data["ns"]),
-                    "1p": len(shear_data["1p"]),
-                    "1m": len(shear_data["1m"]),
-                    "2p": len(shear_data["2p"]),
-                    "2m": len(shear_data["2m"]),
+                    "ns": max_size,
+                    "1p": max_size,
+                    "1m": max_size,
+                    "2p": max_size,
+                    "2m": max_size,
                     }
                 columns = list(shear_data["ns"].keys())
                 dtypes = {key: shear_data["ns"][key].dtype for key in shear_data["ns"]}
@@ -133,6 +139,22 @@ class TXIngestRubinMetaDetect(PipelineStage):
         # run.
         # print("Repacking files")
         # repack(self.get_output("shear_catalog"))
+    
+    def get_maximum_size(self, butler, refs):
+        from pyarrow.parquet import ParquetFile
+        n = 0
+        for ref in refs:
+            uri = butler.getURI('object_shear_all', dataId=ref.dataId)
+            p = ParquetFile(uri.ospath)
+            n += p.metadata.num_rows         
+
+        # We want a maximum size for each of the sub-catalogs.
+        # There are five, and all are close to the same size.
+        # In theory one could be a little larger so we give it
+        # some wiggle room. This is often not needed as we are
+        # usually cutting down by flags anyway but doesn't hurt.
+        return int(n / 5 * 1.05)
+
 
     def aliasing(self, outfile, group):
         g = group

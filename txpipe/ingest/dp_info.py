@@ -59,8 +59,6 @@ DP1_SURVEY_PROPERTIES = {
 TXPIPE_COLUMNS = {
     "g1": "gauss_g1",
     "g2": "gauss_g2",
-    "g1_err": "gauss_g1_g1_Cov",
-    "g2_err": "gauss_g2_g2_Cov",
     "g_cross": "gauss_g1_g2_Cov",
     "T": "gauss_T",
     "s2n": "gauss_snr",
