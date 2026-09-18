@@ -73,9 +73,18 @@ class TXSourceSelectorBase(PipelineStage):
         # Suppress some warnings from numpy that are not relevant
         original_warning_settings = np.seterr(all="ignore")
 
+        # as a matrix.  We will collect together the different
+        # matrices for each chunk and do a weighted average at the end.
+        if self.config['do_tomography']:
+            nbin_source = len(self.config["source_zbin_edges"]) - 1
+        else:
+            nbin_source = 1
+        self.config["nbin_source"] = nbin_source
+        calculators = self.setup_response_calculators(nbin_source)
+
         # The output file we will put the tomographic
         # information into
-        output_file = self.setup_output()
+        output_file = self.setup_output(nbin_source)
 
         # The iterator that will loop through the data.
         # Set it up here so that we can find out if there are any
@@ -87,10 +96,6 @@ class TXSourceSelectorBase(PipelineStage):
 
 
         # We will collect the selection biases for each bin
-        # as a matrix.  We will collect together the different
-        # matrices for each chunk and do a weighted average at the end.
-        nbin_source = len(self.config["source_zbin_edges"]) - 1
-        calculators = self.setup_response_calculators(nbin_source)
 
         # Loop through the input data, processing it chunk by chunk
         for start, end, shear_data in it:
@@ -238,7 +243,7 @@ class TXSourceSelectorBase(PipelineStage):
         # Some subclasses supply it.
         return None
 
-    def setup_output(self):
+    def setup_output(self, nbin_source):
         """
         Set up the output data file.
 
@@ -252,7 +257,6 @@ class TXSourceSelectorBase(PipelineStage):
             n = f.get_size()
 
         zbins = self.config["source_zbin_edges"]
-        nbin_source = len(zbins) - 1
 
         output = self.open_output("shear_tomography_catalog", parallel=True, wrapper=True)
         outfile = output.file
