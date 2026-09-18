@@ -134,7 +134,8 @@ class CLClusterShearCatalogs(PipelineStage):
                 elif redshift_cut_criterion == "tomo_bins":
                     source_tomo_inds, tomo_edges = z_info
                     tomo_bin_min = (tomo_edges[:,0] <= cluster_z + delta_z).sum() - 1
-                    # need to add a condition for clusters in the last tomo bin
+                    if tomo_edges[-1, 0] < cluster_z + delta_z < tomo_edges[-1, 1]:
+                        tomo_bin_min -= 1
                     z_good = (source_tomo_inds>tomo_bin_min)*(source_tomo_inds>=0)
                 else:
                     raise NotImplementedError("Not implemented other z cuts")
