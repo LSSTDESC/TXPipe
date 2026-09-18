@@ -76,7 +76,7 @@ TXTwoPoint:
     do_shear_pos: false
     flip_g2: true
     min_sep: 2.5
-    max_sep: 60.0
+    max_sep: 240.0
     nbins: 20
     verbose: 1
     subtract_mean_shear: true

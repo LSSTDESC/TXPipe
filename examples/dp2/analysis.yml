@@ -26,11 +26,15 @@ stages:
   - name: TXBlinding             # Blind the data following Muir et al
     threads_per_process: 4
   - name: TXTwoPointPlots        # Make plots of 2pt correlations
+    aliases:
+      twopoint_data_real: summary_statistics_real
   - name: TXPhotozPlotSource          # Plot the bin n(z)
     classname: TXPhotozPlot
     aliases:
         photoz_stack: shear_photoz_stack
         nz_plot: nz_source
+  - name: TXRealGaussianCovariance
+
   # - name: PZRailSummarizeSource    # Run the DIR method on the lens sample to find n(z)
   #   classname: PZRailSummarize
   #   aliases:
