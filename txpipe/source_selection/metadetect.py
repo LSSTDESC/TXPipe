@@ -102,7 +102,7 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
 
         return pz_data
 
-    def setup_output(self):
+    def setup_output(self, nbin_source):
         """
         MetaDetect outputs do not include per-object calibration values,
         only the per-bin values.
@@ -110,7 +110,7 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         # This call to the super-class method defined above sets up most of the output
         # here, so the rest of this method only does things specific to this
         # calibration scheme
-        outfile = super().setup_output()
+        outfile = super().setup_output(nbin_source)
 
         # For the metadetect we also want to save the selected bin for every variant.
         # We will need this later on in the pipeline for diagnostics.
@@ -126,7 +126,6 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
 
         # There is only global calibration information for metadetect, nothing
         # per-bin.
-        nbin_source = outfile["counts/counts"].size
         group = outfile.create_group("response")
         # Per-bin 2x2 calibration matrix
         group.create_dataset("R", (nbin_source, 2, 2), dtype="f")

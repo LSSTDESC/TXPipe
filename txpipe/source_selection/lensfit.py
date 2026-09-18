@@ -55,13 +55,12 @@ class TXSourceSelectorLensfit(TXSourceSelectorBase):
         calculators.append(LensfitCalculator(select_weak_lensing_sample, input_m_is_weighted=self.config["input_m_is_weighted"]))
         return calculators
 
-    def setup_output(self):
+    def setup_output(self, nbin_source):
         # This call to the super-class method defined above sets up most of the output
         # here, so the rest of this method only does things specific to this
         # calibration scheme
-        outfile = super().setup_output()
+        outfile = super().setup_output(nbin_source)
         n = outfile["tomography/bin"].size
-        nbin_source = outfile["counts/counts"].size
         group = outfile.create_group("response")
         group.create_dataset("K", (nbin_source,), dtype="f")
         group.create_dataset("C_N", (nbin_source, 2), dtype="f")
