@@ -36,8 +36,8 @@ TXCutShearCatalog:
     dec_col: dec
 
 TXMockGaussianPhotozStack:
-    means: [0.31, 0.49, 0.72, 1.0]
-    sigmas: [0.1, 0.2, 0.3, 0.4]
+    means: [0.6]
+    sigmas: [0.2]
 
 
 TXSourceSelectorMetadetect:
@@ -48,6 +48,7 @@ TXSourceSelectorMetadetect:
     s2n_cut: 10.0
     delta_gamma: 0.02
     source_zbin_edges: [0.1, 0.4, 0.6, 0.8, 3.0]
+    do_tomography: false
 
 TXSourceTomography: 
     bands: [r, i, z]

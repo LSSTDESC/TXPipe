@@ -149,7 +149,7 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
         pz_data = {}
         variants = ["", "_1p", "_2p", "_1m", "_2m"]
         for v in variants:
-            pz_data[f"zbin{v}"] = np.zeros(shear_data["ra"], dtype=int)
+            pz_data[f"zbin{v}"] = np.zeros(shear_data["ra"].size, dtype=int)
         return pz_data
 
 

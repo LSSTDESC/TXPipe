@@ -106,7 +106,7 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         pz_data = {}
         variants = ["ns/", "1p/", "2p/", "1m/", "2m/"]
         for v in variants:
-            pz_data[f"{v}zbin"] = np.zeros(shear_data[f"{v}ra"], dtype=int)
+            pz_data[f"{v}zbin"] = np.zeros(shear_data[f"{v}ra"].size, dtype=int)
         return pz_data
 
 
