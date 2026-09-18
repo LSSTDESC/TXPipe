@@ -3,7 +3,6 @@ from ..data_types import ShearCatalog, FitsFile
 from .dp1_details import (
     DP1_TRACTS,
     DP1_COSMOLOGY_TRACTS,
-    ALL_TRACTS,
 )
 from ceci.config import StageParameter
 import numpy as np
@@ -76,6 +75,17 @@ class TXIngestAnacal(TXIngestCatalogFits):
             str, "gauss2",
             msg="scale radius for the convolution with Gaussian PSF",
         ),
+        "delta_gamma": StageParameter(
+            float, 0.2,
+            msg="delta gamma value used for the analytical shearing."
+        ),
+        "add_psf_properties": StageParameter(
+            bool, True,
+            msg="Emit per-band psf_g1/psf_g2/psf_T_mean (one set per band in "
+                "'bands') from the PSF HSM second moments "
+                "(lsst_<band>_ext_shapeHSM_HsmPsfMoments_*). Set False for "
+                "catalogs that predate doPsfHsmMoments.",
+        ),
     }
 
     def run(self):
@@ -120,7 +130,11 @@ class TXIngestAnacal(TXIngestCatalogFits):
         elif self.config["cosmology_tracts_only"]:
             tracts = DP1_COSMOLOGY_TRACTS
         else:
-            tracts = ALL_TRACTS
+            # No explicit selection: ingest every tract present in the
+            # collection (works for any survey, incl. DP2). Previously this
+            # fell back to the DP1 ALL_TRACTS list, which selects nothing on
+            # a DP2 collection.
+            tracts = None
 
         object_name = self.config["butler_object_name"]
         n = self.get_catalog_size(butler, object_name)
@@ -132,7 +146,7 @@ class TXIngestAnacal(TXIngestCatalogFits):
         shear_start = 0
         for i, ref in enumerate(data_set_refs):
             tract = ref.dataId["tract"]
-            if tract not in tracts:
+            if tracts is not None and tract not in tracts:
                 print(
                     f"Skipping chunk {i + 1} / {n_chunks} since tract "
                     f"{tract} is not selected"
@@ -210,7 +224,7 @@ class TXIngestAnacal(TXIngestCatalogFits):
             "ra",
             "dec",
             "wsel",
-            "mask_value",
+            "n_mask_base",
             f"{prefix}_e1",
             f"{prefix}_e2",
             f"{prefix}_m00",
@@ -252,6 +266,22 @@ class TXIngestAnacal(TXIngestCatalogFits):
         # TXSourceSelectorAnaCal.
         cols += ["esq", "desq_dg1", "desq_dg2"]
 
+        # Per-band extinction lsst_a_<band> from the merged catalog.
+        cols += self._extinction_source_columns()
+
+        # PSF second moments -> per-band psf_g1/psf_g2/psf_T_mean (see
+        # process_anacal_shear_data), one set per band in ``bands``. The
+        # flag column lets us NaN out failed HSM measurements.
+        if self.config["add_psf_properties"]:
+            for b in bands:
+                base = f"lsst_{b}_ext_shapeHSM_HsmPsfMoments"
+                cols += [
+                    f"{base}_xx",
+                    f"{base}_yy",
+                    f"{base}_xy",
+                    f"{base}_flag",
+                ]
+
         # zmode_0 → mean_z; zmode_1p, zmode_1m, zmode_2p, zmode_2m → the
         # metacal-style shifted variants (built with dg=0.01 in xlens'
         # photoZPipe, so TXSourceSelectorAnaCal must use delta_gamma=0.01).
@@ -264,20 +294,137 @@ class TXIngestAnacal(TXIngestCatalogFits):
         s = self.config["scale"]
         output = {name: data[name][:] for name in data.colnames}
 
+        prefix = self.config["prefix"]
+        dg = self.config["delta_gamma"]
+        # Column names work for both an astropy Table (butler mode) and a
+        # numpy/FITS structured array (file mode).
+        colnames = list(getattr(data, "colnames", None) or data.dtype.names)
+        # The dm computed e1/e2 columns store the pre-multiplied observable
+        # e_meas = wsel · e_raw, and "weight" is uniformly set to 1.
+        # This way downstream GGCorrelation with weight_column="weight"
+        # computes xi_e =  Σ (wsel_i e_i)(wsel_j e_j) / N_pairs instead of a
+        # ⟨wsel wsel⟩-weighted mean of raw shapes.
+        # xi_g = xi_e / <R_total>^2
+
+        # The raw shapes and wsel are
+        # still exposed as separate columns (wsel, e1_raw, e2_raw) so
+        # TXSourceSelectorAnaCal can compute R_shape (⟨wsel · de/dg⟩) and
+        # R_detect (⟨(dwsel/dg) · e_raw⟩).
+        wsel = data["wsel"][:]
+        e1_raw = data[f"{prefix}_e1"][:]
+        e2_raw = data[f"{prefix}_e2"][:]
+        m00 = data[f"{prefix}_m00"][:]
+        m20 = data[f"{prefix}_m20"][:]
+
+        output["weight"] = np.ones_like(wsel)
+
+        # i-band S/N + shear response — passed through from the
+        # pre-computed fpfs1 columns. ``scale`` only picks the flux
+        # family for magnitudes, not S/N.
+        s2n = data["lsst_i_s2n_fpfs1"][:]
+        ds2n_dg1 = data["lsst_i_ds2n_fpfs1_dg1"][:]
+        ds2n_dg2 = data["lsst_i_ds2n_fpfs1_dg2"][:]
+
+        # Per-band AB magnitudes come pre-computed on the v3 merged
+        # catalog (xlens.add_magnitude_columns writes them at the fixed
+        # MAG_ZERO_AB zeropoint with smooth truncation and the analytic
+        # dmag/dg shear responses), so TXPipe simply forwards them
+        # rather than redoing nanojansky→mag inside the ingest.  ``mag``
+        # and ``mag_err`` both carry ``d*/dg{1,2}`` shear derivatives —
+        # exposed as ``dmag_{band}_dg{c}`` / ``dmag_err_{band}_dg{c}`` on
+        # the shear catalog so downstream stages can build ±γ variants
+        # of every quantity a mag-based cut consumes.
         for band in bands:
             f = data[f"{band}_flux_{s}"][:]
             f_err = data[f"{band}_flux_{s}_err"][:]
             output[f"mag_{band}"] = nanojansky_to_mag_ab(f)
             output[f"mag_err_{band}"] = nanojansky_err_to_mag_ab(f, f_err)
 
-            if band == "i":
-                output["s2n"] = f / f_err
+        # Per-band extinction a_<band>, from the merged catalog's
+        # lsst_a_<band> column (the mags above are NOT dereddened, so these
+        # give downstream a place to apply extinction).
+        for band in bands:
+            output[f"a_{band}"] = data[f"lsst_a_{band}"][:]
 
-            for d in ["dg1", "dg2"]:
-                dd = data[f"{band}_dflux_{s}_"+d][:]
-                output[f"mag_{band}_{d}"] = anacal_mag_response(f, dd)
-                if band == "i":
-                    output[f"ds2n_{d}"] = dd/f_err
+        # Band-combined shape magnitude + shear derivatives — feeds the
+        # |e|<emax cut and its ±γ variants in TXSourceSelectorAnaCal.
+        esq = data["esq"][:]
+        desq_dg1 = data["desq_dg1"][:]
+        desq_dg2 = data["desq_dg2"][:]
+
+        # zmode_0 → mean_z (baseline photo-z used by TXSourceSelectorAnaCal
+        # in input_pz mode for tomographic binning).
+        # zmode_{1p,1m,2p,2m} → mean_z_{1p,1m,2p,2m} (shifted variants
+        # used by the AnaCal calculator's ±γ selection response — the
+        # _DataWrapper suffix lookup routes them into the selector when it
+        # runs on the shifted samples).
+        # Photo-z point estimates from the merged catalog itself:
+        # zmode_0 → mean_z (baseline for tomographic binning), and the four
+        # shifted variants zmode_{1p,1m,2p,2m} → mean_z_{...} (photoZPipe
+        # built them at dg=0.01, so the selector must use delta_gamma=0.01).
+        for suf in ("1p", "1m", "2p", "2m"):
+            output[f"mean_z_{suf}"] = data[f"zmode_{suf}"][:]
+
+        # PSF ellipticity + size per band, from each band's PSF HSM second
+        # moments: psf_g1_{b}=(xx-yy)/(xx+yy), psf_g2_{b}=2xy/(xx+yy),
+        # psf_T_mean_{b}=xx+yy. Failed HSM fits (flag set) are NaN'd.
+        if self.config["add_psf_properties"]:
+            for b in bands:
+                base = f"lsst_{b}_ext_shapeHSM_HsmPsfMoments"
+                pxx = np.asarray(data[f"{base}_xx"][:], dtype=np.float64)
+                pyy = np.asarray(data[f"{base}_yy"][:], dtype=np.float64)
+                pxy = np.asarray(data[f"{base}_xy"][:], dtype=np.float64)
+                ptr = pxx + pyy
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    psf_g1 = (pxx - pyy) / ptr
+                    psf_g2 = 2.0 * pxy / ptr
+                bad = ~np.isfinite(ptr) | (ptr <= 0)
+                flag_col = f"{base}_flag"
+                if flag_col in colnames:
+                    bad |= np.asarray(data[flag_col][:], dtype=bool)
+                psf_g1[bad] = np.nan
+                psf_g2[bad] = np.nan
+                ptr = ptr.copy()
+                ptr[bad] = np.nan
+                output[f"psf_g1_{b}"] = psf_g1
+                output[f"psf_g2_{b}"] = psf_g2
+                output[f"psf_T_mean_{b}"] = ptr
+
+        # shifted values that are needed for selection
+        output["s2n_1p"] = s2n + dg * ds2n_dg1
+        output["s2n_1m"] = s2n - dg * ds2n_dg1
+        output["s2n_2p"] = s2n + dg * ds2n_dg2
+        output["s2n_2m"] = s2n - dg * ds2n_dg2
+
+        # values needed already saved into output earlier
+        dm00_dg1 = data[f"{prefix}_dm00_dg1"][:]
+        dm00_dg2 = data[f"{prefix}_dm00_dg2"][:]
+        dm20_dg1 = data[f"{prefix}_dm20_dg1"][:]
+        dm20_dg2 = data[f"{prefix}_dm20_dg2"][:]
+
+        output["m00_1p"] = m00 + dg * dm00_dg1
+        output["m00_1m"] = m00 - dg * dm00_dg1
+        output["m00_2p"] = m00 + dg * dm00_dg2
+        output["m00_2m"] = m00 - dg * dm00_dg2
+        output["m20_1p"] = m20 + dg * dm20_dg1
+        output["m20_1m"] = m20 - dg * dm20_dg1
+        output["m20_2p"] = m20 + dg * dm20_dg2
+        output["m20_2m"] = m20 - dg * dm20_dg2
+
+        output["esq_1p"] = esq + dg * desq_dg1
+        output["esq_1m"] = esq - dg * desq_dg1
+        output["esq_2p"] = esq + dg * desq_dg2
+        output["esq_2m"] = esq - dg * desq_dg2
+
+        for band in bands:
+            b = f"lsst_{band}"
+            mag = data[f"{b}_mag_{s}"][:]
+            dmag_dg1 = data[f"{b}_dmag_{s}_dg1"][:]
+            dmag_dg2 =  data[f"{b}_dmag_{s}_dg2"][:]
+            output[f"mag_{band}_1p"] = mag + dg * dmag_dg1
+            output[f"mag_{band}_1m"] = mag - dg * dmag_dg1
+            output[f"mag_{band}_2p"] = mag + dg * dmag_dg2
+            output[f"mag_{band}_2m"] = mag - dg * dmag_dg2
 
         return output
 
@@ -296,6 +443,11 @@ class TXIngestAnacal(TXIngestCatalogFits):
             if np.ma.isMaskedArray(col):
                 col = col.filled(np.nan)
             g[name][start:end] = col
+
+    def _extinction_source_columns(self):
+        """Catalog columns that hold per-band extinction, if present:
+        ``lsst_a_<band>`` for each band in the config ``bands``."""
+        return [f"lsst_a_{band}" for band in self.config["bands"]]
 
     def get_catalog_size(self, butler, dataset_type):
         import pyarrow.parquet

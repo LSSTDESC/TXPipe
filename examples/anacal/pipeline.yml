@@ -3,6 +3,7 @@
 
 stages:
   - name: TXSourceSelectorAnaCal
+  - name: TXShearCalibration
 
 output_dir: data/example/output_anacal
 

@@ -72,3 +72,8 @@ TXSourceSelectorAnaCal:
     true_z: false
     verbose: True
     chunk_rows: 100000
+
+TXShearCalibration:
+    shear_catalog_type: anacal
+    subtract_mean_shear: true
+    chunk_rows: 100000

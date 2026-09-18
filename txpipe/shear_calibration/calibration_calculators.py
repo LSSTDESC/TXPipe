@@ -919,7 +919,7 @@ class AnaCalCalculator(CalibrationCalculator):
         # routes ``data_1p["s2n"] -> data["s2n_1p"]``,
         # ``data_1p["m00"] -> data["m00_1p"]``,
         # ``data_1p["zbin"] -> data["zbin_1p"]``, etc.
-        # Columns without a matching variant (mask_value, e1, weight, ...)
+        # Columns without a matching variant (n_mask_base, e1, weight, ...)
         # fall back to baseline.
         data_00 = _DataWrapper(data, "")
         data_1p = _DataWrapper(data, "_1p")
