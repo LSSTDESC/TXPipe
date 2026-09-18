@@ -55,6 +55,7 @@ class TXSourceSelectorBase(PipelineStage):
             msg="Signal-to-noise cut threshold for object selection",
         ),
         "chunk_rows": StageParameter(int, 10000, msg="Number of rows to process in each chunk"),
+        "do_tomography": StageParameter(bool, True, msg="If false, skip tomography and just select everything into bin 0. Other cuts are still applied."),
         "source_zbin_edges": StageParameter(list, required=True, msg="Redshift bin edges for source tomography"),
     }
 
@@ -129,6 +130,11 @@ class TXSourceSelectorBase(PipelineStage):
         if self.config["true_z"] or self.config["input_pz"]:
             def tomography_classifier(start, end, shear_data):
                 return self.apply_simple_redshift_cut(shear_data)
+            return tomography_classifier
+
+        if not self.config["do_tomography"]:
+            def tomography_classifier(start, end, shear_data):
+                return {"zbin": np.zeros(shear_data['ra'].size, dtype=int)}
             return tomography_classifier
     
         # Are we using a metacal or lensfit catalog?
