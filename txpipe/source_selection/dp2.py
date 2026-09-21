@@ -27,6 +27,7 @@ class TXSourceSelectorMetadetectDP2(TXSourceSelectorMetadetect):
         "ri_cut": StageParameter(float, required=True, msg="Color cut threshold for object selection"),
         "iz_cut": StageParameter(float, required=True, msg="Color cut threshold for object selection"),
         "mfrac_cut": StageParameter(float, required=True, msg="mfrac threshold for object selection"),
+        "gauss_T_cut": StageParameter(float, required=True, msg="gauss_T threshold for object selection"),
     }
 
     def data_iterator(self):
@@ -35,7 +36,7 @@ class TXSourceSelectorMetadetectDP2(TXSourceSelectorMetadetect):
         bands = self.config["bands"]
 
         # Core quantities we need
-        shear_cols = metadetect_variants("T", "s2n", "g1", "g2", "ra", "dec", "weight", "psf_T_mean", "flags", "object_mask_fraction", "pgauss_T", "pgauss_TErr", "gauss_flags", "pgauss_flags", "gauss_shape_flags", "is_primary", "gauss_object_flags", "pgauss_object_flags", "psfOriginal_flags", "gauss_psfReconvolved_flags", "g_gaussFlux_flags", "g_pgaussFlux_flags", "r_gaussFlux_flags", "r_pgaussFlux_flags", "i_gaussFlux_flags", "i_pgaussFlux_flags", "z_gaussFlux_flags", "z_pgaussFlux_flags")
+        shear_cols = metadetect_variants("T", "s2n", "g1", "g2", "ra", "dec", "weight", "psf_T_mean", "flags", "object_mask_fraction", "pgauss_T", "pgauss_TErr", "gauss_flags", "pgauss_flags", "gauss_shape_flags", "is_primary", "gauss_object_flags", "pgauss_object_flags", "psfOriginal_flags", "gauss_psfReconvolved_flags", "g_gaussFlux_flags", "g_pgaussFlux_flags", "r_gaussFlux_flags", "r_pgaussFlux_flags", "i_gaussFlux_flags", "i_pgaussFlux_flags", "z_gaussFlux_flags", "z_pgaussFlux_flags", "gauss_T")
 
         # Magnitudes and errors
         shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="metadetect")
@@ -86,6 +87,8 @@ def select_weak_lensing_sample_metadetect_dp2(data, config, calling_from_select=
     gmr_cut = config["gr_cut"]
     rmi_cut = config["ri_cut"]
     imz_cut = config["iz_cut"]
+    gauss_T_cut = config['gauss_T_cut']
+    mfrac_cut = config['mfrac_cut']
 
     # We should also have some crazy color cuts and magnitude cuts which should come from PZ group
     sel &= (data["mag_g"] < mag_g_cut) & \
@@ -94,22 +97,14 @@ def select_weak_lensing_sample_metadetect_dp2(data, config, calling_from_select=
         (data["mag_z"] < mag_z_cut) & \
         (np.abs(data["mag_g"] - data["mag_r"]) < gmr_cut) & \
         (np.abs(data["mag_r"] - data["mag_i"]) < rmi_cut) & \
-        (np.abs(data["mag_i"] - data["mag_z"]) < imz_cut)
-
-    # Follow the same pattern as select_weak_lensing_sample, but add extra cuts for metadetect catalogs.:
-    mfrac_cut = config["mfrac_cut"]
-    mfrac = data["object_mask_fraction"]
-    sel &= mfrac < mfrac_cut
+        (np.abs(data["mag_i"] - data["mag_z"]) < imz_cut) & \
+        (data['gauss_T'] < gauss_T_cut) & \
+        (data['mfrac'] < mfrac_cut)
 
     # Adding all the flags cut to make sure we are not using any objects with flags set.
-    sel &= (data["gauss_flags"] == 0) & \
-            (data["pgauss_flags"] == 0) & \
-            (data["gauss_shape_flags"] == 0) & \
-            (data["gauss_object_flags"] == 0) & \
-            (data["pgauss_object_flags"] == 0) & \
-            (data["psfOriginal_flags"] == 0) & \
-            (data["gauss_psfReconvolved_flags"] == 0) &\
-            (data["is_primary"] == True)
+    # The flags was made from all the ohter ones.
+    # is_primary should actually automatically be true
+    sel &= (data["flags"] == 0) & (data["is_primary"] == True)
 
     return sel
 
