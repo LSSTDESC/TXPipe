@@ -490,7 +490,7 @@ class MapsFile(HDFFile):
             hdf5_group=f"maps/{map_name}/healsparse",
         )
 
-    def plot_healpix(
+    def plot(
         self,
         map_name,
         view="McBryde",
@@ -518,15 +518,16 @@ class MapsFile(HDFFile):
             skyproj plotting function (e.g. ``vmin``, ``vmax``,).
         """
         import skyproj
+        import matplotlib.pyplot as plt
         hsp_map = self.read_map(map_name)
         skyproj_class = getattr(skyproj, view + "Skyproj")
         projection = skyproj_class(ax=ax)
         projection.draw_hspmap(hsp_map, **kwargs)
+        plt.title(map_name)
+        plt.tick_params(labeltop=False)
         if cbar:
-            projection.draw_colorbar(ax=ax)
-
-
-        
+            projection.draw_colorbar()
+        plt.tight_layout()
 
 
     def read_gnomonic(self, map_name):

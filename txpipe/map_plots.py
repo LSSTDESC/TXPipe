@@ -28,7 +28,6 @@ class TXMapPlots(PipelineStage):
         ("density_maps", MapsFile),
         ("mask", MapsFile),
         ("psf_maps", MapsFile),
-        ("flag_maps", MapsFile),
         ("depth_map", MapsFile),
         ("bright_object_map", MapsFile),
     ]
@@ -37,7 +36,6 @@ class TXMapPlots(PipelineStage):
         ("depth_map_plot", PNGFile),
         ("lens_map_plot", PNGFile),
         ("shear_map_plot", PNGFile),
-        ("flag_map_plot", PNGFile),
         ("psf_map_plot", PNGFile),
         ("mask_map_plot", PNGFile),
         ("bright_object_map_plot", PNGFile),
@@ -58,24 +56,30 @@ class TXMapPlots(PipelineStage):
         matplotlib.use("agg")
         import matplotlib.pyplot as plt
 
-        # Plot from each file separately, just
-        # to organize this file a bit
-        methods = [
-            self.aux_lens_plots,
-            self.source_plots,
-            self.lens_plots,
-            self.mask_plots,
-        ]
+        self.source_plots()
+        self.lens_plots()
+        self.mask_plots()
+        self.aux_lens_plots()
+        self.psf_maps()
 
-        # We don't want this to fail if some maps are missing.
-        for m in methods:
-            try:
-                m()
-            except:
-                if self.config["debug"]:
-                    raise
-                sys.stderr.write(f"Failed to make maps with method {m.__name__}")
+    def psf_maps(self):
+        """
+        Plot PSF maps
+        """
+        import matplotlib.pyplot as plt
+        if self.get_input("psf_maps") == "none":
+            self.make_empty_plot("psf_map")
+            return
 
+        psf_maps = self.open_input("psf_maps", wrapper=True)
+        nbin_source = psf_maps.file["maps"].attrs["nbin_source"]
+        with self.open_output("psf_map_plot", wrapper=True, figsize=(5 * nbin_source, 10)) as fig:
+            _, axes = plt.subplots(2, nbin_source, squeeze=False, num=fig.file.number)
+            for i in range(nbin_source):
+                psf_maps.plot(f"psf/g1_{i}", ax=axes[0, i])
+                psf_maps.plot(f"psf/g2_{i}", ax=axes[1, i])
+
+        
 
     def aux_lens_plots(self):
         """
@@ -194,6 +198,8 @@ class TXMapPlots(PipelineStage):
             m.plot("mask")
 
     def make_empty_plot(self, tag):
+        import matplotlib.pyplot as plt
+        print("Generating empty plot for: ", tag)
         with self.open_output(tag + "_plot", wrapper=True) as f:
             plt.title(f"No map generated for {tag}")
 
