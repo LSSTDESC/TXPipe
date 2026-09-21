@@ -282,7 +282,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         # Now loop through each chunk of input data, one at a time.
         # Each time we get a new segment of data, which goes to all the plotters
         for start, end, data in it:
-            print(f"Read data {start} - {end}")
+            print(f"Process {self.rank} read data {start:,} - {end:,}")
             # This causes each data = yield statement in each plotter to
             # be given this data chunk as the variable data.
 
@@ -804,7 +804,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 )
                 plt.bar(
                     mids,
-                    weight,
+                    weight * (count.sum()/weight.sum()),
                     width=width,
                     align="center",
                     color="none",
@@ -813,7 +813,6 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 )
                 plt.xlabel(f"g{i}")
                 plt.ylabel("Count")
-                plt.ylim(0, 1.1 * max(count1))
                 plt.legend()
 
     def plot_snr_histogram(self):

@@ -125,3 +125,8 @@ TXPhotozPlotSource:
 TXDiagnosticQuantiles:
     name: TXDiagnosticQuantiles
     use_psf_originals: true
+
+
+TXSourceDiagnosticPlots:
+    name: TXSourceDiagnosticPlots
+    use_psf_originals: true
