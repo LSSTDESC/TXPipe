@@ -152,37 +152,14 @@ class TXMapPlots(PipelineStage):
 
         for i in range(nbin_source):
             sp = skyproj.McBrydeSkyproj(ax=axes[0, i])
-            m = m.read_map(f"g1_{i}")
-            sp.draw_hspmap(m)            
+            g1 = m.read_map(f"g1_{i}")
+            sp.draw_hspmap(g1)
+            sp.draw_colorbar()
 
             sp = skyproj.McBrydeSkyproj(ax=axes[1, i])
-            m = m.read_map(f"g2_{i}")
-            sp.draw_hspmap(m)            
-            # g1
-            # plt.sca(axes[0, i])
-            # m.plot(
-            #     f"g1_{i}",
-            #     view=self.config["projection"],
-            #     nside=self.config["nside"],
-            #     reduction="weightedmean",
-            #     weight_map=fracdet_mask,
-            #     rot180=self.config["rot180"],
-            #     min=-0.1,
-            #     max=0.1,
-            # )
-
-            # g2
-            # plt.sca(axes[1, i])
-            # m.plot(
-            #     f"g2_{i}",
-            #     view=self.config["projection"],
-            #     nside=self.config["nside"],
-            #     reduction="weightedmean",
-            #     weight_map=mask,
-            #     rot180=self.config["rot180"],
-            #     min=-0.1,
-            #     max=0.1,
-            # )
+            g2 = m.read_map(f"g2_{i}")
+            sp.draw_hspmap(g2)
+            sp.draw_colorbar()
         fig.close()
 
     def lens_plots(self):
@@ -196,7 +173,7 @@ class TXMapPlots(PipelineStage):
 
         if self.get_input("lens_maps") == "none":
             for map_type in ["lens_map"]:
-                with self.open_output(map_type = "_plot", wrapper=True) as f:
+                with self.open_output(map_type + "_plot", wrapper=True) as f:
                     plt.title(f"No map generated for {map_type}")
             return
 
