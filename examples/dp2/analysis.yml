@@ -20,8 +20,8 @@ stages:
     aliases:
       photoz_stack: shear_photoz_stack
   - name: TXTwoPoint             # Compute real-space 2-point correlations
-    threads_per_process: 64
-    nprocess: 2
+    threads_per_process: 128
+    nprocess: 1
     nodes: 1
   - name: TXBlinding             # Blind the data following Muir et al
     threads_per_process: 4
