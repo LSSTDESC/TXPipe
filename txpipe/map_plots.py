@@ -61,7 +61,7 @@ class TXMapPlots(PipelineStage):
         # Plot from each file separately, just
         # to organize this file a bit
         methods = [
-            self.aux_source_plots,
+
             self.aux_lens_plots,
             self.source_plots,
             self.lens_plots,
@@ -77,70 +77,6 @@ class TXMapPlots(PipelineStage):
                     raise
                 sys.stderr.write(f"Failed to make maps with method {m.__name__}")
 
-    def aux_source_plots(self):
-        """
-        Plot source auxiliary maps
-
-        Auxiliary maps are at their native Nside so we typically degrade with reduction='mean'
-        """
-        import matplotlib.pyplot as plt
-
-        has_psf_maps = self.get_input("psf_maps") != "none"
-        has_flag_maps = self.get_input("flag_maps") != "none"
-
-        if has_flag_maps:
-            flag_maps = self.open_input("flag_maps", wrapper=True)
-            flag_max = flag_maps.file["maps"].attrs["flag_exponent_max"]
-
-            # Flag count plots - flags are assumed to be bitsets, so
-            # we make maps of 1, 2, 4, 8, 16, ...
-            fig = self.open_output("flag_map_plot", wrapper=True, figsize=(5 * flag_max, 5))
-            for i in range(flag_max):
-                plt.subplot(1, flag_max, i + 1)
-                f = 2**i
-                flag_maps.plot(
-                    f"flags/flag_{f}",
-                    view=self.config["projection"],
-                    nside=self.config["nside"],
-                    reduction="sum",
-                    rot180=self.config["rot180"],
-                )
-            fig.close()
-        else:
-            with self.open_output("flag_maps_plot", wrapper=True) as f:
-                plt.title("No map generated for flag_maps")
-
-        if has_psf_maps:
-            psf_maps = self.open_input("psf_maps", wrapper=True)
-            # Get this config option from the maps where
-            # it was originally saved
-            nbin_source = psf_maps.file["maps"].attrs["nbin_source"]
-
-            # PSF plots - 2 x n, for g1 and g2
-            fig = self.open_output("psf_map_plot", wrapper=True, figsize=(5 * nbin_source, 10))
-            _, axes = plt.subplots(2, nbin_source, squeeze=False, num=fig.file.number)
-            for i in range(nbin_source):
-                plt.sca(axes[0, i])
-                psf_maps.plot(
-                    f"psf/g1_{i}",
-                    view=self.config["projection"],
-                    nside=self.config["nside"],
-                    reduction="mean",
-                    rot180=self.config["rot180"],
-                )
-                plt.sca(axes[1, i])
-                psf_maps.plot(
-                    f"psf/g2_{i}",
-                    view=self.config["projection"],
-                    nside=self.config["nside"],
-                    reduction="mean",
-                    rot180=self.config["rot180"],
-                )
-
-            fig.close()
-        else:
-            with self.open_output("psf_map_plot", wrapper=True) as f:
-                plt.title("No map generated for psf_map")
 
     def aux_lens_plots(self):
         """
