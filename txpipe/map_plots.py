@@ -189,6 +189,7 @@ class TXMapPlots(PipelineStage):
         so we typically degrade with reduction='weightedmean'
         """
         import matplotlib.pyplot as plt
+        import skyproj
 
         if self.get_input("source_maps") == "none":
             for map_type in ["shear_map"]:
@@ -201,10 +202,10 @@ class TXMapPlots(PipelineStage):
         # If the maps require a degrade the reduction will be a weighted mean
         # so we load the mask here at the same nside as the map (to be used as weights)
         nside = m.read_map_info("g1_0")["nside"]
-        with self.open_input("mask", wrapper=True) as f:
-            mask = f.read_mask(
-                "mask", thresh=self.config["mask_threshold"], degrade_nside=nside
-            )
+        # with self.open_input("mask", wrapper=True) as f:
+        #     # this is the high-res mask
+        #     mask = f.read_mask()
+        # fracdet_mask = mask.fracdet_map(nside)
 
         nbin_source = m.file["maps"].attrs["nbin_source"]
 
@@ -214,31 +215,38 @@ class TXMapPlots(PipelineStage):
         _, axes = plt.subplots(2, nbin_source, squeeze=False, num=fig.file.number)
 
         for i in range(nbin_source):
+            sp = skyproj.McBrydeSkyproj(ax=axes[0, i])
+            m = m.read_map(f"g1_{i}")
+            sp.draw_hspmap(m)            
+
+            sp = skyproj.McBrydeSkyproj(ax=axes[1, i])
+            m = m.read_map(f"g2_{i}")
+            sp.draw_hspmap(m)            
             # g1
-            plt.sca(axes[0, i])
-            m.plot(
-                f"g1_{i}",
-                view=self.config["projection"],
-                nside=self.config["nside"],
-                reduction="weightedmean",
-                weight_map=mask,
-                rot180=self.config["rot180"],
-                min=-0.1,
-                max=0.1,
-            )
+            # plt.sca(axes[0, i])
+            # m.plot(
+            #     f"g1_{i}",
+            #     view=self.config["projection"],
+            #     nside=self.config["nside"],
+            #     reduction="weightedmean",
+            #     weight_map=fracdet_mask,
+            #     rot180=self.config["rot180"],
+            #     min=-0.1,
+            #     max=0.1,
+            # )
 
             # g2
-            plt.sca(axes[1, i])
-            m.plot(
-                f"g2_{i}",
-                view=self.config["projection"],
-                nside=self.config["nside"],
-                reduction="weightedmean",
-                weight_map=mask,
-                rot180=self.config["rot180"],
-                min=-0.1,
-                max=0.1,
-            )
+            # plt.sca(axes[1, i])
+            # m.plot(
+            #     f"g2_{i}",
+            #     view=self.config["projection"],
+            #     nside=self.config["nside"],
+            #     reduction="weightedmean",
+            #     weight_map=mask,
+            #     rot180=self.config["rot180"],
+            #     min=-0.1,
+            #     max=0.1,
+            # )
         fig.close()
 
     def lens_plots(self):
