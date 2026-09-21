@@ -61,7 +61,6 @@ class TXMapPlots(PipelineStage):
         # Plot from each file separately, just
         # to organize this file a bit
         methods = [
-
             self.aux_lens_plots,
             self.source_plots,
             self.lens_plots,
@@ -92,30 +91,16 @@ class TXMapPlots(PipelineStage):
         if has_depth_map:
             depth_maps = self.open_input("depth_map", wrapper=True)
             with self.open_output("depth_map_plot", wrapper=True, figsize=(5, 5)) as fig:
-                depth_maps.plot(
-                    "depth/depth",
-                    view=self.config["projection"],
-                    nside=self.config["nside"],
-                    reduction="mean",
-                    rot180=self.config["rot180"],
-                )
+                depth_maps.plot("depth/depth")
         else:
-            with self.open_output("depth_map_plot", wrapper=True) as f:
-                plt.title("No map generated for depth_map")
+            self.make_empty_plot("depth_map")
 
         if has_bright_object_map:
             bright_object_maps = self.open_input("bright_object_map", wrapper=True)
             with self.open_output("bright_object_map_plot", wrapper=True, figsize=(5, 5)) as fig:
-                bright_object_maps.plot(
-                    "bright_objects/count",
-                    view=self.config["projection"],
-                    nside=self.config["nside"],
-                    reduction="mean",
-                    rot180=self.config["rot180"],
-                )
+                bright_object_maps.plot("bright_objects/count")
         else:
-            with self.open_output("bright_object_map_plot", wrapper=True) as f:
-                plt.title("No map generated for bright_object_map")
+            self.make_empty_plot("bright_object_map")
 
     def source_plots(self):
         """
@@ -128,39 +113,19 @@ class TXMapPlots(PipelineStage):
         import skyproj
 
         if self.get_input("source_maps") == "none":
-            for map_type in ["shear_map"]:
-                with self.open_output(map_type + "_plot", wrapper=True) as f:
-                    plt.title(f"No map generated for {map_type}")
+            self.make_empty_plot("shear_map")
             return
 
         m = self.open_input("source_maps", wrapper=True)
 
-        # If the maps require a degrade the reduction will be a weighted mean
-        # so we load the mask here at the same nside as the map (to be used as weights)
-        nside = m.read_map_info("g1_0")["nside"]
-        # with self.open_input("mask", wrapper=True) as f:
-        #     # this is the high-res mask
-        #     mask = f.read_mask()
-        # fracdet_mask = mask.fracdet_map(nside)
-
         nbin_source = m.file["maps"].attrs["nbin_source"]
+        with self.open_output("shear_map_plot", wrapper=True, figsize=(5 * nbin_source, 10)) as fig:
+            # Plot 2 x nbin, g1 and g2
+            _, axes = plt.subplots(2, nbin_source, squeeze=False, num=fig.file.number)
 
-        fig = self.open_output("shear_map_plot", wrapper=True, figsize=(5 * nbin_source, 10))
-
-        # Plot 2 x nbin, g1 and g2
-        _, axes = plt.subplots(2, nbin_source, squeeze=False, num=fig.file.number)
-
-        for i in range(nbin_source):
-            sp = skyproj.McBrydeSkyproj(ax=axes[0, i])
-            g1 = m.read_map(f"g1_{i}")
-            sp.draw_hspmap(g1)
-            sp.draw_colorbar()
-
-            sp = skyproj.McBrydeSkyproj(ax=axes[1, i])
-            g2 = m.read_map(f"g2_{i}")
-            sp.draw_hspmap(g2)
-            sp.draw_colorbar()
-        fig.close()
+            for i in range(nbin_source):
+                m.plot(f"g1_{i}", ax=axes[0, i])
+                m.plot(f"g2_{i}", ax=axes[1, i])
 
     def lens_plots(self):
         """
@@ -220,22 +185,17 @@ class TXMapPlots(PipelineStage):
         import matplotlib.pyplot as plt
 
         if self.get_input("mask") == "none":
-            for map_type in ["mask_map"]:
-                with self.open_output(map_type + "_plot", wrapper=True) as f:
-                    plt.title(f"No map generated for {map_type}")
+            self.make_empty_plot("mask_map")
             return
 
         m = self.open_input("mask", wrapper=True)
 
-        fig = self.open_output("mask_map_plot", wrapper=True, figsize=(5, 5))
-        m.plot(
-            "mask",
-            view=self.config["projection"],
-            nside=self.config["nside"],
-            reduction="mask",
-            rot180=self.config["rot180"],
-        )
-        fig.close()
+        with self.open_output("mask_map_plot", wrapper=True, figsize=(5, 5)) as f:
+            m.plot("mask")
+
+    def make_empty_plot(self, tag):
+        with self.open_output(tag + "_plot", wrapper=True) as f:
+            plt.title(f"No map generated for {tag}")
 
 
 class TXMapPlotsSSI(TXMapPlots):

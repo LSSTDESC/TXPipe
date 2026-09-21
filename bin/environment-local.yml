@@ -32,6 +32,7 @@ dependencies:
   - qp-prob=1.0.*
   - scikit-learn=1.7.*
   - scipy=1.16.*
+  - skyproj=2.5.*
   - somoclu=1.7.*
   - tables-io-full=1.0.*
   - tabulate=0.9.*
