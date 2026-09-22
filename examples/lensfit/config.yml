@@ -170,7 +170,7 @@ TXLensDiagnosticPlots:
 
 
 TXMapPlots:
-    projection: moll
+    projection: McBryde
 
 TXDiagnosticMaps:
     sparse: true  # Generate sparse maps - faster if using small areas

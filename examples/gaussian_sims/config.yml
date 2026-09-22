@@ -58,10 +58,10 @@ TXSimpleMask:
 
 
 TXMapPlots:
-    projection: "moll"
+    projection: Mollweide
 
 TXConvergenceMapPlots:
-    projection: "moll"
+    projection: Mollweide
 
 TXSourceSelectorMetadetect:
     input_pz: False

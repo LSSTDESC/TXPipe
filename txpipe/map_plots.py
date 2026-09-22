@@ -41,9 +41,7 @@ class TXMapPlots(PipelineStage):
         ("bright_object_map_plot", PNGFile),
     ]
     config_options = {
-        "projection": StageParameter(str, "cart", msg="Projection type for map plots (e.g., cart, moll)"),
-        "rot180": StageParameter(bool, False, msg="Whether to rotate the map by 180 degrees"),
-        "debug": StageParameter(bool, False, msg="Enable debug mode for plotting"),
+        "projection": StageParameter(str, "McBryde", msg="Skyproj projection type for map plots (e.g., McBryde, Mollweide)"),
         "mask_threshold": StageParameter(
             float, 0.0, msg="Threshold for masking pixels"
         ),
@@ -73,11 +71,12 @@ class TXMapPlots(PipelineStage):
 
         psf_maps = self.open_input("psf_maps", wrapper=True)
         nbin_source = psf_maps.file["maps"].attrs["nbin_source"]
+        projection = self.config['projection']
         with self.open_output("psf_map_plot", wrapper=True, figsize=(5 * nbin_source, 10)) as fig:
             _, axes = plt.subplots(2, nbin_source, squeeze=False, num=fig.file.number)
             for i in range(nbin_source):
-                psf_maps.plot(f"psf/g1_{i}", ax=axes[0, i])
-                psf_maps.plot(f"psf/g2_{i}", ax=axes[1, i])
+                psf_maps.plot(f"psf/g1_{i}", ax=axes[0, i], view=projection)
+                psf_maps.plot(f"psf/g2_{i}", ax=axes[1, i], view=projection)
 
         
 
@@ -91,18 +90,19 @@ class TXMapPlots(PipelineStage):
 
         has_depth_map = self.get_input("depth_map") != "none"
         has_bright_object_map = self.get_input("bright_object_map") != "none"
+        projection = self.config['projection']
 
         if has_depth_map:
             depth_maps = self.open_input("depth_map", wrapper=True)
             with self.open_output("depth_map_plot", wrapper=True, figsize=(5, 5)) as fig:
-                depth_maps.plot("depth/depth")
+                depth_maps.plot("depth/depth", view=projection)
         else:
             self.make_empty_plot("depth_map")
 
         if has_bright_object_map:
             bright_object_maps = self.open_input("bright_object_map", wrapper=True)
             with self.open_output("bright_object_map_plot", wrapper=True, figsize=(5, 5)) as fig:
-                bright_object_maps.plot("bright_objects/count")
+                bright_object_maps.plot("bright_objects/count", view=projection)
         else:
             self.make_empty_plot("bright_object_map")
 
@@ -120,6 +120,7 @@ class TXMapPlots(PipelineStage):
             self.make_empty_plot("shear_map")
             return
 
+        projection = self.config['projection']
         m = self.open_input("source_maps", wrapper=True)
 
         nbin_source = m.file["maps"].attrs["nbin_source"]
@@ -128,8 +129,8 @@ class TXMapPlots(PipelineStage):
             _, axes = plt.subplots(2, nbin_source, squeeze=False, num=fig.file.number)
 
             for i in range(nbin_source):
-                m.plot(f"g1_{i}", ax=axes[0, i])
-                m.plot(f"g2_{i}", ax=axes[1, i])
+                m.plot(f"g1_{i}", ax=axes[0, i], view=projection)
+                m.plot(f"g2_{i}", ax=axes[1, i], view=projection)
 
     def lens_plots(self):
         """
@@ -150,35 +151,20 @@ class TXMapPlots(PipelineStage):
         rho = self.open_input("density_maps", wrapper=True)
         nbin_lens = m.file["maps"].attrs["nbin_lens"]
 
-        # If the maps require a degrade the reduction will be a weighted mean
-        # so we load the mask here at the same nside as the map (to be used as weights)
-        nside = rho.read_map_info("delta_0")["nside"]
-        with self.open_input("mask", wrapper=True) as f:
-            mask = f.read_mask(
-                "mask", thresh=self.config["mask_threshold"], degrade_nside=nside
-            )
-
         # Plot both density and ngal as 2 x n
         fig = self.open_output("lens_map_plot", wrapper=True, figsize=(5 * nbin_lens, 5))
         _, axes = plt.subplots(2, nbin_lens, squeeze=False, num=fig.file.number)
 
         for i in range(nbin_lens):
-            plt.sca(axes[0, i])
             m.plot(
                 f"ngal_{i}",
                 view=self.config["projection"],
-                nside=self.config["nside"],
-                reduction="sum",
-                rot180=self.config["rot180"],
+                ax=axes[0, i],
             )
-            plt.sca(axes[1, i])
             rho.plot(
                 f"delta_{i}",
                 view=self.config["projection"],
-                nside=self.config["nside"],
-                reduction="weightedmean",
-                weight_map=mask,
-                rot180=self.config["rot180"],
+                ax=axes[1, i],
             )
         fig.close()
 
@@ -235,18 +221,7 @@ class TXMapPlotsSSI(TXMapPlots):
 
         # Plot from each file separately, just
         # to organize this file a bit
-        methods = [
-            self.aux_ssi_plots,
-        ]
-
-        # We don't want this to fail if some maps are missing.
-        for m in methods:
-            try:
-                m()
-            except:
-                if self.config["debug"]:
-                    raise
-                sys.stderr.write(f"Failed to make maps with method {m.__name__}")
+        self.aux_ssi_plots()
 
     def aux_ssi_plots(self):
         import matplotlib.pyplot as plt
@@ -255,8 +230,7 @@ class TXMapPlotsSSI(TXMapPlots):
             # Make empty plots if no data available, so that the
             # pipeline thinks it is complete.
             for map_type in ["depth_ssi_meas_map", "depth_ssi_true_map", "depth_det_prob_map"]:
-                with self.open_output(map_type, wrapper=True) as f:
-                    plt.title(f"No map generated for {map_type}")
+                self.make_empty_plot(map_type)
             return
 
         m = self.open_input("aux_ssi_maps", wrapper=True)
@@ -266,9 +240,6 @@ class TXMapPlotsSSI(TXMapPlots):
             m.plot(
                 "depth_meas/depth",
                 view=self.config["projection"],
-                nside=self.config["nside"],
-                reduction="mean",
-                rot180=self.config["rot180"],
             )
 
         # Depth plots (true magnitude)
@@ -276,9 +247,6 @@ class TXMapPlotsSSI(TXMapPlots):
             m.plot(
                 "depth_true/depth",
                 view=self.config["projection"],
-                nside=self.config["nside"],
-                reduction="mean",
-                rot180=self.config["rot180"],
             )
 
         # Depth plots (true magnitude)
@@ -286,7 +254,4 @@ class TXMapPlotsSSI(TXMapPlots):
             m.plot(
                 "depth_det_prob/depth",
                 view=self.config["projection"],
-                nside=self.config["nside"],
-                reduction="mean",
-                rot180=self.config["rot180"],
             )

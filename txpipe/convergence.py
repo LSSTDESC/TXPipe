@@ -104,7 +104,7 @@ class TXConvergenceMapPlots(PipelineStage):
 
     config_options = {
         "projection": StageParameter(
-            str, "cart", msg="Projection type for convergence map plots (e.g., cart, moll, orth)."
+            str, "McBryde", msg="Skyproj projection type for convergence map plots (e.g., McBryde)."
         ),
     }
 
@@ -126,14 +126,12 @@ class TXConvergenceMapPlots(PipelineStage):
 
         # Loop through bins
         for i in range(nbin_source):
-            # Set current axis to use (i.e. subplot)
-            plt.sca(axes[0, i])
-            # and plot E-mode kappa map
-            m.plot(f"kappa_E_{i}", view=self.config["projection"])
+            # plot E-mode kappa map
+            m.plot(f"kappa_E_{i}", view=self.config["projection"], ax=axes[0, i])
 
             # and B-mode
-            plt.sca(axes[1, i])
-            m.plot(f"kappa_B_{i}", view=self.config["projection"])
+            m.plot(f"kappa_B_{i}", view=self.config["projection"], ax=axes[0, i])
 
         # This saves the full plot
         fig.close()
+
