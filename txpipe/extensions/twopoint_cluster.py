@@ -1,9 +1,6 @@
 import sys
 import os
 import numpy as np
-import treecorr
-import h5py
-import sacc
 from ..base_stage import PipelineStage
 from ..data_types import HDFFile, SACCFile
 
@@ -40,6 +37,7 @@ class TXTwoPointCluster(PipelineStage):
         Load data from catalog (hdf5 file).
         Read ra and dec in each richness and redshift bin.
         """
+        import h5py
         # dictionaries for all the tomographic bins
         ra  = {}
         dec = {}
@@ -57,6 +55,7 @@ class TXTwoPointCluster(PipelineStage):
         """
         Create a TreeCorr catalog for the given data.
         """
+        import treecorr
         catalog = treecorr.Catalog(ra=ra, dec=dec,
                                    ra_units='deg', dec_units='deg')
         return catalog
@@ -67,6 +66,7 @@ class TXTwoPointCluster(PipelineStage):
         """
         Measure the cross-correlation function between two richness bins.
         """
+        import treecorr
         dd = treecorr.NNCorrelation(**bin_config)
         rr = treecorr.NNCorrelation(**bin_config)
         dr = treecorr.NNCorrelation(**bin_config)
@@ -85,6 +85,7 @@ class TXTwoPointCluster(PipelineStage):
         """
         Save the correlation function results to a SACC file.
         """
+        import sacc
         s = sacc.Sacc()
 
         for i,result in enumerate(results):
