@@ -122,51 +122,61 @@ class TXFourierGaussianCovariance(PipelineStage):
     def read_number_statistics(self):
         input_data = self.open_input("tracer_metadata")
 
-        # per-bin quantities
-        N_eff = input_data["tracers/N_eff"][:]  # for sources
-        N_lens = input_data["tracers/lens_counts"][:]
-        # For the gaussian sims, lambda = nbar(1+b*delta),
-        # instead of lambda = nbar(1+delta), where delta is the density contrast field.
-        # Then, we need to scale up the shot noise term for the lenses
-        # in the covariance for the same b factor.
-        # Here we decrease the number density for this factor, since shot noise term is 1/nbar.
-        print("N_lens:", N_lens)
-        N_lens = N_lens / np.array(self.config["gaussian_sims_factor"]) ** 2
-
-        if self.config["gaussian_sims_factor"] != [1.0]:
-            print(
-                "ATTENTION: We are dividing N_lens by the gaussian sims factor squared:",
-                np.array(self.config["gaussian_sims_factor"]) ** 2,
-            )
-            print("Scaled N_lens is:", N_lens)
-
-        if self.config["use_true_shear"]:
-            nbins = len(input_data["tracers/sigma_e"][:])
-            sigma_e = np.array([0.0 for i in range(nbins)])
-        else:
-            sigma_e = input_data["tracers/sigma_e"][:]
 
         # area in sq deg
         area_deg2 = input_data["tracers"].attrs["area"]
         area_unit = input_data["tracers"].attrs["area_unit"]
         if area_unit != "deg^2":
             raise ValueError("Units of area have changed")
-
-        input_data.close()
-
         # area in steradians and sky fraction
         area = area_deg2 * np.radians(1) ** 2
         area_arcmin2 = area_deg2 * 60**2
         full_sky = 4 * np.pi
         f_sky = area / full_sky
 
-        # Density information from counts
-        n_eff = N_eff / area
-        n_lens = N_lens / area
+        # per-bin quantities
+        if "lens_counts" in input_data['tracers'].keys():
+            N_lens = input_data["tracers/lens_counts"][:]
+            # For the gaussian sims, lambda = nbar(1+b*delta),
+            # instead of lambda = nbar(1+delta), where delta is the density contrast field.
+            # Then, we need to scale up the shot noise term for the lenses
+            # in the covariance for the same b factor.
+            # Here we decrease the number density for this factor, since shot noise term is 1/nbar.
+            print("N_lens:", N_lens)
+            N_lens = N_lens / np.array(self.config["gaussian_sims_factor"]) ** 2
 
-        # for printing out only
-        n_eff_arcmin = N_eff / area_arcmin2
-        n_lens_arcmin = N_lens / area_arcmin2
+            if self.config["gaussian_sims_factor"] != [1.0]:
+                print(
+                    "ATTENTION: We are dividing N_lens by the gaussian sims factor squared:",
+                    np.array(self.config["gaussian_sims_factor"]) ** 2,
+                )
+                print("Scaled N_lens is:", N_lens)
+            n_lens = N_lens / area
+            n_lens_arcmin = N_lens / area_arcmin2
+        else:
+            n_lens = 0.0
+            n_lens_arcmin = 0.0
+            N_lens = 0.0
+
+        if "N_eff" in input_data['tracers'].keys():
+            N_eff = input_data["tracers/N_eff"][:]  # for sources
+            if self.config["use_true_shear"]:
+                nbins = len(input_data["tracers/sigma_e"][:])
+                sigma_e = np.array([0.0 for i in range(nbins)])
+            else:
+                sigma_e = input_data["tracers/sigma_e"][:]
+            # Density information from counts
+            n_eff = N_eff / area
+            # for printing out only
+            n_eff_arcmin = N_eff / area_arcmin2
+        else:
+            sigma_e = 0.0
+            n_eff = 0.0
+            N_eff = 0.0
+
+
+        input_data.close()
+
 
         # Feedback
         print(f"area =  {area_deg2:.1f} deg^2")
