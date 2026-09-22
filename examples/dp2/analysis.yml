@@ -121,7 +121,6 @@ inputs:
     lens_maps: none
     depth_map: none
     #psf_maps: none
-    flag_maps: none
     bright_object_map: none
     density_maps: none
     lens_tomography_catalog: none
@@ -131,7 +130,7 @@ inputs:
     lens_photoz_stack: none
     spectroscopic_catalog: data/example/inputs/mock_spectroscopic_catalog.hdf5
     # this is #48 - when everything is in the registry we should use that instead
-    shear_mask: /global/cfs/cdirs/lsst/utilities/data-registry/lsst_desc_working/user/smau/rubin_dp2_shear_mask_0.1.0.hsp
+    # shear_mask: /global/cfs/cdirs/lsst/utilities/data-registry/lsst_desc_working/user/smau/rubin_dp2_shear_mask_0.1.0.hsp
     mask: data/metadetect_dp2_ingest/mask.hdf5
 #    shear_catalog: data/metadetect_dp2/shear_catalog_25deg2.hdf5
 
