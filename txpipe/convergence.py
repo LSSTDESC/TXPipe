@@ -130,7 +130,7 @@ class TXConvergenceMapPlots(PipelineStage):
             m.plot(f"kappa_E_{i}", view=self.config["projection"], ax=axes[0, i])
 
             # and B-mode
-            m.plot(f"kappa_B_{i}", view=self.config["projection"], ax=axes[0, i])
+            m.plot(f"kappa_B_{i}", view=self.config["projection"], ax=axes[1, i])
 
         # This saves the full plot
         fig.close()
