@@ -112,7 +112,7 @@ config: examples/dp2/config.yml
 
 inputs:
     # See README for paths to download these files
-    full_shear_catalog: data/metadetect_dp2_ingest/shear_catalog.hdf5
+    # full_shear_catalog: data/metadetect_dp2_ingest/shear_catalog.hdf5
     # star_catalog: data/example/inputs/star_catalog.hdf5
     # This file comes with the code
     fiducial_cosmology: data/fiducial_cosmology.yml
@@ -120,7 +120,6 @@ inputs:
     # So it is set to Null, so the yaml intepreter returns a None value to python. 
     lens_maps: none
     depth_map: none
-    #psf_maps: none
     bright_object_map: none
     density_maps: none
     lens_tomography_catalog: none
@@ -129,10 +128,10 @@ inputs:
     binned_random_catalog_sub: none
     lens_photoz_stack: none
     spectroscopic_catalog: data/example/inputs/mock_spectroscopic_catalog.hdf5
-    # this is #48 - when everything is in the registry we should use that instead
-    # shear_mask: /global/cfs/cdirs/lsst/utilities/data-registry/lsst_desc_working/user/smau/rubin_dp2_shear_mask_0.1.0.hsp
-    mask: data/metadetect_dp2_ingest/mask.hdf5
-#    shear_catalog: data/metadetect_dp2/shear_catalog_25deg2.hdf5
+    mask:
+        id: 138
+    full_shear_catalog:
+        id: 137
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted
@@ -141,3 +140,4 @@ resume: true
 log_dir: data/metadetect_dp2/logs
 # where to put an overall parsl pipeline log
 pipeline_log: data/metadetect_dp2/log.txt
+registry: {}
