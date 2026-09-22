@@ -134,11 +134,11 @@ class TXIngestRubinMetaDetect(PipelineStage):
         else:
             print("No metadetect data written; skipping splitter.finish/aliasing")
         shear_outfile.close()
-        # We have temporarily commented out the repack step
-        # as it was crazily slow, taking far longer than the original
-        # run.
-        # print("Repacking files")
-        # repack(self.get_output("shear_catalog"))
+
+        # Repack the files, speeding up future access.
+        # This takes a while!
+        print("Repacking files")
+        repack(self.get_output("shear_catalog"))
     
     def get_maximum_size(self, butler, refs):
         from pyarrow.parquet import ParquetFile
