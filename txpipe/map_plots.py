@@ -71,11 +71,12 @@ class TXMapPlots(PipelineStage):
 
         psf_maps = self.open_input("psf_maps", wrapper=True)
         nbin_source = psf_maps.file["maps"].attrs["nbin_source"]
+        projection = self.config['projection']
         with self.open_output("psf_map_plot", wrapper=True, figsize=(5 * nbin_source, 10)) as fig:
             _, axes = plt.subplots(2, nbin_source, squeeze=False, num=fig.file.number)
             for i in range(nbin_source):
-                psf_maps.plot(f"psf/g1_{i}", ax=axes[0, i])
-                psf_maps.plot(f"psf/g2_{i}", ax=axes[1, i])
+                psf_maps.plot(f"psf/g1_{i}", ax=axes[0, i], view=projection)
+                psf_maps.plot(f"psf/g2_{i}", ax=axes[1, i], view=projection)
 
         
 
@@ -94,14 +95,14 @@ class TXMapPlots(PipelineStage):
         if has_depth_map:
             depth_maps = self.open_input("depth_map", wrapper=True)
             with self.open_output("depth_map_plot", wrapper=True, figsize=(5, 5)) as fig:
-                depth_maps.plot("depth/depth")
+                depth_maps.plot("depth/depth", view=projection)
         else:
             self.make_empty_plot("depth_map")
 
         if has_bright_object_map:
             bright_object_maps = self.open_input("bright_object_map", wrapper=True)
             with self.open_output("bright_object_map_plot", wrapper=True, figsize=(5, 5)) as fig:
-                bright_object_maps.plot("bright_objects/count")
+                bright_object_maps.plot("bright_objects/count", view=projection)
         else:
             self.make_empty_plot("bright_object_map")
 
@@ -128,8 +129,8 @@ class TXMapPlots(PipelineStage):
             _, axes = plt.subplots(2, nbin_source, squeeze=False, num=fig.file.number)
 
             for i in range(nbin_source):
-                m.plot(f"g1_{i}", ax=axes[0, i])
-                m.plot(f"g2_{i}", ax=axes[1, i])
+                m.plot(f"g1_{i}", ax=axes[0, i], view=projection)
+                m.plot(f"g2_{i}", ax=axes[1, i], view=projection)
 
     def lens_plots(self):
         """
