@@ -141,6 +141,9 @@ class NullCalibrator:
         """
         return sigma
 
+    def get_total_response(self):
+        return np.eye(2)
+
 
     @classmethod
     def load(cls, tomo_file):
@@ -190,6 +193,9 @@ class MetaCalibrator(Calibrator):
             self.mu = np.array(mu)
         else:
             self.mu = self.Rinv @ mu
+
+    def get_total_response(self):
+        return self.R
 
     def apply(self, g1, g2, subtract_mean=True):
         """
@@ -321,6 +327,9 @@ class MetaDetectCalibrator(MetaCalibrator):
     def __init__(self, R, mu, mu_is_calibrated=True):
         S = np.zeros_like(R)
         super().__init__(R, S, mu, mu_is_calibrated)
+
+    def get_total_response(self):
+        return self.R
 
     @classmethod
     def load(cls, tomo_file):
@@ -471,6 +480,9 @@ class LensfitCalibrator(Calibrator):
             g2 = g2 / (1 + self.K)
         return g1, g2
     
+    def get_total_response(self):
+        return np.eye(2) * (1 + self.K)
+
     def calibrate_variance_to_sigma_e(self, var_e):
         """
         Calibrate the shear variance.
@@ -591,6 +603,10 @@ class HSCCalibrator(Calibrator):
             g2 = g2 - np.mean(g2)
 
         return g1, g2
+
+    def get_total_response(self):
+        return np.eye(2) * 2 * self.R * (1 + self.K)
+
 
     def calibrate_variance_to_sigma_e(self, var_e):
         """

@@ -90,6 +90,16 @@ class ShearCatalog(HDFFile):
         else:
             return "redshift_true"
 
+    def get_column_name_variants(self, *columns):
+        # Avoid circular import issues by importing here
+        from .shear_calibration.names import metadetect_variants, metacal_variants
+        if self.catalog_type == "metadetect":
+            return metadetect_variants(*columns)
+        elif self.catalog_type == "metacal":
+            return metacal_variants(*columns)
+        else:
+            return columns
+
     def get_primary_catalog_names(self, true_shear=False):
         if true_shear:
             if self.catalog_type == "metadetect":
