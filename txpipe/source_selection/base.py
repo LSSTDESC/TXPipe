@@ -55,6 +55,7 @@ class TXSourceSelectorBase(PipelineStage):
             msg="Signal-to-noise cut threshold for object selection",
         ),
         "chunk_rows": StageParameter(int, 10000, msg="Number of rows to process in each chunk"),
+        "do_tomography": StageParameter(bool, True, msg="If false, skip tomography and just select everything into bin 0. Other cuts are still applied."),
         "source_zbin_edges": StageParameter(list, required=True, msg="Redshift bin edges for source tomography"),
     }
 
@@ -72,9 +73,20 @@ class TXSourceSelectorBase(PipelineStage):
         # Suppress some warnings from numpy that are not relevant
         original_warning_settings = np.seterr(all="ignore")
 
+        if self.config['do_tomography']:
+            nbin_source = len(self.config["source_zbin_edges"]) - 1
+        else:
+            nbin_source = 1
+        self.config["nbin_source"] = nbin_source
+
+        # We will collect the selection biases for each bin
+        # as a matrix.  We will collect together the different
+        # matrices for each chunk and do a weighted average at the end.
+        calculators = self.setup_response_calculators(nbin_source)
+
         # The output file we will put the tomographic
         # information into
-        output_file = self.setup_output()
+        output_file = self.setup_output(nbin_source)
 
         # The iterator that will loop through the data.
         # Set it up here so that we can find out if there are any
@@ -83,13 +95,6 @@ class TXSourceSelectorBase(PipelineStage):
 
         # Get a function to split objects into tomographic bins
         tomography_classifier = self.make_tomographic_bin_chooser_function()
-
-
-        # We will collect the selection biases for each bin
-        # as a matrix.  We will collect together the different
-        # matrices for each chunk and do a weighted average at the end.
-        nbin_source = len(self.config["source_zbin_edges"]) - 1
-        calculators = self.setup_response_calculators(nbin_source)
 
         # Loop through the input data, processing it chunk by chunk
         for start, end, shear_data in it:
@@ -129,6 +134,11 @@ class TXSourceSelectorBase(PipelineStage):
         if self.config["true_z"] or self.config["input_pz"]:
             def tomography_classifier(start, end, shear_data):
                 return self.apply_simple_redshift_cut(shear_data)
+            return tomography_classifier
+
+        if not self.config["do_tomography"]:
+            def tomography_classifier(start, end, shear_data):
+                return self.apply_no_tomography_cut(shear_data)
             return tomography_classifier
     
         # Are we using a metacal or lensfit catalog?
@@ -194,6 +204,9 @@ class TXSourceSelectorBase(PipelineStage):
 
         return {"zbin": pz_data_bin}
 
+    def apply_no_tomography_cut(self, shear_data):
+        return {"zbin": np.zeros(shear_data['ra'].size, dtype=int)}
+
     def calculate_tomography(self, pz_data, shear_data, calculators):
         """
         Select objects to go in each tomographic bin and their calibration.
@@ -206,7 +219,7 @@ class TXSourceSelectorBase(PipelineStage):
         shear_data: table or dict of arrays
             A chunk of input shear data with metacalibration variants.
         """
-        nbin = len(self.config["source_zbin_edges"]) - 1
+        nbin = self.config['nbin_source']
         n = len(list(shear_data.values())[0])
 
         # The main output data - the tomographic
@@ -232,7 +245,7 @@ class TXSourceSelectorBase(PipelineStage):
         # Some subclasses supply it.
         return None
 
-    def setup_output(self):
+    def setup_output(self, nbin_source):
         """
         Set up the output data file.
 
@@ -245,14 +258,21 @@ class TXSourceSelectorBase(PipelineStage):
         with self.open_input("shear_catalog", wrapper=True) as f:
             n = f.get_size()
 
-        zbins = self.config["source_zbin_edges"]
-        nbin_source = len(zbins) - 1
 
         output = self.open_output("shear_tomography_catalog", parallel=True, wrapper=True)
         outfile = output.file
         group = outfile.create_group("tomography")
         group.attrs["catalog_type"] = cat_type
+
+
+        if self.config['do_tomography']:
+           zbins = self.config["source_zbin_edges"]
+        else:
+            # Use mock z limits here in the output
+            # to indicate everything is selected.
+            zbins = [0.0, 999.]
         output.write_zbins(zbins)
+
         group.create_dataset("bin", (n,), dtype="i")
 
         group_count = outfile.create_group("counts")
@@ -386,7 +406,7 @@ def select_weak_lensing_sample(data, config, calling_from_select=False):
     # as above
     if verbose and calling_from_select:
         print(
-            f"Tomo selection ({variant}) {f1:.2%} flag, {f2:.2%} size, {f3:.2%} SNR",
+            f"Tomo selection ({variant}) {f1:.2%} flag, {f2:.2%} size, {f3:.2%} SNR, ",
             end="",
         )
     elif verbose:
