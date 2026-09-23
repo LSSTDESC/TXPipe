@@ -82,6 +82,14 @@ jobs:
       run: |
         ./bin/install.sh
 
+    - name: Upload conda environment artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: conda-environment-${{ matrix.os }}-${{ hashFiles('bin/install.sh','bin/environment*.yml' ) }}
+        path: ./conda
+        if-no-files-found: error
+        compression-level: 0
+
   Unit_Tests:
     runs-on: ${{ matrix.os }}
     needs: Run_Installer
@@ -96,15 +104,11 @@ jobs:
       with:
         submodules: true
 
-    - name: Restore conda environment
-      id: restore-conda
-      uses: actions/cache@v4
-      env:
-        cache-name: cache-conda-environment
+    - name: Download conda environment artifact
+      uses: actions/download-artifact@v4
       with:
-        path: ./conda
-        key: ${{ matrix.os }}-conda-${{ hashFiles('bin/install.sh','bin/environment*.yml' ) }}
-        fail-on-cache-miss: true
+        name: conda-environment-${{ matrix.os }}-${{ hashFiles('bin/install.sh','bin/environment*.yml' ) }}
+        path: .
 
     - name: Test with pytest
       run: |
@@ -121,15 +125,11 @@ jobs:
       with:
         submodules: true
 
-    - name: Restore conda environment
-      id: restore-conda
-      uses: actions/cache@v4
-      env:
-        cache-name: cache-conda-environment
+    - name: Download conda environment artifact
+      uses: actions/download-artifact@v4
       with:
-        path: ./conda
-        key: ubuntu-latest-conda-${{ hashFiles('bin/install.sh','bin/environment*.yml' ) }}
-        fail-on-cache-miss: true
+        name: conda-environment-ubuntu-latest-${{ hashFiles('bin/install.sh','bin/environment*.yml' ) }}
+        path: .
 
     - name: Restore example data
       uses: actions/cache@v4
@@ -186,15 +186,11 @@ jobs:
       with:
         submodules: true
 
-    - name: Restore conda environment
-      id: restore-conda
-      uses: actions/cache@v4
-      env:
-        cache-name: cache-conda-environment
+    - name: Download conda environment artifact
+      uses: actions/download-artifact@v4
       with:
-        path: ./conda
-        key: ${{ matrix.os }}-conda-${{ hashFiles('bin/install.sh','bin/environment*.yml' ) }}
-        fail-on-cache-miss: true
+        name: conda-environment-${{ matrix.os }}-${{ hashFiles('bin/install.sh','bin/environment*.yml' ) }}
+        path: .
 
     - name: Restore example data
       uses: actions/cache@v4
