@@ -16,8 +16,6 @@ class TXMapPlots(PipelineStage):
     - PSF
     - mask
     - bright object counts
-
-    If one map fails for any reason it is just skipped.
     """
 
     name = "TXMapPlots"
@@ -42,9 +40,6 @@ class TXMapPlots(PipelineStage):
     ]
     config_options = {
         "projection": StageParameter(str, "McBryde", msg="Skyproj projection type for map plots (e.g., McBryde, Mollweide)"),
-        "mask_threshold": StageParameter(
-            float, 0.0, msg="Threshold for masking pixels"
-        ),
     }
 
     def run(self):
@@ -181,7 +176,7 @@ class TXMapPlots(PipelineStage):
         m = self.open_input("mask", wrapper=True)
 
         with self.open_output("mask_map_plot", wrapper=True, figsize=(5, 5)) as f:
-            m.plot("mask")
+            m.plot("mask", view=self.config["projection"])
 
     def make_empty_plot(self, tag):
         import matplotlib.pyplot as plt
@@ -207,9 +202,9 @@ class TXMapPlotsSSI(TXMapPlots):
     ]
 
     outputs = [
-        ("depth_ssi_meas_map", PNGFile),
-        ("depth_ssi_true_map", PNGFile),
-        ("depth_ssi_det_prob_map", PNGFile),
+        ("depth_ssi_meas_map_plot", PNGFile),
+        ("depth_ssi_true_map_plot", PNGFile),
+        ("depth_ssi_det_prob_map_plot", PNGFile),
     ]
 
     def run(self):
