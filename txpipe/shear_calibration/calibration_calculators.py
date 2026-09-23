@@ -99,6 +99,22 @@ class CalibrationCalculator:
         self.sum_sq_weights = 0
         self.shear_stats = ParallelMeanVariance(size=2)
 
+    @staticmethod
+    def create_calculator(cat_type, selector, config):
+        if cat_type == "metacal":
+            return MetacalCalculator(selector, config["delta_gamma"], config["resp_mean_diag"])
+        elif cat_type == "metadetect":
+            return MetaDetectCalculator(selector, config["delta_gamma"])
+        elif cat_type == "lensfit":
+            return LensfitCalculator(selector, config["dec_cut"], config["input_m_is_weighted"])
+        elif cat_type == "hsc":
+            return HSCCalculator(selector)
+        elif cat_type == "simple":
+            return MockCalculator(selector)
+        else:
+            raise ValueError(f"Unknown catalog type: {cat_type}")
+
+
 
 class MetacalCalculator(CalibrationCalculator):
     """Calibration and stats calculator for metacalibration catalogs.

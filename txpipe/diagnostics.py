@@ -5,9 +5,11 @@ from .shear_calibration import (
     MeanShearInBins,
     metadetect_variants,
     band_variants,
+    CalibrationCalculator,
+    META_VARIANTS
 )
 from .utils.fitting import fit_straight_line
-from .utils import import_dask, read_shear_catalog_type
+from .utils import import_dask, read_shear_catalog_type, rename_iterated
 
 from .plotting import manual_step_histogram
 import numpy as np
@@ -282,7 +284,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         # Now loop through each chunk of input data, one at a time.
         # Each time we get a new segment of data, which goes to all the plotters
         for start, end, data in it:
-            print(f"Read data {start} - {end}")
+            print(f"Process {self.rank} read data {start:,} - {end:,}")
             # This causes each data = yield statement in each plotter to
             # be given this data chunk as the variable data.
 
@@ -528,6 +530,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.xlabel("SNR")
         plt.ylabel("Mean g")
         plt.legend()
+        plt.xscale("log")
         plt.tight_layout()
         fig.close()
 
@@ -803,7 +806,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 )
                 plt.bar(
                     mids,
-                    weight,
+                    weight * (count.sum()/weight.sum()),
                     width=width,
                     align="center",
                     color="none",
@@ -812,7 +815,6 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 )
                 plt.xlabel(f"g{i}")
                 plt.ylabel("Count")
-                plt.ylim(0, 1.1 * max(count1))
                 plt.legend()
 
     def plot_snr_histogram(self):
@@ -1053,6 +1055,252 @@ class TXSourceDiagnosticPlots(PipelineStage):
                     plt.legend()
             plt.tight_layout()
             fig.close()
+
+
+class TXResponseInBins(PipelineStage):
+    name = "TXResponseInBins"
+    inputs = [
+        ("shear_catalog", ShearCatalog),
+        ("shear_tomography_catalog", TomographyCatalog),
+        ("shear_catalog_quantiles", HDFFile),
+    ]
+    outputs = [
+        ("response_in_bins", HDFFile),
+        ("response_in_bins_plot", PNGFile),
+    ]
+
+    config_options = {
+        "delta_gamma": StageParameter(
+            float,
+            0.02,
+            msg="Delta gamma value for metacal/metadetect response calculation",
+        ),
+        "use_diagonal_response": StageParameter(
+            bool,
+            False,
+            msg="Whether to use only diagonal elements of the response matrix for metacal",
+        ),
+        "dec_cut": StageParameter(
+            bool,
+            True,
+            msg="Whether to do a declination cut for lensfit catalogs",
+        ),
+        "input_m_is_weighted": StageParameter(
+            bool,
+            True,
+            msg="Whether the input m values are already weighted for lensfit catalogs"
+        ),
+        "chunk_rows": StageParameter(
+            int,
+            100_000,
+            msg="Number of rows to load at once"
+        ),
+        "nbin": StageParameter(
+            int,
+            20,
+            msg="Number of bins in SNR and T",
+        )
+    }
+    
+
+    def run(self):
+        calculators = self.setup_calculators()
+
+        for s, e, data in self.data_iterator():
+            for (cal, bin_definition) in calculators:
+                cal.add_data(data, bin_definition)
+
+        results = []
+        for (cal, bin_def) in calculators:
+            bin_stats = cal.collect(self.comm)
+            results.append((bin_stats, bin_def))
+
+        if self.rank != 0:
+            return
+        
+        self.save_results(results)
+
+
+    def save_results(self, results):
+        import matplotlib.pyplot as plt
+        # root process saves all the results
+        nbin = self.config["nbin"]
+
+        f = self.open_output("response_in_bins")
+        group = f.create_group("response")
+
+        T = group.create_dataset("T_edges", nbin+1, dtype="f")
+        S = group.create_dataset("log10_s2n_edges", nbin+1, dtype="f")
+        R = group.create_dataset("R", (nbin, nbin, 2, 2), dtype="f")
+        count = group.create_dataset("n", (nbin, nbin), dtype="i")
+        neff = group.create_dataset("neff", (nbin, nbin), dtype="f")
+
+        for bin_stats, bin_def in results:
+            # The signal-to-noise edges for this bin
+            _, s0, s1, i = bin_def[0]
+            # The size edge for this bin
+            _, t0, t1, j = bin_def[1]
+
+            # This does a lot of overwriting but I don't care.
+            S[i] = s0
+            T[j] = t0
+            if i == nbin - 1:
+                S[nbin] = s1
+            if j == nbin - 1:
+                T[nbin] = t1
+
+            R[i, j] = bin_stats.calibrator.get_total_response()
+            count[i, j] = bin_stats.source_count
+            neff[i, j] = bin_stats.N_eff
+        
+        # Now we might as well re-use the values we have just made
+        # for the plot directly.
+        with self.open_output("response_in_bins_plot", wrapper=True) as f:
+            fig = f.file
+            axes = fig.subplots(3, 2, sharex=True, sharey=True)
+            R_diag = 0.5 * (R[:, :, 0, 0] + R[:, :, 1, 1])
+
+            def plot_r(ax, R):
+                Rf = R[np.isfinite(R)]
+                vmin = np.percentile(Rf, 10)
+                vmax = np.percentile(Rf, 90)
+                print(vmin, vmax)
+                # print(R)
+                qm = ax.pcolormesh(S, T, R, vmin=vmin, vmax=vmax)
+                return qm
+
+            # Main four panels, the different R components
+            ax = axes[0, 0]
+            qm = plot_r(ax, R[:, :, 0, 0])
+            plt.colorbar(qm, ax=ax)
+            ax.set_title("R11")
+            ax.set_ylabel("T")
+
+            ax = axes[1, 0]
+            qm = qm = plot_r(ax, R[:, :, 1, 0])
+            plt.colorbar(qm, ax=ax)
+            ax.set_title("R21")
+            ax.set_ylabel("T")
+
+            ax = axes[0, 1]
+            qm = qm = plot_r(ax, R[:, :, 0, 1])
+            plt.colorbar(qm, ax=ax)
+            ax.set_title("R12")
+
+            ax = axes[1, 1]
+            qm = qm = plot_r(ax, R[:, :, 1, 1])
+            plt.colorbar(qm, ax=ax)
+            ax.set_title("R22")
+
+            # Extra plot for the mean diagonal, the scalar
+            # estimate of the response
+            ax = axes[2, 0]
+            qm = qm = plot_r(ax, R_diag)
+            plt.colorbar(qm, ax=ax)
+            ax.set_title("Mean R diagonal")
+            ax.set_ylabel("T")
+            ax.set_xlabel("log10(SNR)")
+
+            # panel for the weighted count
+            ax = axes[2, 1]
+            qm = ax.pcolormesh(S, T, neff)
+            plt.colorbar(qm, ax=ax)
+            ax.set_title("N_eff")
+            ax.set_xlabel("log10(SNR)")
+
+
+
+
+
+
+    def select(self, data, bin_definition):
+        #bin_definition is a list of triples (name, min_val, max_val)
+        n = data["g1"].size
+
+        # first select down to the main sample.
+        # Not tomographic for now.
+        out = data["bin"] >= 0
+        for (name, min_val, max_val, _) in bin_definition:
+            val = np.log10(data["s2n"]) if name == "log10_s2n" else data[name]
+            out &= (val >= min_val)
+            out &= (val < max_val)
+        return out
+    
+    def create_bins(self):
+        # TODO: expand this stage to let the user specify the quantities
+        # instead of fixing to SNR and T
+
+        nbin = self.config["nbin"]
+
+        # Take the second and second-to-last quantiles for the ranges
+        # typically these are 5% and 95%
+        with self.open_input("shear_catalog_quantiles") as f:
+            low_snr = f["quantiles/s2n"][1]
+            high_snr = f["quantiles/s2n"][-2]
+            low_T = f["quantiles/T"][1]
+            high_T = f["quantiles/T"][-2]
+
+        # Make the edges for each quantity
+        s_edges = np.linspace(np.log10(low_snr), np.log10(high_snr), nbin+1)
+        T_edges = np.linspace(low_T, high_T, nbin+1)
+
+        # Make the actual bin definition (name, min, max)
+        # for each quantity. One of these will be passed
+        # into self.select for each bin.
+        bin_definitions = []
+        for i in range(nbin):
+            for j in range(nbin):
+                bin_def = [
+                    ("log10_s2n", s_edges[i], s_edges[i+1], i),
+                    ("T", T_edges[j], T_edges[j+1], j),
+                ]
+                bin_definitions.append(bin_def)
+        return bin_definitions
+
+            
+    def setup_calculators(self):
+        # This config option is awkwardly named in code so we give a nicer
+        # external name
+        self.config["resp_mean_diag"] = self.config["use_diagonal_response"]
+
+        with self.open_input("shear_catalog", wrapper=True) as f:
+            cat_type = f.catalog_type
+
+        # Make a calibrator 
+        bin_definitions = self.create_bins()
+        outputs = []
+        for bin_definition in bin_definitions:
+            cal = CalibrationCalculator.create_calculator(cat_type, self.select, self.config)
+            outputs.append((cal, bin_definition))
+        return outputs
+
+        
+    def data_iterator(self):
+        with self.open_input("shear_catalog", wrapper=True) as f:
+            cols = f.get_column_name_variants("g1", "g2", "weight", "s2n", "T")
+            cat_type = f.catalog_type
+
+        if cat_type == "metadetect":
+            tomo_cols = [f"bin_{v}" for v in META_VARIANTS]
+            rename = {f"bin_{v}":f"{v}/bin" for v in META_VARIANTS}
+        else:
+            tomo_cols = [f"bin"]
+            rename = {}
+
+        chunk_rows = self.config['chunk_rows']
+        
+        it = self.combined_iterators(
+            chunk_rows,
+            "shear_catalog",
+            "shear",
+            cols,
+            "shear_tomography_catalog",
+            "tomography",
+            tomo_cols
+        )
+        return rename_iterated(it, rename)
+
+
 
 
 class TXLensDiagnosticPlots(PipelineStage):
