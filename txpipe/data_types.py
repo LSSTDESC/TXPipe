@@ -268,7 +268,7 @@ class MapsFile(HDFFile):
         info = self.read_map_info(map_name)
         pixelization = info["pixelization"]
         if pixelization == "gnomonic":
-            m = self.read_gnomonic(map_name)
+            raise ValueError("Gnomonic maps are not currently supported.")
         elif pixelization == "healpix":
             is_legacy = self._check_is_legacy(map_name)
 
@@ -528,29 +528,6 @@ class MapsFile(HDFFile):
         if cbar:
             projection.draw_colorbar()
         plt.tight_layout()
-
-
-    def read_gnomonic(self, map_name):
-        import numpy as np
-
-        group = self.file[f"maps/{map_name}"]
-        info = dict(group.attrs)
-        nx = info["nx"]
-        ny = info["ny"]
-        m = np.zeros((ny, nx))
-        m[:, :] = np.nan
-
-        pix = group["pixel"][:]
-        val = group["value"][:]
-        w = np.where(pix != -9999)
-        pix = pix[w]
-        val = val[w]
-        x = pix % nx
-        y = pix // nx
-        m[y, x] = val
-        return m
-
-
 
 
 class LensingNoiseMaps(MapsFile):
