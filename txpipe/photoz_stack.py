@@ -293,6 +293,7 @@ class TXMockGaussianPhotozStack(PipelineStage):
     """
 
     name = "TXMockGaussianPhotozStack"
+    parallel = False
     inputs = [
     ]
     outputs = [
