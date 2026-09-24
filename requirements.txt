@@ -36,3 +36,4 @@ parallel_statistics
 pz-rail[dev]==0.99.1
 tjpcov
 glass
+kmeans-radec==0.9.0
