@@ -49,7 +49,9 @@ class TXDiagnosticQuantiles(PipelineStage):
     }
 
     def run(self):
-        _, da = import_dask()
+        # Dask's percentile algorithm is not very accurate in
+        # the tails, so we fall back to numpy for now.
+        _, da = import_dask(actually_numpy=True)
 
         # Configuration parameters
         chunk_rows = self.config["chunk_rows"]
