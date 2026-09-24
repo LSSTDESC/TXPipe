@@ -60,6 +60,15 @@ class CLClusterProfilePlots(PipelineStage):
         n_zbin = max(i for i, j in bin_info.values()) + 1
         n_richbin = max(j for i, j in bin_info.values()) + 1
 
+        profile_type = next(
+            (data[key].get("profile_type") for key in bin_info if data[key].get("profile_type")),
+            None,
+        )
+        y_label = {
+            "delta_sigma": "Delta-Sigma(R)",
+            "reduced_shear": "g_t(theta)",
+        }.get(profile_type, "delta_sigma / g_t")
+
         fig = self.open_output(
             "cluster_profiles_plot",
             figsize=(4 * n_zbin, 3 * n_richbin),
@@ -142,7 +151,7 @@ class CLClusterProfilePlots(PipelineStage):
         for ax in axes[-1, :]:
             ax.set_xlabel("radius")
         for ax in axes[:, 0]:
-            ax.set_ylabel("delta_sigma / g_t")
+            ax.set_ylabel(y_label)
 
         fig.file.tight_layout()
         fig.close()

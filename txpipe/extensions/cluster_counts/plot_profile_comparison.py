@@ -6,19 +6,20 @@ from ...data_types import PickleFile, PNGFile
 
 # Fixed input tag -> (display label, color, marker)
 VARIANTS = [
-    ("cluster_profiles_radius_fid", "radius, Ωm fid", "C0", "o"),
-    ("cluster_profiles_radius_lowOm", "radius, Ωm -20%", "C1", "s"),
-    ("cluster_profiles_radius_highOm", "radius, Ωm +20%", "C2", "^"),
-    ("cluster_profiles_angle", "fixed angle", "C3", "D"),
+    ("cluster_profiles_fid", "Omega_m fid", "C0", "o"),
+    ("cluster_profiles_lowOm", "Omega_m -20%", "C1", "s"),
+    ("cluster_profiles_highOm", "Omega_m +20%", "C2", "^"),
 ]
 
 
 class CLClusterProfileComparisonPlots(PipelineStage):
     """
-    Overlay stacked tangential Delta-Sigma(R) profiles from four
+    Overlay stacked tangential Delta-Sigma(R) profiles from three
     CLClusterEnsembleProfiles runs (radius-based selection under three
-    cosmologies, plus fixed-angle selection) on one set of z x richness
-    bin panels, for direct visual comparison.
+    Omega_m cosmologies) on one set of z x richness bin panels, for
+    direct visual comparison. Below each main panel, a residual panel
+    shows 1 - Delta-Sigma / Delta-Sigma_fid for the Omega_m-varied
+    cosmologies.
     """
 
     name = "CLClusterProfileComparisonPlots"
@@ -71,17 +72,33 @@ class CLClusterProfileComparisonPlots(PipelineStage):
         n_zbin = max(i for i, j in bin_info.values()) + 1
         n_richbin = max(j for i, j in bin_info.values()) + 1
 
+        # Variants whose deviation from the fid baseline is a cosmology
+        # effect (Omega_m varied) rather than a change of selection method.
+        cosmology_tags = {tag for tag, label, *_ in VARIANTS if "Omega_m" in label and tag != ref_tag}
+
         fig = self.open_output(
             "cluster_profiles_comparison_plot",
-            figsize=(4.5 * n_zbin, 3.5 * n_richbin),
+            figsize=(4.5 * n_zbin, 4.5 * n_richbin),
             wrapper=True,
         )
-        axes = fig.file.subplots(n_richbin, n_zbin, sharex=True, sharey=True, squeeze=False)
+        gs = fig.file.add_gridspec(2 * n_richbin, n_zbin, height_ratios=[3, 1] * n_richbin, hspace=0.4)
+
+        axes_main = np.empty((n_richbin, n_zbin), dtype=object)
+        axes_resid = np.empty((n_richbin, n_zbin), dtype=object)
+        for j in range(n_richbin):
+            for i in range(n_zbin):
+                ax_m = fig.file.add_subplot(gs[2 * j, i], sharex=axes_main[0, 0], sharey=axes_main[0, 0])
+                ax_r = fig.file.add_subplot(gs[2 * j + 1, i], sharex=ax_m, sharey=axes_resid[0, 0])
+                ax_m.tick_params(labelbottom=False)
+                axes_main[j, i] = ax_m
+                axes_resid[j, i] = ax_r
 
         y_min, y_max = np.inf, -np.inf
+        resid_absmax = 0.0
 
         for key, (i, j) in bin_info.items():
-            ax = axes[j, i]
+            ax = axes_main[j, i]
+            ax_r = axes_resid[j, i]
             edges = data[ref_tag][key].get("cluster_bin_edges", {})
             title = (
                 f"z=[{edges.get('z_min', '?'):.2f},{edges.get('z_max', '?'):.2f}) "
@@ -90,6 +107,8 @@ class CLClusterProfileComparisonPlots(PipelineStage):
                 else key
             )
             ax.set_title(title, fontsize=8)
+
+            fid_radius, fid_tan = None, None
 
             for vi, (tag, label, color, marker) in enumerate(VARIANTS):
                 entry = data[tag][key]
@@ -132,8 +151,32 @@ class CLClusterProfileComparisonPlots(PipelineStage):
                     y_min = min(y_min, tan.min())
                     y_max = max(y_max, tan.max())
 
+                if tag == ref_tag:
+                    fid_radius, fid_tan = radius, tan
+                elif tag in cosmology_tags and fid_radius is not None and len(radius) >= 2:
+                    # Interpolate onto the fid radius grid (in log-log space,
+                    # since Delta-Sigma(R) is close to a power law) so the
+                    # residual can be evaluated at the same points as fid
+                    # even though each variant's positive-value filtering
+                    # above may have dropped different radial bins.
+                    lo, hi = radius.min(), radius.max()
+                    mask = (fid_radius >= lo) & (fid_radius <= hi)
+                    if mask.any():
+                        interp_tan = np.exp(
+                            np.interp(np.log(fid_radius[mask]), np.log(radius), np.log(tan))
+                        )
+                        resid = 1 - interp_tan / fid_tan[mask]
+                        ax_r.plot(
+                            fid_radius[mask], resid, marker + "-", color=color,
+                            markersize=4, linewidth=1,
+                        )
+                        if len(resid):
+                            resid_absmax = max(resid_absmax, np.abs(resid).max())
+
             ax.set_xscale("log")
             ax.set_yscale("log")
+            ax_r.set_xscale("log")
+            ax_r.axhline(0.0, color="k", linewidth=0.8, alpha=0.5)
 
         # Setting explicit y-limits from the plotted central values (rather
         # than relying on matplotlib's autoscale) sidesteps a real
@@ -143,15 +186,20 @@ class CLClusterProfileComparisonPlots(PipelineStage):
         # Error bars that exceed this range are simply clipped at the frame,
         # which is the desired behaviour for occasional huge-uncertainty bins.
         if np.isfinite(y_min) and np.isfinite(y_max):
-            axes[0, 0].set_ylim(y_min / 5, y_max * 5)
+            axes_main[0, 0].set_ylim(y_min / 5, y_max * 5)
 
-        handles, labels = axes[0, 0].get_legend_handles_labels()
+        resid_pad = max(resid_absmax, 0.05) * 1.2
+        axes_resid[0, 0].set_ylim(-resid_pad, resid_pad)
+
+        handles, labels = axes_main[0, 0].get_legend_handles_labels()
         fig.file.legend(handles, labels, loc="upper right", fontsize=8, ncol=len(VARIANTS))
 
-        for ax in axes[-1, :]:
+        for ax in axes_resid[-1, :]:
             ax.set_xlabel("R [Mpc]")
-        for ax in axes[:, 0]:
+        for ax in axes_main[:, 0]:
             ax.set_ylabel("delta_sigma(R)")
+        for ax in axes_resid[:, 0]:
+            ax.set_ylabel("1 - delta_sigma/delta_sigma_fid", fontsize=7)
 
         fig.file.tight_layout()
         fig.close()
