@@ -111,6 +111,15 @@ class TXDiagnosticQuantiles(PipelineStage):
                 # method is called below. When that happens, it will
                 # chunk up the data and calculate the percentiles in parallel.
                 quantile_values[new_name] = da.percentile(masked, percentiles)
+            
+            T_col = da.from_array(f[col_names["T"]], chunks=chunk_rows)
+            T_psf_col = da.from_array(f[col_names["psf_T_mean"]], chunks=chunk_rows)
+            T_col = T_col[selected]
+            T_psf_col = T_psf_col[selected]
+            T_col = T_col.compute_chunk_sizes()
+            T_psf_col = T_psf_col.compute_chunk_sizes()
+            T_ratio = T_col / T_psf_col
+            quantile_values["T_ratio"] = da.percentile(T_ratio, percentiles)
 
             # Now ask dask to actually do the calculations
             (quantile_values,) = da.compute(quantile_values)
@@ -1155,7 +1164,7 @@ class TXResponseInBins(PipelineStage):
         
         # Now we might as well re-use the values we have just made
         # for the plot directly.
-        with self.open_output("response_in_bins_plot", wrapper=True) as f:
+        with self.open_output("response_in_bins_plot", wrapper=True, figsize=(6, 12)) as f:
             fig = f.file
             axes = fig.subplots(3, 2, sharex=True, sharey=True)
             R_diag = 0.5 * (R[:, :, 0, 0] + R[:, :, 1, 1])
@@ -1198,7 +1207,7 @@ class TXResponseInBins(PipelineStage):
             qm = qm = plot_r(ax, R_diag)
             plt.colorbar(qm, ax=ax)
             ax.set_title("Mean R diagonal")
-            ax.set_ylabel("T")
+            ax.set_ylabel("T / T_psf")
             ax.set_xlabel("log10(SNR)")
 
             # panel for the weighted count
@@ -1209,10 +1218,6 @@ class TXResponseInBins(PipelineStage):
             ax.set_xlabel("log10(SNR)")
 
 
-
-
-
-
     def select(self, data, bin_definition):
         #bin_definition is a list of triples (name, min_val, max_val)
         n = data["g1"].size
@@ -1221,7 +1226,13 @@ class TXResponseInBins(PipelineStage):
         # Not tomographic for now.
         out = data["bin"] >= 0
         for (name, min_val, max_val, _) in bin_definition:
-            val = np.log10(data["s2n"]) if name == "log10_s2n" else data[name]
+            if name == "log10_s2n":
+                val = np.log10(data["s2n"])
+            elif name == "T_ratio":
+                val = data["T"] / data["psf_T_mean"]
+            else:
+                # support future stuff
+                val = data[name]
             out &= (val >= min_val)
             out &= (val < max_val)
         return out
@@ -1237,8 +1248,8 @@ class TXResponseInBins(PipelineStage):
         with self.open_input("shear_catalog_quantiles") as f:
             low_snr = f["quantiles/s2n"][1]
             high_snr = f["quantiles/s2n"][-2]
-            low_T = f["quantiles/T"][1]
-            high_T = f["quantiles/T"][-2]
+            low_T = f["quantiles/T_ratio"][1]
+            high_T = f["quantiles/T_ratio"][-2]
 
         # Make the edges for each quantity
         s_edges = np.linspace(np.log10(low_snr), np.log10(high_snr), nbin+1)
@@ -1252,7 +1263,7 @@ class TXResponseInBins(PipelineStage):
             for j in range(nbin):
                 bin_def = [
                     ("log10_s2n", s_edges[i], s_edges[i+1], i),
-                    ("T", T_edges[j], T_edges[j+1], j),
+                    ("T_ratio", T_edges[j], T_edges[j+1], j),
                 ]
                 bin_definitions.append(bin_def)
         return bin_definitions
@@ -1277,7 +1288,7 @@ class TXResponseInBins(PipelineStage):
         
     def data_iterator(self):
         with self.open_input("shear_catalog", wrapper=True) as f:
-            cols = f.get_column_name_variants("g1", "g2", "weight", "s2n", "T")
+            cols = f.get_column_name_variants("g1", "g2", "weight", "s2n", "T", "psf_T_mean")
             cat_type = f.catalog_type
 
         if cat_type == "metadetect":
