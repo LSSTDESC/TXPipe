@@ -1135,6 +1135,7 @@ class TXResponseInBins(PipelineStage):
 
     def save_results(self, results):
         import matplotlib.pyplot as plt
+        import matplotlib
         # root process saves all the results
         nbin = self.config["nbin"]
 
@@ -1167,7 +1168,7 @@ class TXResponseInBins(PipelineStage):
         
         # Now we might as well re-use the values we have just made
         # for the plot directly.
-        with self.open_output("response_in_bins_plot", wrapper=True, figsize=(6, 12)) as f:
+        with self.open_output("response_in_bins_plot", wrapper=True, figsize=(8, 8)) as f:
             fig = f.file
             axes = fig.subplots(3, 2, sharex=True, sharey=True)
             R_diag = 0.5 * (R[:, :, 0, 0] + R[:, :, 1, 1])
@@ -1186,13 +1187,13 @@ class TXResponseInBins(PipelineStage):
             qm = plot_r(ax, R[:, :, 0, 0])
             plt.colorbar(qm, ax=ax)
             ax.set_title("R11")
-            ax.set_ylabel("T")
+            ax.set_ylabel("T / T_psf")
 
             ax = axes[1, 0]
             qm = qm = plot_r(ax, R[:, :, 1, 0])
             plt.colorbar(qm, ax=ax)
             ax.set_title("R21")
-            ax.set_ylabel("T")
+            ax.set_ylabel("T  / T_psf")
 
             ax = axes[0, 1]
             qm = qm = plot_r(ax, R[:, :, 0, 1])
@@ -1215,7 +1216,8 @@ class TXResponseInBins(PipelineStage):
 
             # panel for the weighted count
             ax = axes[2, 1]
-            qm = ax.pcolormesh(S, T, neff)
+            norm = matplotlib.colors.LogNorm(vmin=neff[:].min(), vmax=neff[:].max())
+            qm = ax.pcolormesh(S, T, neff, norm=norm)
             plt.colorbar(qm, ax=ax)
             ax.set_title("N_eff")
             ax.set_xlabel("log10(SNR)")
