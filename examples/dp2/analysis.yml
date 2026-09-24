@@ -34,10 +34,13 @@ stages:
         photoz_stack: shear_photoz_stack
         nz_plot: nz_source
   - name: TXRealGaussianCovariance
+    threads_per_process: 32
   - name: TXDiagnosticQuantiles
   - name: TXPSFMaps
   - name: TXSourceDiagnosticPlots
-
+    nprocess: 64
+  - name: TXResponseInBins
+    nprocess: 64
   # - name: PZRailSummarizeSource    # Run the DIR method on the lens sample to find n(z)
   #   classname: PZRailSummarize
   #   aliases:

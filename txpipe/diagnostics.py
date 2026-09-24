@@ -1107,6 +1107,7 @@ class TXResponseInBins(PipelineStage):
         calculators = self.setup_calculators()
 
         for s, e, data in self.data_iterator():
+            print(f"Rank {self.rank} processing rows {s:,} - {e:,}")
             for (cal, bin_definition) in calculators:
                 cal.add_data(data, bin_definition)
 
@@ -1296,7 +1297,8 @@ class TXResponseInBins(PipelineStage):
             cols,
             "shear_tomography_catalog",
             "tomography",
-            tomo_cols
+            tomo_cols,
+            longest=True,
         )
         return rename_iterated(it, rename)
 

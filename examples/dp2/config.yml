@@ -130,3 +130,6 @@ TXDiagnosticQuantiles:
 TXSourceDiagnosticPlots:
     name: TXSourceDiagnosticPlots
     use_psf_originals: true
+
+TXReponseInBins:
+    name: TXReponseInBins
