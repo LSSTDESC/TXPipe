@@ -34,6 +34,10 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         "cov_type" : "jackknife_covariance", #sample_covariance, jackknife_covariance, bootstrap_covariance
         "jackknife_nside": 32,
         "bootstrap_nboot": 100,
+        # kmeans jackknife covariance (tan_kmjk / cross_kmjk), computed in addition to cov_type:
+        # 0 = off, -1 = same number of regions as occupied healpix pixels (jackknife_nside), N>0 = N regions
+        "kmeans_jackknife_njk": 0,
+        "kmeans_seed": 11,
         #coordinate_system for shear
         #"coordinate_system" : 'euclidean' #Must be either 'celestial' or 'euclidean'
     }
@@ -206,7 +210,24 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         elif self.config["cov_type"] == "bootstrap_covariance":
             cluster_ensemble.compute_bootstrap_covariance(tan_component="tangential_comp", cross_component="cross_comp", n_bootstrap = self.config["bootstrap_nboot"])
         print("covariance computed")
-    
+
+        self.n_jk_healpix, self.n_jk_kmeans = None, None
+        njk = self.config["kmeans_jackknife_njk"]
+        if njk != 0:
+            import healpy
+            from .jk_kmeans import compute_kmeans_jackknife_covariance
+
+            pixels = healpy.ang2pix(self.config["jackknife_nside"], cluster_ensemble.data["ra"],
+                                    cluster_ensemble.data["dec"], nest=True, lonlat=True)
+            self.n_jk_healpix = np.unique(pixels).size
+            if njk < 0:
+                njk = self.n_jk_healpix
+            self.n_jk_kmeans, _ = compute_kmeans_jackknife_covariance(
+                cluster_ensemble, njk, tan_component="tangential_comp", cross_component="cross_comp",
+                seed=self.config["kmeans_seed"])
+            print("kmeans jackknife covariance computed: n_jk_healpix =", self.n_jk_healpix,
+                  " n_jk_kmeans =", self.n_jk_kmeans)
+
         return cluster_ensemble
    
     
@@ -225,11 +246,13 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
                     cluster_stack = self.create_cluster_ensemble(clusters, cluster_ensemble_id=key)
                 else :
                     cluster_stack = None
+                    self.n_jk_healpix, self.n_jk_kmeans = None, None
                 print('cl_ensemble_created')
                 
                 #dict(dset_out[i].attrs), dset_out[i]['redshift'][:].size) 
                 
-                binned_cluster_stack[key]={'cluster_bin_edges':dict(group.attrs), 'n_cl':len(clusters), 'clmm_cluster_ensemble':cluster_stack, 'profile_type': self.profile_type}
+                binned_cluster_stack[key]={'cluster_bin_edges':dict(group.attrs), 'n_cl':len(clusters), 'clmm_cluster_ensemble':cluster_stack, 'profile_type': self.profile_type,
+                                         'n_jk_healpix': self.n_jk_healpix, 'n_jk_kmeans': self.n_jk_kmeans}
                 
             
         return binned_cluster_stack

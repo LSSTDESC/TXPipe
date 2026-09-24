@@ -8,3 +8,4 @@ from .make_ensemble_profile import CLClusterEnsembleProfiles
 from .convert_to_sacc import CLClusterSACC
 from .plot_profiles import CLClusterProfilePlots
 from .plot_profile_comparison import CLClusterProfileComparisonPlots
+from .plot_jackknife_comparison import CLClusterJackknifeComparisonPlots
