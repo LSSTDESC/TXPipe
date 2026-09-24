@@ -159,7 +159,7 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
                                                 # in source_select_compute --> don't need it here, filling dummy array
             
             # Instantiating a CLMM galaxy cluster object
-            gc_object = clmm.GalaxyCluster(np.int(id_cl), ra_cl, dec_cl, z_cl, galcat)
+            gc_object = clmm.GalaxyCluster(int(id_cl), ra_cl, dec_cl, z_cl, galcat)
             gc_object.richness = rich_cl
             cat_max_distance = (clmm.utils.convert_units(np.max(bg_cat["distance_arcmin"]), "arcmin", "Mpc", z_cl, self.clmm_cosmo) if bin_units == "mpc" else np.max(bg_cat["distance_arcmin"]))
             if cat_max_distance < self.distance_bins[-1]:
