@@ -1,5 +1,5 @@
 from .base import TXIngestCatalogFits
-from ..data_types import ShearCatalog, FitsFile
+from ..data_types import ShearCatalog, FitsFile, TextFile
 from .dp1_details import (
     DP1_TRACTS,
     DP1_COSMOLOGY_TRACTS,
@@ -26,7 +26,8 @@ class TXIngestAnacal(TXIngestCatalogFits):
 
     name = "TXIngestAnacal"
     inputs = [
-        ("anacal_catalog", FitsFile)
+        ("anacal_catalog", FitsFile),
+        ("tract_list", TextFile)
     ]
     outputs = [
         ("shear_catalog", ShearCatalog),
@@ -123,6 +124,10 @@ class TXIngestAnacal(TXIngestCatalogFits):
         except Exception as e:
             raise RuntimeError(error_msg2) from e
 
+        tracts_file = self.get_input('tract_list')
+        if tracts_file != "none":
+            print("Using tracts_file:", tracts_file)
+            tracts = np.loadtxt(tracts_file, dtype=int)
         if self.config["select_field"]:
             tracts = DP1_TRACTS[self.config["select_field"]]
         elif self.config["select_tracts"]:
@@ -317,6 +322,8 @@ class TXIngestAnacal(TXIngestCatalogFits):
         m20 = data[f"{prefix}_m20"][:]
 
         output["weight"] = np.ones_like(wsel)
+        output["e1"] = wsel * e1_raw
+        output["e2"] = wsel * e2_raw
 
         # i-band S/N + shear response — passed through from the
         # pre-computed fpfs1 columns. ``scale`` only picks the flux
@@ -334,17 +341,16 @@ class TXIngestAnacal(TXIngestCatalogFits):
         # exposed as ``dmag_{band}_dg{c}`` / ``dmag_err_{band}_dg{c}`` on
         # the shear catalog so downstream stages can build ±γ variants
         # of every quantity a mag-based cut consumes.
-        for band in bands:
-            f = data[f"{band}_flux_{s}"][:]
-            f_err = data[f"{band}_flux_{s}_err"][:]
-            output[f"mag_{band}"] = nanojansky_to_mag_ab(f)
-            output[f"mag_err_{band}"] = nanojansky_err_to_mag_ab(f, f_err)
+        #for band in bands:
+        #    f = data[f"{band}_flux_{s}"][:]
+        #    f_err = data[f"{band}_flux_{s}_err"][:]
+        #    output[f"mag_{band}"] = nanojansky_to_mag_ab(f)
+        #    output[f"mag_err_{band}"] = nanojansky_err_to_mag_ab(f, f_err)
 
         # Per-band extinction a_<band>, from the merged catalog's
         # lsst_a_<band> column (the mags above are NOT dereddened, so these
         # give downstream a place to apply extinction).
-        for band in bands:
-            output[f"a_{band}"] = data[f"lsst_a_{band}"][:]
+            
 
         # Band-combined shape magnitude + shear derivatives — feeds the
         # |e|<emax cut and its ±γ variants in TXSourceSelectorAnaCal.
@@ -362,8 +368,6 @@ class TXIngestAnacal(TXIngestCatalogFits):
         # zmode_0 → mean_z (baseline for tomographic binning), and the four
         # shifted variants zmode_{1p,1m,2p,2m} → mean_z_{...} (photoZPipe
         # built them at dg=0.01, so the selector must use delta_gamma=0.01).
-        for suf in ("1p", "1m", "2p", "2m"):
-            output[f"mean_z_{suf}"] = data[f"zmode_{suf}"][:]
 
         # PSF ellipticity + size per band, from each band's PSF HSM second
         # moments: psf_g1_{b}=(xx-yy)/(xx+yy), psf_g2_{b}=2xy/(xx+yy),
@@ -467,14 +471,18 @@ class TXIngestAnacal(TXIngestCatalogFits):
     def aliasing(self, outfile):
         prefix = self.config["prefix"]
         g = outfile["shear"]
-
-        g["weight"] = g["wsel"]
+        bands = self.config["bands"]
+        s = self.config["scale"]
+        #g["weight"] = g["wsel"]
         g["weight_dg1"] = g["dwsel_dg1"]
         g["weight_dg2"] = g["dwsel_dg2"]
-        g["e1"] = g[f"{prefix}_e1"]
-        g["e2"] = g[f"{prefix}_e2"]
+        g["e1_raw"] = g[f"{prefix}_e1"]
+        g["e2_raw"] = g[f"{prefix}_e2"]
         g["m00"] = g[f"{prefix}_m00"]
         g["m20"] = g[f"{prefix}_m20"]
+        g["s2n"] = g["lsst_i_s2n_fpfs1"]
+        g["ds2n_dg1"] = g["lsst_i_ds2n_fpfs1_dg1"]
+        g["ds2n_dg2"] = g["lsst_i_ds2n_fpfs1_dg2"]
         for delta in ["de1", "de2", "dm00", "dm20"]:
             g[f"{delta}_dg1"] = g[f"{prefix}_{delta}_dg1"]
             g[f"{delta}_dg2"] = g[f"{prefix}_{delta}_dg2"]
@@ -482,4 +490,15 @@ class TXIngestAnacal(TXIngestCatalogFits):
         g["mean_z"] = g["zmode_0"]
         for suf in ["1p", "1m", "2p", "2m"]:
             g[f"mean_z_{suf}"] = g[f"zmode_{suf}"]
+
+        for band in bands:
+            g[f"a_{band}"] = g[f"lsst_a_{band}"][:]
+            b = f"lsst_{band}"
+            g[f"mag_{band}"] = g[f"{b}_mag_{s}"]
+            g[f"mag_err_{band}"] = g[f"{b}_mag_{s}_err"]
+            for d in ("dg1", "dg2"):
+                g[f"dmag_{band}_{d}"] = g[f"{b}_dmag_{s}_{d}"][:]
+                g[f"dmag_err_{band}_{d}"] = (
+                    g[f"{b}_dmag_{s}_err_{d}"][:]
+                )
 
