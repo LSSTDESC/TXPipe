@@ -480,7 +480,9 @@ class TXIngestAnacal(TXIngestCatalogFits):
         g["e2_raw"] = g[f"{prefix}_e2"]
         g["m00"] = g[f"{prefix}_m00"]
         g["m20"] = g[f"{prefix}_m20"]
-        g["s2n"] = g["lsst_i_s2n_fpfs1"]
+        g["s2n"] = g["lsst_i_s2n_fpfs1"] #setting the default to be i band
+        g["psf_g1"] = g["psf_g1_i"] #setting the default to be i band
+        g["psf_g2"] = g["psf_g2_i"] #setting the default to be i band
         g["ds2n_dg1"] = g["lsst_i_ds2n_fpfs1_dg1"]
         g["ds2n_dg2"] = g["lsst_i_ds2n_fpfs1_dg2"]
         for delta in ["de1", "de2", "dm00", "dm20"]:

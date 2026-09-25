@@ -9,6 +9,7 @@ from .calibrators import (
 
 )
 from .calibration_calculators import  (
+    CalibrationCalculator,
     MetacalCalculator,
     LensfitCalculator,
     HSCCalculator,
