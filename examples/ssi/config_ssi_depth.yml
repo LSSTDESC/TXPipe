@@ -16,6 +16,5 @@ TXIngestSSIDetectionDESBalrog:
 
 TXMapPlots:
     name:  TXMapPlots
-    projection: cart
-    rot180: True
+    projection: McBryde
 
