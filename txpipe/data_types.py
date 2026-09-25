@@ -7,6 +7,7 @@ from .mapping import degrade_healsparse
 import yaml
 import numpy as np
 
+
 def metacalibration_names(names):
     """
     Generate the metacalibrated variants of the inputs names,
@@ -73,29 +74,39 @@ class ShearCatalog(HDFFile):
 
     def get_size(self):
         if self.catalog_type == "metadetect":
-            return self.file["shear/00/ra"].size
+            return self.file["shear/ns/ra"].size
         else:
             return self.file["shear/ra"].size
 
     def get_primary_catalog_group(self):
         if self.catalog_type == "metadetect":
-            return "shear/00"
+            return "shear/ns"
         else:
             return "shear"
 
     def get_true_redshift_column(self):
         if self.catalog_type == "metadetect":
-            return "00/redshift_true"
+            return "ns/redshift_true"
         else:
             return "redshift_true"
+
+    def get_column_name_variants(self, *columns):
+        # Avoid circular import issues by importing here
+        from .shear_calibration.names import metadetect_variants, metacal_variants
+        if self.catalog_type == "metadetect":
+            return metadetect_variants(*columns)
+        elif self.catalog_type == "metacal":
+            return metacal_variants(*columns)
+        else:
+            return columns
 
     def get_primary_catalog_names(self, true_shear=False):
         if true_shear:
             if self.catalog_type == "metadetect":
-                shear_cols = ["00/true_g1", "00/true_g2", "00/ra", "00/dec", "00/weight"]
+                shear_cols = ["ns/true_g1", "ns/true_g2", "ns/ra", "ns/dec", "ns/weight"]
                 rename = {c: c[3:] for c in shear_cols}
-                rename["00/true_g1"] = "g1"
-                rename["00/true_g2"] = "g2"
+                rename["ns/true_g1"] = "g1"
+                rename["ns/true_g2"] = "g2"
             else:
                 rename = {"true_g1": "g1", "true_g2": "g2"}
                 rename = {}
@@ -106,7 +117,7 @@ class ShearCatalog(HDFFile):
             shear_cols = ["g1", "g2", "c1", "c2", "ra", "dec", "weight"]
             rename = {}
         elif self.catalog_type == "metadetect":
-            shear_cols = ["00/g1", "00/g2", "00/ra", "00/dec", "00/weight"]
+            shear_cols = ["ns/g1", "ns/g2", "ns/ra", "ns/dec", "ns/weight"]
             rename = {c: c[3:] for c in shear_cols}
         elif self.catalog_type == "anacal":
             shear_cols = ["e1", "e2", "ra", "dec", "weight"]
@@ -350,10 +361,16 @@ class MapsFile(HDFFile):
             mask = mask_in
 
         # degrade if requested and nessesary
-        if (degrade_nside is not None) and (degrade_nside != mask.nside_sparse):
+        if (degrade_nside is not None) and (degrade_nside < mask.nside_sparse):
+            # In this case we need a float mask to allow the mask-like
+            # degrading to work
+            mask = mask.astype("float")
             mask = degrade_healsparse(
                 mask, reduction="mask", degrade_nside=degrade_nside
             )
+        elif (degrade_nside is not None) and (degrade_nside > mask.nside_sparse):
+            mask = mask.upgrade(degrade_nside)
+
 
         if returnbool and not np.issubdtype(mask.dtype, np.bool_):
             # make a boolean mask from a frac map
@@ -486,15 +503,12 @@ class MapsFile(HDFFile):
             hdf5_group=f"maps/{map_name}/healsparse",
         )
 
-    def plot_healpix(
+    def plot(
         self,
         map_name,
-        view="cart",
-        rot180=False,
-        nside=None,
-        reduction="mean",
-        key=None,
-        weight_map=None,
+        view="McBryde",
+        ax=None,
+        cbar=True,
         **kwargs,
     ):
         """
@@ -507,74 +521,27 @@ class MapsFile(HDFFile):
         ----------
         map_name : str
             Name of the map to read and plot.
-        view : {"cart", "moll"}, optional
-            Healpy view type: Cartesian ("cart") or Mollweide ("moll").
-        rot180 : bool, optional
-            If True, rotate the map by 180 degrees in longitude before plotting.
-        nside : int, optional
-            Target Healpix nside for visualization. Defaults to the sparse
-            nside of the input map.
-        reduction : str, optional
-            Reduction operation used when generating the Healpix map
-            from the HealSparse representation (e.g. "mean", "sum").
-        key : str, optional
-            Optional key used if healsparse map is a recarray
+        view : str, optional
+            Skyproj projection name. Default McBryde. Will look for skyproj.{view}Skyproj
+        ax : matplotlib.Axes
+            Matplotlib axes on which to draw the image
+        cbar: bool, default=True
         **kwargs
             Additional keyword arguments passed directly to the underlying
-            healpy plotting function (e.g. ``min``, ``max``, ``cmap``).
+            skyproj plotting function (e.g. ``vmin``, ``vmax``,).
         """
-        import healpy
-        import numpy as np
-
-        info = self.read_map_info(map_name)
-        assert info["pixelization"] != "gnomonic"
-
+        import skyproj
+        import matplotlib.pyplot as plt
         hsp_map = self.read_map(map_name)
+        skyproj_class = getattr(skyproj, view + "Skyproj")
+        projection = skyproj_class(ax=ax)
+        projection.draw_hspmap(hsp_map, **kwargs)
+        plt.title(map_name)
+        plt.tick_params(labeltop=False)
+        if cbar:
+            projection.draw_colorbar()
+        plt.tight_layout()
 
-        if nside is None:
-            nside = hsp_map.nside_sparse
-        
-        if nside is not None:  # degrade (including custom reductions)
-            hsp_map = degrade_healsparse(hsp_map, nside, reduction, weight_map)
-        
-        m = hsp_map.generate_healpix_map()
-        pix = hsp_map.valid_pixels
-        lon, lat = healpy.pix2ang(nside, pix, lonlat=True, nest=True)
-        if rot180:  # (optional) rotate 180 degrees in the lon direction
-            lon += 180
-            lon[lon > 360.0] -= 360.0
-            pix_rot = healpy.ang2pix(nside, lon, lat, lonlat=True, nest=True)
-            m_rot = np.ones(healpy.nside2npix(nside)) * healpy.UNSEEN
-            m_rot[pix_rot] = m[pix]
-            m = m_rot
-            pix = pix_rot
-        npix = healpy.nside2npix(nside)
-        if len(pix) == 0:
-            print(f"Empty map {map_name}")
-            return
-        if len(pix) == len(m):
-            w = np.where((m != healpy.UNSEEN) & (m != 0))
-        else:
-            w = None
-        lon_range = [lon[w].min() - 0.1, lon[w].max() + 0.1]
-        lat_range = [lat[w].min() - 0.1, lat[w].max() + 0.1]
-        lat_range = np.clip(lat_range, -90, 90)
-        lon_range = np.clip(lon_range, 0, 360.0)
-        title = kwargs.pop("title", map_name)
-        if view == "cart":
-            healpy.cartview(
-                m,
-                lonra=lon_range,
-                latra=lat_range,
-                title=title,
-                hold=True,
-                nest=True,
-                **kwargs,
-            )
-        elif view == "moll":
-            healpy.mollview(m, title=title, hold=True, nest=True, **kwargs)
-        else:
-            raise ValueError(f"Unknown Healpix view mode {view}")
 
     def read_gnomonic(self, map_name):
         import numpy as np
@@ -596,36 +563,7 @@ class MapsFile(HDFFile):
         m[y, x] = val
         return m
 
-    def plot_gnomonic(self, map_name, **kwargs):
-        import matplotlib.pyplot as plt
-        import numpy as np
 
-        info = self.read_map_info(map_name)
-        ra_min, ra_max = info["ra_min"], info["ra_max"]
-        if ra_min > 180 and ra_max < 180:
-            ra_min -= 360
-        ra_range = (ra_max, ra_min)
-        dec_range = (info["dec_min"], info["dec_max"])
-
-        # the view arg is needed for healpix but not gnomonic
-        kwargs.pop("view")
-        m = self.read_gnomonic(map_name)
-        extent = list(ra_range) + list(dec_range)
-        title = kwargs.pop("title", map_name)
-        plt.imshow(m, aspect="equal", extent=extent, **kwargs)
-        plt.title(title)
-        plt.colorbar()
-
-    def plot(self, map_name, **kwargs):
-        info = self.read_map_info(map_name)
-        pixelization = info["pixelization"]
-        if pixelization == "gnomonic":
-            m = self.plot_gnomonic(map_name, **kwargs)
-        elif pixelization == "healpix":
-            m = self.plot_healpix(map_name, **kwargs)
-        else:
-            raise ValueError(f"Unknown map pixelization type {pixelization}")
-        return m
 
 
 class LensingNoiseMaps(MapsFile):
@@ -695,7 +633,7 @@ class SACCFile(DataFile):
 
         if mode == "w":
             raise ValueError("Do not use the open_output method to write sacc files.  Use sacc.write_fits")
-        return sacc.Sacc.load_fits(path)
+        return sacc.Sacc.load(path)
 
     def read_provenance(self):
         meta = self.file.metadata
@@ -708,11 +646,55 @@ class SACCFile(DataFile):
 
         return provenance
 
+    @classmethod
+    def add_metadata(cls, sacc_object, provenance, meta):
+        # We also save the associated metadata to the file
+        for k, v in meta.items():
+            if np.isscalar(v):
+                sacc_object.metadata[k] = v
+            else:
+                for i, vi in enumerate(v):
+                    sacc_object.metadata[f"{k}_{i}"] = vi
+
+        # Add provenance metadata.  In managed formats this is done
+        # automatically, but because the Sacc library is external
+        # we do it manually here.
+        provenance.update(SACCFile.generate_provenance())
+        for key, value in provenance.items():
+            if isinstance(value, str) and "\n" in value:
+                values = value.split("\n")
+                for i, v in enumerate(values):
+                    sacc_object.metadata[f"provenance/{key}_{i}"] = v
+            else:
+                sacc_object.metadata[f"provenance/{key}"] = value
+
+
     def close(self):
         pass
 
 
 class FiducialCosmology(YamlFile):
+
+    def to_astropy(self):
+        from astropy.cosmology import w0waCDM
+
+        with open(self.path, "r") as fp:
+            params = yaml.load(fp, Loader=yaml.Loader)
+
+        astropy_params = dict(
+            H0=params["H0"],
+            Om0=params["Omega_m"],
+            Ode0=1 - params["Omega_k"] - params["Omega_m"],
+            w0=params["w0"],
+            wa=params["wa"],
+            Neff=params["Neff"],
+            m_nu=params["sum_nu_masses"]
+
+        )
+
+        cosmo = w0waCDM(**astropy_params)
+
+        return cosmo
     # TODO replace when CCL has more complete serialization tools.
     def to_ccl(self, **kwargs):
         import pyccl as ccl

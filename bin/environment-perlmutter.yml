@@ -12,7 +12,7 @@ dependencies:
   - fitsio=1.3.*
   - h5py=3.15.*=mpi_mpich_*
   - healpy=1.18.*
-  - healsparse=1.12.1
+  - healsparse=1.15.*
   - jax=0.7.*
   - jaxlib=0.7.*
   - jupyter=1.1.*
@@ -24,6 +24,7 @@ dependencies:
   - namaster=2.5.*
   - numpy=2.3.*
   - pandas=2.3.*
+  - photerr=1.5.*
   - pip=25.*
   - psutil=7.1.*
   - pyccl=3.2.*
@@ -32,6 +33,7 @@ dependencies:
   - qp-prob=1.0.*
   - scikit-learn=1.7.*
   - scipy=1.16.*
+  - skyproj=2.5.*
   - somoclu=1.7.*
   - tables-io-full=1.0.*
   - tabulate=0.9.*
@@ -51,14 +53,20 @@ dependencies:
     - dask-mpi==2022.4.0
     - git+https://github.com/LSSTDESC/CLMM.git@1.14.6
     - parallel-statistics==0.13
-    - sacc[all]==2.1.*
+    - sacc[all]==2.2.*
     - jax==0.7.2
     - jaxlib==0.7.2
     - glass==2023.7
     - git+https://github.com/beckermr/hybrideb@a3198ea5bc8175542b058e5c1289d910f05fd99d
     - pz-rail[algos] @ git+https://github.com/LSSTDESC/RAIL@v1.1.2
+    # RAIL is not yet updated for PZFLOW 4 and dependencies
+    # are not yet corrected either so we do it here.
+    - pzflow>=4
     # Numpy has to be here to make sure that pypi doesn't
     # try to install a different version
     - numpy==2.3.*
     # NERSC-specific
     - git+https://github.com/LSSTDESC/dataregistry.git
+    - dsigma==1.2.*
+    - git+https://github.com/LSSTDESC/dsf.git
+  

@@ -23,7 +23,7 @@ class TXRandomCat(PipelineStage):
 
     name = "TXRandomCat"
     inputs = [
-        ("aux_lens_maps", MapsFile),
+        ("depth_map", MapsFile),
         ("mask", MapsFile),
         ("lens_photoz_stack", QPNOfZFile),
         ("fiducial_cosmology", FiducialCosmology),
@@ -44,6 +44,7 @@ class TXRandomCat(PipelineStage):
         "sample_rate": StageParameter(
             float, 0.5, msg="Fraction of random catalog to be retained in the sub-sampled catalog."
         ),
+        "depth_band": StageParameter(str, "", msg="Band to use for depth map when calculating density. If not set just use 'depth'"),
     }
 
     def run(self):
@@ -56,11 +57,15 @@ class TXRandomCat(PipelineStage):
         import healpix
 
         # Load the input depth map
-        with self.open_input("aux_lens_maps", wrapper=True) as maps_file:
-            depth = maps_file.read_map("depth/depth")
-            info = maps_file.read_map_info("depth/depth")
-            nside = info["nside"]
-            scheme = choose_pixelization(**info)
+        depth_band = self.config["depth_band"]
+        if depth_band:
+            depth_band = "_" + depth_band
+        with self.open_input("depth_map", wrapper=True) as maps_file:
+            depth = maps_file.read_map(f"depth/depth{depth_band}")
+            nside = depth.nside_sparse
+            # Maps are always returned as Healsparse maps which are in the NEST
+            # scheme.
+            scheme = choose_pixelization(pixelization="healpix", nside=nside, nest=True)
 
         # Load the input mask
         with self.open_input("mask", wrapper=True) as maps_file:
@@ -70,11 +75,17 @@ class TXRandomCat(PipelineStage):
             # This is a QP object
             n_of_z_object = f.read_ensemble()
             Ntomo = n_of_z_object.npdf - 1  # ensemble includes the non-tomo 2D n(z)
+        print("Generating randoms for {0} tomographic bins".format(Ntomo))
 
         # We also generate comoving distances under a fiducial cosmology
         # for each random, for use in Rlens type metrics
         with self.open_input("fiducial_cosmology", wrapper=True) as f:
             cosmo = f.to_ccl()
+
+        if mask.nside_sparse != depth.nside_sparse:
+            raise ValueError(
+                f"Mask and depth map have different nside: {mask.nside_sparse} vs {depth.nside_sparse}"
+            )
 
         # Cut down to pixels that have any objects in
         pixel = mask.valid_pixels
@@ -263,7 +274,7 @@ class TXRandomCat(PipelineStage):
                 pix_catalog = np.repeat(pixel[start_vertex:end_vertex], numbers[j, :][start_vertex:end_vertex])
 
                 # generate a random location within the pixel using healpix
-                ra, dec = healpix.randang(nside, pix_catalog, lonlat=True)
+                ra, dec = healpix.randang(nside, pix_catalog, lonlat=True, nest=scheme.nest)
 
                 N = len(pix_catalog)
                 bin_index = np.repeat(j, N)

@@ -1,7 +1,7 @@
 import numpy as np
-from .utils import choose_pixelization
+from .utils import choose_pixelization, read_shear_catalog_type
 from .base_stage import PipelineStage
-from .data_types import MapsFile
+from .data_types import MapsFile, HDFFile, ShearCatalog
 from ceci.config import StageParameter
 from .mapping import degrade_healsparse
 
@@ -129,7 +129,10 @@ class TXSimpleMask(TXBaseMask):
     """
 
     name = "TXSimpleMask"
-    inputs = [("aux_lens_maps", MapsFile)]
+    inputs = [
+        ("depth_map", MapsFile),
+        ("bright_object_map", MapsFile),
+    ]
     config_options = {
         "depth_cut": StageParameter(float, 23.5, msg="Depth cut for mask creation."),
         "bright_object_max": StageParameter(float, 10.0, msg="Maximum allowed bright object count."),
@@ -150,10 +153,12 @@ class TXSimpleMask(TXBaseMask):
         """
         import healsparse as hsp
 
-        with self.open_input("aux_lens_maps", wrapper=True) as f:
-            metadata = dict(f.file["maps"].attrs)
-            bright_obj = f.read_map("bright_objects/count")
-            depth = f.read_map("depth/depth")
+        with self.open_input("bright_object_map", wrapper=True) as f_bright:
+            bright_obj = f_bright.read_map("bright_objects/count")
+
+        with self.open_input("depth_map", wrapper=True) as f_depth:
+            metadata = dict(f_depth.file["maps"].attrs)
+            depth = f_depth.read_map("depth/depth")
             pixel_scheme = choose_pixelization(**metadata)
 
         valid_pix = depth.valid_pixels
@@ -250,7 +255,8 @@ class TXSimpleMaskFrac(TXSimpleMask):
     parallel = False
     # make a mask from the auxiliary maps
     inputs = [
-        ("aux_lens_maps", MapsFile),
+        ("depth_map", MapsFile),
+        ("bright_object_map", MapsFile),
     ]
     outputs = [("mask", MapsFile)]
     config_options = {
@@ -302,13 +308,13 @@ class TXCustomMask(TXSimpleMaskFrac):
     """
     Make a mask from a custom list of cuts to aux maps (e.g depth cut and bright object cuts)
 
-    Fracdet currently taken from aux_lens_maps TODO: add option to compute this from hsp map
+    Fracdet currently taken from custom DES footprint maps
     """
 
     name = "TXCustomMask"
     # make a mask from the auxiliary maps
     inputs = [
-        ("aux_lens_maps", MapsFile),
+        ("footprint_maps", MapsFile),
     ]
     outputs = [("mask", MapsFile)]
     config_options = {
@@ -367,10 +373,10 @@ class TXCustomMask(TXSimpleMaskFrac):
         import operator
 
         OP_MAP = {
-            ">": operator.gt,
             ">=": operator.ge,
-            "<": operator.lt,
             "<=": operator.le,
+            ">": operator.gt,
+            "<": operator.lt,
             "==": operator.eq,
             "!=": operator.ne,
         }
@@ -391,7 +397,7 @@ class TXCustomMask(TXSimpleMaskFrac):
             operator = OP_MAP[operator_string]
 
             # load map
-            with self.open_input("aux_lens_maps", wrapper=True) as f:
+            with self.open_input("footprint_maps", wrapper=True) as f:
                 metadata = dict(f.file["maps"].attrs)
                 m = f.read_map(map_name)
             pixel_scheme = choose_pixelization(**metadata)
@@ -438,7 +444,7 @@ class TXCustomMask(TXSimpleMaskFrac):
         fracdet : hsp.HealSparseMap
             Fracdet array.
         """
-        with self.open_input("aux_lens_maps", wrapper=True) as f:
+        with self.open_input("footprint_maps", wrapper=True) as f:
             fracdet = f.read_map(self.config["fracdet_name"])
         return fracdet
 
@@ -482,3 +488,227 @@ class TXCustomMask(TXSimpleMaskFrac):
         assert np.round(area_in, 3) == np.round(area_out, 3)
 
         return mask_out, metadata_out
+
+class TXJointMask(TXBaseMask):
+    """
+    Combine two binary masks into one using AND intersection.
+
+    Currently only supports binary masks.
+
+    Subclasses can override `mask_input_names` to rename the two input tags
+    without duplicating any logic.
+    """
+
+    name = "TXJointMask"
+    inputs = [
+        ("mask1", MapsFile),
+        ("mask2", MapsFile),
+    ]
+    outputs = [("mask", MapsFile)]
+
+    # Subclasses override this tuple to change which input tags are opened.
+    mask_input_names = ("mask1", "mask2")
+
+    def make_binary_mask(self):
+        """
+        Load the two input masks and return their AND intersection.
+
+        TODO: make this more flexible to allow for different types of masks (e.g. fractional coverage maps) and different combination logic (e.g. OR, product, etc.). Currently, we assume shear mask is in healsparse format and lens mask is in HDF5. 
+
+        Returns
+        -------
+        mask : hsp.HealSparseMap
+            Combined boolean mask.
+        pixel_scheme : PixelScheme
+            Pixelization object taken from the first mask's metadata.
+        metadata : dict
+            Metadata from the first input mask.
+        """
+        import healsparse as hsp
+
+        name1, name2 = self.mask_input_names
+
+        with self.open_input(name1, wrapper=True) as f:
+            metadata1 = f.read_map_info("mask")
+            nside1 = metadata1["nside"]
+            pixel_scheme1 = choose_pixelization(**metadata1)
+            mask1 = f.read_mask("mask", returnbool=True)
+
+        with self.open_input(name2, wrapper=True) as f:
+            metadata2 = f.read_map_info("mask")
+            nside2 = metadata2["nside"]
+            pixel_scheme2 = choose_pixelization(**metadata2)
+            mask2 = f.read_mask("mask", returnbool=True)
+
+        # Keep metadata from the first mask as documented.
+        metadata = metadata1
+        if nside1 != nside2:
+            if nside1 < nside2:
+                print(f"Degrading {name2} from Nside {nside2} to {nside1}")
+                mask2 = mask2.degrade(nside1)
+            elif nside2 < nside1:
+                print(f"Degrading {name1} from Nside {nside1} to {nside2}")
+                mask1 = mask1.degrade(nside2)
+            mask = hsp.operations.product_intersection([mask1, mask2])
+        else:
+            mask = hsp.operations.product_intersection([mask1, mask2])
+        nside_out = mask.nside_sparse
+        metadata["nside"] = nside_out
+        pixel_scheme = choose_pixelization(pixelization="healpix", nside=nside_out, nest=True)
+
+        return mask, pixel_scheme, metadata
+
+
+class TXDESIJointMask(TXJointMask):
+    """
+    Combine the DESI lens mask and the shear catalog mask using AND intersection.
+    """
+
+    name = "TXDESIJointMask"
+    inputs = [
+        ("desi_mask", MapsFile),
+        ("shear_mask", MapsFile),
+    ]
+    outputs = [("mask", MapsFile)]
+
+    mask_input_names = ("desi_mask", "shear_mask")
+
+
+class TXCutCatalog(PipelineStage):
+    """
+    Cut a catalog to the footprint defined by an input mask, and write out the cut catalog.
+
+    Subclasses can override `catalog_input_name`, `catalog_output_name`, and the
+    `config_options` defaults to handle different catalog types.
+    """
+
+    name = "TXCutCatalog"
+    parallel = True
+    inputs = [
+        ("catalog", HDFFile),
+        ("mask", MapsFile),
+    ]
+    outputs = [("cut_catalog", HDFFile)]
+    config_options = {
+        "chunk_rows": StageParameter(int, 100000, msg="Number of rows to read per chunk."),
+        "catalog_groups": StageParameter(list, ["catalog"], msg="HDF5 group names in the input catalog."),
+        "ra_col": StageParameter(str, "ra", msg="RA column name."),
+        "dec_col": StageParameter(str, "dec", msg="Dec column name."),
+    }
+
+    catalog_input_name = "catalog"
+    catalog_output_name = "cut_catalog"
+
+    def run(self):
+        import healpy as hp
+        import h5py
+
+        with self.open_input("mask", wrapper=True) as f:
+            mask = f.read_mask("mask", returnbool=True)
+            nside = f.read_map_info("mask")["nside"]
+
+        group_names = self.config["catalog_groups"]
+        ra_col = self.config["ra_col"]
+        dec_col = self.config["dec_col"]
+        chunk_rows = self.config["chunk_rows"]
+
+        in_path = self.get_input(self.catalog_input_name)
+
+        with h5py.File(in_path, "r") as f_in, self.open_output(self.catalog_output_name, parallel=True) as f_out:
+            for group_name in group_names:
+                g_in = f_in[group_name]
+                n_total = g_in[ra_col].size
+
+                # Split the input rows across MPI ranks in contiguous blocks.
+                base = n_total // self.size
+                remainder = n_total % self.size
+                my_start = self.rank * base + min(self.rank, remainder)
+                my_count = base + (1 if self.rank < remainder else 0)
+                my_end = my_start + my_count
+
+                # First pass on each rank: determine per-chunk selected rows.
+                chunk_info = []
+                local_selected_total = 0
+                for start in range(my_start, my_end, chunk_rows):
+                    end = min(start + chunk_rows, n_total)
+                    ra = g_in[ra_col][start:end]
+                    dec = g_in[dec_col][start:end]
+                    pix = hp.ang2pix(nside, ra, dec, lonlat=True, nest=True)
+                    sel = mask[pix].astype(bool)
+                    selected_local = np.where(sel)[0]
+                    nsel = int(selected_local.size)
+                    chunk_info.append((start, end, selected_local, nsel))
+                    local_selected_total += nsel
+                    ntot_chunk = ra.size
+                    print(
+                        f"Rank {self.rank} rows {start:,}-{end:,} selected {nsel:,} / {ntot_chunk:,} rows"
+                    )
+
+                if self.comm is None:
+                    rank_selected_totals = [local_selected_total]
+                else:
+                    rank_selected_totals = self.comm.allgather(local_selected_total)
+
+                group_selected_total = int(np.sum(rank_selected_totals))
+                output_start = int(np.sum(rank_selected_totals[: self.rank]))
+
+                if self.rank == 0:
+                    print("")
+                    print(
+                        f"Overall selected {group_selected_total:,} / {n_total:,} objects inside mask"
+                    )
+
+                # Create output group and datasets collectively on all ranks.
+                g_out = f_out.create_group(group_name)
+
+                # copy attributes, primarily the catalog_type
+                # property
+                attrs = g_in.attrs
+                for key, value in attrs.items():
+                    g_out.attrs[key] = value
+
+                for col in g_in.keys():
+                    in_ds = g_in[col]
+                    out_shape = (group_selected_total,) + in_ds.shape[1:]
+                    out_ds = g_out.create_dataset(col, shape=out_shape, dtype=in_ds.dtype)
+
+                    print(f"Rank {self.rank} copying column {col}")
+                    write_pos = output_start
+                    for start, end, selected_local, nsel in chunk_info:
+                        if nsel == 0:
+                            continue
+                        chunk_data = in_ds[start:end]
+                        out_ds[write_pos : write_pos + nsel] = chunk_data[selected_local]
+                        write_pos += nsel
+
+                    expected_end = output_start + local_selected_total
+                    if write_pos != expected_end:
+                        raise RuntimeError(
+                            f"Rank {self.rank} wrote {write_pos - output_start} rows for column {col}, "
+                            f"expected {local_selected_total}"
+                        )
+
+
+class TXCutShearCatalog(TXCutCatalog):
+    """
+    Cut a shear catalog to the footprint defined by an input mask.
+    """
+
+    name = "TXCutShearCatalog"
+    inputs = [
+        ("shear_catalog", ShearCatalog),
+        ("mask", MapsFile),
+    ]
+    outputs = [("cut_shear_catalog", HDFFile)]
+    config_options = {k:v for k,v in TXCutCatalog.config_options.items() if k != "catalog_groups"}
+
+    catalog_input_name = "shear_catalog"
+    catalog_output_name = "cut_shear_catalog"
+
+    def run(self):
+        cat_type = read_shear_catalog_type(self)
+        if cat_type == "metadetect":
+            self.config["catalog_groups"] = ["shear/ns", "shear/1p", "shear/1m", "shear/2p", "shear/2m"]
+        else:
+            self.config["catalog_groups"] = ["shear"]
+        super().run()

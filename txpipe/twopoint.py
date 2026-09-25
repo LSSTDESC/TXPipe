@@ -81,7 +81,7 @@ class TXTwoPoint(PipelineStage):
         "use_randoms": StageParameter(bool, True, msg="Whether to use random catalogs"),
         "low_mem": StageParameter(bool, False, msg="Whether to use low memory mode"),
         "patch_dir": StageParameter(str, "./cache/patches", msg="Directory for storing patch files"),
-        "chunk_rows": StageParameter(int, 100_000, msg="Number of rows to process in each chunk"),
+        "chunk_rows": StageParameter(int, 100_000, msg="Number of rows to process in each chunk when making patches"),
         "share_patch_files": StageParameter(bool, False, msg="Whether to share patch files across processes"),
         "metric": StageParameter(str, "Euclidean", msg="Distance metric to use (Euclidean, Arc, etc.)"),
         "gaussian_sims_factor": StageParameter(
@@ -423,7 +423,7 @@ class TXTwoPoint(PipelineStage):
                         if self.config["do_shear_pos"] == True:
                             S2.add_tracer("NZ", f"source_{i}", z, Nz)
             else:
-                sys.exit("Requesting a measurement that requires source galaxies but no source_list provided")
+                raise ValueError("Requesting a measurement that requires source galaxies but no source_list provided")
 
         if self.config["do_pos_pos"] or self.config["do_shear_pos"]:
             if lens_list:
@@ -435,7 +435,7 @@ class TXTwoPoint(PipelineStage):
                         if self.config["do_shear_pos"] == True:
                             S2.add_tracer("NZ", f"lens_{i}", z, Nz)
             else:
-                sys.exit("Requesting a measurement that requires lens galaxies but no lens_list provided")
+                raise ValueError("Requesting a measurement that requires lens galaxies but no lens_list provided")
 
         # Now build up the collection of data points, adding them all to
         # the sacc data one by one.
@@ -466,26 +466,8 @@ class TXTwoPoint(PipelineStage):
         S2.save_fits(self.get_output("twopoint_gamma_x"), overwrite=True)
 
     def write_metadata(self, S, meta):
-        # We also save the associated metadata to the file
-        for k, v in meta.items():
-            if np.isscalar(v):
-                S.metadata[k] = v
-            else:
-                for i, vi in enumerate(v):
-                    S.metadata[f"{k}_{i}"] = vi
-
-        # Add provenance metadata.  In managed formats this is done
-        # automatically, but because the Sacc library is external
-        # we do it manually here.
         provenance = self.gather_provenance()
-        provenance.update(SACCFile.generate_provenance())
-        for key, value in provenance.items():
-            if isinstance(value, str) and "\n" in value:
-                values = value.split("\n")
-                for i, v in enumerate(values):
-                    S.metadata[f"provenance/{key}_{i}"] = v
-            else:
-                S.metadata[f"provenance/{key}"] = value
+        SACCFile.add_metadata(S, provenance, meta)
 
     def call_treecorr(self, i, j, k):
         """

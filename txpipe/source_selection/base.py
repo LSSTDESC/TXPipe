@@ -38,7 +38,6 @@ class TXSourceSelectorBase(PipelineStage):
 
     inputs = [
         ("shear_catalog", ShearCatalog),
-        ("spectroscopic_catalog", HDFFile),
         ("shear_tomography_classifier", PickleFile),
     ]
 
@@ -56,6 +55,7 @@ class TXSourceSelectorBase(PipelineStage):
             msg="Signal-to-noise cut threshold for object selection",
         ),
         "chunk_rows": StageParameter(int, 10000, msg="Number of rows to process in each chunk"),
+        "do_tomography": StageParameter(bool, True, msg="If false, skip tomography and just select everything into bin 0. Other cuts are still applied."),
         "source_zbin_edges": StageParameter(list, required=True, msg="Redshift bin edges for source tomography"),
     }
 
@@ -73,49 +73,39 @@ class TXSourceSelectorBase(PipelineStage):
         # Suppress some warnings from numpy that are not relevant
         original_warning_settings = np.seterr(all="ignore")
 
-        # Are we using a metacal or lensfit catalog?
-        shear_catalog_type = read_shear_catalog_type(self)
-
-        bands = self.config["bands"]
+        # as a matrix.  We will collect together the different
+        # matrices for each chunk and do a weighted average at the end.
+        if self.config['do_tomography']:
+            nbin_source = len(self.config["source_zbin_edges"]) - 1
+        else:
+            nbin_source = 1
+        self.config["nbin_source"] = nbin_source
+        calculators = self.setup_response_calculators(nbin_source)
 
         # The output file we will put the tomographic
         # information into
-        output_file = self.setup_output()
+        output_file = self.setup_output(nbin_source)
 
         # The iterator that will loop through the data.
         # Set it up here so that we can find out if there are any
         # problems with it before we get run the slow classifier.
         it = self.data_iterator()
 
-        # Build a classifier used to put objects into tomographic bins
-        if not (self.config["input_pz"] or self.config["true_z"]):
-            classifier, features = self.read_tomography_classifier()
+        # Get a function to split objects into tomographic bins
+        tomography_classifier = self.make_tomographic_bin_chooser_function()
+
 
         # We will collect the selection biases for each bin
-        # as a matrix.  We will collect together the different
-        # matrices for each chunk and do a weighted average at the end.
-        nbin_source = len(self.config["source_zbin_edges"]) - 1
-
-        calculators = self.setup_response_calculators(nbin_source)
 
         # Loop through the input data, processing it chunk by chunk
         for start, end, shear_data in it:
             print(f"Process {self.rank} running selection for rows {start:,}-{end:,}")
 
-            # Either apply a simple z cut if we have an input PZ estimate or
-            # the truth value (in simulations)
-            if self.config["true_z"] or self.config["input_pz"]:
-                pz_data = self.apply_simple_redshift_cut(shear_data)
+            # Use the tomography function we created earlier to divide
+            # objects into bins. Note that this can also classify objects
+            # that are later rejected by size or SNR cuts.
+            pz_data = tomography_classifier(start, end, shear_data)
 
-            else:
-                # or select most likely tomographic source bin, with a random forest
-                pz_data = apply_classifier(
-                    classifier,
-                    features,
-                    bands,
-                    shear_catalog_type,
-                    shear_data,
-                )
             # Combine this selection with size and snr cuts to produce a source selection
             # and calculate the shear bias it would generate.
             # Note that the per-object response can be None for methods like MetaDetect that
@@ -134,6 +124,48 @@ class TXSourceSelectorBase(PipelineStage):
 
         # Restore the original warning settings in case we are being called from a library
         np.seterr(**original_warning_settings)
+
+
+    def make_tomographic_bin_chooser_function(self):
+        """Return a function tomography_classifier(start, end, shear_data) -> dict of zbin arrays."""
+
+        # In the simple case we just have a straightforward
+        # redshfit cut, and we use the existing function for that.
+        # See below for a note about the start and end arguments.
+        if self.config["true_z"] or self.config["input_pz"]:
+            def tomography_classifier(start, end, shear_data):
+                return self.apply_simple_redshift_cut(shear_data)
+            return tomography_classifier
+
+        if not self.config["do_tomography"]:
+            def tomography_classifier(start, end, shear_data):
+                return self.apply_no_tomography_cut(shear_data)
+            return tomography_classifier
+    
+        # Are we using a metacal or lensfit catalog?
+        shear_catalog_type = read_shear_catalog_type(self)
+
+        # Build a classifier used to put objects into tomographic bins
+        classifier, features = self.read_tomography_classifier()
+        bands = self.config["bands"]
+
+        # Make a nested function to be our classifier.
+        # Note that this default implementation does not use
+        # the start and end functions, which are only needed right
+        # now in the DESY3 selector where we are getting the
+        # tomography selection from an external file.
+        def tomography_classifier(start, end, shear_data):
+            # or select most likely tomographic source bin, with a random forest
+            pz_data = apply_classifier(
+                classifier,
+                features,
+                bands,
+                shear_catalog_type,
+                shear_data,
+            )
+            return pz_data
+
+        return tomography_classifier
 
     def read_tomography_classifier(self):
         # Read the tomography classifier from file
@@ -173,6 +205,9 @@ class TXSourceSelectorBase(PipelineStage):
 
         return {"zbin": pz_data_bin}
 
+    def apply_no_tomography_cut(self, shear_data):
+        return {"zbin": np.zeros(shear_data['ra'].size, dtype=int)}
+
     def calculate_tomography(self, pz_data, shear_data, calculators):
         """
         Select objects to go in each tomographic bin and their calibration.
@@ -211,7 +246,7 @@ class TXSourceSelectorBase(PipelineStage):
         # Some subclasses supply it.
         return None
 
-    def setup_output(self):
+    def setup_output(self, nbin_source):
         """
         Set up the output data file.
 
@@ -225,7 +260,6 @@ class TXSourceSelectorBase(PipelineStage):
             n = f.get_size()
 
         zbins = self.config["source_zbin_edges"]
-        nbin_source = len(zbins) - 1
 
         output = self.open_output("shear_tomography_catalog", parallel=True, wrapper=True)
         outfile = output.file
@@ -289,6 +323,8 @@ class TXSourceSelectorBase(PipelineStage):
         calculators: list of Calculator objects, one for each tomographic bin and one for the 2D sample,
                      that have been fed all the data and are ready to have their results collected and written out.
         """
+        # hard link to bin column. needed for RAIL masked summarizer stages
+        outfile["tomography/class_id"] = outfile["tomography/bin"]
 
         for i, calculator in enumerate(calculators):
             stats = calculator.collect(self.comm, allgather=True)
@@ -328,6 +364,7 @@ def select_weak_lensing_sample(data, config, calling_from_select=False):
     # output is different in each case
     s2n_cut = config["s2n_cut"]
     T_cut = config["T_cut"]
+
     verbose = config["verbose"]
     variant = data.suffix
 

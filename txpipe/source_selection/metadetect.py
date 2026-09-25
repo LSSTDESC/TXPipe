@@ -41,7 +41,7 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         bands = self.config["bands"]
 
         # Core quantities we need
-        shear_cols = metadetect_variants("T", "s2n", "g1", "g2", "ra", "dec", "psf_T_mean", "weight", "flags")
+        shear_cols = metadetect_variants("T", "s2n", "g1", "g2", "ra", "dec", "weight", "psf_T_mean", "flags")
 
         # Magnitudes and errors
         shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="metadetect")
@@ -63,7 +63,10 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
 
     def setup_response_calculators(self, nbin_source):
         delta_gamma = self.config["delta_gamma"]
-        calculators = [MetaDetectCalculator(select_tomographic_weak_lensing_sample, delta_gamma) for i in range(nbin_source)]
+        calculators = [
+            MetaDetectCalculator(select_tomographic_weak_lensing_sample, delta_gamma)
+            for i in range(nbin_source)
+        ]
         calculators.append(MetaDetectCalculator(select_weak_lensing_sample, delta_gamma))
         return calculators
 
@@ -81,7 +84,7 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
 
         # Otherwise we have to do it once for each variant
         pz_data = {}
-        variants = ["00/", "1p/", "2p/", "1m/", "2m/"]
+        variants = ["ns/", "1p/", "2p/", "1m/", "2m/"]
         for v in variants:
             if self.config["true_z"]:
                 zz = data[f"{v}redshift_true"]
@@ -99,7 +102,15 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
 
         return pz_data
 
-    def setup_output(self):
+    def apply_no_tomography_cut(self, shear_data):
+        pz_data = {}
+        variants = ["ns/", "1p/", "2p/", "1m/", "2m/"]
+        for v in variants:
+            pz_data[f"{v}zbin"] = np.zeros(shear_data[f"{v}ra"].size, dtype=int)
+        return pz_data
+
+
+    def setup_output(self, nbin_source):
         """
         MetaDetect outputs do not include per-object calibration values,
         only the per-bin values.
@@ -107,7 +118,7 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         # This call to the super-class method defined above sets up most of the output
         # here, so the rest of this method only does things specific to this
         # calibration scheme
-        outfile = super().setup_output()
+        outfile = super().setup_output(nbin_source)
 
         # For the metadetect we also want to save the selected bin for every variant.
         # We will need this later on in the pipeline for diagnostics.
@@ -119,11 +130,10 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
                 n = infile[f"shear/{v}/ra"].size
                 outfile["tomography"].create_dataset(f"bin_{v}", (n,), dtype=np.int32)
         # Link the 00 variant to the base tomography/bin dataset 
-        outfile["tomography/bin_00"] = outfile["tomography/bin"]
+        outfile["tomography/bin_ns"] = outfile["tomography/bin"]
 
         # There is only global calibration information for metadetect, nothing
         # per-bin.
-        nbin_source = outfile["counts/counts"].size
         group = outfile.create_group("response")
         # Per-bin 2x2 calibration matrix
         group.create_dataset("R", (nbin_source, 2, 2), dtype="f")
@@ -144,7 +154,7 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         shear_data: table or dict of arrays
             A chunk of input shear data with metacalibration variants.
         """
-        nbin = len(self.config["source_zbin_edges"]) - 1
+        nbin = self.config["nbin_source"]
         n = len(list(shear_data.values())[0])
 
         tomo_bins = []

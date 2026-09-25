@@ -294,6 +294,9 @@ def degrade_healsparse(hsp_map, degrade_nside, reduction, weight_map=None):
             # only select unique pixels in the degraded map (I'm not sure why they sometimes duplicate)
             degraded_pixels = np.unique(map_degraded_sum.valid_pixels)
 
+            # remove any pixels that have 0 sum
+            degraded_pixels = degraded_pixels[map_degraded_sum[degraded_pixels] != 0.]
+
             map_out = hsp.HealSparseMap.make_empty_like(map_degraded_sum)
             map_out.update_values_pix(
                 degraded_pixels,
