@@ -257,7 +257,17 @@ class TXSourceDiagnosticPlots(PipelineStage):
             )
             shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="metadetect")
         elif cat_type == "anacal":
-            raise NameError("anacal does not work with this atm.")
+            shear_cols = [
+                "dec",
+                "psf_g1",
+                "psf_g2",
+                "g1",
+                "g2",
+                "psf_T_mean",
+                "s2n",
+                "T",
+                "weight"
+            ] + [f"mag_{b}" for b in self.config["bands"]]
         else:
             shear_cols = [
                 "dec",
