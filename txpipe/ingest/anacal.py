@@ -324,6 +324,7 @@ class TXIngestAnacal(TXIngestCatalogFits):
         output["weight"] = np.ones_like(wsel)
         output["e1"] = wsel * e1_raw
         output["e2"] = wsel * e2_raw
+        output["T"] = (m00 + m20) / m00
 
         # i-band S/N + shear response — passed through from the
         # pre-computed fpfs1 columns. ``scale`` only picks the flux
@@ -483,6 +484,7 @@ class TXIngestAnacal(TXIngestCatalogFits):
         g["s2n"] = g["lsst_i_s2n_fpfs1"] #setting the default to be i band
         g["psf_g1"] = g["psf_g1_i"] #setting the default to be i band
         g["psf_g2"] = g["psf_g2_i"] #setting the default to be i band
+        g["psf_T_mean"] = g["psf_T_mean_i"]
         g["ds2n_dg1"] = g["lsst_i_ds2n_fpfs1_dg1"]
         g["ds2n_dg2"] = g["lsst_i_ds2n_fpfs1_dg2"]
         for delta in ["de1", "de2", "dm00", "dm20"]:

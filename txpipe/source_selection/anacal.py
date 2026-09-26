@@ -175,6 +175,7 @@ class TXSourceSelectorAnacal(TXSourceSelectorBase):
         group.create_dataset("R_2d", (1,), dtype="f")
         return outfile
 
+
     def setup_response_calculators(self, nbin_source):
         delta_gamma = self.config["delta_gamma"]
         calculators = [
