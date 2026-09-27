@@ -130,7 +130,8 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
 
         # Extract cluster list from cluster_shears_cat
         cluster_shear_list = self.cluster_shears_cat["cluster_id"].tolist()
-        
+        n_skipped = 0
+
         for cluster_index in range(ncluster) :
 
             # Select subset of background shear information for this particular cluster
@@ -148,7 +149,14 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             #print("-> cluster id ",id_cl,"  ",cluster_cat_index," ",cluster_cat_indices,"  ",cluster_cat_indices[0]+cluster_cat_indices[1])
             
             bg_cat, _, self.profile_type = self.load_cluster_shear_catalog(cluster_cat_indices)
-            print(self.profile_type) 
+
+            # Clusters outside the shear footprint (or in masked regions) have no
+            # background sources -- skip them rather than failing on empty arrays
+            if len(bg_cat["source_index"]) == 0:
+                n_skipped += 1
+                continue
+
+            print(self.profile_type)
             print('For cluster', id_cl, 'at z=',z_cl,'with n_source = ',len(bg_cat["source_index"]) , 'theta_max is', np.max(bg_cat["distance_arcmin"]), ' arcmin =', clmm.utils.convert_units(np.max(bg_cat["distance_arcmin"]), 'arcmin', 'Mpc', z_cl, self.clmm_cosmo), 'Mpc')
             
             # To use CLMM, need to have galaxy table in clmm.GCData type
@@ -192,6 +200,12 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
                     tan_component="tangential_comp",
                     cross_component="cross_comp",
                     weights="W_l")
+
+        n_used = ncluster - n_skipped
+        print(f"Skipped {n_skipped} of {ncluster} clusters with no background sources in {cluster_ensemble_id}")
+        if n_used < 2:
+            print(f"Only {n_used} cluster(s) with sources in {cluster_ensemble_id}; not stacking")
+            return None
 
         # Individual profile for all cluster of the ensemble have been computed in the loop above
         # Now, compute the stacked profile of the ensemble
