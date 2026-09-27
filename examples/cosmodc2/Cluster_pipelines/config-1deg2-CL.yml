@@ -44,7 +44,7 @@ BPZ_lite:
     data_path: ./data/example/rail-bpz-inputs
     bands: [mag_r, mag_i, mag_z]
     err_bands: [mag_err_r, mag_err_i, mag_err_z]
-    hdf5_groupname: shear/00
+    hdf5_groupname: shear/ns
     nondetect_val: .inf
     columns_file: ./data/bpz_riz.columns
     spectra_file: CWWSB4.list
