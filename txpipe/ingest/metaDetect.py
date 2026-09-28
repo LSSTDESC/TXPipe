@@ -484,12 +484,34 @@ class TXIngestMetaDetectV1_1(PipelineStage):
         exclusion_flag = self.config["exclusion_flag"]
 
         file_list = self.generate_input_file_list()
+        file_list.sort()
         n_files = len(file_list)
         shape_noise = self.config['pre_response_shape_noise']
 
         max_size = self.get_maximum_catalog_size(file_list)
         created_files = False
+
+        # we need the file list to be a multiple of the size of the
+        # MPI communicator
+        files_per_rank = n_files // self.size
+        if files_per_rank * size.size < n_files:
+            n_extra = n_files - (files_per_rank * size.size)
+            file_list.extend([""] * n_extra)
+
+        my_files = file_list[self.rank::self.size]
+        outfile = self.open_output("shear_catalog", parallel=True)
+        outgroup = outfile.create_group("shear")
+        for variant in META_VARIANTS:
+            outgroup.create_group(variant)
+
         for i, filename in enumerate(file_list):
+            if (filename == "") :
+                assert self.comm is not None, "This should not happen"
+                # broadcast zeros for all sizes to the other processes
+                sizes = np.zeros((self.size, len(META_VARIANTS)), dtype=np.int64)
+                in_place_reduce(sizes, self.comm, allreduce=True)
+                continue
+
             print(f"Processing tract {i + 1} / {n_files}")
             sys.stdout.flush()
             with rustfits.FITS(filename) as f:
@@ -497,32 +519,54 @@ class TXIngestMetaDetectV1_1(PipelineStage):
 
             chunk_size = len(d)
 
-            if chunk_size == 0:
-                print(f"  - skipping chunk since it is empty")
-                continue
-            else:
-                print(f"  - adding {chunk_size} rows")
+            if (chunk_size == 0) and (not created_files):
+                raise ValueError("Current design requires first file for each chunk to contain values")
 
             shear_data = process_metadetect_data_v1_1(d, exclusion_flag, shape_noise,
                                                  full_columns=all_columns_flag)
             if not created_files:
                 created_files = True
-                variants = {
-                    "ns": max_size,
-                    "1p": max_size,
-                    "1m": max_size,
-                    "2p": max_size,
-                    "2m": max_size,
-                    }
                 columns = list(shear_data["ns"].keys())
                 dtypes = {key: shear_data["ns"][key].dtype for key in shear_data["ns"]}
-                splitter = MetaDetectSplitter(group, columns, variants, dtypes=dtypes)
+                # colletive communication to set up for everyone.
+                for variant in META_VARIANTS:
+                    variant_group = outgroup[variant]
+                    for name, dt in dtypes.items():
+                        variant_group.create_dataset(name, shape=(max_size,), dtype=dt, maxshape=(max_size, ))
 
-            for variant in META_VARIANTS:
-                splitter.write_bin(shear_data[variant], variant)
+            sizes = np.zeros((self.size, len(META_VARIANTS)), dtype=np.int64)
+            for i, v in enumerate(META_VARIANTS):
+                sizes[self.rank, i] = shear_data[v]["ra"].size
+            in_place_reduce(sizes, self.comm, allreduce=True)
+
+            end_points = np.zeros(len(META_VARIANTS))
+            for i, variant in enumerate(META_VARIANTS):
+                my_start = sizes[:self.rank, i].sum()
+                my_end = my_start + sizes[self.rank, i]
+                end_points[i] = my_end
+
+                # We just log the lengths for the ns catalog since it willbe roughly
+                # representative of the one for all of them.
+                if i == 0:
+                    print(f"Rank {self.rank} writing data {my_start:,} - {my_end:,}")
+                variant_group = outgroup[variant]
+                for name, col in shear_data.items():
+                    variant_group[name][my_start:my_end] = col
+
+
+
         print("Read complete; re-sizing files")
-        if created_files:    
-            splitter.finish()
+        if created_files:
+            # The final size of the catalog is the end point for the
+            # maximum rank, which is self.size - 1.
+            if self.comm is not None:
+                end_points = self.comm.bcast(end_points, root=self.size - 1)
+            for i, variant in enumerate(META_VARIANTS):
+                variant_group = out_group[variant]
+                end_point = end_points[i]
+                for name in shear_data["ns"].keys():
+                    variant_group[name].resize((end_point,))
+
             print("adding in aliases")
             self.aliasing(shear_outfile, group)
         else:
@@ -558,7 +602,7 @@ ERIN_TXPIPE_COLUMNS = {
     # "psf_g2": "gauss_psfReconvolved_g2",
     "psf_T_mean": "psf_T",
     "object_mask_fraction": "mfrac",
-    "id": "shearObjectId",
+    # "id": "shearObjectId",
 }
 def process_metadetect_data_v1_1(data, flag_exclusion, shape_noise, full_columns=False):
     output = {}
