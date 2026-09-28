@@ -28,6 +28,7 @@ class TXSourceSelectorMetadetectDP2(TXSourceSelectorMetadetect):
         "iz_cut": StageParameter(float, required=True, msg="Color cut threshold for object selection"),
         "mfrac_cut": StageParameter(float, required=True, msg="mfrac threshold for object selection"),
         "gauss_T_cut": StageParameter(float, required=True, msg="gauss_T threshold for object selection"),
+        "catalog_version": StageParameter(str, "rubin", msg="v1.1 for Erin's catalog. rubin for basic ")
     }
 
     def data_iterator(self):
@@ -90,6 +91,14 @@ def select_weak_lensing_sample_metadetect_dp2(data, config, calling_from_select=
     gauss_T_cut = config['gauss_T_cut']
     mfrac_cut = config['mfrac_cut']
 
+    catalog_version = config["catalog_version"]
+    if catalog_version == "rubin":
+        T_col = "gauss_T"
+    elif catalog_version == "v1.1":
+        T_col = "T"
+    else:
+        raise ValueError(f"Unknown catalog version {catalog_version}")
+
     # We should also have some crazy color cuts and magnitude cuts which should come from PZ group
     sel &= (data["mag_g"] < mag_g_cut) & \
         (data["mag_r"] < mag_r_cut) & \
@@ -98,7 +107,7 @@ def select_weak_lensing_sample_metadetect_dp2(data, config, calling_from_select=
         (np.abs(data["mag_g"] - data["mag_r"]) < gmr_cut) & \
         (np.abs(data["mag_r"] - data["mag_i"]) < rmi_cut) & \
         (np.abs(data["mag_i"] - data["mag_z"]) < imz_cut) & \
-        (data['gauss_T'] < gauss_T_cut) & \
+        (data[T_col] < gauss_T_cut) & \
         (data['mfrac'] < mfrac_cut)
 
     # Adding all the flags cut to make sure we are not using any objects with flags set.
