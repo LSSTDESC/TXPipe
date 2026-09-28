@@ -473,7 +473,7 @@ class TXIngestMetaDetectV1_1(PipelineStage):
 
 
     def run(self):
-
+        import rustfits
         shear_outfile = self.open_output("shear_catalog")
         group = shear_outfile.create_group("shear")
         shear_outfile["shear"].attrs["catalog_type"] = "metadetect"
@@ -492,9 +492,9 @@ class TXIngestMetaDetectV1_1(PipelineStage):
         for i, filename in enumerate(file_list):
             print(f"Processing tract {i + 1} / {n_files}")
             sys.stdout.flush()
-            d = butler.get('object_shear_all',
-                           dataId=ref.dataId,
-                           )
+            with rustfits.FITS(filename) as f:
+                d = f["cat"].read()
+
             chunk_size = len(d)
 
             if chunk_size == 0:
@@ -582,7 +582,7 @@ def process_metadetect_data_v1_1(data, flag_exclusion, shape_noise, full_columns
         var_output["g1_err"] = var_data["g1_err"]
         var_output["g2_err"] = var_data["g1_errr"]
 
-        for band in "griz": # For DP2, we only expect 4 bands
+        for band in "riz": # For v1.1 we only have the three bands
             f = var_data[f"flux_{band}"]
             f_err = var_data[f"flux_err_{band}"]
             var_output[f"mag_{band}"] = nanojansky_to_mag_ab(f)
