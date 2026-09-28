@@ -397,11 +397,11 @@ class TXIngestDP2Photometry(TXDP2Ingestion):
             print(f"Processing chunk {i + 1} / {n_chunks} into rows {start:,} - {end:,}")
             start = end
 
-        print(f"Final selected objects: {photo_end:,} in photometry")
+        print(f"Final selected objects: {end:,} in photometry")
 
         # When we created the files we used the maximum possible length
         # for the column sizes (which is what we would get if there were
-        # no stars in the catalog). Now we can trim the columns to the
+        # no stars in the catalog or flagged objects). Now we can trim the columns to the
         # actual size of the data we have. Everything after that is empty.
         print("Trimming columns:")
         for col in data.keys():
@@ -410,7 +410,7 @@ class TXIngestDP2Photometry(TXDP2Ingestion):
 
         outfile.close()
 
-        # Run h5repack on the file
+        # Run h5repack on the file. This tends to make future access much faster.
         print("Repacking files")
         repack(self.get_output("photometry_catalog"))
 
