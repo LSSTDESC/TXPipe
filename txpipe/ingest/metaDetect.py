@@ -5,6 +5,7 @@ from .dp_info import DP1_COSMOLOGY_TRACTS, ALL_TRACTS, DP1_TRACTS, TXPIPE_COLUMN
 from ceci.config import StageParameter
 from ..utils.hdf_tools import h5py_shorten, repack
 from ..utils.splitters import MetaDetectSplitter
+from ..utils import nanojansky_err_to_mag_ab, nanojansky_to_mag_ab, moments_to_shear, mag_ab_to_nanojansky
 from ..shear_calibration.names import META_VARIANTS
 import numpy as np
 import os
@@ -436,12 +437,12 @@ class TXIngestDP2Photometry(TXDP2Ingestion):
 
 
 
-class TXIngestMetaDetectV1_1(PipelineStage):
+class TXIngestDESCMetaDetectV1_1(PipelineStage):
     """
     Initial ingestion of the Rubin MetaDetect catalog
     """
 
-    name = "TXIngestMetaDetectV1_1"
+    name = "TXIngestDESCMetaDetectV1_1"
     inputs = [
     ]
     outputs = [
@@ -516,13 +517,15 @@ class TXIngestMetaDetectV1_1(PipelineStage):
             sys.stdout.flush()
             with rustfits.FITS(filename) as f:
                 d = f["cat"].read()
+                tract = f["meta"]["tract"][0]
+                patch = f["meta"]["patch"][0]
 
             chunk_size = len(d)
 
             if (chunk_size == 0) and (not created_files):
                 raise ValueError("Current design requires first file for each chunk to contain values")
 
-            shear_data = process_metadetect_data_v1_1(d, exclusion_flag, shape_noise,
+            shear_data = process_metadetect_data_v1_1(d, tract, patch, exclusion_flag, shape_noise,
                                                  full_columns=all_columns_flag)
             if not created_files:
                 created_files = True
@@ -584,7 +587,8 @@ class TXIngestMetaDetectV1_1(PipelineStage):
         for variant in ["ns", "1p", "1m", "2p", "2m"]:
             k = g[variant]
             for txname, original in ERIN_TXPIPE_COLUMNS.items():
-                k[txname] = k[original]
+                if txname != original:
+                    k[txname] = k[original]
 
 
 ERIN_TXPIPE_COLUMNS = {
@@ -602,29 +606,33 @@ ERIN_TXPIPE_COLUMNS = {
     # "psf_g2": "gauss_psfReconvolved_g2",
     "psf_T_mean": "psf_T",
     "object_mask_fraction": "mfrac",
-    # "id": "shearObjectId",
+    "id": "id",
 }
-def process_metadetect_data_v1_1(data, flag_exclusion, shape_noise, full_columns=False):
+def process_metadetect_data_v1_1(data, tract, patch, flag_exclusion, shape_noise, full_columns=False):
     output = {}
     for variant in META_VARIANTS:
         var_data = data[data["mcal_step"] == variant]
         var_data = sanitize(var_data)
 
-        flags = data["flags"]
+        flags = var_data["flags"]
         if flag_exclusion:
             keep = flags == 0
             var_data = var_data[keep]
             flags = flags[keep]
+
         if full_columns:
             var_output = {name: var_data[name] for name in var_data.dtype.names} #just process all columns
             var_output.pop("mcal_step", None)
         else:
             needed = sorted(set(ERIN_TXPIPE_COLUMNS.values()) | {"ra", "dec"})
             var_output = {name: var_data[name] for name in needed}
+
         # extra columns we are still adding:
-        var_output["weight"] = 1 / (2 * shape_noise ** 2 + var_data["gauss_g1_g1_Cov"] + var_data["gauss_g2_g2_Cov"])
+        var_output["weight"] = 1 / (2 * shape_noise ** 2 + var_data["g1_err"]**2 + var_data["g2_err"]**2)
         var_output["g1_err"] = var_data["g1_err"]
-        var_output["g2_err"] = var_data["g1_errr"]
+        var_output["g2_err"] = var_data["g1_err"]
+        global_id = np.int64(tract) * 10**10 + np.int64(patch) * 10**8 + var_data["cell_i"].astype(np.int64) * 10**6 + var_data["cell_j"].astype(np.int64) * 10**4 + var_data["obj_id"].astype(np.int64)
+        var_output["id"] = global_id
 
         for band in "riz": # For v1.1 we only have the three bands
             f = var_data[f"flux_{band}"]

@@ -25,7 +25,7 @@ TXIngestRubinMetaDetect:
                 ]
     all_columns: True
 
-TXIngestMetaDetectV1_1:
+TXIngestDESCMetaDetectV1_1:
         base_dir: "/pscratch/sd/e/esheldon/lsst-mdet-runs/run-dp2-v01.1"
         exclusion_flag: true
         all_columns: true
