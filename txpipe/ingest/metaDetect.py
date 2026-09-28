@@ -10,6 +10,7 @@ import numpy as np
 import os
 import pyarrow.parquet as pq
 import sys
+import glob
 
 class TXDP2Ingestion(PipelineStage):
     """
@@ -431,3 +432,156 @@ class TXIngestDP2Photometry(TXDP2Ingestion):
             if np.ma.isMaskedArray(col):
                 col = col.filled(np.nan)
             g[name][start:end] = col
+
+
+
+
+class TXIngestMetaDetectV1_1(PipelineStage):
+    """
+    Initial ingestion of the Rubin MetaDetect catalog
+    """
+
+    name = "TXIngestMetaDetectV1_1"
+    inputs = [
+    ]
+    outputs = [
+        ("shear_catalog", ShearCatalog),
+    ]
+    config_options= {
+        "base_dir": StageParameter(str, "/pscratch/sd/e/esheldon/lsst-mdet-runs/run-dp2-v01.1", msg='Top directory for catalog'),
+        "exclusion_flag": StageParameter(bool, False, msg="Decide if flags are used for exclusion or just flagged."),
+        "all_columns": StageParameter(bool, False, msg="do we want to save all columns or just the ones TXPipe needs."),
+        "pre_response_shape_noise": StageParameter(float, 0.22, msg="Estimate of shape noise before response for constructing weight.")
+    }
+
+    def generate_input_file_list(self):
+        base_dir = self.config["base_dir"]
+        return glob.glob(f"{base_dir}/*/*-mdet.fits")
+
+
+    def get_maximum_catalog_size(self, file_list):
+        import rustfits
+        n = 0
+        for filename in file_list:
+            f = rustfits.FITS(filename)
+            n += f['cat'].nrows
+        return n
+
+
+    def run(self):
+
+        shear_outfile = self.open_output("shear_catalog")
+        group = shear_outfile.create_group("shear")
+        shear_outfile["shear"].attrs["catalog_type"] = "metadetect"
+
+
+        # These options control exactly what we ingest
+        all_columns_flag = self.config["all_columns"]
+        exclusion_flag = self.config["exclusion_flag"]
+
+        file_list = self.generate_input_file_list()
+        shape_noise = self.config['pre_response_shape_noise']
+
+        max_size = self.get_maximum_catalog_size(file_list)
+        created_files = False
+        for i, filename in enumerate(file_list):
+            print(f"Processing tract {i + 1} / {n_used_tracts}")
+            sys.stdout.flush()
+            d = butler.get('object_shear_all',
+                           dataId=ref.dataId,
+                           )
+            chunk_size = len(d)
+
+            if chunk_size == 0:
+                print(f"  - skipping chunk since it is empty")
+                continue
+            else:
+                print(f"  - adding {chunk_size} rows")
+
+            shear_data = process_metadetect_data_v1_1(d, exclusion_flag, shape_noise,
+                                                 full_columns=all_columns_flag)
+            if not created_files:
+                created_files = True
+                variants = {
+                    "ns": max_size,
+                    "1p": max_size,
+                    "1m": max_size,
+                    "2p": max_size,
+                    "2m": max_size,
+                    }
+                columns = list(shear_data["ns"].keys())
+                dtypes = {key: shear_data["ns"][key].dtype for key in shear_data["ns"]}
+                splitter = MetaDetectSplitter(group, columns, variants, dtypes=dtypes)
+
+            for variant in META_VARIANTS:
+                splitter.write_bin(shear_data[variant], variant)
+        print("Read complete; re-sizing files")
+        if created_files:    
+            splitter.finish()
+            print("adding in aliases")
+            self.aliasing(shear_outfile, group)
+        else:
+            print("No metadetect data written; skipping splitter.finish/aliasing")
+        shear_outfile.close()
+
+        # Repack the files, speeding up future access.
+        # This takes a while!
+        print("Repacking files")
+        repack(self.get_output("shear_catalog"))
+    
+
+    def aliasing(self, outfile, group):
+        g = group
+        for variant in ["ns", "1p", "1m", "2p", "2m"]:
+            k = g[variant]
+            for txname, original in ERIN_TXPIPE_COLUMNS.items():
+                k[txname] = k[original]
+
+
+ERIN_TXPIPE_COLUMNS = {
+    "g1": "g1",
+    "g2": "g2",
+    "g_cross": "g1g2_cov",
+    "T": "T",
+    "s2n": "s2n",
+    "psf_g1_original": "psfrec_g1",
+    "psf_g2_original": "psfrec_g2",
+    "psf_T_mean_original": "psfrec_T",
+    # The re-convolved psf_g1 is always basically zero.
+    # Let's see if we can get away without including it.
+    # "psf_g1": "gauss_psfReconvolved_g1",
+    # "psf_g2": "gauss_psfReconvolved_g2",
+    "psf_T_mean": "psf_T",
+    "object_mask_fraction": "mfrac",
+    "id": "shearObjectId",
+}
+def process_metadetect_data_v1_1(data, flag_exclusion, shape_noise, full_columns=False):
+    output = {}
+    for variant in META_VARIANTS:
+        var_data = data[data["mcal_step"] == variant]
+        var_data = sanitize(var_data)
+
+        flags = data["flags"]
+        if flag_exclusion:
+            keep = flags == 0
+            var_data = var_data[keep]
+            flags = flags[keep]
+        if full_columns:
+            var_output = {name: var_data[name] for name in var_data.dtype.names} #just process all columns
+            var_output.pop("mcal_step", None)
+        else:
+            needed = sorted(set(ERIN_TXPIPE_COLUMNS.values()) | {"ra", "dec"})
+            var_output = {name: var_data[name] for name in needed}
+        # extra columns we are still adding:
+        var_output["weight"] = 1 / (2 * shape_noise ** 2 + var_data["gauss_g1_g1_Cov"] + var_data["gauss_g2_g2_Cov"])
+        var_output["g1_err"] = var_data["g1_err"]
+        var_output["g2_err"] = var_data["g1_errr"]
+
+        for band in "griz": # For DP2, we only expect 4 bands
+            f = var_data[f"flux_{band}"]
+            f_err = var_data[f"flux_err_{band}"]
+            var_output[f"mag_{band}"] = nanojansky_to_mag_ab(f)
+            var_output[f"mag_err_{band}"] = nanojansky_err_to_mag_ab(f, f_err)
+        output[f"{variant}"] = var_output
+
+    return output
