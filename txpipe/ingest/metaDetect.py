@@ -462,9 +462,13 @@ class TXIngestMetaDetectV1_1(PipelineStage):
     def get_maximum_catalog_size(self, file_list):
         import rustfits
         n = 0
-        for filename in file_list:
+        nfile = len(file_list)
+        for i, filename in enumerate(file_list):
+            if i  and ((i % 10) == 0):
+                print(f"Counting rows in file {i} / {nfile}")
             f = rustfits.FITS(filename)
             n += f['cat'].nrows
+        print(f"Max row count {n:,}")
         return n
 
 
@@ -480,12 +484,13 @@ class TXIngestMetaDetectV1_1(PipelineStage):
         exclusion_flag = self.config["exclusion_flag"]
 
         file_list = self.generate_input_file_list()
+        n_files = len(file_list)
         shape_noise = self.config['pre_response_shape_noise']
 
         max_size = self.get_maximum_catalog_size(file_list)
         created_files = False
         for i, filename in enumerate(file_list):
-            print(f"Processing tract {i + 1} / {n_used_tracts}")
+            print(f"Processing tract {i + 1} / {n_files}")
             sys.stdout.flush()
             d = butler.get('object_shear_all',
                            dataId=ref.dataId,
