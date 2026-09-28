@@ -73,13 +73,15 @@ class TXSourceSelectorBase(PipelineStage):
         # Suppress some warnings from numpy that are not relevant
         original_warning_settings = np.seterr(all="ignore")
 
-        # as a matrix.  We will collect together the different
-        # matrices for each chunk and do a weighted average at the end.
         if self.config['do_tomography']:
             nbin_source = len(self.config["source_zbin_edges"]) - 1
         else:
             nbin_source = 1
         self.config["nbin_source"] = nbin_source
+
+        # We will collect the selection biases for each bin
+        # as a matrix.  We will collect together the different
+        # matrices for each chunk and do a weighted average at the end.
         calculators = self.setup_response_calculators(nbin_source)
 
         # The output file we will put the tomographic
@@ -93,9 +95,6 @@ class TXSourceSelectorBase(PipelineStage):
 
         # Get a function to split objects into tomographic bins
         tomography_classifier = self.make_tomographic_bin_chooser_function()
-
-
-        # We will collect the selection biases for each bin
 
         # Loop through the input data, processing it chunk by chunk
         for start, end, shear_data in it:
@@ -220,7 +219,7 @@ class TXSourceSelectorBase(PipelineStage):
         shear_data: table or dict of arrays
             A chunk of input shear data with metacalibration variants.
         """
-        nbin = len(self.config["source_zbin_edges"]) - 1
+        nbin = self.config['nbin_source']
         n = len(list(shear_data.values())[0])
 
         # The main output data - the tomographic
@@ -259,13 +258,21 @@ class TXSourceSelectorBase(PipelineStage):
         with self.open_input("shear_catalog", wrapper=True) as f:
             n = f.get_size()
 
-        zbins = self.config["source_zbin_edges"]
 
         output = self.open_output("shear_tomography_catalog", parallel=True, wrapper=True)
         outfile = output.file
         group = outfile.create_group("tomography")
         group.attrs["catalog_type"] = cat_type
+
+
+        if self.config['do_tomography']:
+           zbins = self.config["source_zbin_edges"]
+        else:
+            # Use mock z limits here in the output
+            # to indicate everything is selected.
+            zbins = [0.0, 999.]
         output.write_zbins(zbins)
+
         group.create_dataset("bin", (n,), dtype="i")
 
         group_count = outfile.create_group("counts")

@@ -11,7 +11,13 @@ on:
 
 env:
   EXAMPLE_DATA_FILE_VERSION: v10
-
+  # Hopefully these will fix occasional crashes
+  # when the network adapter on github actions doesn't
+  # fully implement something called RDMA-capable NIC.
+  UCX_TLS: tcp,sm,self
+  UCX_NET_DEVICES: all
+  OMPI_MCA_pml: ob1
+  OMPI_MCA_btl: tcp,self,vader
 jobs:
   # Run a download step first so that it is in
   # the cache, because all the other jobs will be running

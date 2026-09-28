@@ -203,10 +203,14 @@ class TXSourceSelectorDESY3(TXSourceSelectorMetacal):
                     # they start 1 one.
                     tomography[i, sel] = b - 1
 
+        do_tomography = self.config["do_tomography"]
         def tomography_classifier(start, end, shear_data):
             pz_data = {}
             for i, v in enumerate(variants):
-                pz_data[f"zbin{v}"] = tomography[i, start:end]
+                if do_tomography:
+                    pz_data[f"zbin{v}"] = tomography[i, start:end]
+                else:
+                    pz_data[f"zbin{v}"] = np.where(tomography[i, start:end] >= 0, 0, -1)
             return pz_data
 
         return tomography_classifier
