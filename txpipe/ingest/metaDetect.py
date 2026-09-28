@@ -6,6 +6,7 @@ from ceci.config import StageParameter
 from ..utils.hdf_tools import h5py_shorten, repack
 from ..utils.splitters import MetaDetectSplitter
 from ..utils import nanojansky_err_to_mag_ab, nanojansky_to_mag_ab, moments_to_shear, mag_ab_to_nanojansky
+from ..utils.mpi_utils import in_place_reduce
 from ..shear_calibration.names import META_VARIANTS
 import numpy as np
 import os
@@ -475,9 +476,6 @@ class TXIngestDESCMetaDetectV1_1(PipelineStage):
 
     def run(self):
         import rustfits
-        shear_outfile = self.open_output("shear_catalog")
-        group = shear_outfile.create_group("shear")
-        shear_outfile["shear"].attrs["catalog_type"] = "metadetect"
 
 
         # These options control exactly what we ingest
@@ -486,26 +484,30 @@ class TXIngestDESCMetaDetectV1_1(PipelineStage):
 
         file_list = self.generate_input_file_list()
         file_list.sort()
+        file_list = file_list[:100]
         n_files = len(file_list)
         shape_noise = self.config['pre_response_shape_noise']
 
         max_size = self.get_maximum_catalog_size(file_list)
         created_files = False
 
-        # we need the file list to be a multiple of the size of the
+        # we need the file list to be a multiple of the size of the
         # MPI communicator
         files_per_rank = n_files // self.size
-        if files_per_rank * size.size < n_files:
-            n_extra = n_files - (files_per_rank * size.size)
+        if files_per_rank * self.size < n_files:
+            n_extra = n_files - (files_per_rank * self.size)
             file_list.extend([""] * n_extra)
 
         my_files = file_list[self.rank::self.size]
+        my_n_files = len(my_files)
         outfile = self.open_output("shear_catalog", parallel=True)
         outgroup = outfile.create_group("shear")
+        outgroup.attrs["catalog_type"] = "metadetect"
         for variant in META_VARIANTS:
             outgroup.create_group(variant)
+        end_points = np.zeros(len(META_VARIANTS), dtype=np.int64)
 
-        for i, filename in enumerate(file_list):
+        for i, filename in enumerate(my_files):
             if (filename == "") :
                 assert self.comm is not None, "This should not happen"
                 # broadcast zeros for all sizes to the other processes
@@ -513,12 +515,13 @@ class TXIngestDESCMetaDetectV1_1(PipelineStage):
                 in_place_reduce(sizes, self.comm, allreduce=True)
                 continue
 
-            print(f"Processing tract {i + 1} / {n_files}")
+            print(f"Processing tract {i + 1} / {my_n_files}")
             sys.stdout.flush()
             with rustfits.FITS(filename) as f:
                 d = f["cat"].read()
                 tract = f["meta"]["tract"][0]
                 patch = f["meta"]["patch"][0]
+                print("xxx", f["cat"].nrows, d["ra"].size)
 
             chunk_size = len(d)
 
@@ -542,19 +545,22 @@ class TXIngestDESCMetaDetectV1_1(PipelineStage):
                 sizes[self.rank, i] = shear_data[v]["ra"].size
             in_place_reduce(sizes, self.comm, allreduce=True)
 
-            end_points = np.zeros(len(META_VARIANTS))
             for i, variant in enumerate(META_VARIANTS):
-                my_start = sizes[:self.rank, i].sum()
+                my_start = end_points[i] + sizes[:self.rank, i].sum()
                 my_end = my_start + sizes[self.rank, i]
-                end_points[i] = my_end
 
                 # We just log the lengths for the ns catalog since it willbe roughly
                 # representative of the one for all of them.
                 if i == 0:
-                    print(f"Rank {self.rank} writing data {my_start:,} - {my_end:,}")
+                    print(f"Rank {self.rank} writing data {my_start:,} - {my_end:,}  (end point {end_points[i]:,})")
+                end_points[i] = my_end
+
                 variant_group = outgroup[variant]
-                for name, col in shear_data.items():
+                
+                for name, col in shear_data[variant].items():
                     variant_group[name][my_start:my_end] = col
+            if self.comm is not None:
+                end_points = self.comm.bcast(end_points, root=self.size - 1)
 
 
 
@@ -562,19 +568,17 @@ class TXIngestDESCMetaDetectV1_1(PipelineStage):
         if created_files:
             # The final size of the catalog is the end point for the
             # maximum rank, which is self.size - 1.
-            if self.comm is not None:
-                end_points = self.comm.bcast(end_points, root=self.size - 1)
             for i, variant in enumerate(META_VARIANTS):
-                variant_group = out_group[variant]
+                variant_group = outgroup[variant]
                 end_point = end_points[i]
                 for name in shear_data["ns"].keys():
                     variant_group[name].resize((end_point,))
 
             print("adding in aliases")
-            self.aliasing(shear_outfile, group)
+            self.aliasing(outfile, group)
         else:
             print("No metadetect data written; skipping splitter.finish/aliasing")
-        shear_outfile.close()
+        outfile.close()
 
         # Repack the files, speeding up future access.
         # This takes a while!
