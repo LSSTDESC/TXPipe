@@ -42,6 +42,21 @@ class TXFourierNamasterCovariance(PipelineStage):
         "nside": StageParameter(int, 1024, msg="HEALPix nside parameter."),
         "apodize_mask": StageParameter(bool, False, msg="Apply smooth apodization to the mask before computing the covariance."),
         "apodization_scale": StageParameter(float, 1.0, msg="Apodization scale in degrees (only used when apodize_mask=True)."),
+        "mask_threshold": StageParameter(float, 0.0, msg="Mask pixels with values <= this are set to zero; should match TXTwoPointFourier's mask_threshold."),
+        "covariance_input_cls": StageParameter(
+            str,
+            "theory",
+            msg=(
+                "Which C_ell the Gaussian covariance is built from. 'theory': CCL predictions from "
+                "the fiducial cosmology and the tracers' n(z), with galaxy bias 1. 'measured': the "
+                "measured (noise-subtracted) bandpowers in twopoint_data_fourier, each integer ell "
+                "taking its bandpower's value, negative values set to 0; use this when theory "
+                "predictions are not available yet (e.g. no reliable n(z) or bias). Noise is added "
+                "to the auto-spectra in both cases: 1/n_bar (or sigma_e^2/n_eff) with 'theory', and "
+                "the noise TXTwoPointFourier subtracted from each bandpower (its n_ell tag, which "
+                "accounts for non-binary mask weights) with 'measured'. Fourier-space only."
+            ),
+        ),
     }
 
     def run(self):
@@ -58,6 +73,14 @@ class TXFourierNamasterCovariance(PipelineStage):
         comm = self.comm
         size = self.size
         rank = self.rank
+
+        self.use_measured_cls = False
+        if not self.do_xi:
+            input_cls = self.config["covariance_input_cls"]
+            if input_cls not in ("theory", "measured"):
+                raise ValueError(f"covariance_input_cls must be 'theory' or 'measured', not {input_cls!r}")
+            self.use_measured_cls = input_cls == "measured"
+            print(f"Building the covariance from {input_cls} C_ell")
 
         self.scratch_dir = self.config["scratch_dir"]
         if rank == 0:
@@ -80,13 +103,15 @@ class TXFourierNamasterCovariance(PipelineStage):
         else:
             ell_edges = None
 
-        # read the mask
+        # read the mask the same way TXTwoPointFourier does, so the covariance is
+        # computed for the same weight map as the measured spectra: continuous mask
+        # values (e.g. fracdet) as weights, zero at or below mask_threshold.  For a
+        # 0/1 mask this is the same as keeping only the pixels equal to 1.
         with self.open_input("mask", wrapper=True) as f:
-            m = f.read_map("mask")
+            m = f.read_mask(thresh=self.config["mask_threshold"])
 
         nside = self.config["nside"]
-        m = hp.ud_grade(m, nside)
-        msk = 1 * (m == 1)
+        msk = hp.ud_grade(m, nside)
         if self.config["apodize_mask"]:
             msk = nmt.mask_apodization(msk, self.config["apodization_scale"], apotype="Smooth")
 
@@ -489,8 +514,12 @@ class TXFourierNamasterCovariance(PipelineStage):
                     # If not cached then we must compute
                     t1 = tracer_comb1[i]
                     t2 = tracer_comb2[j]
-                    c = ccl.angular_cl(cosmo, ccl_tracers[t1], ccl_tracers[t2], ell)
-                    print("Computed C_ell for ", cache_key1)
+                    if self.use_measured_cls:
+                        c = self.get_measured_cl(t1, t2, two_point_data, ell_bins, ell)
+                        print("Using measured C_ell for ", cache_key1)
+                    else:
+                        c = ccl.angular_cl(cosmo, ccl_tracers[t1], ccl_tracers[t2], ell)
+                        print("Computed C_ell for ", cache_key1)
                     cache[cache_key1] = c
                     cl[local_key] = c
 
@@ -500,12 +529,24 @@ class TXFourierNamasterCovariance(PipelineStage):
             cl_nmt[label] = np.interp(ell_nmt0, ell, cl[label])
 
         # The shape noise C_ell values.
-        # These are zero for cross bins and as computed earlier for auto bins
+        # These are zero for cross bins and as computed earlier for auto bins; with
+        # covariance_input_cls='measured', the noise TXTwoPointFourier subtracted instead
+        # (per ell, on NaMaster's input grid), so it matches the measured C_ell.
+        if self.use_measured_cls:
+            def noise(t):
+                key = ("noise", t)
+                if key not in cache:
+                    cache[key] = self.get_measured_noise(t, two_point_data, ell_bins, ell_nmt0)
+                return cache[key]
+        else:
+            def noise(t):
+                return tracer_Noise[t]
+
         SN = {}
-        SN[13] = tracer_Noise[tracer_comb1[0]] if tracer_comb1[0] == tracer_comb2[0] else 0
-        SN[24] = tracer_Noise[tracer_comb1[1]] if tracer_comb1[1] == tracer_comb2[1] else 0
-        SN[14] = tracer_Noise[tracer_comb1[0]] if tracer_comb1[0] == tracer_comb2[1] else 0
-        SN[23] = tracer_Noise[tracer_comb1[1]] if tracer_comb1[1] == tracer_comb2[0] else 0
+        SN[13] = noise(tracer_comb1[0]) if tracer_comb1[0] == tracer_comb2[0] else 0
+        SN[24] = noise(tracer_comb1[1]) if tracer_comb1[1] == tracer_comb2[1] else 0
+        SN[14] = noise(tracer_comb1[0]) if tracer_comb1[0] == tracer_comb2[1] else 0
+        SN[23] = noise(tracer_comb1[1]) if tracer_comb1[1] == tracer_comb2[0] else 0
 
         if self.do_xi:
             # Real-space case: TJP outer-product block at high ell (> 3*nside)
@@ -645,6 +686,70 @@ class TXFourierNamasterCovariance(PipelineStage):
 
         thb, cov["final_b"] = bin_cov(r=th / d2r, r_bins=ell_bins, cov=cov["final"])
         return cov["final_b"]
+
+    def get_measured_points(self, t1, t2, two_point_data, ell_edges):
+        """The measured Fourier data points for the tracer pair (t1, t2), in ell order.
+
+        Looks for whichever Fourier data type exists for this pair (galaxy_density_cl,
+        galaxy_shearDensity_cl_e or galaxy_shear_cl_ee), in either tracer order, and checks
+        there is one point per [ell_edges] bin.
+        """
+        import sacc
+
+        data_types = [
+            sacc.standard_types.galaxy_density_cl,
+            sacc.standard_types.galaxy_shearDensity_cl_e,
+            sacc.standard_types.galaxy_shear_cl_ee,
+        ]
+        for dt in data_types:
+            for a, b in ((t1, t2), (t2, t1)):
+                points = [two_point_data.data[i] for i in two_point_data.indices(dt, (a, b))]
+                if points:
+                    points.sort(key=lambda p: p.get_tag("ell"))
+                    if len(points) != len(ell_edges) - 1:
+                        raise ValueError(
+                            f"{len(points)} measured bandpowers for ({t1}, {t2}) but "
+                            f"{len(ell_edges) - 1} ell bins"
+                        )
+                    return points
+        raise ValueError(
+            f"covariance_input_cls='measured' needs a measured C_ell for ({t1}, {t2}), "
+            "but twopoint_data_fourier has none"
+        )
+
+    @staticmethod
+    def bandpowers_to_ell(values, ell_edges, ell):
+        """Give each ell in `ell` the value of the bandpower whose [ell_edges] bin contains
+        it; ells below the first bin or above the last take the first or last bandpower."""
+        band = np.clip(np.searchsorted(ell_edges, ell, side="right") - 1, 0, len(values) - 1)
+        return np.asarray(values, dtype=float)[band]
+
+    def get_measured_cl(self, t1, t2, two_point_data, ell_edges, ell):
+        """Measured C_ell for the tracer pair (t1, t2) on the integer-ell grid `ell`.
+
+        Used when covariance_input_cls = 'measured'. The bandpowers are already
+        noise-subtracted by TXTwoPointFourier. Negative bandpowers (possible after noise
+        subtraction) are set to zero, since a negative input C_ell can make the Gaussian
+        covariance non-positive.
+        """
+        points = self.get_measured_points(t1, t2, two_point_data, ell_edges)
+        cl_b = np.array([p.value for p in points])
+        n_negative = np.sum(cl_b < 0)
+        if n_negative:
+            print(f"  {n_negative} negative measured bandpowers for ({t1}, {t2}) set to 0")
+        return self.bandpowers_to_ell(np.clip(cl_b, 0.0, None), ell_edges, ell)
+
+    def get_measured_noise(self, tracer, two_point_data, ell_edges, ell):
+        """Noise power of `tracer`'s auto-spectrum on the integer-ell grid `ell`.
+
+        Used when covariance_input_cls = 'measured': the decoupled noise that
+        TXTwoPointFourier subtracted from each bandpower (its 'n_ell' tag), so the noise
+        added back in the covariance is exactly the noise removed from the measurement.
+        Unlike 1/n_bar, this accounts for a non-binary (e.g. fracdet) mask weighting.
+        """
+        points = self.get_measured_points(tracer, tracer, two_point_data, ell_edges)
+        n_b = np.array([p.get_tag("n_ell") for p in points], dtype=float)
+        return self.bandpowers_to_ell(n_b, ell_edges, ell)
 
     def get_nmt_spin(self, tracer_comb1, tracer_comb2):
         s1_s2_1 = self.get_spins(tracer_comb1)
@@ -1038,6 +1143,10 @@ class TXRealNamasterCovariance(TXFourierNamasterCovariance):
         "use_true_shear": StageParameter(bool, False, msg="Whether to use true shear values."),
         "galaxy_bias": StageParameter(list, [0.0], msg="Galaxy bias values."),
         "scratch_dir": StageParameter(str, "temp", msg="Directory for temporary files."),
+        "nside": StageParameter(int, 1024, msg="HEALPix nside parameter."),
+        "apodize_mask": StageParameter(bool, False, msg="Apply smooth apodization to the mask before computing the covariance."),
+        "apodization_scale": StageParameter(float, 1.0, msg="Apodization scale in degrees (only used when apodize_mask=True)."),
+        "mask_threshold": StageParameter(float, 0.0, msg="Mask pixels with values <= this are set to zero; should match the two-point stage's mask_threshold."),
     }
 
     def run(self):

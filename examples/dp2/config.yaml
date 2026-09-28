@@ -1,0 +1,106 @@
+# TXPipe configuration for the real DP2 catalog pipeline.
+# See examples/dp2_mocks/config_cardinal.yaml for the mock-data counterpart.
+
+global:
+  chunk_rows: 100000
+  pixelization: healpix
+  nside: 1024
+  sparse: True
+
+
+TXIngestDP2Catalog:
+  fits_path: /pscratch/sd/a/anicola/dp2/data/catalog_bsm1.1.0_bgm2.0.0/cat_registry_riz.fits
+  bands: [r, i, z]
+  nside: 1024
+  dummy_redshift: 0.5
+  chunk_rows: 100000
+
+
+TXTruthLensSelector:
+  lens_zbin_edges: [0.0, 1.0]
+  redshift_column: redshift_true
+  selection_type: maglim
+  maglim_band: r
+  maglim_limit: 23.5
+  snr_i_cut: 5.0
+
+
+TXPhotozLensStack:
+  # name: required here for ceci's classname aliasing to resolve correctly.
+  name: TXPhotozLensStack
+  nz: 100
+  zmax: 1.0
+  redshift_group: photometry
+  redshift_col: redshift_true
+
+
+TXLSSDensityNullTests:
+  # supreme_path_root is a glob prefix (globs f"{root}*.hsp" etc.), not a
+  # directory -- the trailing "*_nside1024" selects only the nside=1024
+  # survey-property maps and skips the native-resolution maglim map.
+  supreme_path_root: /pscratch/sd/a/anicola/dp2/data/spmaps/*_nside1024
+  fill_missing_pix: True
+  simple_cov: True
+
+
+TXLensMapsMasked:
+  chunk_rows: 100000
+  mask_threshold: 0.0
+
+
+TXDensityMaps:
+  mask_threshold: 0.0
+
+
+TXTracerMetadata:
+  true_nz: False
+
+
+TXTwoPointFourier:
+  ell_min: 10
+  ell_max: 1500
+  n_ell: 20
+  ell_spacing: log
+  mask_threshold: 0.0
+
+  do_pos_pos: True
+  do_shear_pos: False
+  do_shear_shear: False
+
+  true_shear: False
+  # deproject the survey-property maps from the density field; main output is
+  # deprojected, twopoint_data_fourier_no_deproj holds the same spectra without
+  deproject_syst_clustering: True
+  also_compute_no_deproj: True
+  systmaps_clustering_dir: /pscratch/sd/a/anicola/dp2/data/spmaps_nside1024
+  systmaps_healsparse_reduction: mean
+
+  # cache_dir/scratch_dir: kept distinct per mask-variant config (see
+  # config_thresh0p3.yaml etc.) -- NaMaster workspace caches (w22.fits) are
+  # sized for a specific mask's sky fraction, so two runs with different
+  # masks sharing a cache dir race and corrupt each other's cached files.
+  cache_dir: data/cache_dp2_snri5
+  analytic_noise: True
+
+
+TXSystematicsTwoPointFourier:
+  # the 48 nside=1024 survey-property maps (links; same set as TXLSSDensityNullTests)
+  systmaps_clustering_dir: /pscratch/sd/a/anicola/dp2/data/spmaps_nside1024
+  systmaps_healsparse_reduction: mean
+  # same mask threshold and ell binning as TXTwoPointFourier
+  mask_threshold: 0.0
+  ell_min: 10
+  ell_max: 1500
+  n_ell: 20
+  ell_spacing: log
+  # own cache per mask variant (NaMaster workspaces depend on the mask)
+  cache_dir: data/cache_systematics_dp2_snri5
+
+TXFourierNamasterCovariance:
+  use_true_shear: False
+  # same as TXTwoPointFourier.mask_threshold, so both use the same weight map
+  mask_threshold: 0.0
+  # no reliable n(z)/bias yet (all galaxies at the placeholder z=0.5), so build the
+  # Gaussian covariance from the measured C_ell rather than a CCL prediction
+  covariance_input_cls: measured
+  scratch_dir: data/temp_dp2_snri5

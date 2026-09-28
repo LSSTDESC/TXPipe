@@ -358,6 +358,83 @@ class TXExternalLensMaps(TXLensMaps):
         return "lens_catalog", "lens"
 
 
+class TXLensMapsMasked(TXLensMaps):
+    """
+    Make tomographic lens number count maps, restricted to the survey mask.
+
+    TXLensMaps itself has no notion of a mask at all (see its own inputs -- there is no
+    "mask" tag) -- it bins every catalog object with tomo_bin >= 0 by its raw (ra, dec)
+    position, so its ngal_{bin}/weighted_ngal_{bin} maps' extent follows wherever the input
+    catalog has objects, not the survey mask. This can be visibly wider than the mask, e.g.
+    when the catalog's own selection (a coarser, tract-level cut) doesn't exactly match a
+    later, tighter mask: objects outside the mask still get lens_weight == 0 (from the
+    weighting stage), but TXLensMaps still writes a zero-valued map entry for their pixel,
+    which reads as a masking bug when plotted even though the weight itself is correct.
+
+    This subclass requires a mask input and, after TXLensMaps' own map-making, drops any
+    pixel not in that mask -- so these maps' extent matches TXDensityMaps' delta maps
+    (which already do this restriction) instead of the raw catalog's footprint.
+    """
+
+    name = "TXLensMapsMasked"
+
+    inputs = TXLensMaps.inputs + [("mask", MapsFile)]
+
+    config_options = {
+        **TXLensMaps.config_options,
+        "mask_threshold": StageParameter(float, 0.0, msg="Threshold for masking pixels"),
+    }
+
+    def run(self):
+        import healpy
+        _, da = import_dask()
+
+        cat_name, cat_group = self.ra_dec_inputs()
+        tomo_cat = self.open_input("lens_tomography_catalog", wrapper=True)
+        photo_cat = self.open_input(cat_name, wrapper=True)
+        nbin_lens = tomo_cat.read_nbin()
+        self.config["nbin_lens"] = nbin_lens
+        pixel_scheme = choose_pixelization(**self.config)
+        block_size = self.config["block_size"]
+        if block_size == 0:
+            block_size = "auto"
+
+        ra = da.from_array(photo_cat.file[f"{cat_group}/ra"], block_size)
+        block_size = ra.chunksize
+        dec = da.from_array(photo_cat.file[f"{cat_group}/dec"], block_size)
+        weight = da.from_array(tomo_cat.file["tomography/lens_weight"], block_size)
+        tomo_bin = da.from_array(tomo_cat.file["tomography/bin"], block_size)
+
+        bins = list(range(nbin_lens)) + ["2D"]
+        maps = {}
+        for b in bins:
+            pix, count_map, weight_map = make_dask_lens_maps(ra, dec, weight, tomo_bin, b, pixel_scheme)
+            maps[f"ngal_{b}"] = (pix, count_map[pix])
+            maps[f"weighted_ngal_{b}"] = (pix, weight_map[pix])
+
+        (maps,) = da.compute(maps)
+
+        # Restrict every map to the supplied mask (same read_mask/threshold convention as
+        # TXDensityMaps), so these maps' extent matches the density maps' instead of the
+        # raw catalog's footprint.
+        with self.open_input("mask", wrapper=True) as f:
+            mask = f.read_mask(thresh=self.config["mask_threshold"])
+        mask_pix = np.where(mask > 0.0)[0]
+        for name, (pix, m) in maps.items():
+            keep = np.isin(pix, mask_pix)
+            maps[name] = (pix[keep], m[keep])
+
+        metadata = {key: self.config[key] for key in map_config_options}
+        metadata["nbin"] = nbin_lens
+        metadata["nbin_lens"] = nbin_lens
+        metadata.update(pixel_scheme.metadata)
+
+        with self.open_output("lens_maps", wrapper=True) as out:
+            for name, (pix, m) in maps.items():
+                out.write_map(name, pix, m, metadata)
+            out.file["maps"].attrs.update(metadata)
+
+
 class TXDensityMaps(PipelineStage):
     """
     Convert galaxy count maps to overdensity delta maps

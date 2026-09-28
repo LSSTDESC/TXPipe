@@ -1,0 +1,71 @@
+# Same stages as pipeline.yaml, but using the survey-property mask from
+# dp2_create_mask.ipynb (>=3 exposures in r,i,z + maglim_r>=23.5 + E(B-V)<0.2,
+# wide field only, bright star 1.1.0 / galaxy 2.0.0 masks applied) thresholded at fracdet >= 0.3 by dp2_mask_thresholding.ipynb.
+# Own output_dir, config (cache/scratch dirs) and log dir, so it can run
+# alongside the other dp2 pipelines.
+
+stages:
+  - name: TXIngestDP2Catalog
+
+  - name: TXTruthLensSelector
+  - name: TXTruthLensCatalogSplitter
+  - name: TXLSSWeightsUnit
+
+  - name: TXPhotozLensStack
+    classname: TXTruePhotozStack
+    aliases:
+        catalog: photometry_catalog
+        tomography_catalog: lens_tomography_catalog_unweighted
+        photoz_stack: lens_photoz_stack
+        weights_catalog: none
+
+  - name: TXLensMapsMasked
+  # - name: TXSimpleMask   # unused, mask is supplied
+  - name: TXDensityMaps
+
+  - name: TXTracerMetadata
+
+  - name: TXLSSDensityNullTests
+  - name: TXSystematicsTwoPointFourier
+
+  # - name: TXLensNoiseMaps
+
+  - name: TXTwoPointFourier
+    threads_per_process: 2
+
+  - name: TXFourierNamasterCovariance
+
+modules: >
+    txpipe
+    txpipe.extensions
+
+output_dir: data/outputs/dp2_snri5_nexp3riz_thresh0p3
+
+launcher:
+  name: mini
+  interval: 1.0
+
+site:
+  name: local
+  max_threads: 4
+
+config: examples/dp2/config_nexp3riz_thresh0p3.yaml
+
+inputs:
+  fiducial_cosmology: data/fiducial_cosmology.yml
+
+  mask: /pscratch/sd/a/anicola/dp2/data/masks/survey_mask_nexp3riz_maglimr23.5_ebv0.2_sfd_wide_bsm1.1.0_bgm2.0.0_fracdet_nside1024_thresh0p30.hdf5
+
+  none: none
+
+  shear_tomography_catalog: none
+  shear_catalog: none
+  shear_photoz_stack: data/inputs/shear_photoz_stack.hdf5
+
+  source_maps: data/inputs/source_maps.hdf5
+  source_noise_maps: data/inputs/source_noise_maps.hdf5
+  lens_noise_maps: data/inputs/source_noise_maps.hdf5
+
+resume: True
+log_dir: data/logs_nexp3riz_thresh0p3
+pipeline_log: data/pipeline_log_nexp3riz_thresh0p3.txt

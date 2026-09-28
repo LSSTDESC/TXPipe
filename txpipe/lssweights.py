@@ -636,6 +636,14 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
 
         nbinstotal = len(density_correlation.map_index)
 
+        # fractional pixel coverage (frac) for weighting the pixel-pixel two-point function,
+        # so partially-covered pixels contribute less than fully-covered ones
+        with self.open_input("mask", wrapper=True) as map_file:
+            mask_map_info = map_file.read_map_info("mask")
+            mask = map_file.read_map("mask")
+        mask_nest = mask_map_info["nest"]
+        mask_nside = mask_map_info["nside"]
+
         # generate theory wtheta
         mintheta = hp.nside2resol(sys_maps[0].nside_sparse, arcmin=True)
         maxtheta = 250.0  # in arcmin
@@ -673,12 +681,17 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
         cats = {}
         for imap in map_list:
             ra_i, dec_i = sys_maps[imap].valid_pixels_pos(lonlat=True)
+            if mask_nest:
+                frac_i = mask[sys_maps[imap].valid_pixels]
+            else:
+                frac_i = mask[hp.nest2ring(mask_nside, sys_maps[imap].valid_pixels)]
             edges_i = density_correlation.get_edges(imap)
             for isp in range(len(edges_i) - 1):
                 selecti = density_correlation.precomputed_array[imap][isp]
                 cat_i = treecorr.Catalog(
                     ra=ra_i[selecti],
                     dec=dec_i[selecti],
+                    w=frac_i[selecti],
                     ra_units="degrees",
                     dec_units="degrees",
                 )
@@ -731,7 +744,8 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
                         if diag_blocks_only and imap != jmap:  # sometimes we dont need the covarinace between maps
                             continue
                         nn = self.sys_meta["sp_pixel_twopoint"][indexi, indexj]
-                        covmat_N[indexi, indexj] = np.sum(nn.npairs * wtheta_interp(nn.meanr))
+                        # use the frac-weighted pair counts (nn.weight), not the raw pair counts (nn.npairs)
+                        covmat_N[indexi, indexj] = np.sum(nn.weight * wtheta_interp(nn.meanr))
                         covmat_N[indexj, indexi] = covmat_N[indexi, indexj]
 
         # I did not include nbar in covmat_N because this would get divided out here

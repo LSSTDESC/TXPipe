@@ -18,7 +18,6 @@ from .utils import choose_pixelization, array_hash
 from .utils.theory import theory_3x2pt
 import sys
 import warnings
-import pathlib
 
 # Using the same convention as in twopoint.py
 SHEAR_SHEAR = 0
@@ -89,7 +88,7 @@ class TXTwoPointFourier(PipelineStage):
             bool, False,
             msg="When deproject_syst_clustering=True, also compute and save power spectra without deprojection to twopoint_data_fourier_no_deproj"
         ),
-        "systmaps_clustering_dir": StageParameter(str, "", msg="Directory containing systematic maps for clustering"),
+        "systmaps_clustering_dir": StageParameter(str, "", msg="Systematics maps for clustering: a directory, glob pattern or path prefix (HEALPix or HealSparse files)"),
         "systmaps_healsparse_reduction": StageParameter(
             str, "mean", msg="Reduction method when degrading a HealSparse systematics map to a lower nside ('mean', 'median', 'std', 'max', 'min', 'sum', 'prod')"
         ),
@@ -363,105 +362,31 @@ class TXTwoPointFourier(PipelineStage):
         return pixel_scheme, maps, f_sky
     
     def read_systematics_maps(self, mask_gc):
+        """Read the survey-property maps in systmaps_clustering_dir as NaMaster templates.
+
+        Uses the shared reader in txpipe.utils.systematics_maps. Returns
+        (s_maps, nside), or (None, None) and switches deprojection off if no
+        maps could be read.
+        """
         import healpy as hp
+        from .utils.systematics_maps import read_systematics_maps
 
         print("Deprojecting systematics maps for number counts")
-        n_systmaps = 0
-        s_maps = []
-        systmaps_clustering_dir = self.config["systmaps_clustering_dir"]
-        systmaps_path = pathlib.Path(systmaps_clustering_dir)
-        for systmap in systmaps_path.iterdir():
-            try:
-                if systmap.is_file():
-                    suffix = pathlib.Path(systmap).suffix
-                    systmap_file = str(systmap)
+        s_maps, names = read_systematics_maps(
+            self.config["systmaps_clustering_dir"],
+            mask_gc,
+            reduction=self.config["systmaps_healsparse_reduction"],
+        )
+        for i, name in enumerate(names):
+            self.config[f"clustering_deproject_{i}"] = name  # for provenance
 
-                    if suffix == ".fits":
-                        print("Reading clustering systematics map (HEALPix):", systmap_file)
-                        syst_map = hp.read_map(systmap_file, verbose=False).astype(float)
-                        nside_fits = hp.get_nside(syst_map)
-                        nside_target = hp.get_nside(mask_gc)
-                        if nside_fits != nside_target:
-                            print(f"  Resampling FITS nside {nside_fits} → {nside_target}")
-                            syst_map = hp.ud_grade(syst_map, nside_target).astype(float)
-                    elif suffix == ".hs":
-                        import healsparse
-                        print("Reading clustering systematics map (HealSparse):", systmap_file)
-                        hs_map = healsparse.HealSparseMap.read(systmap_file)
-                        nside_target = hp.get_nside(mask_gc)
-                        nside_hs = hs_map.nside_sparse
-                        if nside_hs != nside_target:
-                            if nside_hs > nside_target:
-                                reduction = self.config["systmaps_healsparse_reduction"]
-                                print(f"  HealSparse map nside={nside_hs} > input map nside={nside_target}; degrading using reduction='{reduction}'.")
-                                syst_map = hs_map.generate_healpix_map(nside=nside_target, reduction=reduction)
-                            else:
-                                warnings.warn(
-                                    f"HealSparse systematics map nside={nside_hs} is coarser than the "
-                                    f"input map nside={nside_target}. Upgrading via nearest-neighbour "
-                                    f"replication — consider using a higher-resolution systematics map."
-                                )
-                                print(f"  HealSparse map nside={nside_hs} < input map nside={nside_target}; upgrading (nearest-neighbour).")
-                                syst_map = hp.ud_grade(hs_map.generate_healpix_map(), nside_target)
-                        else:
-                            syst_map = hs_map.generate_healpix_map()
-                    else:
-                        print(
-                            "Warning: Problem reading systematics map file",
-                            systmap,
-                            "Not a HEALPix .fits or HealSparse .hs file.",
-                        )
-                        warnings.warn("Systematics map file must be a HEALPix .fits or HealSparse .hs file.")
-                        print("Ignoring", systmap)
-                        continue
-
-                    self.config[f"clustering_deproject_{n_systmaps}"] = systmap_file  # for provenance
-                    # normalize map for Namaster
-                    # calculate the mean, accounting for case where mask isn't binary
-                    unmasked = mask_gc > 0.0
-
-                    # Zero-fill all NaN/Inf globally — NaN × 0 = NaN in IEEE arithmetic, so NaN pixels
-                    # outside the mask propagate through NaMaster's SHT and corrupt the deprojection matrix
-                    non_finite = ~np.isfinite(syst_map)
-                    if (unmasked & non_finite).any():
-                        warnings.warn(
-                            f"Systematics map {systmap_file} has NaN/Inf pixels within the mask; "
-                            f"setting to zero."
-                        )
-                    syst_map[non_finite] = 0.0
-
-                    mean = (syst_map[unmasked] * mask_gc[unmasked]).sum() / mask_gc[unmasked].sum()
-                    print("Syst map: mean value = ", mean)
-                    # subtract the mean rather than normalise by it, as some systematics will have ~0 mean
-                    syst_map[unmasked] -= mean
-
-                    # Skip constant maps — they produce a zero-vector template that makes the
-                    # deprojection matrix singular
-                    if syst_map[unmasked].std() == 0.0:
-                        warnings.warn(
-                            f"Systematics map {systmap_file} is constant within the mask; skipping."
-                        )
-                        continue
-
-                    s_maps.append(syst_map)
-                    n_systmaps += 1
-            except Exception as exc:
-                print(f"Warning: Problem with systematics map file {systmap}: {exc}")
-                print("Ignoring", systmap)
-
-        print("Number of systematics maps read: ", n_systmaps)
-        if n_systmaps == 0:
+        if not s_maps:
             print("No systematics maps found. Skipping deprojection.")
-            s_maps = None
-            nside = None
             self.config["deproject_syst_clustering"] = False
-        else:
-            print("Using systematics maps for galaxy number counts.")
-            # We assume all systematics maps have the same nside
-            nside = hp.pixelfunc.get_nside(syst_map)
-            # needed for NaMaster:
-            s_maps = np.array(s_maps)
-        return s_maps, nside
+            return None, None
+
+        print("Using systematics maps for galaxy number counts.")
+        return np.array(s_maps), hp.get_nside(mask_gc)
 
     def populate_hash_metadata(self, maps, ell_bins):
         # Make a hash for the ell binning

@@ -12,3 +12,4 @@ from .ssi import (
 from .dp1 import TXIngestDataPreview1
 from .legacy import TXIngestDESY3Gold
 from .dp2_mocks import TXIngestParquetCatalog, TXIngestTruthParquetCatalog, TXIngestFlagshipCatalog, TXMaskFromParquet
+from .dp2 import TXIngestDP2Catalog
