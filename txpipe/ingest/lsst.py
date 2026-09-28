@@ -6,8 +6,12 @@ from .dp_info import TXPIPE_COLUMNS
 
 def process_photometry_data(data):
     cut = data["refExtendedness"] == 1
+    flag_cols = ["coord_flag", "g_i_flag", "r_i_flag", "i_i_flag", "z_i_flag"]
+    for flag_col in flag_cols:
+        cut = np.logical_and(cut, data[flag_col]==0)
     cols = {"ra": "coord_ra", "dec": "coord_dec", "tract": "tract", "id": "objectId", "extendedness": "refExtendedness"}
     output = {new_name: data[old_name][cut] for new_name, old_name in cols.items()}
+    print(f"Selected {cut.sum()} objects from {cut.size}")
     for band in "ugrizy":
         f = data[f"{band}_cModelFlux"][cut]
         f_err = data[f"{band}_cModelFluxErr"][cut]
@@ -28,7 +32,6 @@ def process_photometry_data(data):
         err_is_nan = np.isnan(output[f"mag_err_{band}"])
         output[f"mag_{band}"][err_is_nan] = np.nan
 
-    output["flags"] = data["deblend_skipped"][cut] | data["deblend_failed"][cut] | (output["extendedness"] != 1)
 
     return output
 
