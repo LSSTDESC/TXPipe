@@ -123,8 +123,7 @@ class TXIngestRubinMetaDetect(TXDP2Ingestion):
         exclusion_flag = self.config["exclusion_flag"]
         flag_list = self.config["flag_list"]
 
-        used_tract_refs = self.filter_refs_by_tract(refs)
-        used_tract_refs = [ref for ref in data_set_refs if ref.dataId["tract"] in tracts]
+        used_tract_refs = self.filter_refs_by_tract(data_set_refs)
         n_used_tracts = len(used_tract_refs)
         print(f"Processing {n_used_tracts} tracts")
 
@@ -338,10 +337,6 @@ class TXIngestDP2Photometry(TXDP2Ingestion):
             "i_cModelFlux",
             "i_cModelFluxErr",
             "i_cModel_flag",
-            "i_hsmShapeRegauss_e1",
-            "i_hsmShapeRegauss_e2",
-            "i_hsmShapeRegauss_flag",
-            "i_hsmShapeRegauss_sigma",
             "i_ixx",
             "i_ixxPSF",
             "i_ixy",
@@ -361,13 +356,15 @@ class TXIngestDP2Photometry(TXDP2Ingestion):
             "z_cModelFlux",
             "z_cModelFluxErr",
             "z_cModel_flag",
-            "deblend_skipped",
-            "deblend_failed",
+            "coord_flag",
+            "g_i_flag",
+            "r_i_flag",
+            "i_i_flag",
+            "z_i_flag",
         ]
-        max_cat_size = self.get_maximum_catalog_size(butler, "object")
-
         data_set_refs = butler.query_datasets("object")
         data_set_refs = self.filter_refs_by_tract(data_set_refs)
+        max_cat_size = self.get_maximum_catalog_size(butler, data_set_refs)
         n_chunks = len(data_set_refs)
 
 
@@ -394,7 +391,7 @@ class TXIngestDP2Photometry(TXDP2Ingestion):
                 outfile = self.setup_output(data, max_cat_size)
 
             # Output these chunks to the output files
-            end = start + len(photo_data["ra"])
+            end = start + len(data["ra"])
             self.write_output(outfile, data, start, end)
 
             print(f"Processing chunk {i + 1} / {n_chunks} into rows {start:,} - {end:,}")
@@ -409,7 +406,7 @@ class TXIngestDP2Photometry(TXDP2Ingestion):
         print("Trimming columns:")
         for col in data.keys():
             print("    ", col)
-            h5py_shorten(outfile["photometry"], col, photo_end)
+            h5py_shorten(outfile["photometry"], col, end)
 
         outfile.close()
 

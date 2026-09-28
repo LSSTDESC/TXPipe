@@ -4,6 +4,7 @@ global:
     sparse: true
 
 TXIngestRubinMetaDetect:
+    butler_repository_index: "/global/cfs/cdirs/lsst/production/gen3/shared/data-repos.yaml"
     butler_config_file: "dp2"
     collections: "dp2"
     pre_response_shape_noise: 0.22
