@@ -521,19 +521,17 @@ class TXIngestDESCMetaDetectV1_1(PipelineStage):
                 d = f["cat"].read()
                 tract = f["meta"]["tract"][0]
                 patch = f["meta"]["patch"][0]
-                print("xxx", f["cat"].nrows, d["ra"].size)
 
-            chunk_size = len(d)
-
-            if (chunk_size == 0) and (not created_files):
+            if (len(d) == 0) and (not created_files):
                 raise ValueError("Current design requires first file for each chunk to contain values")
 
             shear_data = process_metadetect_data_v1_1(d, tract, patch, exclusion_flag, shape_noise,
                                                  full_columns=all_columns_flag)
+            print("Rank", self.rank, "sizes:", )
             if not created_files:
                 created_files = True
                 columns = list(shear_data["ns"].keys())
-                dtypes = {key: shear_data["ns"][key].dtype for key in shear_data["ns"]}
+                dtypes = {key: shear_data["ns"][key].dtype for key in columns}
                 # colletive communication to set up for everyone.
                 for variant in META_VARIANTS:
                     variant_group = outgroup[variant]
@@ -548,19 +546,17 @@ class TXIngestDESCMetaDetectV1_1(PipelineStage):
             for i, variant in enumerate(META_VARIANTS):
                 my_start = end_points[i] + sizes[:self.rank, i].sum()
                 my_end = my_start + sizes[self.rank, i]
-
-                # We just log the lengths for the ns catalog since it willbe roughly
-                # representative of the one for all of them.
-                if i == 0:
-                    print(f"Rank {self.rank} writing data {my_start:,} - {my_end:,}  (end point {end_points[i]:,})")
-                end_points[i] = my_end
+                print(f"Rank {self.rank} writing variant {variant} data {my_start:,} - {my_end:,}  (end point {end_points[i]:,})")
 
                 variant_group = outgroup[variant]
                 
                 for name, col in shear_data[variant].items():
                     variant_group[name][my_start:my_end] = col
+                end_points[i] = my_end
+            print(self.rank, "end points", end_points, "before bcast")
             if self.comm is not None:
                 end_points = self.comm.bcast(end_points, root=self.size - 1)
+            print(self.rank, "end points", end_points, "after bcast")
 
 
 
@@ -618,11 +614,9 @@ def process_metadetect_data_v1_1(data, tract, patch, flag_exclusion, shape_noise
         var_data = data[data["mcal_step"] == variant]
         var_data = sanitize(var_data)
 
-        flags = var_data["flags"]
         if flag_exclusion:
-            keep = flags == 0
+            keep = (var_data["flags"] == 0)
             var_data = var_data[keep]
-            flags = flags[keep]
 
         if full_columns:
             var_output = {name: var_data[name] for name in var_data.dtype.names} #just process all columns
@@ -643,6 +637,7 @@ def process_metadetect_data_v1_1(data, tract, patch, flag_exclusion, shape_noise
             f_err = var_data[f"flux_err_{band}"]
             var_output[f"mag_{band}"] = nanojansky_to_mag_ab(f)
             var_output[f"mag_err_{band}"] = nanojansky_err_to_mag_ab(f, f_err)
-        output[f"{variant}"] = var_output
+
+        output[variant] = var_output
 
     return output
