@@ -176,11 +176,7 @@ class TXMapPlots(PipelineStage):
         m = self.open_input("mask", wrapper=True)
 
         with self.open_output("mask_map_plot", wrapper=True, figsize=(5, 5)) as f:
-<<<<<<< HEAD
-            m.plot("mask")
-=======
             m.plot("mask", view=self.config["projection"])
->>>>>>> master
 
     def make_empty_plot(self, tag):
         import matplotlib.pyplot as plt
