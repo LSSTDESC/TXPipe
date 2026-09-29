@@ -22,6 +22,22 @@ def metacalibration_names(names):
     return out
 
 
+def class_for_shear_catalog_type(shear_catalog_type):
+    if shear_catalog_type == "metacal":
+        return MetacalShearCatalog
+    elif shear_catalog_type == "simple":
+        return SimpleShearCatalog
+    elif shear_catalog_type == "metadetect":
+        return MetaDetectShearCatalog
+    elif shear_catalog_type == "scalar_metadetect":
+        return ScalarMetaDetectCatalog
+    elif shear_catalog_type == "lensfit":
+        return LensfitShearCatalog
+    elif shear_catalog_type == "hsc":
+        return HSCShearCatalog
+    raise ValueError(f"Unknown catalog type: {shear_catalog_type}")
+
+
 class PhotometryCatalog(HDFFile):
     def get_bands(self):
         group = self.file["photometry"]
@@ -45,19 +61,8 @@ class ShearCatalog(HDFFile):
 
         if (cls is ShearCatalog) and (mode == "r"):  # only dispatch when called on the base class
             cat_type = cls.get_catalog_type_from_filename(filename)
-            if cat_type == "metacal":
-                return super().__new__(MetacalShearCatalog)
-            elif cat_type == "simple":
-                return super().__new__(SimpleShearCatalog)
-            elif cat_type == "metadetect":
-                return super().__new__(MetaDetectShearCatalog)
-            elif cat_type == "scalar_metadetect":
-                return super().__new__(ScalarMetaDetectCatalog)
-            elif cat_type == "lensfit":
-                return super().__new__(LensfitShearCatalog)
-            elif cat_type == "hsc":
-                return super().__new__(HSCShearCatalog)
-            raise ValueError(f"Unknown catalog type: {cat_type}")
+            cat_cls = class_for_shear_catalog_type(cat_type)
+            return super().__new__(cat_cls)
         return super().__new__(cls)
 
     def __init__(self, *args, **kwargs):
@@ -96,35 +101,45 @@ class ShearCatalog(HDFFile):
     def get_size(self):
         return self.file["shear/ra"].size
 
-    def get_primary_catalog_group(self):
+    @staticmethod
+    def get_primary_catalog_group():
         return "shear"
 
-    def get_primary_catalog_prefix(self):
+    @staticmethod
+    def get_primary_catalog_prefix():
         return ""
 
-    def get_primary_tomography_bin_column(self):
+    @staticmethod
+    def get_primary_tomography_bin_column():
         return "bin"
 
-    def get_tomography_bin_columns(self):
-        return [self.get_primary_tomography_bin_column()]
+    @staticmethod
+    def get_tomography_bin_columns():
+        return [ShearCatalog.get_primary_tomography_bin_column()]
 
-    def get_tomography_bin_column_rename_dict(self):
+    @staticmethod
+    def get_tomography_bin_column_rename_dict():
         return {}
 
-    def get_true_redshift_column(self):
+    @staticmethod
+    def get_true_redshift_column():
         return "redshift_true"
 
-    def get_column_name_variants(self, *columns):
+    @staticmethod
+    def get_column_name_variants(*columns):
         return columns
 
-    def get_classifier_prefixes(self):
+    @staticmethod
+    def get_classifier_prefixes():
         return [""]
 
-    def get_classifier_suffixes(self):
+    @staticmethod
+    def get_classifier_suffixes():
         return [""]
 
-    def get_classifier_variants(self):
-        return list(zip(self.get_classifier_prefixes(), self.get_classifier_suffixes()))
+    @staticmethod
+    def get_classifier_variants():
+        return list(zip(ShearCatalog.get_classifier_prefixes(), ShearCatalog.get_classifier_suffixes()))
 
     def get_extra_calibration_columns(self):
         return []
@@ -173,13 +188,16 @@ class SimpleShearCatalog(ShearCatalog):
     pass
 
 class MetacalShearCatalog(ShearCatalog):
-    def get_classifier_prefixes(self):
+    @staticmethod
+    def get_classifier_prefixes():
         return [""] * 5
 
-    def get_classifier_suffixes(self):
+    @staticmethod
+    def get_classifier_suffixes():
         return ["", "_1p", "_2p", "_1m", "_2m"]
 
-    def get_column_name_variants(self, *columns):
+    @staticmethod
+    def get_column_name_variants(*columns):
         from .shear_calibration.names import metacal_variants
         return metacal_variants(*columns)
 
@@ -226,31 +244,40 @@ class MetaDetectShearCatalog(ShearCatalog):
     def get_size(self):
         return self.file["shear/ns/ra"].size
 
-    def get_classifier_prefixes(self):
+    @staticmethod
+    def get_classifier_prefixes():
         return ["ns/", "1p/", "2p/", "1m/", "2m/"]
 
-    def get_classifier_suffixes(self):
+    @staticmethod
+    def get_classifier_suffixes():
         return [""] * 5
 
-    def get_primary_catalog_group(self):
+    @staticmethod
+    def get_primary_catalog_group():
         return "shear/ns"
 
-    def get_primary_catalog_prefix(self):
+    @staticmethod
+    def get_primary_catalog_prefix():
         return "ns/"
 
-    def get_primary_tomography_bin_column(self):
+    @staticmethod
+    def get_primary_tomography_bin_column():
         return "bin_ns"
 
-    def get_tomography_bin_columns(self):
+    @staticmethod
+    def get_tomography_bin_columns():
         return ["bin_ns", "bin_1p", "bin_1m", "bin_2p", "bin_2m"]
 
-    def get_tomography_bin_column_rename_dict(self):
+    @staticmethod
+    def get_tomography_bin_column_rename_dict():
         return {f"bin_{v}":f"{v}/bin" for v in META_VARIANTS}
 
-    def get_true_redshift_column(self):
+    @staticmethod
+    def get_true_redshift_column():
         return "ns/redshift_true"
 
-    def get_column_name_variants(self, *columns):
+    @staticmethod
+    def get_column_name_variants(*columns):
         from .shear_calibration.names import metadetect_variants
         return metadetect_variants(*columns)
 
@@ -285,16 +312,20 @@ class MetaDetectShearCatalog(ShearCatalog):
         return shear_cols, rename
 
 class ScalarMetaDetectCatalog(MetaDetectShearCatalog):
-    def get_classifier_prefixes(self):
+    @staticmethod
+    def get_classifier_prefixes():
         return ["ns/", "1p/", "1m/"]
 
-    def get_classifier_suffixes(self):
+    @staticmethod
+    def get_classifier_suffixes():
         return [""] * 3
 
-    def get_tomography_bin_columns(self):
+    @staticmethod
+    def get_tomography_bin_columns():
         return ["bin_ns", "bin_1p", "bin_1m"]
 
-    def get_column_name_variants(self, *columns):
+    @staticmethod
+    def get_column_name_variants(*columns):
         from .shear_calibration.names import scalar_metadetect_variants
         return scalar_metadetect_variants(*columns)
 
