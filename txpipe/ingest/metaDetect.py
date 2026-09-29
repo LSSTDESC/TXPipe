@@ -466,7 +466,7 @@ class TXIngestDESCMetaDetectV1_1(PipelineStage):
         n = 0
         nfile = len(file_list)
         for i, filename in enumerate(file_list):
-            if i  and ((i % 10) == 0):
+            if (self.rank == 0) and i  and ((i % 10) == 0):
                 print(f"Counting rows in file {i} / {nfile}")
             f = rustfits.FITS(filename)
             n += f['cat'].nrows
@@ -579,6 +579,11 @@ class TXIngestDESCMetaDetectV1_1(PipelineStage):
         else:
             print("No metadetect data written; skipping splitter.finish/aliasing")
         outfile.close()
+
+
+        # Only the root process does the repack
+        if self.rank > 0:
+            return
 
         # Repack the files, speeding up future access.
         # This takes a while!
