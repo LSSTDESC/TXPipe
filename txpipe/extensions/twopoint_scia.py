@@ -2,7 +2,6 @@ from ..base_stage import PipelineStage
 from ..twopoint import TXTwoPoint
 from ..data_types import (
     HDFFile,
-    ShearCatalog,
     SACCFile,
     TextFile,
     MapsFile,
@@ -894,7 +893,7 @@ class TXTwoPointSCIAArc(TXTwoPointSelfCalibrationIA):
     """
     name = "TXTwoPointSCIAArc"
     inputs = [
-        ('binned_shear_catalog', ShearCatalog),
+        ('binned_shear_catalog', BinnedCatalog),
         ('binned_random_catalog_source', HDFFile),
         ('shear_photoz_stack', QPNOfZFile),
         ('patch_centers', TextFile),
