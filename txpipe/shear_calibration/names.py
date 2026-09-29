@@ -1,5 +1,5 @@
 META_VARIANTS = ["ns", "1p", "1m", "2p", "2m"]
-
+SCALAR_META_VARIANTS = ["ns", "1p", "1m"]
 
 def metacal_variants(*names):
     return [name + suffix for suffix in ["", "_1p", "_1m", "_2p", "_2m"] for name in names]
