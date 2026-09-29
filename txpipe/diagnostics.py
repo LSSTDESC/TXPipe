@@ -61,24 +61,14 @@ class TXDiagnosticQuantiles(PipelineStage):
 
         with self.open_input("shear_catalog", wrapper=True) as f:
             group = f.get_primary_catalog_group()
-
-        cat_type = read_shear_catalog_type(self)
-        # We canonicalise the names here
-        if cat_type == "metadetect":
-            psf_suffix = "_original" if self.config["use_psf_originals"] else ""
             col_names = {
-                "psf_g1": f"{group}/psf_g1{psf_suffix}",
+                "psf_g1": f"{group}/psf_g1",
                 "psf_T_mean": f"{group}/psf_T_mean",
                 "s2n": f"{group}/s2n",
                 "T": f"{group}/T",
             }
-        else:
-            col_names = {
-                            "psf_g1": f"{group}/psf_g1",
-                            "psf_T_mean": f"{group}/psf_T_mean",
-                            "s2n": f"{group}/s2n",
-                            "T": f"{group}/T",
-                        }
+            psf_suffix = "_original" if self.config["use_psf_originals"] else ""
+            col_names["psf_g1"] = f"{group}/psf_g1{psf_suffix}"
 
         for band in self.config["bands"]:
             col_names[f"mag_{band}"] = f"{group}/mag_{band}"
@@ -195,6 +185,14 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         # this also sets self.config["shear_catalog_type"]
         cat_type = read_shear_catalog_type(self)
+        bands = self.config["bands"]
+
+        with self.open_input("shear_catalog", wrapper=True) as f:
+            shear_cols = f.get_diagnostic_shear_columns(bands=bands, use_psf_originals=self.config["use_psf_originals"])
+            shear_tomo_cols = f.get_tomography_bin_columns()
+            self.config["shear_prefix"] = f.get_primary_catalog_prefix()
+            self.config["bin_type"] = f.get_primary_tomography_bin_column()
+            self.config["shear_tomo_cols"] = shear_tomo_cols
 
         # Collect together all the methods on this class called self.plot_*
         # They are all expected to be python coroutines - generators that
@@ -211,69 +209,9 @@ class TXSourceDiagnosticPlots(PipelineStage):
         # This method automatically splits up data among the processes,
         # so the plotters should handle this.
         chunk_rows = self.config["chunk_rows"]
-        bands = self.config["bands"]
         if self.rank == 0:
             print("Catalog type = ", cat_type)
 
-        if cat_type == "metacal":
-            shear_cols = [
-                f"psf_g1",
-                f"psf_g2",
-                f"psf_T_mean",
-                "g1",
-                "g1_1p",
-                "g1_2p",
-                "g1_1m",
-                "g1_2m",
-                "g2",
-                "g2_1p",
-                "g2_2p",
-                "g2_1m",
-                "g2_2m",
-                "s2n",
-                "T",
-                "T_1p",
-                "T_2p",
-                "T_1m",
-                "T_2m",
-                "s2n_1p",
-                "s2n_2p",
-                "s2n_1m",
-                "s2n_2m",
-                "weight",
-            ] + [f"mag_{b}" for b in bands]
-        elif cat_type == "metadetect":
-            # g1, g2, T, psf_g1, psf_g2, T, s2n, weight, magnitudes
-            psf_suffix = "_original" if self.config["use_psf_originals"] else ""
-            shear_cols = metadetect_variants(
-                "g1",
-                "g2",
-                "T",
-                f"psf_g1{psf_suffix}",
-                f"psf_g2{psf_suffix}",
-                "psf_T_mean",
-                "s2n",
-                "weight",
-            )
-            shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="metadetect")
-        else:
-            shear_cols = [
-                "dec",
-                "psf_g1",
-                "psf_g2",
-                "g1",
-                "g2",
-                "psf_T_mean",
-                "s2n",
-                "T",
-                "weight",
-                "m",
-            ] + [f"mag_{b}" for b in self.config["bands"]]
-
-        if self.config["shear_catalog_type"] == "metadetect":
-            shear_tomo_cols = ["bin_ns", "bin_1p", "bin_1m", "bin_2p", "bin_2m"]
-        else:
-            shear_tomo_cols = ["bin"]
 
         if self.config["shear_catalog_type"] == "metacal":
             more_iters = ["shear_tomography_catalog", "response", ["R_gamma"]]
@@ -328,8 +266,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
         delta_gamma = self.config["delta_gamma"]
 
         psf_g_edges = self.get_bin_edges("psf_g1")
-        shear_prefix = "ns/" if self.config["shear_catalog_type"] == "metadetect" else ""
-        psf_suffix = psf_suffix = "_original" if self.config["use_psf_originals"] else ""
+        shear_prefix = self.config["shear_prefix"]
+        psf_suffix = "_original" if self.config["use_psf_originals"] else ""
 
         p1 = MeanShearInBins(
             f"{shear_prefix}psf_g1{psf_suffix}",
@@ -429,7 +367,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         delta_gamma = self.config["delta_gamma"]
 
         psf_T_edges = self.get_bin_edges("psf_T_mean")
-        shear_prefix = "ns/" if self.config["shear_catalog_type"] == "metadetect" else ""
+        shear_prefix = self.config["shear_prefix"]
 
         binnedShear = MeanShearInBins(
             f"{shear_prefix}psf_T_mean",
@@ -490,7 +428,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         # Parameters of the binning in SNR
         shear_catalog_type = self.config["shear_catalog_type"]
-        shear_prefix = "ns/" if shear_catalog_type == "metadetect" else ""
+        shear_prefix = self.config["shear_prefix"]
         delta_gamma = self.config["delta_gamma"]
 
         snr_edges = self.get_bin_edges("s2n")
@@ -557,7 +495,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         from scipy import stats
 
         shear_catalog_type = self.config["shear_catalog_type"]
-        shear_prefix = "ns/" if shear_catalog_type == "metadetect" else ""
+        shear_prefix = self.config["shear_prefix"]
         delta_gamma = self.config["delta_gamma"]
 
         T_edges = self.get_bin_edges("T")
@@ -622,7 +560,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         from scipy import stats
 
         shear_catalog_type = self.config["shear_catalog_type"]
-        shear_prefix = "ns/" if shear_catalog_type == "metadetect" else ""
+        shear_prefix = self.config["shear_prefix"]
         delta_gamma = self.config["delta_gamma"]
         nbins = self.config["nbins"]
 
@@ -836,8 +774,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         delta_gamma = self.config["delta_gamma"]
         shear_catalog_type = self.config["shear_catalog_type"]
-        shear_prefix = "ns/" if shear_catalog_type == "metadetect" else ""
-        bin_type = "bin_ns" if self.config["shear_catalog_type"] == "metadetect" else "bin"
+        shear_prefix = self.config["shear_prefix"]
+        bin_type = self.config["bin_type"]
         bins = 10
         edges = np.logspace(1, 3, bins + 1)
         mids = 0.5 * (edges[1:] + edges[:-1])
@@ -1026,8 +964,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
         mid = 0.5 * (edges[1:] + edges[:-1])
         width = edges[1] - edges[0]
         bands = self.config["bands"]
-        shear_prefix = "ns/" if self.config["shear_catalog_type"] == "metadetect" else ""
-        bin_type = "bin_ns" if self.config["shear_catalog_type"] == "metadetect" else "bin"
+        shear_prefix = self.config["shear_prefix"]
+        bin_type = self.config["bin_type"]
         nband = len(bands)
         full_hists = [np.zeros(size, dtype=int) for b in bands]
         source_hists = [np.zeros(size, dtype=int) for b in bands]
@@ -1216,7 +1154,9 @@ class TXResponseInBins(PipelineStage):
 
             # panel for the weighted count
             ax = axes[2, 1]
-            norm = matplotlib.colors.LogNorm(vmin=neff[:].min(), vmax=neff[:].max())
+            vmin = np.nanmin(neff[:])
+            vmax = np.nanmax(neff[:])
+            norm = matplotlib.colors.LogNorm(vmin=vmin, vmax=vmax)
             qm = ax.pcolormesh(S, T, neff, norm=norm)
             plt.colorbar(qm, ax=ax)
             ax.set_title("N_eff")

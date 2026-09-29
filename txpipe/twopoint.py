@@ -6,6 +6,7 @@ from .data_types import (
     TextFile,
     MapsFile,
     QPNOfZFile,
+    BinnedCatalog,
 )
 from .utils.patches import PatchMaker
 from ceci.config import StageParameter
@@ -55,7 +56,7 @@ class TXTwoPoint(PipelineStage):
 
     name = "TXTwoPoint"
     inputs = [
-        ("binned_shear_catalog", ShearCatalog),
+        ("binned_shear_catalog", BinnedCatalog),
         ("binned_lens_catalog", HDFFile),
         ("binned_random_catalog", HDFFile),
         ("binned_random_catalog_sub", HDFFile),
@@ -941,9 +942,9 @@ class TXTwoPointPixel(TXTwoPoint):
     inputs = [
         ("density_maps", MapsFile),
         ("source_maps", MapsFile),
-        ("binned_shear_catalog", ShearCatalog),
-        ("binned_lens_catalog", HDFFile),
-        ("binned_random_catalog", HDFFile),
+        ("binned_shear_catalog", BinnedCatalog),
+        ("binned_lens_catalog", BinnedCatalog),
+        ("binned_random_catalog", BinnedCatalog),
         ("shear_photoz_stack", QPNOfZFile),
         ("lens_photoz_stack", QPNOfZFile),
         ("patch_centers", TextFile),
@@ -1093,7 +1094,7 @@ class TXTwoPointPixelExtCross(TXTwoPointPixel):
     inputs = [
         ("density_maps", MapsFile),
         ("source_maps", MapsFile),
-        ("binned_shear_catalog", ShearCatalog),
+        ("binned_shear_catalog", BinnedCatalog),
         ("binned_lens_catalog", HDFFile),
         ("binned_random_catalog", HDFFile),
         ("shear_photoz_stack", QPNOfZFile),

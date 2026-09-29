@@ -86,12 +86,13 @@ class TXShearCalibration(PipelineStage):
         with self.open_input("shear_catalog", wrapper=True) as f:
             cat_cols, renames = f.get_primary_catalog_names()
             g = f.get_primary_catalog_group()
+            prefix = f.get_primary_catalog_prefix()
 
             # cat_cols is everything we are reading in
-            if cat_type == "metadetect":
-                cat_cols = cat_cols + [f"ns/{c}" for c in extra_cols + mag_cols_in]
-                mag_cols_in = [f"ns/{c}" for c in mag_cols_in]
-                renames.update({f"ns/{c}": c for c in extra_cols})
+            if prefix:
+                cat_cols = cat_cols + [f"{prefix}{c}" for c in extra_cols + mag_cols_in]
+                mag_cols_in = [f"{prefix}{c}" for c in mag_cols_in]
+                renames.update({f"{prefix}{c}": c for c in extra_cols})
             else:
                 cat_cols = cat_cols + extra_cols + mag_cols_in
 
