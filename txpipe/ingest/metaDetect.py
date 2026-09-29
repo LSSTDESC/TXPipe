@@ -613,6 +613,7 @@ def process_metadetect_data_v1_1(data, tract, patch, flag_exclusion, shape_noise
     for variant in META_VARIANTS:
         var_data = data[data["mcal_step"] == variant]
         var_data = sanitize(var_data)
+        print(variant, len(var_data))
 
         if flag_exclusion:
             keep = (var_data["flags"] == 0)

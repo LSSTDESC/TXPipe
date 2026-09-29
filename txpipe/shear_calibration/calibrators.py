@@ -54,6 +54,8 @@ class Calibrator:
             subcls = MetaCalibrator
         elif cat_type == "metadetect":
             subcls = MetaDetectCalibrator
+        elif cat_type == "scalar_metadetect":
+            subcls = ScalarMetaDetectCalibrator
         elif cat_type == "lensfit":
             subcls = LensfitCalibrator
         elif cat_type == "hsc":
@@ -366,6 +368,88 @@ class MetaDetectCalibrator(MetaCalibrator):
             mu2_2d = f["counts/mean_e2_2d"][0]
 
         # make the calibrator objects
+        calibrators = [cls(R[i], [mu1[i], mu2[i]]) for i in range(n)]
+        calibrator2d = cls(R_2d, [mu1_2d, mu2_2d])
+        return calibrators, calibrator2d
+
+    def save(self, outfile, i):
+        if i == "2d":
+            outfile["response/R_2d"][:] = self.R
+            outfile["counts/mean_e1_2d"][0] = self.mu[0]
+            outfile["counts/mean_e2_2d"][0] = self.mu[1]
+        else:
+            outfile["response/R"][i] = self.R
+            outfile["counts/mean_e1"][i] = self.mu[0]
+            outfile["counts/mean_e2"][i] = self.mu[1]
+
+
+class ScalarMetaDetectCalibrator(Calibrator):
+    """Calibrate metadetect shears using a scalar response value."""
+
+    def __init__(self, R, mu, mu_is_calibrated=True):
+        self.R = float(np.asarray(R))
+        self.Rinv = 1.0 / self.R
+        if mu_is_calibrated:
+            self.mu = np.asarray(mu, dtype=float)
+        else:
+            self.mu = np.asarray(mu, dtype=float) * self.Rinv
+
+    def get_total_response(self):
+        return self.R
+
+    def apply(self, g1, g2, subtract_mean=True):
+        """
+        Calibrate a set of shears using a scalar response and optional mean-shear subtraction.
+
+        Parameters
+        ----------
+        g1: array or float
+            Shear 1 component
+
+        g2: array or float
+            Shear 2 component
+
+        subtract_mean: bool
+            whether to subtract the mean shear before dividing by the response
+        """
+        if subtract_mean:
+            g1 = self.Rinv * (g1 - self.mu[0])
+            g2 = self.Rinv * (g2 - self.mu[1])
+        else:
+            g1 = self.Rinv * g1
+            g2 = self.Rinv * g2
+        return g1, g2
+
+    def calibrate_variance_to_sigma_e(self, var_e):
+        """
+        Convert a variance of ellipticities to a calibrated sigma.
+        For a scalar response, the variance is reduced by R^2.
+        """
+        var_e = np.asarray(var_e, dtype=float)
+        return np.sqrt(0.5 * np.sum(var_e) / (self.R**2))
+
+    def calibrate_sigma(self, sigma):
+        """
+        Calibrate a standard deviation of ellipticities, keeping both components.
+        """
+        sigma = np.asarray(sigma, dtype=float)
+        return sigma / self.R
+
+    @classmethod
+    def load(cls, tomo_file):
+        """Make a set of scalar metadetect calibrators from a tomography file."""
+        import h5py
+
+        with h5py.File(tomo_file, "r") as f:
+            R = f["response/R"][:]
+            R_2d = f["response/R_2d"][:]
+            n = len(R)
+
+            mu1 = f["counts/mean_e1"][:]
+            mu2 = f["counts/mean_e2"][:]
+            mu1_2d = f["counts/mean_e1_2d"][0]
+            mu2_2d = f["counts/mean_e2_2d"][0]
+
         calibrators = [cls(R[i], [mu1[i], mu2[i]]) for i in range(n)]
         calibrator2d = cls(R_2d, [mu1_2d, mu2_2d])
         return calibrators, calibrator2d

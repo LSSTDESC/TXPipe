@@ -37,88 +37,75 @@ class ShearCatalog(HDFFile):
     """
     A generic shear catalog
     """
-
-    # These are columns
+    def __new__(cls, *args, **kwargs):
+        import h5py
+        if cls is ShearCatalog:  # only dispatch when called on the base class
+            cat_type = cls.get_catalog_type_from_filename(args[0])
+            if cat_type == "metacal":
+                return super().__new__(MetacalShearCatalog, *args, **kwargs)
+            elif cat_type == "simple":
+                return super().__new__(SimpleShearCatalog, *args, **kwargs)
+            elif cat_type == "metadetect":
+                return super().__new__(MetaDetectShearCatalog, *args, **kwargs)
+            elif cat_type == "lensfit":
+                return super().__new__(LensfitShearCatalog, *args, **kwargs)
+            elif cat_type == "hsc":
+                return super().__new__(HSCShearCatalog, *args, **kwargs)
+            raise ValueError(f"Unknown catalog type: {cat_type}")
+        return super().__new__(cls, *args, **kwargs)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._catalog_type = None
 
-    def read_catalog_info(self):
-        try:
-            group = self.file["shear"]
-            info = dict(group.attrs)
-        except:
-            raise ValueError(f"Unable to read shear catalog")
-        shear_catalog_type = info.get("catalog_type")
-        return shear_catalog_type
+    @staticmethod
+    def get_catalog_type_from_filename(filename):
+        import h5py
+        with h5py.File(args[0]) as f:
+            return self.get_catalog_type_from_file(f)
 
-    @property
-    def catalog_type(self):
-        if self._catalog_type is not None:
-            return self._catalog_type
-
-        if "catalog_type" in self.file["shear"].attrs:
-            t = self.file["shear"].attrs["catalog_type"]
-        elif "g1_1p" in self.file["shear"].keys():
+    @staticmethod
+    def get_catalog_type_from_file(f):
+        if "catalog_type" in f["shear"].attrs:
+            t = f["shear"].attrs["catalog_type"]
+        elif "g1_1p" in f["shear"].keys():
             t = "metacal"
-        elif "1p" in self.file["shear"].keys():
+        elif "2p" in f["shear"].keys():
             t = "metadetect"
-        elif "c1" in self.file["shear"].keys():
+        elif "2m" in f["shear"].keys():
+            t = "scalar_metadetect"
+        elif "c1" in f["shear"].keys():
             t = "lensfit"
         else:
             raise ValueError("Could not figure out catalog format")
-
-        self._catalog_type = t
         return t
+        
+
+    @property
+    def catalog_type(self):
+        if self._catalog_type is None:
+            self._catalog_type = self.get_catalog_type_from_file(self.file)
+        return self._catalog_type
 
     def get_size(self):
-        if self.catalog_type == "metadetect":
-            return self.file["shear/ns/ra"].size
-        else:
-            return self.file["shear/ra"].size
+        return self.file["shear/ra"].size
 
     def get_primary_catalog_group(self):
-        if self.catalog_type == "metadetect":
-            return "shear/ns"
-        else:
-            return "shear"
+        return "shear"
+
+    def get_primary_catalog_prefix(self):
+        return ""
 
     def get_true_redshift_column(self):
-        if self.catalog_type == "metadetect":
-            return "ns/redshift_true"
-        else:
-            return "redshift_true"
+        return "redshift_true"
 
     def get_column_name_variants(self, *columns):
-        # Avoid circular import issues by importing here
-        from .shear_calibration.names import metadetect_variants, metacal_variants
-        if self.catalog_type == "metadetect":
-            return metadetect_variants(*columns)
-        elif self.catalog_type == "metacal":
-            return metacal_variants(*columns)
-        else:
-            return columns
+        return columns
 
     def get_primary_catalog_names(self, true_shear=False):
         if true_shear:
-            if self.catalog_type == "metadetect":
-                shear_cols = ["ns/true_g1", "ns/true_g2", "ns/ra", "ns/dec", "ns/weight"]
-                rename = {c: c[3:] for c in shear_cols}
-                rename["ns/true_g1"] = "g1"
-                rename["ns/true_g2"] = "g2"
-            else:
-                rename = {"true_g1": "g1", "true_g2": "g2"}
-                rename = {}
-        elif self.catalog_type == "metacal":
-            shear_cols = ["g1", "g2", "ra", "dec", "weight"]
-            rename = {}
-        elif self.catalog_type == "hsc":
-            shear_cols = ["g1", "g2", "c1", "c2", "ra", "dec", "weight"]
-            rename = {}
-        elif self.catalog_type == "metadetect":
-            shear_cols = ["ns/g1", "ns/g2", "ns/ra", "ns/dec", "ns/weight"]
-            rename = {c: c[3:] for c in shear_cols}
+            shear_cols = ["true_g1", "true_g2", "ra", "dec", "weight"]
+            rename = {"true_g1": "g1", "true_g2": "g2"}
         else:
             shear_cols = ["g1", "g2", "ra", "dec", "weight"]
             rename = {}
@@ -137,6 +124,68 @@ class ShearCatalog(HDFFile):
         band_cols = [c for c in group.keys() if c.startswith(f"mag_") and c.count("_") == 1]
         bands = [c[4:] for c in band_cols]
         return bands
+
+class SimpleShearCatalog(ShearCatalog):
+    pass
+
+class MetacalShearCatalog(ShearCatalog):
+    def get_column_name_variants(self, *columns):
+        from .shear_calibration.names import metacal_variants
+        return metacal_variants(*columns)
+
+    def get_primary_catalog_names(self, true_shear=False):
+        if true_shear:
+            shear_cols = ["true_g1", "true_g2", "ra", "dec", "weight"]
+            rename = {"true_g1": "g1", "true_g2": "g2"}
+        else:
+            shear_cols = ["g1", "g2", "ra", "dec", "weight"]
+            rename = {}
+        return shear_cols, rename
+
+class MetaDetectShearCatalog(ShearCatalog):
+    def get_size(self):
+        return self.file["shear/ns/ra"].size
+
+    def get_primary_catalog_group(self):
+        return "shear/ns"
+
+    def get_primary_catalog_prefix(self):
+        return "ns/"
+
+    def get_true_redshift_column(self):
+        return "ns/redshift_true"
+
+    def get_column_name_variants(self, *columns):
+        from .shear_calibration.names import metadetect_variants
+        return metadetect_variants(*columns)
+
+    def get_primary_catalog_names(self, true_shear=False):
+        if true_shear:
+            shear_cols = ["ns/true_g1", "ns/true_g2", "ns/ra", "ns/dec", "ns/weight"]
+            rename = {c: c[3:] for c in shear_cols}
+            rename["ns/true_g1"] = "g1"
+            rename["ns/true_g2"] = "g2"
+        else:
+            shear_cols = ["ns/g1", "ns/g2", "ns/ra", "ns/dec", "ns/weight"]
+            rename = {c: c[3:] for c in shear_cols}
+
+        return shear_cols, rename
+
+class ScalarMetaDetectCatalog(MetaDetectShearCatalog):
+    pass
+
+
+class LensfitShearCatalog(ShearCatalog):
+    def get_primary_catalog_names(self, true_shear=False):
+        shear_cols = ["g1", "g2", "ra", "dec", "weight"]
+        rename = {}
+        return shear_cols, rename
+
+class HSCShearCatalog(ShearCatalog):
+    def get_primary_catalog_names(self, true_shear=False):
+        shear_cols = ["g1", "g2", "c1", "c2", "ra", "dec", "weight"]
+        rename = {}
+        return shear_cols, rename
 
 
 class BinnedCatalog(HDFFile):
