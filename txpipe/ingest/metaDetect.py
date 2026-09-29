@@ -488,7 +488,11 @@ class TXIngestDESCMetaDetectV1_1(PipelineStage):
         n_files = len(file_list)
         shape_noise = self.config['pre_response_shape_noise']
 
-        max_size = self.get_maximum_catalog_size(file_list)
+        # The catalog size is for all the three variants, but we
+        # are using it here for the single variant size. So we cut it
+        # down. A factor of 3 would be closer to correct but this gives
+        # us some overheads in case one sub-cat is much larger.
+        max_size = self.get_maximum_catalog_size(file_list) // 2
         created_files = False
 
         # we need the file list to be a multiple of the size of the
@@ -571,7 +575,7 @@ class TXIngestDESCMetaDetectV1_1(PipelineStage):
                     variant_group[name].resize((end_point,))
 
             print("adding in aliases")
-            self.aliasing(outfile, group)
+            self.aliasing(outfile, outgroup)
         else:
             print("No metadetect data written; skipping splitter.finish/aliasing")
         outfile.close()
@@ -584,7 +588,7 @@ class TXIngestDESCMetaDetectV1_1(PipelineStage):
 
     def aliasing(self, outfile, group):
         g = group
-        for variant in ["ns", "1p", "1m", "2p", "2m"]:
+        for variant in SCALAR_META_VARIANTS:
             k = g[variant]
             for txname, original in ERIN_TXPIPE_COLUMNS.items():
                 if txname != original:
