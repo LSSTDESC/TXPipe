@@ -102,11 +102,10 @@ class TXShearCalibration(PipelineStage):
                     cat_cols += [z_name]
                 else:
                     raise ValueError(f"To add fiducial distances the shear catalog needs a redshift")
-
-        if cat_type != "hsc":
-            output_cols = ["ra", "dec", "weight", "g1", "g2"] + extra_cols + mag_cols_out
-        else:
-            output_cols = ["ra", "dec", "weight", "g1", "g2", "c1", "c2"] + extra_cols + mag_cols_out
+            output_cols = [renames.get(col, col) for col in cat_cols]
+            output_cols += extra_cols + mag_cols_out
+            extra_cal_cols = f.get_extra_calibration_columns()
+        
 
         if add_fiducial_distance:
             output_cols.append("r")
@@ -165,25 +164,8 @@ class TXShearCalibration(PipelineStage):
                 # Cut down the data to just this selection for output
                 d = {name: data[name][w] for name in output_cols}
 
-                # Calibrate the shear columns
-                if cat_type == "hsc":
-                    d["g1"], d["g2"] = cal.apply(
-                        d["g1"],
-                        d["g2"],
-                        d["c1"],
-                        d["c2"],
-                        d["aselepsf1"],
-                        d["aselepsf2"],
-                        d["msel"],
-                        subtract_mean=subtract_mean_shear,
-                    )
-                elif cat_type == "lensfit":
-                    # In KiDS, the additive bias is calculated and removed per North and South field
-                    # therefore, we add dec to split data into these fields.
-                    # You can choose not to by setting dec_cut = 90 in the config, for example.
-                    d["g1"], d["g2"] = cal.apply(d["g1"], d["g2"], d["dec"], subtract_mean=subtract_mean_shear)
-                else:
-                    d["g1"], d["g2"] = cal.apply(d["g1"], d["g2"], subtract_mean=subtract_mean_shear)
+                extra_cal = {col: d[col] for col in extra_cal_cols}
+                d["g1"], d["g2"] = cal.apply(d["g1"], d["g2"], subtract_mean=subtract_mean_shear, **extra_cal)
 
                 # Write output, keeping track of sizes
                 splitter.write_bin(d, b)

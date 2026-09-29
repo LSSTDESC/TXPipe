@@ -193,6 +193,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
             self.config["shear_prefix"] = f.get_primary_catalog_prefix()
             self.config["bin_type"] = f.get_primary_tomography_bin_column()
             self.config["shear_tomo_cols"] = shear_tomo_cols
+            self.config["extra_calibration_columns"] = f.get_extra_calibration_columns()
 
         # Collect together all the methods on this class called self.plot_*
         # They are all expected to be python coroutines - generators that
@@ -678,7 +679,9 @@ class TXSourceDiagnosticPlots(PipelineStage):
         from scipy import stats
 
         cat_type = self.config["shear_catalog_type"]
+        extra_cal_columns = self.config["extra_calibration_columns"]
         delta_gamma = self.config["delta_gamma"]
+        shear_prefix = self.config["shear_prefix"]
         bins = 20
         edges = np.linspace(-1, 1, bins + 1)
         mids = 0.5 * (edges[1:] + edges[:-1])
@@ -698,37 +701,12 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 break
 
             #qual_cut = data["bin"] != -1
+            g1 = data[f"{shear_prefix}g1"]
+            g2 = data[f"{shear_prefix}g2"]
+            w = data[f"{shear_prefix}weight"]
+            extra_cal = {col: data[f"{shear_prefix}{col}"] for col in extra_cal_columns}
 
-            if cat_type == "metacal":
-                g1 = data["g1"]
-                g2 = data["g2"]
-                w = data["weight"]
-            elif cat_type == "metadetect":
-                g1 = data["ns/g1"]
-                g2 = data["ns/g2"]
-                w = data["ns/weight"]
-            elif cat_type == "lensfit":
-                dec = data["dec"]
-                g1 = data["g1"]
-                g2 = data["g2"]
-                w = data["weight"]
-            else:
-                g1 = data["g1"]
-                g2 = data["g2"]
-                c1 = data["c1"]
-                c2 = data["c2"]
-                w = data["weight"]
-
-            if cat_type == "metacal" or cat_type == "metadetect":
-                g1, g2 = cal.apply(g1, g2)
-
-            elif cat_type == "lensfit":
-                # In KiDS, the additive bias is calculated and removed per North and South field
-                # therefore, we add dec to split data into these fields.
-                # You can choose not to by setting dec_cut = 90 in the config, for example.
-                g1, g2 = cal.apply(g1, g2, dec)
-            else:
-                g1, g2 = cal.apply(g1, g2, c1, c2)
+            g1, g2 = cal.apply(g1, g2, **extra_cal)
 
             H1.add_data(g1)
             H2.add_data(g2)
@@ -851,7 +829,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
             if data is None:
                 break
 
-            if cat_type == "metadetect":
+            if cat_type.endswith("metadetect"):
                 # No per-object R values in metadetect
                 continue
 
@@ -1235,13 +1213,8 @@ class TXResponseInBins(PipelineStage):
         with self.open_input("shear_catalog", wrapper=True) as f:
             cols = f.get_column_name_variants("g1", "g2", "weight", "s2n", "T", "psf_T_mean")
             cat_type = f.catalog_type
-
-        if cat_type == "metadetect":
-            tomo_cols = [f"bin_{v}" for v in META_VARIANTS]
-            rename = {f"bin_{v}":f"{v}/bin" for v in META_VARIANTS}
-        else:
-            tomo_cols = [f"bin"]
-            rename = {}
+            tomo_cols = f.get_tomography_bin_columns()
+            rename = f.get_tomography_bin_column_rename_dict()
 
         chunk_rows = self.config['chunk_rows']
         

@@ -1108,6 +1108,7 @@ class TXGalaxyStarShear(PipelineStage):
         with self.open_input("shear_catalog", wrapper=True) as f:
             primary_group = f.get_primary_catalog_group()
             primary_bin = f.get_primary_tomography_bin_column()
+            extra_cal_cols = f.get_extra_calibration_columns()
 
         with self.open_input("shear_tomography_catalog", wrapper=True) as f:
             source_bin = f.file[f"tomography/{primary_bin}"][:]
@@ -1115,41 +1116,19 @@ class TXGalaxyStarShear(PipelineStage):
 
         with self.open_input("shear_catalog", wrapper=True) as f:
             g = f.file[primary_group]
+            extra_cal_cols = f.get_extra_calibration_columns()
 
             ra = g["ra"][:][mask]
             dec = g["dec"][:][mask]
+            g1 = g["g1"][:][mask]
+            g2 = g["g2"][:][mask]
+            weight = g["weight"][:][mask]
+            extra = {col: g[col][:][mask] for col in extra_cal_cols}
 
-            if cat_type == "metacal":
-                g1 = g["g1"][:][mask]
-                g2 = g["g2"][:][mask]
-                weight = g["weight"][:][mask]
-
-            elif cat_type == "metadetect":
-                g1 = g["g1"][:][mask]
-                g2 = g["g2"][:][mask]
-                weight = g["weight"][:][mask]
-
-            else:
-                g1 = g["g1"][:][mask]
-                g2 = g["g2"][:][mask]
-                weight = g["weight"][:][mask]
-                sigma_e = g["sigma_e"][:][mask]
-                m = g["m"][:][mask]
+        g1, g2 = cal.apply(g1, g2, **extra)
 
         if self.config["flip_g2"]:
             g2 *= -1
-
-        if cat_type == "metacal" or cat_type == "metadetect":
-            # We use S=0 here because we have already included it in R_total
-            g1, g2 = cal.apply(g1, g2)
-
-        elif cat_type == "lensfit":
-            # In KiDS, the additive bias is calculated and removed per North and South field
-            # therefore, we add dec to split data into these fields.
-            # You can choose not to by setting dec_cut = 90 in the config, for example.
-            g1, g2 = cal.apply(g1, g2, dec)
-        else:
-            print("Shear calibration type not recognized.")
 
         return ra, dec, g1, g2, weight
 

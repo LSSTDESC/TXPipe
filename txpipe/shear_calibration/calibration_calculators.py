@@ -1,6 +1,6 @@
 import numpy as np
 from .names import META_VARIANTS, SCALAR_META_VARIANTS
-from .calibrators import MetaCalibrator, LensfitCalibrator, HSCCalibrator, MetaDetectCalibrator, NullCalibrator
+from .calibrators import MetaCalibrator, LensfitCalibrator, HSCCalibrator, MetaDetectCalibrator, NullCalibrator, ScalarMetaDetectCalibrator
 from .utils import BinStats
 
 class _DataWrapper:
@@ -105,6 +105,8 @@ class CalibrationCalculator:
             return MetacalCalculator(selector, config["delta_gamma"], config["resp_mean_diag"])
         elif cat_type == "metadetect":
             return MetaDetectCalculator(selector, config["delta_gamma"])
+        elif cat_type == "scalar_metadetect":
+            return ScalarMetaDetectCalculator(selector, config["delta_gamma"])
         elif cat_type == "lensfit":
             return LensfitCalculator(selector, config["dec_cut"], config["input_m_is_weighted"])
         elif cat_type == "hsc":
@@ -510,6 +512,10 @@ class ScalarMetaDetectCalculator(CalibrationCalculator):
                 continue
             g1 = data_p["g1"][sel]
             g2 = data_p["g2"][sel]
+            # i = 0 is ns
+            # i = 1 is 1p
+            # i = 2 is 1m
+            # so 
             self.shear_stats.add_data(2 * i, g1, w)
             self.shear_stats.add_data(2 * i + 1, g2, w)
             self.counts[i] += w.size
@@ -563,15 +569,19 @@ class ScalarMetaDetectCalculator(CalibrationCalculator):
         # 0: g1
         # 1: g2
         # 2: g1_1p
-        # 3: g1_1m
+        # 3: g2_1p
+        # 4: g1_1m
+        # 5: g2_1m
 
         # Compute the mean R components
-        R = mean_e[2] - mean_e[3]  # g1_1p - g1_1m
-        R /= self.delta_gamma
+        # (g1_1p - g1_1m) /  dg
+        R = (mean_e[2] - mean_e[4]) / self.delta_gamma  
+
+        # 3 and 5 are not actually referenced.
 
         Neff = sum_weights[0] ** 2 / sum_sq_weights[0]
 
-        calibrator = MetaDetectCalibrator(R, mean_e[:2], mu_is_calibrated=False)
+        calibrator = ScalarMetaDetectCalibrator(R, mean_e[:2], mu_is_calibrated=False)
         mu = calibrator.apply(mean_e[0], mean_e[1], subtract_mean=False)
         sigma_e = calibrator.calibrate_variance_to_sigma_e(var_e[0:2])
         sigma = calibrator.calibrate_sigma(np.sqrt(var_e[:2]))

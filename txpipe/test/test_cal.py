@@ -2,6 +2,7 @@ from ..shear_calibration import (
     MeanShearInBins,
     MetacalCalculator,
     MetaDetectCalculator,
+    ScalarMetaDetectCalculator,
     MetaCalibrator,
     NullCalibrator,
 )
@@ -161,6 +162,61 @@ def core_metadet(comm):
         assert stats.source_count == N * nproc
 
 
+def core_scalar_metadet(comm):
+    delta_gamma = 0.02
+
+    nproc = 1 if comm is None else comm.size
+
+    N = 10
+    g1_true = np.random.normal(0, 0.1, size=N)
+    g2_true = np.random.normal(0, 0.1, size=N)
+    g_true = np.array([g1_true, g2_true])
+    R_true = 1.3
+    R_matrix = np.eye(2) * R_true
+    g = R_matrix @ g_true
+    g_1p = R_matrix @ (g_true + 0.5 * delta_gamma * np.array([+1, 0])[:, np.newaxis])
+    g_1m = R_matrix @ (g_true + 0.5 * delta_gamma * np.array([-1, 0])[:, np.newaxis])
+    weight = np.ones(N)
+
+    data = {
+        "ns/g1": g[0],
+        "1p/g1": g_1p[0],
+        "1m/g1": g_1m[0],
+        "ns/g2": g[1],
+        "1p/g2": g_1p[1],
+        "1m/g2": g_1m[1],
+        "ns/weight": weight.copy(),
+        "1p/weight": weight.copy(),
+        "1m/weight": weight.copy(),
+    }
+
+    # test each type of selector
+    for sel in [select_all_bool, select_all_where, select_all_index]:
+        cal = ScalarMetaDetectCalculator(sel, delta_gamma)
+        cal.add_data(data)
+        stats = cal.collect(comm, allgather=True)
+        calibrator = stats.calibrator
+
+        assert np.allclose(calibrator.R, R_true)
+        assert stats.source_count == N * nproc
+
+    # equal non-unit weights - everything should be the same.
+    data["ns/weight"] *= 0.5
+    data["1p/weight"] *= 0.5
+    data["1m/weight"] *= 0.5
+    print('weight = ', data['1p/weight'])
+
+    # test each type of selector
+    for sel in [select_all_bool, select_all_where, select_all_index]:
+        cal = ScalarMetaDetectCalculator(sel, delta_gamma)
+        cal.add_data(data)
+        stats = cal.collect(comm, allgather=True)
+        calibrator = stats.calibrator
+        # print("R = ", calibrator.R)
+        assert stats.source_count == N * nproc
+
+
+
 def test_metacalibrator_serial():
     core_metacal(None)
 
@@ -168,10 +224,17 @@ def test_metacalibrator_serial():
 def test_metadetect_serial():
     core_metadet(None)
 
+def test_scalar_metadetect_serial():
+    core_scalar_metadet(None)
+
 
 def test_metadetect_parallel():
     mockmpi.mock_mpiexec(2, core_metadet)
     mockmpi.mock_mpiexec(10, core_metadet)
+
+def test_scalar_metadetect_parallel():
+    mockmpi.mock_mpiexec(2, core_scalar_metadet)
+    mockmpi.mock_mpiexec(10, core_scalar_metadet)
 
 
 def test_mean_shear_no_weights():
