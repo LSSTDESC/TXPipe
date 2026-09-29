@@ -484,15 +484,13 @@ class TXIngestDESCMetaDetectV1_1(PipelineStage):
 
         file_list = self.generate_input_file_list()
         file_list.sort()
-        file_list = file_list[:100]
         n_files = len(file_list)
         shape_noise = self.config['pre_response_shape_noise']
 
         # The catalog size is for all the three variants, but we
         # are using it here for the single variant size. So we cut it
-        # down. A factor of 3 would be closer to correct but this gives
-        # us some overheads in case one sub-cat is much larger.
-        max_size = self.get_maximum_catalog_size(file_list) // 2
+        # down, with 10% overhead.
+        max_size = int((self.get_maximum_catalog_size(file_list) // 3) * 1.1)
         created_files = False
 
         # we need the file list to be a multiple of the size of the
@@ -551,16 +549,13 @@ class TXIngestDESCMetaDetectV1_1(PipelineStage):
                 my_start = end_points[i] + sizes[:self.rank, i].sum()
                 my_end = my_start + sizes[self.rank, i]
                 print(f"Rank {self.rank} writing variant {variant} data {my_start:,} - {my_end:,}  (end point {end_points[i]:,})")
-
                 variant_group = outgroup[variant]
                 
                 for name, col in shear_data[variant].items():
                     variant_group[name][my_start:my_end] = col
                 end_points[i] = my_end
-            print(self.rank, "end points", end_points, "before bcast")
             if self.comm is not None:
                 end_points = self.comm.bcast(end_points, root=self.size - 1)
-            print(self.rank, "end points", end_points, "after bcast")
 
 
 
