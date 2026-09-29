@@ -39,40 +39,45 @@ class ShearCatalog(HDFFile):
     """
     def __new__(cls, *args, **kwargs):
         import h5py
-        if cls is ShearCatalog:  # only dispatch when called on the base class
-            cat_type = cls.get_catalog_type_from_filename(args[0])
+        filename = args[0]
+        mode = args[1]
+
+        if (cls is ShearCatalog) and (mode == "r"):  # only dispatch when called on the base class
+            cat_type = cls.get_catalog_type_from_filename(filename)
             if cat_type == "metacal":
-                return super().__new__(MetacalShearCatalog, *args, **kwargs)
+                return super().__new__(MetacalShearCatalog)
             elif cat_type == "simple":
-                return super().__new__(SimpleShearCatalog, *args, **kwargs)
+                return super().__new__(SimpleShearCatalog)
             elif cat_type == "metadetect":
-                return super().__new__(MetaDetectShearCatalog, *args, **kwargs)
+                return super().__new__(MetaDetectShearCatalog)
+            elif cat_type == "scalar_metadetect":
+                return super().__new__(ScalarMetaDetectCatalog)
             elif cat_type == "lensfit":
-                return super().__new__(LensfitShearCatalog, *args, **kwargs)
+                return super().__new__(LensfitShearCatalog)
             elif cat_type == "hsc":
-                return super().__new__(HSCShearCatalog, *args, **kwargs)
+                return super().__new__(HSCShearCatalog)
             raise ValueError(f"Unknown catalog type: {cat_type}")
-        return super().__new__(cls, *args, **kwargs)
+        return super().__new__(cls)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._catalog_type = None
 
-    @staticmethod
-    def get_catalog_type_from_filename(filename):
+    @classmethod
+    def get_catalog_type_from_filename(cls, filename):
         import h5py
-        with h5py.File(args[0]) as f:
-            return self.get_catalog_type_from_file(f)
+        with h5py.File(filename) as f:
+            return cls.get_catalog_type_from_file(f)
 
-    @staticmethod
-    def get_catalog_type_from_file(f):
+    @classmethod
+    def get_catalog_type_from_file(cls, f):
         if "catalog_type" in f["shear"].attrs:
             t = f["shear"].attrs["catalog_type"]
         elif "g1_1p" in f["shear"].keys():
             t = "metacal"
         elif "2p" in f["shear"].keys():
             t = "metadetect"
-        elif "2m" in f["shear"].keys():
+        elif "1p" in f["shear"].keys():
             t = "scalar_metadetect"
         elif "c1" in f["shear"].keys():
             t = "lensfit"
@@ -96,11 +101,37 @@ class ShearCatalog(HDFFile):
     def get_primary_catalog_prefix(self):
         return ""
 
+    def get_primary_tomography_bin_column(self):
+        return "bin"
+
+    def get_tomography_bin_column(self):
+        return self.get_primary_tomography_bin_column()
+
+    def get_tomography_bin_columns(self):
+        return [self.get_primary_tomography_bin_column()]
+
     def get_true_redshift_column(self):
         return "redshift_true"
 
     def get_column_name_variants(self, *columns):
         return columns
+
+    def get_diagnostic_shear_columns(self, bands=None, use_psf_originals=False):
+        if bands is None:
+            bands = self.get_bands()
+        psf_suffix = "_original" if use_psf_originals else ""
+        return [
+            "dec",
+            "psf_g1",
+            "psf_g2",
+            "g1",
+            "g2",
+            f"psf_T_mean{psf_suffix}",
+            "s2n",
+            "T",
+            "weight",
+            "m",
+        ] + [f"mag_{b}" for b in bands]
 
     def get_primary_catalog_names(self, true_shear=False):
         if true_shear:
@@ -133,6 +164,36 @@ class MetacalShearCatalog(ShearCatalog):
         from .shear_calibration.names import metacal_variants
         return metacal_variants(*columns)
 
+    def get_diagnostic_shear_columns(self, bands=None, use_psf_originals=False):
+        if bands is None:
+            bands = self.get_bands()
+        return [
+            "psf_g1",
+            "psf_g2",
+            "psf_T_mean",
+            "g1",
+            "g1_1p",
+            "g1_2p",
+            "g1_1m",
+            "g1_2m",
+            "g2",
+            "g2_1p",
+            "g2_2p",
+            "g2_1m",
+            "g2_2m",
+            "s2n",
+            "T",
+            "T_1p",
+            "T_2p",
+            "T_1m",
+            "T_2m",
+            "s2n_1p",
+            "s2n_2p",
+            "s2n_1m",
+            "s2n_2m",
+            "weight",
+        ] + [f"mag_{b}" for b in bands]
+
     def get_primary_catalog_names(self, true_shear=False):
         if true_shear:
             shear_cols = ["true_g1", "true_g2", "ra", "dec", "weight"]
@@ -152,12 +213,36 @@ class MetaDetectShearCatalog(ShearCatalog):
     def get_primary_catalog_prefix(self):
         return "ns/"
 
+    def get_primary_tomography_bin_column(self):
+        return "bin_ns"
+
+    def get_tomography_bin_columns(self):
+        return ["bin_ns", "bin_1p", "bin_1m", "bin_2p", "bin_2m"]
+
     def get_true_redshift_column(self):
         return "ns/redshift_true"
 
     def get_column_name_variants(self, *columns):
         from .shear_calibration.names import metadetect_variants
         return metadetect_variants(*columns)
+
+    def get_diagnostic_shear_columns(self, bands=None, use_psf_originals=False):
+        from .shear_calibration.names import metadetect_variants, band_variants
+        if bands is None:
+            bands = self.get_bands()
+        psf_suffix = "_original" if use_psf_originals else ""
+        shear_cols = metadetect_variants(
+            "g1",
+            "g2",
+            "T",
+            f"psf_g1{psf_suffix}",
+            f"psf_g2{psf_suffix}",
+            "psf_T_mean",
+            "s2n",
+            "weight",
+        )
+        shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="metadetect")
+        return shear_cols
 
     def get_primary_catalog_names(self, true_shear=False):
         if true_shear:

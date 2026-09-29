@@ -4,6 +4,7 @@ from ...data_types import (
     ShearCatalog,
     PNGFile,
     TextFile,
+    BinnedCatalog,
 )
 import numpy as np
 
@@ -27,9 +28,9 @@ class TXTwoPointRLens(TXTwoPoint):
     """
     name = "TXTwoPointRLens"
     inputs = [
-        ("binned_lens_catalog", HDFFile),
-        ("binned_shear_catalog", HDFFile),
-        ("binned_random_catalog", HDFFile),
+        ("binned_lens_catalog", BinnedCatalog),
+        ("binned_shear_catalog", BinnedCatalog),
+        ("binned_random_catalog", BinnedCatalog),
         ("patch_centers", TextFile),
         ("tracer_metadata", HDFFile),
     ]

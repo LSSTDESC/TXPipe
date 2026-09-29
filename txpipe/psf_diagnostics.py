@@ -1,6 +1,6 @@
 from ceci.config import StageParameter
 from .base_stage import PipelineStage
-from .data_types import Directory, ShearCatalog, HDFFile, PNGFile, TomographyCatalog, RandomsCatalog, YamlFile, TextFile
+from .data_types import Directory, ShearCatalog, HDFFile, PNGFile, TomographyCatalog, RandomsCatalog, YamlFile, TextFile, BinnedCatalog
 import numpy as np
 import sys
 import os
@@ -323,7 +323,7 @@ class TXTauStatistics(PipelineStage):
     name = "TXTauStatistics"
     parallel = False
     inputs = [
-        ("binned_shear_catalog", ShearCatalog),
+        ("binned_shear_catalog", BinnedCatalog),
         ("star_catalog", HDFFile),
         ("rowe_stats", HDFFile),
     ]
@@ -1105,21 +1105,16 @@ class TXGalaxyStarShear(PipelineStage):
         cat_type = read_shear_catalog_type(self)
         _, cal = Calibrator.load(self.get_input("shear_tomography_catalog"))
 
-        # load tomography data
-        with self.open_input("shear_tomography_catalog") as f:
-            source_bin = f["tomography/bin"][:]
+        with self.open_input("shear_catalog", wrapper=True) as f:
+            primary_group = f.get_primary_catalog_group()
+            primary_bin = f.get_primary_tomography_bin_column()
+
+        with self.open_input("shear_tomography_catalog", wrapper=True) as f:
+            source_bin = f.file[f"tomography/{primary_bin}"][:]
             mask = source_bin != -1  # Only use the sources that pass the fiducial cuts
-            if cat_type == "metacal":
-                R_total_2d = f["response/R_S_2d"][:] + f["response/R_gamma_mean_2d"][:]
-            elif cat_type == "metadetect":
-                R_total_2d = f["response/R_2d"][:]
 
-        with self.open_input("shear_catalog") as f:
-            g = f["shear"]
-
-            # Get the base catalog for metadetect
-            if cat_type == "metadetect":
-                g = g["ns"]
+        with self.open_input("shear_catalog", wrapper=True) as f:
+            g = f.file[primary_group]
 
             ra = g["ra"][:][mask]
             dec = g["dec"][:][mask]
