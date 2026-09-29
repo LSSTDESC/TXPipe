@@ -26,7 +26,7 @@ class MeanShearInBins:
         elif shear_catalog_type == "hsc":
             self.calibrators = [HSCCalculator(self.selector) for i in range(self.size)]
         elif shear_catalog_type == "scalar_metadetect":
-            self.calibrators = [ScalarMetaDetectCalculator(self.selector) for i in range(self.size)]
+            self.calibrators = [ScalarMetaDetectCalculator(self.selector, delta_gamma) for i in range(self.size)]
         else:
             raise ValueError(f"Please specify metacal, metadetect, lensfit or hsc for shear_catalog in config.")
 
