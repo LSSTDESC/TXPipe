@@ -528,7 +528,7 @@ class ScalarMetaDetectCalculator(CalibrationCalculator):
     def collect(self, comm=None, allgather=False) -> BinStats:
         """
         Finalize and sum up all the response values, and return a BinStats
-        obejct that collections calibration and statistics.
+        object that collects calibration and statistics.
 
         Parameters
         ----------
