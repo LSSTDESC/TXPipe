@@ -395,7 +395,7 @@ class ScalarMetaDetectCalibrator(Calibrator):
             self.mu = np.asarray(mu, dtype=float) * self.Rinv
 
     def get_total_response(self):
-        return self.R
+        return np.eye(2) * self.R
 
     def apply(self, g1, g2, subtract_mean=True):
         """
