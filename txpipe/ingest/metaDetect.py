@@ -7,7 +7,7 @@ from ..utils.hdf_tools import h5py_shorten, repack
 from ..utils.splitters import MetaDetectSplitter
 from ..utils import nanojansky_err_to_mag_ab, nanojansky_to_mag_ab, moments_to_shear, mag_ab_to_nanojansky
 from ..utils.mpi_utils import in_place_reduce
-from ..shear_calibration.names import META_VARIANTS
+from ..shear_calibration.names import META_VARIANTS, SCALAR_META_VARIANTS
 import numpy as np
 import os
 import pyarrow.parquet as pq
@@ -502,16 +502,16 @@ class TXIngestDESCMetaDetectV1_1(PipelineStage):
         my_n_files = len(my_files)
         outfile = self.open_output("shear_catalog", parallel=True)
         outgroup = outfile.create_group("shear")
-        outgroup.attrs["catalog_type"] = "metadetect"
-        for variant in META_VARIANTS:
+        outgroup.attrs["catalog_type"] = "scalar_metadetect"
+        for variant in SCALAR_META_VARIANTS:
             outgroup.create_group(variant)
-        end_points = np.zeros(len(META_VARIANTS), dtype=np.int64)
+        end_points = np.zeros(len(SCALAR_META_VARIANTS), dtype=np.int64)
 
         for i, filename in enumerate(my_files):
             if (filename == "") :
                 assert self.comm is not None, "This should not happen"
                 # broadcast zeros for all sizes to the other processes
-                sizes = np.zeros((self.size, len(META_VARIANTS)), dtype=np.int64)
+                sizes = np.zeros((self.size, len(SCALAR_META_VARIANTS)), dtype=np.int64)
                 in_place_reduce(sizes, self.comm, allreduce=True)
                 continue
 
@@ -533,17 +533,17 @@ class TXIngestDESCMetaDetectV1_1(PipelineStage):
                 columns = list(shear_data["ns"].keys())
                 dtypes = {key: shear_data["ns"][key].dtype for key in columns}
                 # colletive communication to set up for everyone.
-                for variant in META_VARIANTS:
+                for variant in SCALAR_META_VARIANTS:
                     variant_group = outgroup[variant]
                     for name, dt in dtypes.items():
                         variant_group.create_dataset(name, shape=(max_size,), dtype=dt, maxshape=(max_size, ))
 
-            sizes = np.zeros((self.size, len(META_VARIANTS)), dtype=np.int64)
-            for i, v in enumerate(META_VARIANTS):
+            sizes = np.zeros((self.size, len(SCALAR_META_VARIANTS)), dtype=np.int64)
+            for i, v in enumerate(SCALAR_META_VARIANTS):
                 sizes[self.rank, i] = shear_data[v]["ra"].size
             in_place_reduce(sizes, self.comm, allreduce=True)
 
-            for i, variant in enumerate(META_VARIANTS):
+            for i, variant in enumerate(SCALAR_META_VARIANTS):
                 my_start = end_points[i] + sizes[:self.rank, i].sum()
                 my_end = my_start + sizes[self.rank, i]
                 print(f"Rank {self.rank} writing variant {variant} data {my_start:,} - {my_end:,}  (end point {end_points[i]:,})")
@@ -564,7 +564,7 @@ class TXIngestDESCMetaDetectV1_1(PipelineStage):
         if created_files:
             # The final size of the catalog is the end point for the
             # maximum rank, which is self.size - 1.
-            for i, variant in enumerate(META_VARIANTS):
+            for i, variant in enumerate(SCALAR_META_VARIANTS):
                 variant_group = outgroup[variant]
                 end_point = end_points[i]
                 for name in shear_data["ns"].keys():
@@ -610,7 +610,7 @@ ERIN_TXPIPE_COLUMNS = {
 }
 def process_metadetect_data_v1_1(data, tract, patch, flag_exclusion, shape_noise, full_columns=False):
     output = {}
-    for variant in META_VARIANTS:
+    for variant in SCALAR_META_VARIANTS:
         var_data = data[data["mcal_step"] == variant]
         var_data = sanitize(var_data)
 

@@ -1,6 +1,6 @@
 from .metadetect import TXSourceSelectorMetadetect
 from .base import select_weak_lensing_sample, TXSourceSelectorBase
-from ..shear_calibration import metadetect_variants, MetaDetectCalculator, band_variants, META_VARIANTS
+from ..shear_calibration import metadetect_variants, MetaDetectCalculator, band_variants, META_VARIANTS, scalar_metadetect_variants, ScalarMetaDetectCalculator
 from ceci.config import StageParameter
 import numpy as np
 
@@ -35,12 +35,17 @@ class TXSourceSelectorMetadetectDP2(TXSourceSelectorMetadetect):
         # As above, this is where we work out which columns we need.
         chunk_rows = self.config["chunk_rows"]
         bands = self.config["bands"]
+        cat_type = "scalar_metadetect" if self.config["catalog_version"] == "v1.1" else "metadetect"
 
         # Core quantities we need
-        shear_cols = metadetect_variants("T", "s2n", "g1", "g2", "ra", "dec", "weight", "psf_T_mean", "flags",  "is_primary", "gauss_T", "mfrac")
+        if cat_type == "metadetect":
+            get_variants = metadetect_variants
+        else:
+            get_variants = scalar_metadetect_variants
+        shear_cols = get_variants("T", "s2n", "g1", "g2", "ra", "dec", "weight", "psf_T_mean", "flags",  "is_primary", "gauss_T", "mfrac")
 
         # Magnitudes and errors
-        shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="metadetect")
+        shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type=cat_type)
 
         # We need truth shears and/or PZ point-estimates for each shear too
         if self.config["input_pz"]:
@@ -59,11 +64,12 @@ class TXSourceSelectorMetadetectDP2(TXSourceSelectorMetadetect):
 
     def setup_response_calculators(self, nbin_source):
         delta_gamma = self.config["delta_gamma"]
+        calculator_class = ScalarMetaDetectCalculator if self.config["catalog_version"] == "v1.1" else "metadetect"
         calculators = [
-            MetaDetectCalculator(select_tomographic_weak_lensing_sample_metadetect_dp2, delta_gamma)
+            calculator_class(select_tomographic_weak_lensing_sample_metadetect_dp2, delta_gamma)
             for i in range(nbin_source)
         ]
-        calculators.append(MetaDetectCalculator(select_weak_lensing_sample_metadetect_dp2, delta_gamma))
+        calculators.append(calculator_class(select_weak_lensing_sample_metadetect_dp2, delta_gamma))
         return calculators
 
 
