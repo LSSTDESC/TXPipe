@@ -5,7 +5,8 @@ from .calibrators import (
     LensfitCalibrator,
     HSCCalibrator,
     MetaDetectCalibrator,
-    AnaCalibrator
+    AnaCalibrator,
+    ScalarMetaDetectCalibrator,
 
 )
 from .calibration_calculators import  (
@@ -15,7 +16,8 @@ from .calibration_calculators import  (
     HSCCalculator,
     MetaDetectCalculator,
     MockCalculator,
-    AnaCalCalculator
+    AnaCalCalculator, 
+    ScalarMetaDetectCalculator
     )
 
 from .mean_shear_in_bins import MeanShearInBins
