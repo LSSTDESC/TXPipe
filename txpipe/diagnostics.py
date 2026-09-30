@@ -1339,7 +1339,7 @@ class TXResponseInBins(PipelineStage):
             cols = f.get_column_name_variants("g1", "g2", "weight", "s2n", "T", "psf_T_mean")
             cat_type = f.catalog_type
 
-         if cat_type == "anacal":
+        if cat_type == "anacal":
             cols = ["e1", "e2", "e1_raw", "e2_raw", "wsel", "weight_dg1", "weight_dg2",
                     "de1_dg1", "de2_dg2", "weight", "s2n", "T", "psf_T_mean",
                     "s2n_1p", "s2n_1m", "s2n_2p", "s2n_2m"]
