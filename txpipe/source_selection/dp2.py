@@ -14,7 +14,7 @@ shared_dp2_cut_options = {
     "ri_cut": StageParameter(float, required=True, msg="Color cut threshold for object selection"),
     "iz_cut": StageParameter(float, required=True, msg="Color cut threshold for object selection"),
     "mfrac_cut": StageParameter(float, required=True, msg="mfrac threshold for object selection"),
-    "gauss_T_cut": StageParameter(float, required=True, msg="gauss_T threshold for object selection"),
+    "T_max": StageParameter(float, required=True, msg="T threshold for object selection"),
 }
 
 class TXSourceSelectorMetadetectDP2(TXSourceSelectorMetadetect):
@@ -146,7 +146,7 @@ def select_weak_lensing_sample_metadetect_dp2(data, config, calling_from_select=
     gmr_cut = config["gr_cut"]
     rmi_cut = config["ri_cut"]
     imz_cut = config["iz_cut"]
-    gauss_T_cut = config['gauss_T_cut']
+    T_max = config['T_max']
     mfrac_cut = config['mfrac_cut']
 
     catalog_version = config["catalog_version"]
@@ -160,7 +160,7 @@ def select_weak_lensing_sample_metadetect_dp2(data, config, calling_from_select=
         (np.abs(data["mag_g"] - data["mag_r"]) < gmr_cut) & \
         (np.abs(data["mag_r"] - data["mag_i"]) < rmi_cut) & \
         (np.abs(data["mag_i"] - data["mag_z"]) < imz_cut) & \
-        (data[T_col] < gauss_T_cut) & \
+        (data[T_col] < T_max) & \
         (data['mfrac'] < mfrac_cut)
 
     # Adding all the flags cut to make sure we are not using any objects with flags set.
