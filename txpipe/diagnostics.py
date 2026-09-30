@@ -789,6 +789,10 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 g1 = data["g1"]
                 g2 = data["g2"]
                 w = data["weight"]
+            elif cat_type == "anacal":
+                w = data["weight"]
+                g1 = data["g1"]
+                g2 = data["g2"]
             else:
                 g1 = data["g1"]
                 g2 = data["g2"]
@@ -804,6 +808,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 # therefore, we add dec to split data into these fields.
                 # You can choose not to by setting dec_cut = 90 in the config, for example.
                 g1, g2 = cal.apply(g1, g2, dec)
+            elif cat_type == "anacal":
+                g1, g2 = cal.apply(g1, g2, w)
             else:
                 g1, g2 = cal.apply(g1, g2, c1, c2)
 
