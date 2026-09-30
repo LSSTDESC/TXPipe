@@ -96,6 +96,10 @@ TXSourceSelectorScalarMetadetectDP2:
     mfrac_max: 0.1
     # not actually referenced:
     source_zbin_edges: [0.1, 0.4, 0.6, 0.8, 3.0]
+    T_cut: -1.0
+    s2n_cut: -1.0
+ 
+    
 
 
 TXSourceTomography: 
