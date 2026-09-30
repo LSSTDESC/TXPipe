@@ -972,6 +972,16 @@ class TXSourceDiagnosticPlots(PipelineStage):
                         counts[b] += 1
                         if s:
                             counts_s[b] += 1
+            elif cat_type == "anacal":
+                # Per-object shape response; R_detect and R_sel are
+                # ensemble-only, so they can't be histogrammed per object.
+                R = 0.5 * (data["de1_dg1"] + data["de2_dg2"])
+                B - np.digitize(R, edges) - 1
+                for s, b in zip(in_shear_sample, B):
+                    if (b >= 0) and (b < size):
+                        counts[b] += 1
+                        if s:
+                            counts_s[b] += 1
             else:
                 B = np.digitize(data["R"], edges) - 1
                 # loop through this chunk of data.
