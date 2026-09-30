@@ -1,5 +1,4 @@
 from .metadetect import TXSourceSelectorMetadetect
-from .scalar_metadetect import TXSourceSelectorScalarMetadetect
 from .base import select_weak_lensing_sample, TXSourceSelectorBase
 from ..shear_calibration import metadetect_variants, MetaDetectCalculator, band_variants, META_VARIANTS, scalar_metadetect_variants, ScalarMetaDetectCalculator
 from ceci.config import StageParameter
@@ -30,7 +29,7 @@ class TXSourceSelectorMetadetectDP2(TXSourceSelectorMetadetect):
 
     name = "TXSourceSelectorMetadetectDP2"
 
-    config_options = TXSourceSelectorMetadetect.config_options | shared_dp2_cut_options
+    config_options = TXSourceSelectorMetadetect.config_options | dp2_cut_options
 
     def data_iterator(self):
         # As above, this is where we work out which columns we need.

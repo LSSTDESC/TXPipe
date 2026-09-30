@@ -5,5 +5,6 @@ from .metacal import TXSourceSelectorMetacal
 from .metadetect import TXSourceSelectorMetadetect
 from .scalar_metadetect import TXSourceSelectorScalarMetadetect
 from .dp2 import TXSourceSelectorMetadetectDP2
+from .dp2_desc import TXSourceSelectorScalarMetadetectDP2
 from .tomography import TXSourceTomography
 from .anacal import TXSourceSelectorAnacal
