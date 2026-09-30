@@ -266,8 +266,17 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 "psf_T_mean",
                 "s2n",
                 "T",
-                "weight"
+                "weight",
+                "e1_raw",
+                "e2_raw",
+                "wsel",
+                "weight_dg1",
+                "weight_dg2",
+                "de1_dg1",
+                "de2_dg2"
             ] + [f"mag_{b}" for b in self.config["bands"]]
+            for suf in ("1p","1m","2p","2m"):
+                shear_cols += [f"s2n_{suf}"] + [f"mag_{b}_{suf}" for b in bands]
         else:
             shear_cols = [
                 "dec",
