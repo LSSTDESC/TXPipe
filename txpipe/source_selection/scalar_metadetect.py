@@ -101,8 +101,8 @@ class TXSourceSelectorScalarMetadetect(TXSourceSelectorBase):
         return pz_data
 
 
-    def setup_output(self):
-        outfile = super().setup_output()
+    def setup_output(self, nbin_source):
+        outfile = super().setup_output(nbin_source)
 
         with self.open_input("shear_catalog") as infile:
             for v in SCALAR_META_VARIANTS[1:]:
@@ -111,7 +111,6 @@ class TXSourceSelectorScalarMetadetect(TXSourceSelectorBase):
 
         outfile["tomography/bin_ns"] = outfile["tomography/bin"]
 
-        nbin_source = outfile["counts/counts"].size
         group = outfile.create_group("response")
         group.create_dataset("R", (nbin_source,), dtype="f")
         group.create_dataset("R_2d", (1,), dtype="f")
