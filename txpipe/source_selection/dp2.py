@@ -167,6 +167,9 @@ def select_weak_lensing_sample_metadetect_dp2(data, config, calling_from_select=
     # We should also have some crazy color cuts and magnitude cuts which should come from PZ group
     sel &= (data[T_col] < T_max)
     sel &= (data['mfrac'] < mfrac_cut)
+    sel &= np.isfinite(data["g1"])
+    sel &= np.isfinite(data["g2"])
+    sel &= np.isfinite(data["weight"])
 
     # Adding all the flags cut to make sure we are not using any objects with flags set.
     # The flags was made from all the ohter ones.
