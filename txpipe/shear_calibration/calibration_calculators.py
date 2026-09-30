@@ -107,6 +107,8 @@ class CalibrationCalculator:
             return MetaDetectCalculator(selector, config["delta_gamma"])
         elif cat_type == "lensfit":
             return LensfitCalculator(selector, config["dec_cut"], config["input_m_is_weighted"])
+        elif cat_type == "anacal":
+            return AnaCalCalculator(selector, config["delta_gamma"])
         elif cat_type == "hsc":
             return HSCCalculator(selector)
         elif cat_type == "simple":

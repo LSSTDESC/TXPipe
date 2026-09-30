@@ -1202,7 +1202,11 @@ class TXResponseInBins(PipelineStage):
             if j == nbin - 1:
                 T[nbin] = t1
 
-            R[i, j] = bin_stats.calibrator.get_total_response()
+            cal = bin_stats.calibrator
+            if hasattr(cal, "get_total_response"):
+                R[i, j] = cal.get_total_response()
+            else:
+                R[i, j] = cal.R * np.eye(2)
             count[i, j] = bin_stats.source_count
             neff[i, j] = bin_stats.N_eff
         
@@ -1265,7 +1269,6 @@ class TXResponseInBins(PipelineStage):
 
     def select(self, data, bin_definition):
         #bin_definition is a list of triples (name, min_val, max_val)
-        n = data["g1"].size
 
         # first select down to the main sample.
         # Not tomographic for now.
@@ -1335,6 +1338,11 @@ class TXResponseInBins(PipelineStage):
         with self.open_input("shear_catalog", wrapper=True) as f:
             cols = f.get_column_name_variants("g1", "g2", "weight", "s2n", "T", "psf_T_mean")
             cat_type = f.catalog_type
+
+         if cat_type == "anacal":
+            cols = ["e1", "e2", "e1_raw", "e2_raw", "wsel", "weight_dg1", "weight_dg2",
+                    "de1_dg1", "de2_dg2", "weight", "s2n", "T", "psf_T_mean",
+                    "s2n_1p", "s2n_1m", "s2n_2p", "s2n_2m"]
 
         if cat_type == "metadetect":
             tomo_cols = [f"bin_{v}" for v in META_VARIANTS]
