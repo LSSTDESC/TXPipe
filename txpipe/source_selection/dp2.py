@@ -1,8 +1,21 @@
 from .metadetect import TXSourceSelectorMetadetect
+from .scalar_metadetect import TXSourceSelectorScalarMetadetect
 from .base import select_weak_lensing_sample, TXSourceSelectorBase
 from ..shear_calibration import metadetect_variants, MetaDetectCalculator, band_variants, META_VARIANTS, scalar_metadetect_variants, ScalarMetaDetectCalculator
 from ceci.config import StageParameter
 import numpy as np
+
+shared_dp2_cut_options = {
+    "mag_g_cut": StageParameter(float, required=True, msg="Magnitude cut threshold for object selection"),
+    "mag_r_cut": StageParameter(float, required=True, msg="Magnitude cut threshold for object selection"),
+    "mag_i_cut": StageParameter(float, required=True, msg="Magnitude cut threshold for object selection"),
+    "mag_z_cut": StageParameter(float, required=True, msg="Magnitude cut threshold for object selection"),
+    "gr_cut": StageParameter(float, required=True, msg="Color cut threshold for object selection"),
+    "ri_cut": StageParameter(float, required=True, msg="Color cut threshold for object selection"),
+    "iz_cut": StageParameter(float, required=True, msg="Color cut threshold for object selection"),
+    "mfrac_cut": StageParameter(float, required=True, msg="mfrac threshold for object selection"),
+    "gauss_T_cut": StageParameter(float, required=True, msg="gauss_T threshold for object selection"),
+}
 
 class TXSourceSelectorMetadetectDP2(TXSourceSelectorMetadetect):
     """
@@ -17,32 +30,17 @@ class TXSourceSelectorMetadetectDP2(TXSourceSelectorMetadetect):
 
     name = "TXSourceSelectorMetadetectDP2"
 
-    config_options = {
-        **TXSourceSelectorMetadetect.config_options,
-        "mag_g_cut": StageParameter(float, required=True, msg="Magnitude cut threshold for object selection"),
-        "mag_r_cut": StageParameter(float, required=True, msg="Magnitude cut threshold for object selection"),
-        "mag_i_cut": StageParameter(float, required=True, msg="Magnitude cut threshold for object selection"),
-        "mag_z_cut": StageParameter(float, required=True, msg="Magnitude cut threshold for object selection"),
-        "gr_cut": StageParameter(float, required=True, msg="Color cut threshold for object selection"),
-        "ri_cut": StageParameter(float, required=True, msg="Color cut threshold for object selection"),
-        "iz_cut": StageParameter(float, required=True, msg="Color cut threshold for object selection"),
-        "mfrac_cut": StageParameter(float, required=True, msg="mfrac threshold for object selection"),
-        "gauss_T_cut": StageParameter(float, required=True, msg="gauss_T threshold for object selection"),
-        "catalog_version": StageParameter(str, "rubin", msg="v1.1 for Erin's catalog. rubin for basic ")
-    }
+    config_options = TXSourceSelectorMetadetect.config_options | shared_dp2_cut_options
 
     def data_iterator(self):
         # As above, this is where we work out which columns we need.
         chunk_rows = self.config["chunk_rows"]
         bands = self.config["bands"]
-        cat_type = "scalar_metadetect" if self.config["catalog_version"] == "v1.1" else "metadetect"
+        cat_type = "metadetect"
+        self.config["T_col"] = "gauss_T"
 
         # Core quantities we need
-        if cat_type == "metadetect":
-            get_variants = metadetect_variants
-        else:
-            get_variants = scalar_metadetect_variants
-        shear_cols = get_variants("T", "s2n", "g1", "g2", "ra", "dec", "weight", "psf_T_mean", "flags",  "is_primary", "gauss_T", "mfrac")
+        shear_cols = metadetect_variants("T", "s2n", "g1", "g2", "ra", "dec", "weight", "psf_T_mean", "flags",  "is_primary", "gauss_T", "mfrac")
 
         # Magnitudes and errors
         shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type=cat_type)
@@ -64,12 +62,66 @@ class TXSourceSelectorMetadetectDP2(TXSourceSelectorMetadetect):
 
     def setup_response_calculators(self, nbin_source):
         delta_gamma = self.config["delta_gamma"]
-        calculator_class = ScalarMetaDetectCalculator if self.config["catalog_version"] == "v1.1" else "metadetect"
+        calculator_class = MetaDetectCalculator
         calculators = [
-            calculator_class(select_tomographic_weak_lensing_sample_metadetect_dp2, delta_gamma)
+            MetaDetectCalculator(select_tomographic_weak_lensing_sample_metadetect_dp2, delta_gamma)
             for i in range(nbin_source)
         ]
-        calculators.append(calculator_class(select_weak_lensing_sample_metadetect_dp2, delta_gamma))
+        calculators.append(MetaDetectCalculator(select_weak_lensing_sample_metadetect_dp2, delta_gamma))
+        return calculators
+
+
+class TXSourceSelectorScalarMetadetectDP2(TXSourceSelectorScalarMetadetect):
+    """
+    Source selection and tomography for metadetect catalogs, with extra
+    DP2-specific selection cuts.
+
+    This is kept separate from TXSourceSelectorMetadetect so that we can
+    iterate on the DP2-specific cuts here as more data comes in and we
+    find out what new selections we need, without affecting the generic
+    metadetect selector.
+    """
+
+    name = "TXSourceSelectorScalarMetadetectDP2"
+
+    config_options = TXSourceSelectorScalarMetadetect.config_options | shared_dp2_cut_options
+
+    def data_iterator(self):
+        # As above, this is where we work out which columns we need.
+        chunk_rows = self.config["chunk_rows"]
+        bands = self.config["bands"]
+        cat_type = "scalar_metadetect"
+        self.config["T_col"] = "T"
+
+        # Core quantities we need
+        shear_cols = scalar_metadetect_variants("T", "s2n", "g1", "g2", "ra", "dec", "weight", "psf_T_mean", "flags",  "is_primary", "gauss_T", "mfrac")
+
+        # Magnitudes and errors
+        shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type=cat_type)
+
+        # We need truth shears and/or PZ point-estimates for each shear too
+        if self.config["input_pz"]:
+            shear_cols += scalar_metadetect_variants("mean_z")
+        elif self.config["true_z"]:
+            shear_cols += scalar_metadetect_variants("redshift_true")
+
+        # This is a parent ceci.PipelineStage method.
+        # It returns an iterator we loop through.
+        # The "longest=True" option means that the iterator will
+        # continue looping even when some of the columns have been exhausted, which is 
+        # what we want here since the different shear variants have different lengths.
+        # The calibration calculation needs to deal with this.
+        it = self.iterate_hdf("shear_catalog", "shear", shear_cols, chunk_rows, longest=True)
+        return it
+
+    def setup_response_calculators(self, nbin_source):
+        delta_gamma = self.config["delta_gamma"]
+        calculator_class = ScalarMetaDetectCalculator
+        calculators = [
+            ScalarMetaDetectCalculator(select_tomographic_weak_lensing_sample_metadetect_dp2, delta_gamma)
+            for i in range(nbin_source)
+        ]
+        calculators.append(ScalarMetaDetectCalculator(select_weak_lensing_sample_metadetect_dp2, delta_gamma))
         return calculators
 
 
@@ -98,12 +150,7 @@ def select_weak_lensing_sample_metadetect_dp2(data, config, calling_from_select=
     mfrac_cut = config['mfrac_cut']
 
     catalog_version = config["catalog_version"]
-    if catalog_version == "rubin":
-        T_col = "gauss_T"
-    elif catalog_version == "v1.1":
-        T_col = "T"
-    else:
-        raise ValueError(f"Unknown catalog version {catalog_version}")
+    T_col = config["T_col"]
 
     # We should also have some crazy color cuts and magnitude cuts which should come from PZ group
     sel &= (data["mag_g"] < mag_g_cut) & \
@@ -142,3 +189,5 @@ def select_tomographic_weak_lensing_sample_metadetect_dp2(data, config, bin_inde
         print("total tomo", sel.sum())
 
     return sel
+
+
