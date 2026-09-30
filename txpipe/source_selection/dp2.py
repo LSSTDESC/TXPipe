@@ -5,7 +5,7 @@ from ..shear_calibration import metadetect_variants, MetaDetectCalculator, band_
 from ceci.config import StageParameter
 import numpy as np
 
-shared_dp2_cut_options = {
+dp2_cut_options = {
     "mag_g_cut": StageParameter(float, required=True, msg="Magnitude cut threshold for object selection"),
     "mag_r_cut": StageParameter(float, required=True, msg="Magnitude cut threshold for object selection"),
     "mag_i_cut": StageParameter(float, required=True, msg="Magnitude cut threshold for object selection"),
@@ -73,61 +73,6 @@ class TXSourceSelectorMetadetectDP2(TXSourceSelectorMetadetect):
         return calculators
 
 
-class TXSourceSelectorScalarMetadetectDP2(TXSourceSelectorScalarMetadetect):
-    """
-    Source selection and tomography for metadetect catalogs, with extra
-    DP2-specific selection cuts.
-
-    This is kept separate from TXSourceSelectorMetadetect so that we can
-    iterate on the DP2-specific cuts here as more data comes in and we
-    find out what new selections we need, without affecting the generic
-    metadetect selector.
-    """
-
-    name = "TXSourceSelectorScalarMetadetectDP2"
-
-    config_options = TXSourceSelectorScalarMetadetect.config_options | shared_dp2_cut_options
-
-    def data_iterator(self):
-        # As above, this is where we work out which columns we need.
-        chunk_rows = self.config["chunk_rows"]
-        bands = self.config["bands"]
-        cat_type = "scalar_metadetect"
-        self.config["T_col"] = "T"
-        with self.open_input("shear_catalog", wrapper=True) as f:
-            self.config["bands"] = f.get_bands()
-
-        # Core quantities we need
-        shear_cols = scalar_metadetect_variants("T", "s2n", "g1", "g2", "ra", "dec", "weight", "psf_T_mean", "flags",  "is_primary", "mfrac")
-
-        # Magnitudes and errors
-        shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type=cat_type)
-
-        # We need truth shears and/or PZ point-estimates for each shear too
-        if self.config["input_pz"]:
-            shear_cols += scalar_metadetect_variants("mean_z")
-        elif self.config["true_z"]:
-            shear_cols += scalar_metadetect_variants("redshift_true")
-
-        # This is a parent ceci.PipelineStage method.
-        # It returns an iterator we loop through.
-        # The "longest=True" option means that the iterator will
-        # continue looping even when some of the columns have been exhausted, which is 
-        # what we want here since the different shear variants have different lengths.
-        # The calibration calculation needs to deal with this.
-        it = self.iterate_hdf("shear_catalog", "shear", shear_cols, chunk_rows, longest=True)
-        return it
-
-    def setup_response_calculators(self, nbin_source):
-        delta_gamma = self.config["delta_gamma"]
-        calculator_class = ScalarMetaDetectCalculator
-        calculators = [
-            ScalarMetaDetectCalculator(select_tomographic_weak_lensing_sample_metadetect_dp2, delta_gamma)
-            for i in range(nbin_source)
-        ]
-        calculators.append(ScalarMetaDetectCalculator(select_weak_lensing_sample_metadetect_dp2, delta_gamma))
-        return calculators
-
 
 def select_weak_lensing_sample_metadetect_dp2(data, config, calling_from_select=False):
     """
@@ -152,7 +97,6 @@ def select_weak_lensing_sample_metadetect_dp2(data, config, calling_from_select=
     imz_cut = config["iz_cut"]
     T_max = config['T_max']
     mfrac_cut = config['mfrac_cut']
-    T_col = config["T_col"]
     bands = config['bands']
 
     for b in bands:
@@ -165,7 +109,7 @@ def select_weak_lensing_sample_metadetect_dp2(data, config, calling_from_select=
     if "i" in bands and "z" in bands:
         sel &= (np.abs(data["mag_i"] - data["mag_z"]) < imz_cut)
     # We should also have some crazy color cuts and magnitude cuts which should come from PZ group
-    sel &= (data[T_col] < T_max)
+    sel &= (data["gauss_T"] < T_max)
     sel &= (data['mfrac'] < mfrac_cut)
 
     # Adding all the flags cut to make sure we are not using any objects with flags set.
