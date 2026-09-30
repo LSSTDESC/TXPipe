@@ -464,13 +464,17 @@ class TXIngestDESCMetaDetectV1_1(PipelineStage):
     def get_maximum_catalog_size(self, file_list):
         import rustfits
         n = 0
+        file_list = list(self.split_tasks_by_rank(file_list))
         nfile = len(file_list)
         for i, filename in enumerate(file_list):
             if (self.rank == 0) and i  and ((i % 10) == 0):
                 print(f"Counting rows in file {i} / {nfile}")
             f = rustfits.FITS(filename)
             n += f['cat'].nrows
-        print(f"Max row count {n:,}")
+        if self.comm is not None:
+            n = self.comm.allreduce(n)
+            
+        print(self.rank, f"Max row count {n:,}")
         return n
 
 
@@ -489,7 +493,7 @@ class TXIngestDESCMetaDetectV1_1(PipelineStage):
 
         # The catalog size is for all the three variants, but we
         # are using it here for the single variant size. So we cut it
-        # down, with 10% overhead.
+        # down, with 10% overhead. Only the root proc does the row count
         max_size = int((self.get_maximum_catalog_size(file_list) // 3) * 1.1)
         created_files = False
 
@@ -497,39 +501,46 @@ class TXIngestDESCMetaDetectV1_1(PipelineStage):
         # MPI communicator
         files_per_rank = n_files // self.size
         if files_per_rank * self.size < n_files:
-            n_extra = n_files - (files_per_rank * self.size)
+            n_extra = ((files_per_rank+1) * self.size) - n_files
             file_list.extend([""] * n_extra)
 
         my_files = file_list[self.rank::self.size]
         my_n_files = len(my_files)
+
         outfile = self.open_output("shear_catalog", parallel=True)
         outgroup = outfile.create_group("shear")
         outgroup.attrs["catalog_type"] = "scalar_metadetect"
         for variant in SCALAR_META_VARIANTS:
             outgroup.create_group(variant)
         end_points = np.zeros(len(SCALAR_META_VARIANTS), dtype=np.int64)
-
+        full_dtype = None
         for i, filename in enumerate(my_files):
             if (filename == "") :
+                print(f"Rank {self.rank} processing empty file {i + 1} / {my_n_files}")
+                
+                if not created_files:
+                    raise ValueError("Used too many procs")
                 assert self.comm is not None, "This should not happen"
-                # broadcast zeros for all sizes to the other processes
-                sizes = np.zeros((self.size, len(SCALAR_META_VARIANTS)), dtype=np.int64)
-                in_place_reduce(sizes, self.comm, allreduce=True)
-                continue
+                d = np.zeros(0, dtype=full_dtype)
+                tract = 0
+                patch = 0
+            else:
+                print(f"Rank {self.rank} processing {filename} file {i + 1} / {my_n_files}")
 
-            print(f"Processing tract {i + 1} / {my_n_files}")
+                with rustfits.FITS(filename) as f:
+                    d = f["cat"].read()
+                    tract = f["meta"]["tract"][0]
+                    patch = f["meta"]["patch"][0]
             sys.stdout.flush()
-            with rustfits.FITS(filename) as f:
-                d = f["cat"].read()
-                tract = f["meta"]["tract"][0]
-                patch = f["meta"]["patch"][0]
+
+            full_dtype = d.dtype
 
             if (len(d) == 0) and (not created_files):
                 raise ValueError("Current design requires first file for each chunk to contain values")
 
             shear_data = process_metadetect_data_v1_1(d, tract, patch, exclusion_flag, shape_noise,
                                                  full_columns=all_columns_flag)
-            print("Rank", self.rank, "sizes:", )
+
             if not created_files:
                 created_files = True
                 columns = list(shear_data["ns"].keys())
@@ -538,11 +549,16 @@ class TXIngestDESCMetaDetectV1_1(PipelineStage):
                 for variant in SCALAR_META_VARIANTS:
                     variant_group = outgroup[variant]
                     for name, dt in dtypes.items():
+                        if self.rank == 0:
+                            print("Creating ", variant, name)
+                            sys.stdout.flush()
                         variant_group.create_dataset(name, shape=(max_size,), dtype=dt, maxshape=(max_size, ))
 
             sizes = np.zeros((self.size, len(SCALAR_META_VARIANTS)), dtype=np.int64)
             for i, v in enumerate(SCALAR_META_VARIANTS):
                 sizes[self.rank, i] = shear_data[v]["ra"].size
+            sys.stdout.flush()
+            
             in_place_reduce(sizes, self.comm, allreduce=True)
 
             for i, variant in enumerate(SCALAR_META_VARIANTS):
@@ -559,7 +575,8 @@ class TXIngestDESCMetaDetectV1_1(PipelineStage):
 
 
 
-        print("Read complete; re-sizing files")
+        if self.rank == 0:
+            print("Read complete; re-sizing files")
         if created_files:
             # The final size of the catalog is the end point for the
             # maximum rank, which is self.size - 1.
