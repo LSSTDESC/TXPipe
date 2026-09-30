@@ -90,7 +90,7 @@ modules: >
 python_paths: []
 
 # Where to put outputs
-output_dir: data/metadetect_dp2
+output_dir: data/metadetect_desc_dp2
 
 # How to run the pipeline: mini, parsl, or cwl
 launcher:
