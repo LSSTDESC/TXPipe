@@ -116,7 +116,8 @@ class TXIngestRubinMetaDetect(TXDP2Ingestion):
         shear_outfile = self.open_output("shear_catalog")
         group = shear_outfile.create_group("shear")
         shear_outfile["shear"].attrs["catalog_type"] = "metadetect"
-
+        shear_outfile["shear/ns"].attrs["bands"] = ["g", "r", "i", "z"]
+        shear_outfile["shear"].attrs["bands"] = ["g", "r", "i", "z"]
 
         butler = self.get_butler()
         data_set_refs = butler.query_datasets('object_shear_all')
@@ -510,8 +511,10 @@ class TXIngestDESCMetaDetectV1_1(PipelineStage):
         outfile = self.open_output("shear_catalog", parallel=True)
         outgroup = outfile.create_group("shear")
         outgroup.attrs["catalog_type"] = "scalar_metadetect"
+        outgroup.attrs["bands"] = ["r", "i", "z"]
         for variant in SCALAR_META_VARIANTS:
-            outgroup.create_group(variant)
+            subgroup = outgroup.create_group(variant)
+            subgroup.attrs["bands"] = ["r", "i", "z"]
         end_points = np.zeros(len(SCALAR_META_VARIANTS), dtype=np.int64)
         full_dtype = None
         for i, filename in enumerate(my_files):

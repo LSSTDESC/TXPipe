@@ -38,6 +38,8 @@ class TXSourceSelectorMetadetectDP2(TXSourceSelectorMetadetect):
         bands = self.config["bands"]
         cat_type = "metadetect"
         self.config["T_col"] = "gauss_T"
+        with self.open_input("shear_catalog", wrapper=True) as f:
+            self.config["bands"] = f.get_bands()
 
         # Core quantities we need
         shear_cols = metadetect_variants("T", "s2n", "g1", "g2", "ra", "dec", "weight", "psf_T_mean", "flags",  "is_primary", "gauss_T", "mfrac")
@@ -92,6 +94,8 @@ class TXSourceSelectorScalarMetadetectDP2(TXSourceSelectorScalarMetadetect):
         bands = self.config["bands"]
         cat_type = "scalar_metadetect"
         self.config["T_col"] = "T"
+        with self.open_input("shear_catalog", wrapper=True) as f:
+            self.config["bands"] = f.get_bands()
 
         # Core quantities we need
         shear_cols = scalar_metadetect_variants("T", "s2n", "g1", "g2", "ra", "dec", "weight", "psf_T_mean", "flags",  "is_primary", "mfrac")
@@ -148,20 +152,21 @@ def select_weak_lensing_sample_metadetect_dp2(data, config, calling_from_select=
     imz_cut = config["iz_cut"]
     T_max = config['T_max']
     mfrac_cut = config['mfrac_cut']
-
-    catalog_version = config["catalog_version"]
     T_col = config["T_col"]
+    bands = config['bands']
 
+    for b in bands:
+        sel &= (data[f"mag_{b}"] < config[f"mag_{b}_cut"])
+
+    if "g" in bands and "r" in bands:
+        sel &= (np.abs(data["mag_g"] - data["mag_r"]) < gmr_cut)
+    if "r" in bands and "i" in bands:
+        sel &= (np.abs(data["mag_r"] - data["mag_i"]) < rmi_cut)
+    if "i" in bands and "z" in bands:
+        sel &= (np.abs(data["mag_i"] - data["mag_z"]) < imz_cut)
     # We should also have some crazy color cuts and magnitude cuts which should come from PZ group
-    sel &= (data["mag_g"] < mag_g_cut) & \
-        (data["mag_r"] < mag_r_cut) & \
-        (data["mag_i"] < mag_i_cut) & \
-        (data["mag_z"] < mag_z_cut) & \
-        (np.abs(data["mag_g"] - data["mag_r"]) < gmr_cut) & \
-        (np.abs(data["mag_r"] - data["mag_i"]) < rmi_cut) & \
-        (np.abs(data["mag_i"] - data["mag_z"]) < imz_cut) & \
-        (data[T_col] < T_max) & \
-        (data['mfrac'] < mfrac_cut)
+    sel &= (data[T_col] < T_max)
+    sel &= (data['mfrac'] < mfrac_cut)
 
     # Adding all the flags cut to make sure we are not using any objects with flags set.
     # The flags was made from all the ohter ones.
