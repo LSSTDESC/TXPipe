@@ -1039,6 +1039,9 @@ class AnaCalCalculator(CalibrationCalculator):
         _, sel_means = self.sel_response.collect(comm, mode)       # (4,) means
         _, mean_e, var_e = self.shear_stats.collect(comm, mode)
 
+        if comm is not None and not allgather and comm.rank > 0:
+            return None
+
         # Convention A: every mean is a plain sample mean ⟨wsel · X⟩ over
         # the baseline (shape, detect, μ) or ±γ variant (sel) sample.
         # No ⟨wsel⟩ denominator anywhere — R_total already contains wsel
