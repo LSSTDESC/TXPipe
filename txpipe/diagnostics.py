@@ -261,8 +261,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 "dec",
                 "psf_g1",
                 "psf_g2",
-                "g1",
-                "g2",
+                "e1",
+                "e2",
                 "psf_T_mean",
                 "s2n",
                 "T",
@@ -310,6 +310,9 @@ class TXSourceDiagnosticPlots(PipelineStage):
             print(f"Process {self.rank} read data {start:,} - {end:,}")
             # This causes each data = yield statement in each plotter to
             # be given this data chunk as the variable data.
+            if cat_type == "anacal":
+                data["g1"] = data["e1"]
+                data["g2"] = data["e2"]
 
             for plotter in plotters:
                 plotter.send(data)
