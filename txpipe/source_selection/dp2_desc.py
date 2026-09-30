@@ -58,7 +58,7 @@ class TXSourceSelectorScalarMetadetectDP2(TXSourceSelectorScalarMetadetect):
             self.config["bands"] = f.get_bands()
 
         # Core quantities we need
-        shear_cols = scalar_metadetect_variants("T", "s2n", "g1", "g2", "ra", "dec", "weight", "psf_T_mean", "flags",  "is_primary", "mfrac", "psfrec_gmax", "rmi", "imz", "g_flags")
+        shear_cols = scalar_metadetect_variants("T", "s2n", "g1", "g2", "ra", "dec", "weight", "psf_T_mean", "flags",  "is_primary", "mfrac", "psfrec_g1", "psfrec_g2", "rmi", "imz", "g_flags")
 
         # Magnitudes and errors
         shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type=cat_type)
@@ -82,7 +82,7 @@ class TXSourceSelectorScalarMetadetectDP2(TXSourceSelectorScalarMetadetect):
         delta_gamma = self.config["delta_gamma"]
         calculator_class = ScalarMetaDetectCalculator
         calculators = [
-            ScalarMetaDetectCalculator(select_tomographic_weak_lselect_tomographic_weak_lensing_sample_metadetect_desc_dp2ensing_sample_metadetect_dp2, delta_gamma)
+            ScalarMetaDetectCalculator(select_tomographic_weak_lensing_sample_metadetect_desc_dp2, delta_gamma)
             for i in range(nbin_source)
         ]
         calculators.append(ScalarMetaDetectCalculator(select_weak_lensing_sample_metadetect_desc_dp2, delta_gamma))
@@ -120,7 +120,8 @@ def select_weak_lensing_sample_metadetect_desc_dp2(data, config, calling_from_se
     sel &= data["mfrac"] < mfrac_max
 
     # Image quality cuts
-    sel &= np.abs(data["psfrec_gmax"]) < max_psf_g
+    psfrec_gmax = np.maximum(data['psfrec_g1'], data['psfrec_g2'])
+    sel &= np.abs(psfrec_gmax) < max_psf_g
 
     # Sanity cuts on color and size; somewhat arbitrary at this stage
     sel &= (data["rmi"] > rmi_min) & (data["rmi"] < rmi_max)
