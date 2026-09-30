@@ -80,21 +80,22 @@ TXSourceSelectorMetadetectDP2:
 TXSourceSelectorScalarMetadetectDP2:
     input_pz: false
     true_z: false
-    bands: [r, i, z]
-    T_cut: 0.5
-    s2n_cut: 10.0
     delta_gamma: 0.02
-    source_zbin_edges: [0.1, 0.4, 0.6, 0.8, 3.0]
+    bands: [r, i, z]
     do_tomography: false
-    mag_g_cut: 30.0
-    mag_r_cut: 30.0
-    mag_i_cut: 30.0
-    mag_z_cut: 30.0
-    gr_cut: 5.0
-    ri_cut: 5.0
-    iz_cut: 5.0
-    mfrac_cut: 0.1
+    max_psf_g: 0.05
+    rmi_min: -2.0
+    rmi_max: 3.0
+    imz_min: -2.0
+    imz_max: 3.0
     T_max: 20.0
+    Tratio_min: 0.5
+    Tratio_max: 20.
+    s2n_min: 10.0
+    s2n_max: 100.0
+    mfrac_max: 0.1
+    # not actually referenced:
+    source_zbin_edges: [0.1, 0.4, 0.6, 0.8, 3.0]
 
 
 TXSourceTomography: 
