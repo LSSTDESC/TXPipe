@@ -40,7 +40,7 @@ class TXSourceSelectorMetadetectDP2(TXSourceSelectorMetadetect):
         self.config["T_col"] = "gauss_T"
 
         # Core quantities we need
-        shear_cols = metadetect_variants("T", "s2n", "g1", "g2", "ra", "dec", "weight", "psf_T_mean", "flags",  "is_primary", "mfrac")
+        shear_cols = metadetect_variants("T", "s2n", "g1", "g2", "ra", "dec", "weight", "psf_T_mean", "flags",  "is_primary", "gauss_T", "mfrac")
 
         # Magnitudes and errors
         shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type=cat_type)
@@ -94,7 +94,7 @@ class TXSourceSelectorScalarMetadetectDP2(TXSourceSelectorScalarMetadetect):
         self.config["T_col"] = "T"
 
         # Core quantities we need
-        shear_cols = scalar_metadetect_variants("T", "s2n", "g1", "g2", "ra", "dec", "weight", "psf_T_mean", "flags",  "is_primary", "gauss_T", "mfrac")
+        shear_cols = scalar_metadetect_variants("T", "s2n", "g1", "g2", "ra", "dec", "weight", "psf_T_mean", "flags",  "is_primary", "mfrac")
 
         # Magnitudes and errors
         shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type=cat_type)
