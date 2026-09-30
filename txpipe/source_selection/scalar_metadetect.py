@@ -117,7 +117,7 @@ class TXSourceSelectorScalarMetadetect(TXSourceSelectorBase):
         return outfile
 
     def calculate_tomography(self, pz_data, shear_data, calculators):
-        nbin = len(self.config["source_zbin_edges"]) - 1
+        nbin = self.config["nbin_source"]
         n = len(list(shear_data.values())[0])
 
         tomo_bins = []
