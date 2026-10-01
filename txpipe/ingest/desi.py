@@ -1,5 +1,5 @@
 from ..base_stage import PipelineStage
-from ..data_types import HDFFile, FitsFile, QPNOfZFile, RandomsCatalog, FiducialCosmology
+from ..data_types import HDFFile, FitsFile, QPNOfZFile, RandomsCatalog, FiducialCosmology, BinnedCatalog
 import numpy as np
 from ceci.config import StageParameter
 
@@ -161,7 +161,7 @@ class TXIngestDESI(PipelineStage):
 
     outputs = [
         ("lens_catalog", HDFFile),
-        ("binned_lens_catalog", HDFFile),
+        ("binned_lens_catalog", BinnedCatalog),
         ("lens_tomography_catalog_unweighted", HDFFile),
         ("lens_tomography_catalog", HDFFile),
         ("lens_photoz_stack", QPNOfZFile),

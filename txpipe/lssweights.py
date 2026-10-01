@@ -8,6 +8,7 @@ from .data_types import (
     FiducialCosmology,
     TomographyCatalog,
     QPNOfZFile,
+    BinnedCatalog,
 )
 import numpy as np
 import glob
@@ -742,7 +743,7 @@ class TXLSSWeights(TXLSSDensityBase):
     name = "TXLSSWeights"
     parallel = False
     inputs = [
-        ("binned_lens_catalog_unweighted", TomographyCatalog),  # this file is used by the stage to compute weights
+        ("binned_lens_catalog_unweighted", BinnedCatalog),  # this file is used by the stage to compute weights
         (
             "lens_tomography_catalog_unweighted",
             TomographyCatalog,
@@ -755,7 +756,7 @@ class TXLSSWeights(TXLSSDensityBase):
         ("lss_weight_summary", FileCollection),  # output files and summary statistics will go here
         ("weighted_density_correlation", HDFFile),
         ("lss_weight_maps", MapsFile),  # the systematic weight maps to be applied to the lens galaxies
-        ("binned_lens_catalog", HDFFile),  # the lens catalog with weights added
+        ("binned_lens_catalog", BinnedCatalog),  # the lens catalog with weights added
         ("lens_tomography_catalog", HDFFile),  # the tomography file with weights added
     ]
 
@@ -1356,7 +1357,7 @@ class TXLSSWeightsUnit(TXLSSWeights):
     parallel = False
 
     inputs = [
-        ("binned_lens_catalog_unweighted", TomographyCatalog),  # this file is used by the stage to compute weights
+        ("binned_lens_catalog_unweighted", BinnedCatalog),  # this file is used by the stage to compute weights
         (
             "lens_tomography_catalog_unweighted",
             TomographyCatalog,
@@ -1368,8 +1369,8 @@ class TXLSSWeightsUnit(TXLSSWeights):
         ("lss_weight_summary", FileCollection),  # output files and summary statistics will go here
         ("weighted_density_correlation", HDFFile),
         ("lss_weight_maps", MapsFile),  # the systematic weight maps to be applied to the lens galaxies
-        ("binned_lens_catalog", HDFFile),  # the lens catalog with weights added
-        ("lens_tomography_catalog", HDFFile),  # the tomography file with weights added
+        ("binned_lens_catalog", BinnedCatalog),  # the lens catalog with weights added
+        ("lens_tomography_catalog", BinnedCatalog),  # the tomography file with weights added
     ]
 
     config_options = {
