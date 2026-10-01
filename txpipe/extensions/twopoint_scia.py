@@ -2,12 +2,12 @@ from ..base_stage import PipelineStage
 from ..twopoint import TXTwoPoint
 from ..data_types import (
     HDFFile,
-    ShearCatalog,
     SACCFile,
     TextFile,
     MapsFile,
     QPNOfZFile,
     FiducialCosmology,
+    BinnedCatalog,
 )
 from ..utils.patches import PatchMaker
 import numpy as np
@@ -49,7 +49,7 @@ class TXTwoPointSelfCalibrationIA(TXTwoPoint):
     """
     name = "TXTwoPointSCIA"
     inputs = [
-        ('binned_shear_catalog', ShearCatalog),
+        ('binned_shear_catalog', BinnedCatalog),
         ('binned_random_catalog_source', HDFFile),
         ('shear_photoz_stack', QPNOfZFile),
         ('patch_centers', TextFile),
@@ -711,7 +711,7 @@ class TXTwoPointSourcePixels(TXTwoPointSelfCalibrationIA):
     name = "TXTwoPointSourcePixel"
     inputs = [
         ("source_maps", MapsFile),
-        ("binned_shear_catalog", ShearCatalog),
+        ("binned_shear_catalog", BinnedCatalog),
         ("binned_random_catalog", HDFFile),
         ("shear_photoz_stack", QPNOfZFile),
         ("patch_centers", TextFile),
@@ -893,7 +893,7 @@ class TXTwoPointSCIAArc(TXTwoPointSelfCalibrationIA):
     """
     name = "TXTwoPointSCIAArc"
     inputs = [
-        ('binned_shear_catalog', ShearCatalog),
+        ('binned_shear_catalog', BinnedCatalog),
         ('binned_random_catalog_source', HDFFile),
         ('shear_photoz_stack', QPNOfZFile),
         ('patch_centers', TextFile),

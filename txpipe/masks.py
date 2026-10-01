@@ -709,6 +709,8 @@ class TXCutShearCatalog(TXCutCatalog):
         cat_type = read_shear_catalog_type(self)
         if cat_type == "metadetect":
             self.config["catalog_groups"] = ["shear/ns", "shear/1p", "shear/1m", "shear/2p", "shear/2m"]
+        elif cat_type == "scalar_metadetect":
+            self.config["catalog_groups"] = ["shear/ns", "shear/1p", "shear/1m"]
         else:
             self.config["catalog_groups"] = ["shear"]
         super().run()
