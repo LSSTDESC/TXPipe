@@ -26,6 +26,7 @@ def copy_group(group_in, group_out, thin, bounds):
 
     for name, item in group_in.items():
         if isinstance(item, h5py.Group):
+            print("Subgroup", name)
             subgroup_out = group_out.create_group(name)
             copy_group(item, subgroup_out, thin, bounds)
         else:
