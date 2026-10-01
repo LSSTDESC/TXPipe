@@ -18,6 +18,8 @@ def copy_group(group_in, group_out, thin, bounds):
         mask &= (dec > dec_min) & (dec < dec_max)
         if thin != 1:
             mask[np.arange(mask.size) % thin > 0] = False
+    else:
+        mask = None
 
     for key, value in group_in.attrs.items():
         group_out.attrs[key] = value
@@ -25,7 +27,7 @@ def copy_group(group_in, group_out, thin, bounds):
     for name, item in group_in.items():
         if isinstance(item, h5py.Group):
             subgroup_out = group_out.create_group(name)
-            copy_group(item, subgroup_out, mask, thin, bounds)
+            copy_group(item, subgroup_out, thin, bounds)
         else:
             if mask is None:
                 raise ValueError("No ra/dec for", name)
