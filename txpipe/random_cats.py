@@ -138,7 +138,7 @@ class TXRandomCat(PipelineStage):
         if self.rank == 0:
             for j in range(Ntomo):
                 # Poisson distribution about mean
-                numbers[j] = scipy.stats.poisson.rvs(density * pix_area, 1)
+                numbers[j] = scipy.stats.poisson.rvs(density * pix_area)
 
         # give all processors the same values
         if self.comm is not None:
