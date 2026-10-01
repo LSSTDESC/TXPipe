@@ -14,11 +14,11 @@ class TXDeltaSigma(PipelineStage):
 
     inputs = [
         ("binned_shear_catalog", BinnedCatalog),
-        ("binned_lens_catalog", HDFFile),
+        ("binned_lens_catalog", BinnedCatalog),
         # we use both the binned randoms for the case where we split
         # the lens catalog tomographically and the full version for
         # when we do the 2D stack of all the lenses together
-        ("binned_random_catalog", HDFFile),
+        ("binned_random_catalog", BinnedCatalog),
         ("random_cats", HDFFile),
         ("shear_photoz_stack", QPNOfZFile),
         ("lens_photoz_stack", QPNOfZFile),

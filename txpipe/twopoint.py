@@ -56,7 +56,7 @@ class TXTwoPoint(PipelineStage):
     name = "TXTwoPoint"
     inputs = [
         ("binned_shear_catalog", BinnedCatalog),
-        ("binned_lens_catalog", HDFFile),
+        ("binned_lens_catalog", BinnedCatalog),
         ("binned_random_catalog", HDFFile),
         ("binned_random_catalog_sub", HDFFile),
         ("shear_photoz_stack", QPNOfZFile),
