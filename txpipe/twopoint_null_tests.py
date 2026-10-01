@@ -1,7 +1,6 @@
 from .base_stage import PipelineStage
 from .data_types import (
     HDFFile,
-    ShearCatalog,
     TomographyCatalog,
     RandomsCatalog,
     SACCFile,

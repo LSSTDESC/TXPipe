@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import SACCFile, ShearCatalog, HDFFile, QPNOfZFile, FiducialCosmology, TextFile, PNGFile, BinnedCatalog
+from .data_types import SACCFile, HDFFile, QPNOfZFile, FiducialCosmology, TextFile, PNGFile, BinnedCatalog
 import numpy as np
 from ceci.config import StageParameter
 import os
