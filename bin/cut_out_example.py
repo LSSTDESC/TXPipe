@@ -10,13 +10,14 @@ parser.add_argument('--thin', type=int, default=5)
 
 
 def copy_group(group_in, group_out, thin, bounds):
-    ra = group_in['ra'][:]
-    dec = group_in['dec'][:]
-    ra_min, ra_max, dec_min, dec_max = bounds
-    mask = (ra > ra_min) & (ra < ra_max)
-    mask &= (dec > dec_min) & (dec < dec_max)
-    if thin != 1:
-        mask[np.arange(mask.size) % thin > 0] = False
+    if "ra" in group_in.keys():
+        ra = group_in['ra'][:]
+        dec = group_in['dec'][:]
+        ra_min, ra_max, dec_min, dec_max = bounds
+        mask = (ra > ra_min) & (ra < ra_max)
+        mask &= (dec > dec_min) & (dec < dec_max)
+        if thin != 1:
+            mask[np.arange(mask.size) % thin > 0] = False
 
     for key, value in group_in.attrs.items():
         group_out.attrs[key] = value
@@ -26,6 +27,8 @@ def copy_group(group_in, group_out, thin, bounds):
             subgroup_out = group_out.create_group(name)
             copy_group(item, subgroup_out, mask, thin, bounds)
         else:
+            if mask is None:
+                raise ValueError("No ra/dec for", name)
             data = item[:]
             data = data[mask]
             print("Copying", name)
