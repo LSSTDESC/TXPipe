@@ -21,6 +21,8 @@ data/cosmodc2/
 data/supreme
 dask-worker-space/
 example.tar.gz
+example-cmb-lensing.tar.gz
+data/cmb/
 docs/build
 cache/
 conda/
