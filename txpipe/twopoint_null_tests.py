@@ -273,7 +273,7 @@ class TXGammaTStars(TXTwoPoint):
         ("binned_shear_catalog", BinnedCatalog),
         ("shear_tomography_catalog", TomographyCatalog),
         ("random_cats", RandomsCatalog),
-        ("binned_star_catalog", HDFFile),
+        ("binned_star_catalog", BinnedCatalog),
         ("patch_centers", TextFile),
         ("tracer_metadata", HDFFile),
         ("binned_random_catalog", HDFFile),
