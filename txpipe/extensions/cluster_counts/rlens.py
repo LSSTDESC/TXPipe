@@ -1,7 +1,6 @@
 from ...twopoint import TXTwoPoint
 from ...data_types import (
     HDFFile,
-    ShearCatalog,
     PNGFile,
     TextFile,
     BinnedCatalog,
