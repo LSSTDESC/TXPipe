@@ -1,6 +1,6 @@
 # output_dir: /global/cfs/cdirs/lsst/groups/PZ/users/zhzhuoqi/DP2_test/dp2_select_v0.1
 # log_dir: /global/cfs/cdirs/lsst/groups/PZ/users/zhzhuoqi/DP2_test/dp2_select_v0.1
-output_dir: .
+output_dir: data/pz_dp2
 log_dir: .
 resume: false
 config: examples/dp2/pz_config.yml
