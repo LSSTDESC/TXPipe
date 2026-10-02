@@ -116,7 +116,6 @@ class TXIngestRubinMetaDetect(TXDP2Ingestion):
         shear_outfile = self.open_output("shear_catalog")
         group = shear_outfile.create_group("shear")
         shear_outfile["shear"].attrs["catalog_type"] = "metadetect"
-        shear_outfile["shear/ns"].attrs["bands"] = ["g", "r", "i", "z"]
         shear_outfile["shear"].attrs["bands"] = ["g", "r", "i", "z"]
 
         butler = self.get_butler()
@@ -166,6 +165,7 @@ class TXIngestRubinMetaDetect(TXDP2Ingestion):
 
             for variant in META_VARIANTS:
                 splitter.write_bin(shear_data[variant], variant)
+        shear_outfile["shear/ns"].attrs["bands"] = ["g", "r", "i", "z"]
         print("Read complete; re-sizing files")
         if created_files:    
             splitter.finish()
@@ -195,6 +195,7 @@ class TXGenerateTractList(TXDP2Ingestion):
     """
     name = "TXGenerateTractList"
     inputs = [
+        ("shear_mask", DataFile),
     ]
     outputs = [
         ("tract_list", TextFile),
