@@ -127,7 +127,6 @@ som_deep_informer_big:
   output_mode: default
   redshift_col: z
   hdf5_groupname: ''
-  nprocess: 8
   inputs:
   - flux_r
   - flux_i

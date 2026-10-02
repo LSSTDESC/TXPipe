@@ -34,7 +34,7 @@ def copy_group(group_in, group_out, thin, bounds):
                 raise ValueError("No ra/dec for", name)
             data = item[:]
             data = data[mask]
-            print("Copying", name)
+            print("Copying", name, data.size, item.size)
             dataset_out = group_out.create_dataset(name, data=data)
             for key, value in item.attrs.items():
                 dataset_out.attrs[key] = value
