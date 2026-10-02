@@ -46,6 +46,8 @@ dependencies:
   - lsstdesc-gcr-catalogs
   - lsstdesc-dc2-dm-data
   - psycopg2
+  # SQLAlchemy>=2.1 defaults postgresql:// to psycopg v3 (needed by dataregistry)
+  - psycopg
   - pyarrow
   - pytables
   - pip:

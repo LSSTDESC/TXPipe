@@ -12,6 +12,9 @@ EE = "galaxy_shear_cl_ee"
 DD = "galaxy_density_cl"
 ED = "galaxy_shearDensity_cl_e"
 
+REAL_SPACE_CORRS = [XIP, XIM, GAMMA, W, GAMMAX]
+FOURIER_SPACE_CORRS = [EE, ED, DD]
+
 types = {
     W: ("theta", "lens", "lens"),
     GAMMA: ("theta", "source", "lens"),
@@ -21,6 +24,41 @@ types = {
     EE: ("ell", "source", "source"),
     DD: ("ell", "lens", "lens"),
     ED: ("ell", "source", "lens"),
+}
+
+corr_names = {
+    W: r"w(\theta)",
+    GAMMA: r"\gamma_T(\theta)",
+    GAMMAX: r"\gamma_X(\theta)",
+    XIP: r"\xi_+(\theta)",
+    XIM: r"\xi_-(\theta)",
+    EE: r"C_\ell^{EE}",
+    DD: r"C_\ell^{DD}",
+    ED: r"C_\ell^{ED}",
+}
+
+corr_y_limits = {
+    W: (None, None),
+    GAMMA: (None, None),
+    GAMMAX: (None, None),
+    XIP: (None, None),
+    XIM: (None, None),
+    EE: (2e-12, 9e-8),
+    DD: (2e-8, 1e-4),
+    ED: (2e-10, 2e-6),
+}
+
+# Each value is (auto_only, half_only). auto_only keeps only diagonal
+# bin pairs, while half_only keeps the lower triangle including the diagonal.
+corr_plot_flags = {
+    W: (True, False),
+    GAMMA: (False, False),
+    GAMMAX: (False, False),
+    XIP: (False, True),
+    XIM: (False, True),
+    EE: (False, True),
+    DD: (True, False),
+    ED: (False, False),
 }
 
 
@@ -78,7 +116,6 @@ def full_3x2pt_plots(
     xi=None,
     fit_bias=False,
     figures=None,
-    xlogscale=True,
     ratios=False,
 ):
     import sacc
@@ -126,7 +163,14 @@ def full_3x2pt_plots(
         if any(obs[t] for obs in obs_data):
             print(f"Making Plot {t}")
             f = figures.get(t)
-            output_figures[t] = make_plot(t, obs_data, obs_theory, fig=f, xlogscale=xlogscale, ratios=ratios)
+            if ratios:
+                output_figures[t] = make_ratio_plot(t, obs_data, obs_theory, fig=f)
+            elif t in REAL_SPACE_CORRS:
+                output_figures[t] = make_real_space_plot(t, obs_data, obs_theory, fig=f)
+            elif t in FOURIER_SPACE_CORRS:
+                output_figures[t] = make_fourier_space_plot(t, obs_data, obs_theory, fig=f)
+            else:
+                raise ValueError(f"Unknown correlation type {t}")
 
     return output_figures
 
@@ -151,13 +195,27 @@ def axis_setup(a, i, j, ny, ymin, ymax, name):
     a.tick_params(axis="both", which="minor", length=5, direction="in")
 
     # Fix
-    a.text(0.1, 0.1, f"{j} - {i}", transform=a.transAxes)
+    a.text(0.1, 0.1, f"({j},{i})", transform=a.transAxes)
     if i == j == 0:
         a.legend()
-    a.set_ylim(ymin, ymax)
+    if ymin is not None or ymax is not None:
+        a.set_ylim(ymin, ymax)
 
 
-def make_plot(corr, obs_data, obs_theory, fig=None, xlogscale=True, ratios=False):
+def iter_plot_indices(ny, nx, auto_only, half_only):
+    for i in range(ny):
+        if auto_only:
+            J = [i]
+        elif half_only:
+            J = range(i + 1)
+        else:
+            J = range(nx)
+
+        for j in range(nx):
+            yield i, j, j in J
+
+
+def make_real_space_plot(corr, obs_data, obs_theory, fig=None):
     import matplotlib.pyplot as plt
 
     nbin_source = obs_data[0]["nbin_source"]
@@ -166,128 +224,161 @@ def make_plot(corr, obs_data, obs_theory, fig=None, xlogscale=True, ratios=False
     ny = nbin_source if types[corr][1] == "source" else nbin_lens
     nx = nbin_source if types[corr][2] == "source" else nbin_lens
 
-    if corr == XIP:
-        name = r"\xi_+(\theta)"
-        ymin = 5e-7
-        ymax = 9e-5
-        auto_only = False
-        half_only = True
-    elif corr == XIM:
-        name = r"\xi_-(\theta)"
-        ymin = 5e-7
-        ymax = 9e-5
-        auto_only = False
-        half_only = True
-    elif corr == GAMMA:
-        ymin = 5e-7
-        ymax = 2e-2
-        name = r"\gamma_T(\theta)"
-        auto_only = False
-        half_only = False
-    elif corr == W:
-        ymin = 2e-4
-        ymax = 1e-0
-        name = r"w(\theta)"
-        auto_only = True
-        half_only = False
-    elif corr == EE:
-        name = r"C_\ell^{EE}"
-        ymin = 2e-12
-        ymax = 9e-8
-        auto_only = False
-        half_only = True
-    elif corr == ED:
-        ymin = 2e-10
-        ymax = 2e-6
-        name = r"C_\ell^{ED}"
-        auto_only = False
-        half_only = False
-    elif corr == DD:
-        ymin = 2e-8
-        ymax = 1e-4
-        name = r"C_\ell^{DD}"
-        auto_only = True
-        half_only = False
-    elif corr == GAMMAX:
-        ymin = 5e-7
-        ymax = 2e-2
-        name = r"\gamma_X(\theta)"
-        auto_only = False
-        half_only = False
+    if corr not in REAL_SPACE_CORRS:
+        raise ValueError(f"Unknown real-space correlation type {corr}")
 
-    if ratios:
-        name += "\ \mathrm{ ratios}"
+    ymin, ymax = corr_y_limits[corr]
+    auto_only, half_only = corr_plot_flags[corr]
+    name = rf"\theta {corr_names[corr]} \times 10^{4}"
+    scaling = 1e4
 
     plt.rcParams["font.size"] = 14
     f = fig if fig is not None else plt.figure(figsize=(nx * 3.5, ny * 3))
-    ax = {}
 
     axes = f.subplots(ny, nx, sharex="col", sharey="row", squeeze=False)
-    for i in range(ny):
-        if auto_only:
-            J = [i]
-        elif half_only:
-            J = range(i + 1)
-        else:
-            J = range(nx)
-        for j in range(nx):
-            a = axes[i, j]
-            if j not in J:
-                f.delaxes(a)
-                continue
+    for i, j, valid in iter_plot_indices(ny, nx, auto_only, half_only):
+        a = axes[i, j]
+        if not valid:
+            f.delaxes(a)
+            continue
 
-            for index, obs in enumerate(obs_data):
-                res = obs[(corr, i, j)]
-                if ratios:
-                    res_theory = obs_theory[index][(corr, i, j)]
-                if len(res) == 2:
-                    theta, xi = res
-                    if ratios:
-                        theta_th, xi_th = res_theory
-                        a.plot(theta, xi / xi_th, label="TXPipe Data/CCL Theory")
-                        a.axhline(y=1, color="k", ls=":")
-                    else:
-                        if xlogscale:
-                            (l,) = a.loglog(theta, xi, "x", label=obs["name"])
-                            a.loglog(theta, -xi, "s", color=l.get_color())
-                        else:
-                            (l,) = a.plot(theta, xi, "x", label=obs["name"])
-                            a.plot(theta, -xi, "s", color=l.get_color())
-                            a.set_yscale("log")
-                else:
-                    theta, xi, cov = res
-                    err = cov.diagonal() ** 0.5
-                    if ratios:
-                        theta_th, xi_th = res_theory
-                        a.errorbar(
-                            theta,
-                            xi / xi_th,
-                            err / abs(xi_th),
-                            fmt=".",
-                            label="TXPipe Data/CCL Theory",
-                        )
-                        a.axhline(y=1, color="k", ls=":")
-                    else:
-                        a.errorbar(theta, xi, err, fmt=".", label=obs["name"], capsize=5)
-                        a.set_yscale("log")
-                    if xlogscale:
-                        a.set_xscale("log")
-
-            if not ratios:
-                # plot theory
-                for theory in obs_theory:
-                    theta, xi = theory[(corr, i, j)]
-                    if xlogscale:
-                        a.loglog(theta, xi, "-", label=theory["name"])
-                    else:
-                        a.plot(theta, xi, "-", label=theory["name"])
-
-            if ratios:
-                axis_setup(a, i, j, ny, 0.6, 1.4, name)
+        for obs in obs_data:
+            res = obs[(corr, i, j)]
+            if len(res) == 2:
+                theta, xi = res
+                a.plot(theta, theta * xi * scaling, "x", label=obs["name"])
+                a.set_xscale("log")
             else:
-                axis_setup(a, i, j, ny, ymin, ymax, name)
-            if corr in [EE, ED, DD]:
-                a.set_xlim(90, 1500)
+                theta, xi, cov = res
+                err = cov.diagonal() ** 0.5
+                a.errorbar(
+                    theta,
+                    theta * xi * scaling,
+                    theta * err * scaling,
+                    fmt=".",
+                    label=obs["name"],
+                    capsize=5,
+                )
+                a.set_xscale("log")
+
+        for theory in obs_theory:
+            theta, xi = theory[(corr, i, j)]
+            a.plot(theta, theta * xi * scaling, "-", label=theory["name"])
+
+        axis_setup(a, i, j, ny, ymin, ymax, name)
+
+    f.suptitle(rf"TXPipe ${name}$")
+
+    # plt.tight_layout()
+    # f.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.subplots_adjust(wspace=0.05, hspace=0.05)
+    return plt.gcf()
+
+
+def make_fourier_space_plot(corr, obs_data, obs_theory, fig=None):
+    import matplotlib.pyplot as plt
+
+    nbin_source = obs_data[0]["nbin_source"]
+    nbin_lens = obs_data[0]["nbin_lens"]
+
+    ny = nbin_source if types[corr][1] == "source" else nbin_lens
+    nx = nbin_source if types[corr][2] == "source" else nbin_lens
+
+    if corr not in FOURIER_SPACE_CORRS:
+        raise ValueError(f"Unknown Fourier-space correlation type {corr}")
+
+    ymin, ymax = corr_y_limits[corr]
+    auto_only, half_only = corr_plot_flags[corr]
+    name = corr_names[corr]
+
+    plt.rcParams["font.size"] = 14
+    f = fig if fig is not None else plt.figure(figsize=(nx * 3.5, ny * 3))
+
+    axes = f.subplots(ny, nx, sharex="col", sharey="row", squeeze=False)
+    for i, j, valid in iter_plot_indices(ny, nx, auto_only, half_only):
+        a = axes[i, j]
+        if not valid:
+            f.delaxes(a)
+            continue
+
+        for obs in obs_data:
+            res = obs[(corr, i, j)]
+            if len(res) == 2:
+                ell, cl = res
+                (l,) = a.loglog(ell, cl, "x", label=obs["name"])
+                a.loglog(ell, -cl, "s", color=l.get_color())
+            else:
+                ell, cl, cov = res
+                err = cov.diagonal() ** 0.5
+                a.errorbar(ell, cl, err, fmt=".", label=obs["name"], capsize=5)
+                a.set_yscale("log")
+                a.set_xscale("log")
+
+        for theory in obs_theory:
+            ell, cl = theory[(corr, i, j)]
+            a.loglog(ell, cl, "-", label=theory["name"])
+
+        axis_setup(a, i, j, ny, ymin, ymax, name)
+        a.set_xlim(90, 1500)
+
+    f.suptitle(rf"TXPipe ${name}$")
+
+    # plt.tight_layout()
+    # f.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.subplots_adjust(wspace=0.05, hspace=0.05)
+    return plt.gcf()
+
+
+def make_ratio_plot(corr, obs_data, obs_theory, fig=None):
+    import matplotlib.pyplot as plt
+
+    nbin_source = obs_data[0]["nbin_source"]
+    nbin_lens = obs_data[0]["nbin_lens"]
+
+    ny = nbin_source if types[corr][1] == "source" else nbin_lens
+    nx = nbin_source if types[corr][2] == "source" else nbin_lens
+
+    if corr not in corr_plot_flags:
+        raise ValueError(f"Unknown correlation type {corr}")
+
+    auto_only, half_only = corr_plot_flags[corr]
+    name = corr_names[corr] + "\ \mathrm{ ratios}"
+
+    plt.rcParams["font.size"] = 14
+    f = fig if fig is not None else plt.figure(figsize=(nx * 3.5, ny * 3))
+
+    axes = f.subplots(ny, nx, sharex="col", sharey="row", squeeze=False)
+    for i, j, valid in iter_plot_indices(ny, nx, auto_only, half_only):
+        a = axes[i, j]
+        if not valid:
+            f.delaxes(a)
+            continue
+
+        for index, obs in enumerate(obs_data):
+            res = obs[(corr, i, j)]
+            res_theory = obs_theory[index][(corr, i, j)]
+            if len(res) == 2:
+                x, y = res
+                _x_th, y_th = res_theory
+                a.plot(x, y / y_th, label="TXPipe Data/CCL Theory")
+                a.axhline(y=1, color="k", ls=":")
+            else:
+                x, y, cov = res
+                err = cov.diagonal() ** 0.5
+                _x_th, y_th = res_theory
+                a.errorbar(
+                    x,
+                    y / y_th,
+                    err / abs(y_th),
+                    fmt=".",
+                    label="TXPipe Data/CCL Theory",
+                )
+                a.axhline(y=1, color="k", ls=":")
+            a.set_xscale("log")
+
+        axis_setup(a, i, j, ny, 0.6, 1.4, name)
+        if corr in FOURIER_SPACE_CORRS:
+            a.set_xlim(90, 1500)
 
     f.suptitle(rf"TXPipe ${name}$")
 

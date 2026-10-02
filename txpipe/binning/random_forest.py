@@ -1,6 +1,18 @@
 import numpy as np
 
 
+def _get_classifier_prefixes_and_suffixes(shear_catalog_type):
+    """Return the per-variant column prefixes/suffixes for a given shear catalog layout."""
+    from ..data_types import ShearCatalog, class_for_shear_catalog_type
+
+    try:
+        cat_cls = class_for_shear_catalog_type(shear_catalog_type)
+    except ValueError:
+        cat_cls = ShearCatalog
+
+    return cat_cls.get_classifier_prefixes(), cat_cls.get_classifier_suffixes()
+
+
 def read_training_data(spec_file, bands, spec_mag_column_format, spec_redshift_column):
     fmt = spec_mag_column_format
     zfmt = spec_redshift_column
@@ -79,16 +91,7 @@ def build_tomographic_classifier(bands, training_data_table, bin_edges, random_s
 def apply_classifier(classifier, features, bands, shear_catalog_type, shear_data):
     """Apply the classifier to the measured magnitudes"""
 
-    if shear_catalog_type == "metacal":
-        prefixes = ["", "", "", "", ""]
-        suffixes = ["", "_1p", "_2p", "_1m", "_2m"]
-    elif shear_catalog_type == "metadetect":
-        prefixes = ["ns/", "1p/", "2p/", "1m/", "2m/"]
-        suffixes = ["", "", "", "", ""]
-    else:
-        prefixes = [""]
-        suffixes = [""]
-
+    prefixes, suffixes = _get_classifier_prefixes_and_suffixes(shear_catalog_type)
     pz_data = {}
 
     for prefix, suffix in zip(prefixes, suffixes):

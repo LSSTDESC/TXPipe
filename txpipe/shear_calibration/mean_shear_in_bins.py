@@ -1,5 +1,5 @@
 import numpy as np
-from .calibration_calculators import MetacalCalculator, MetaDetectCalculator, LensfitCalculator, HSCCalculator
+from .calibration_calculators import MetacalCalculator, MetaDetectCalculator, LensfitCalculator, HSCCalculator, ScalarMetaDetectCalculator
 
 class MeanShearInBins:
     def __init__(
@@ -25,11 +25,13 @@ class MeanShearInBins:
             self.calibrators = [LensfitCalculator(self.selector, dec_cut=False) for i in range(self.size)]
         elif shear_catalog_type == "hsc":
             self.calibrators = [HSCCalculator(self.selector) for i in range(self.size)]
+        elif shear_catalog_type == "scalar_metadetect":
+            self.calibrators = [ScalarMetaDetectCalculator(self.selector, delta_gamma) for i in range(self.size)]
         else:
             raise ValueError(f"Please specify metacal, metadetect, lensfit or hsc for shear_catalog in config.")
 
     def selector(self, data, i):
-        if self.shear_catalog_type == "metadetect" and self.x_name.startswith("ns/"):
+        if self.shear_catalog_type.endswith("metadetect") and self.x_name.startswith("ns/"):
             x = data[self.x_name[3:]]
         else:
             x = data[self.x_name]
@@ -45,7 +47,7 @@ class MeanShearInBins:
         
         # Optionally cut down to the source sample only
         if self.cut_source_bin:
-            if self.shear_catalog_type == "metadetect":
+            if self.shear_catalog_type.endswith("metadetect"):
                 prefix = getattr(data, 'prefix', 'ns/').rstrip('/')
                 bin_key = f"bin_{prefix if prefix else 'ns'}"
                 w &= (data[bin_key] != -1)
@@ -58,7 +60,7 @@ class MeanShearInBins:
             # The i argument to add_data is the argument that is passed
             # through to the "selector" method above.
             w = self.calibrators[i].add_data(data, i)
-            if self.shear_catalog_type == "metadetect":
+            if self.shear_catalog_type.endswith("metadetect"):
                 # the metadetector selector returns selections
                 # for all 5 variants. We just want the unsheared on
                 # here.

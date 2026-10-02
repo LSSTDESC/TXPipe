@@ -27,3 +27,4 @@ conda/
 .vscode/
 Mambaforge3.sh
 *.code-workspace
+CLAUDE.md
