@@ -220,6 +220,9 @@ jobs:
         if [ "${{ matrix.pipeline }}" == "metadetect_source_only" ]; then
           export TX_DASK_DEBUG=1
         fi
+        if [ "${{ matrix.pipeline }}" == "scalar_metadetect" ]; then
+          python bin/make_scalar_metadetect.py
+        fi
         ceci examples/${{ matrix.pipeline }}/pipeline.yml
 
         if [ "${{ matrix.pipeline }}" == "mock_shear" ]; then
