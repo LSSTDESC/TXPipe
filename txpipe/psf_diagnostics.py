@@ -1,6 +1,6 @@
 from ceci.config import StageParameter
 from .base_stage import PipelineStage
-from .data_types import Directory, ShearCatalog, HDFFile, PNGFile, TomographyCatalog, RandomsCatalog, YamlFile, TextFile
+from .data_types import Directory, ShearCatalog, HDFFile, PNGFile, TomographyCatalog, RandomsCatalog, YamlFile, TextFile, BinnedCatalog
 import numpy as np
 import sys
 import os
@@ -323,7 +323,7 @@ class TXTauStatistics(PipelineStage):
     name = "TXTauStatistics"
     parallel = False
     inputs = [
-        ("binned_shear_catalog", ShearCatalog),
+        ("binned_shear_catalog", BinnedCatalog),
         ("star_catalog", HDFFile),
         ("rowe_stats", HDFFile),
     ]

@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import SACCFile, ShearCatalog, HDFFile, QPNOfZFile, FiducialCosmology, TextFile, PNGFile
+from .data_types import SACCFile, HDFFile, QPNOfZFile, FiducialCosmology, TextFile, PNGFile, BinnedCatalog
 import numpy as np
 from ceci.config import StageParameter
 import os
@@ -13,12 +13,12 @@ class TXDeltaSigma(PipelineStage):
     name = "TXDeltaSigma"
 
     inputs = [
-        ("binned_shear_catalog", ShearCatalog),
-        ("binned_lens_catalog", HDFFile),
+        ("binned_shear_catalog", BinnedCatalog),
+        ("binned_lens_catalog", BinnedCatalog),
         # we use both the binned randoms for the case where we split
         # the lens catalog tomographically and the full version for
         # when we do the 2D stack of all the lenses together
-        ("binned_random_catalog", HDFFile),
+        ("binned_random_catalog", BinnedCatalog),
         ("random_cats", HDFFile),
         ("shear_photoz_stack", QPNOfZFile),
         ("lens_photoz_stack", QPNOfZFile),
