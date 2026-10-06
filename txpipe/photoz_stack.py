@@ -285,11 +285,10 @@ class TXPhotozPlot(PipelineStage):
 
 
 class TXMockGaussianPhotozStack(PipelineStage):
-    """
-    Naive stacker using QP.
+    """Makes a mock Gaussian n(z) as a placeholder. Do not use for science!
 
-    Can only cope with hist or interp PDF types. Ideally this should
-    be replaced by a RAIL stage.
+    This generates an n(z) file with just Gaussian distributions in with specified
+    means and sigmas.
     """
 
     name = "TXMockGaussianPhotozStack"
