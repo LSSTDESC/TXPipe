@@ -168,6 +168,8 @@ jobs:
           - os: ubuntu-latest
             pipeline: metadetect
           - os: ubuntu-latest
+            pipeline: scalar_metadetect
+          - os: ubuntu-latest
             pipeline: metacal
           - os: ubuntu-latest
             pipeline: redmagic
