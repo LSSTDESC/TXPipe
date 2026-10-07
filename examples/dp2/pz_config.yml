@@ -77,8 +77,7 @@ som_pzc_stage:
   redshift_col: *id017
   deep_groupname: ''
   name: som_pzc_stage
-  pz_c: pz_c.hdf5
-  config: null
+
 sompz_tomobin_and_nz_onesom_binning4:
   output_mode: default
   chunk_size: 10000
@@ -97,13 +96,11 @@ sompz_tomobin_and_nz_onesom_binning4:
   - 2.0
   som_shape: *id005
   name: sompz_tomobin_and_nz_onesom_binning4
-  tomo_bins_wide: tomo_bins_wide_binning4.hdf5
-  bhat_for_wide_data: bhat_for_wide_data_binning4.hdf5
-  nz: NZ_ESTIMATED_binning4.hdf5
+
 sompz_tomobin_and_nz_onesom_binning5:
   output_mode: default
-  chunk_size: 10000
-  hdf5_groupname: ''
+  chunk_size: 100000
+  hdf5_groupname: 'shear/ns'
   zbins_min: *id010
   zbins_max: *id011
   zbins_dz: *id012
@@ -119,10 +116,8 @@ sompz_tomobin_and_nz_onesom_binning5:
   - 9999.9
   som_shape: *id005
   name: sompz_tomobin_and_nz_onesom_binning5
-  tomo_bins_wide: tomo_bins_wide_binning5.hdf5
-  bhat_for_wide_data: bhat_for_wide_data_binning5.hdf5
-  nz: NZ_ESTIMATED_binning5.hdf5
-  
+  balrog_groupname: "shear/ns"
+
 som_deep_informer_big:
   output_mode: default
   redshift_col: z
@@ -148,5 +143,3 @@ som_deep_informer_big:
   thresh_val: 1.0e-05
   thresh_val_err: 1.0e-05
   name: som_deep_informer_big
-  # model: model_deep.pkl
-  # config: null
