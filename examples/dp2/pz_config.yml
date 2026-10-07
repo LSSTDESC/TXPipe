@@ -1,6 +1,6 @@
 som_deepdeep_estimator:
   output_mode: default
-  chunk_size: 10000
+  chunk_size: 100000
   hdf5_groupname: 'shear/ns'
   zbins_min: &id010 0.0 
   zbins_max: &id011 3.0
