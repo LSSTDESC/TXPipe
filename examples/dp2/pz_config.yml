@@ -9,13 +9,13 @@ som_deepdeep_estimator:
   recompute_point_estimates: false
   redshift_col: &id017 z
   inputs: &id002
-  - r_gaussFlux 
-  - i_gaussFlux
-  - z_gaussFlux
+  - flux_r
+  - flux_i
+  - flux_z
   input_errs: &id003
-  - r_gaussFluxErr
-  - i_gaussFluxErr
-  - z_gaussFluxErr
+  - flux_err_r
+  - flux_err_i
+  - flux_err_z
   zero_points: &id004
   - 31.4
   - 31.4
@@ -123,13 +123,13 @@ som_deep_informer_big:
   redshift_col: z
   hdf5_groupname: ''
   inputs:
-  - r_gaussFlux 
-  - i_gaussFlux
-  - z_gaussFlux
+  - flux_r
+  - flux_i
+  - flux_z
   input_errs:
-  - r_gaussFluxErr
-  - i_gaussFluxErr
-  - z_gaussFluxErr
+  - flux_err_r
+  - flux_err_i
+  - flux_err_z
   zero_points:
   - 31.4
   - 31.4
