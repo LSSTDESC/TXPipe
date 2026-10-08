@@ -131,12 +131,10 @@ inputs:
     binned_random_catalog_sub: none
     lens_photoz_stack: none
     spectroscopic_catalog: data/example/inputs/mock_spectroscopic_catalog.hdf5
-    mask: data/metadetect_dp2_ingest/mask.hdf5
-    full_shear_catalog: data/metadetect_dp2_ingest/shear_catalog.hdf5
-#    mask:
-#        id: 138
-#    full_shear_catalog:
-#        id: 137
+    mask:
+        id: 138
+    full_shear_catalog:
+        id: 137
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted
