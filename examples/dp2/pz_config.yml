@@ -10,12 +10,11 @@ global:
   - 32
   - 32
   debug: false
-
+  chunk_size: 100000
 
 {% for variant in ["ns", "1p", "1m"] %}
 som_deepdeep_estimator_{{ variant }}:
   output_mode: default
-  chunk_size: 100000
   hdf5_groupname: 'shear/{{ variant }}'
   calculated_point_estimates:  []
   recompute_point_estimates: false
@@ -40,7 +39,6 @@ som_deepdeep_estimator_{{ variant }}:
 
 sompz_tomobin_and_nz_onesom_binning5_{{ variant }}:
   output_mode: default
-  chunk_size: 100000
   hdf5_groupname: 'shear/{{ variant }}'
   calculated_point_estimates: []
   recompute_point_estimates: false
