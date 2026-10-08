@@ -1,63 +1,84 @@
-som_deepdeep_estimator:
+global:
+  zbins_min: 0.0 
+  zbins_max: 3.0
+  zbins_dz: 0.02
+  redshift_col: z
+  som_wrap: false
+  som_take_log: true
+  convert_to_flux: false
+  som_shape:
+  - 32
+  - 32
+  debug: false
+
+
+{% for variant in ["ns", "1p", "1m"] %}
+som_deepdeep_estimator_{{ variant }}:
   output_mode: default
   chunk_size: 100000
-  hdf5_groupname: 'shear/ns'
-  zbins_min: &id010 0.0 
-  zbins_max: &id011 3.0
-  zbins_dz: &id012 0.02
-  calculated_point_estimates: &id001 []
+  hdf5_groupname: 'shear/{{ variant }}'
+  calculated_point_estimates:  []
   recompute_point_estimates: false
-  redshift_col: &id017 z
-  inputs: &id002
+  inputs:
   - flux_r
   - flux_i
   - flux_z
-  input_errs: &id003
+  input_errs:
   - flux_err_r
   - flux_err_i
   - flux_err_z
-  zero_points: &id004
+  zero_points:
   - 31.4
   - 31.4
   - 31.4
-  som_shape: &id005
-  - 32
-  - 32
   som_minerror: 0.001
-  som_wrap: &id013 false
-  som_take_log: &id014 true
-  convert_to_flux: &id015 false
   set_threshold: true
   thresh_val: 1.0e-05
-  debug: &id016 false
-  name: som_deepdeep_estimator
-
-  # model: model_deep.pkl
-  # data: /sdf/home/z/zhzhuoqi/rubin-user/DP2/DP2_test_WZ/mdet_catalog.hdf5
-  
+  name: som_deepdeep_estimator_{{ variant }}
   thresh_val_err: 1.0e-05
   config: null
+
+sompz_tomobin_and_nz_onesom_binning5_{{ variant }}:
+  output_mode: default
+  chunk_size: 100000
+  hdf5_groupname: 'shear/{{ variant }}'
+  calculated_point_estimates: []
+  recompute_point_estimates: false
+  make_equal_occ_bins: false
+  bin_edges:
+  - 0.1
+  - 0.4
+  - 0.6
+  - 0.8
+  - 9999.9
+  name: sompz_tomobin_and_nz_onesom_binning5_{{ variant }}
+  balrog_groupname: "shear/{{ variant }}"
+{% endfor %}
+  
 som_deepspec_estimator:
   output_mode: default
   chunk_size: 10000
   hdf5_groupname: ''
-  zbins_min: *id010
-  zbins_max: *id011
-  zbins_dz: *id012
-  calculated_point_estimates: *id001
+  calculated_point_estimates: []
   recompute_point_estimates: false
-  redshift_col: *id017
-  inputs: *id002
-  input_errs: *id003
-  zero_points: *id004
-  som_shape: *id005
+  inputs:
+  - flux_r
+  - flux_i
+  - flux_z
+  input_errs:
+  - flux_err_r
+  - flux_err_i
+  - flux_err_z
+  zero_points:
+  - 31.4
+  - 31.4
+  - 31.4
+  som_shape:
+  - 32
+  - 32
   som_minerror: 0.001
-  som_wrap: *id013
-  som_take_log: *id014
-  convert_to_flux: *id015
   set_threshold: true
   thresh_val: 1.0e-05
-  debug: *id016
   name: som_deepspec_estimator
   
   # model: model_deep.pkl
@@ -69,54 +90,12 @@ som_pzc_stage:
   output_mode: default
   chunk_size: 10000
   hdf5_groupname: ''
-  zbins_min: *id010
-  zbins_max: *id011
-  zbins_dz: *id012
-  calculated_point_estimates: *id001
+  calculated_point_estimates: []
   recompute_point_estimates: false
-  redshift_col: *id017
   deep_groupname: ''
   name: som_pzc_stage
 
-sompz_tomobin_and_nz_onesom_binning4:
-  output_mode: default
-  chunk_size: 10000
-  hdf5_groupname: ''
-  zbins_min: *id010
-  zbins_max: *id011
-  zbins_dz: *id012
-  calculated_point_estimates: *id001
-  recompute_point_estimates: false
-  redshift_col: *id017
-  make_equal_occ_bins: false
-  bin_edges:
-  - 0.4
-  - 0.6
-  - 0.8
-  - 2.0
-  som_shape: *id005
-  name: sompz_tomobin_and_nz_onesom_binning4
 
-sompz_tomobin_and_nz_onesom_binning5:
-  output_mode: default
-  chunk_size: 100000
-  hdf5_groupname: 'shear/ns'
-  zbins_min: *id010
-  zbins_max: *id011
-  zbins_dz: *id012
-  calculated_point_estimates: *id001
-  recompute_point_estimates: false
-  redshift_col: *id017
-  make_equal_occ_bins: false
-  bin_edges:
-  - 0.1
-  - 0.4
-  - 0.6
-  - 0.8
-  - 9999.9
-  som_shape: *id005
-  name: sompz_tomobin_and_nz_onesom_binning5
-  balrog_groupname: "shear/ns"
 
 som_deep_informer_big:
   output_mode: default

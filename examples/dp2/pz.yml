@@ -21,13 +21,28 @@ stages:
   aliases:
     model: deep_model
     input_data: input_deep_data_inform
-- name: som_deepdeep_estimator
+{% for variant in ["ns", "1p", "1m"] %}
+- name: som_deepdeep_estimator_{{ variant }}
   classname: SOMPZEstimatorDeep
   nprocess: 128
   module_name: rail.estimation.algos.sompz
   aliases:
     data: input_deep_data
-    assignment: assignment_som_deepdeep_estimator
+    assignment: assignment_som_deepdeep_estimator_{{ variant }}
+- name: sompz_tomobin_and_nz_onesom_binning5_{{ variant }}
+  classname: SOMPZ_tomobin_and_nz_onesom
+  nprocess: 1
+  module_name: rail.estimation.algos.sompz
+  aliases:
+    spec_data: input_spec_data
+    cell_deep_spec_data: assignment_som_deepspec_estimator
+    balrog_data: input_deep_data
+    cell_deep_balrog_data: assignment_som_deepdeep_estimator_{{ variant }}
+    pz_c: pz_c_som_pzc_stage
+    tomo_bins_wide: tomo_bins_wide_binning5_{{ variant }}
+    bhat_for_wide_data: bhat_for_wide_data_binning5_{{ variant }}
+    nz: nz_binning5_{{ variant }}
+{% endfor %}
 - name: som_deepspec_estimator
   classname: SOMPZEstimatorDeep
   module_name: rail.estimation.algos.sompz
@@ -42,31 +57,6 @@ stages:
     cell_deep_spec_data: assignment_som_deepspec_estimator
     spec_data: input_spec_data
     pz_c: pz_c_som_pzc_stage
-# - name: sompz_tomobin_and_nz_onesom_binning4
-#   classname: SOMPZ_tomobin_and_nz_onesom
-#   nprocess: 1
-#   module_name: rail.estimation.algos.sompz
-#   aliases:
-#     spec_data: input_spec_data
-#     cell_deep_spec_data: assignment_som_deepspec_estimator
-#     balrog_data: input_deep_data
-#     cell_deep_balrog_data: assignment_som_deepdeep_estimator
-#     pz_c: pz_c_som_pzc_stage
-#     tomo_bins_wide: tomo_bins_wide_binning4
-#     bhat_for_wide_data: bhat_for_wide_data_binning4
-#     nz: nz_binning4
-- name: sompz_tomobin_and_nz_onesom_binning5
-  classname: SOMPZ_tomobin_and_nz_onesom
-  nprocess: 1
-  module_name: rail.estimation.algos.sompz
-  aliases:
-    spec_data: input_spec_data
-    cell_deep_spec_data: assignment_som_deepspec_estimator
-    balrog_data: input_deep_data
-    cell_deep_balrog_data: assignment_som_deepdeep_estimator
-    pz_c: pz_c_som_pzc_stage
-    tomo_bins_wide: tomo_bins_wide_binning5
-    bhat_for_wide_data: bhat_for_wide_data_binning5
-    nz: nz_binning5
+
 site:
   name: nersc-interactive
