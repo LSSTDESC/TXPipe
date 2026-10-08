@@ -5,11 +5,13 @@ log_dir: .
 resume: resume
 config: examples/dp2/pz_config.yml
 modules: rail
+{% set assign_procs = 128 %}
 inputs:
   # deep_model: model_deep.pkl
   # input_deep_data: /sdf/home/z/zhzhuoqi/rubin-user/DP2/DP2_test_WZ/mdet_catalog.hdf5
   #input_deep_data: data/metadetect_dp2/shear_catalog.hdf5
   input_deep_data: data/metadetect_desc_dp2_ingest/cut_shear_catalog.hdf5
+  #input_deep_data: mini_desc_dp2_shear_catalog.hdf5
   input_deep_data_inform: data/pz_dp2_ingest/mdet_for_sompz.hdf5
   # input_spec_data: /sdf/home/z/zhzhuoqi/rubin-user/DP2/DP2_test_WZ/mdet_redshift_for_sompz.hdf5
   input_spec_data: data/pz_dp2_ingest/mdet_redshift_for_sompz.hdf5
@@ -24,7 +26,7 @@ stages:
 {% for variant in ["ns", "1p", "1m"] %}
 - name: som_deepdeep_estimator_{{ variant }}
   classname: SOMPZEstimatorDeep
-  nprocess: 128
+  nprocess: {{ assign_procs }}
   module_name: rail.estimation.algos.sompz
   aliases:
     data: input_deep_data
