@@ -1,7 +1,6 @@
 from .base_stage import PipelineStage
 from .data_types import (
     HDFFile,
-    ShearCatalog,
     SACCFile,
     TextFile,
     MapsFile,
@@ -57,9 +56,9 @@ class TXTwoPoint(PipelineStage):
     name = "TXTwoPoint"
     inputs = [
         ("binned_shear_catalog", BinnedCatalog),
-        ("binned_lens_catalog", HDFFile),
-        ("binned_random_catalog", HDFFile),
-        ("binned_random_catalog_sub", HDFFile),
+        ("binned_lens_catalog", BinnedCatalog),
+        ("binned_random_catalog", BinnedCatalog),
+        ("binned_random_catalog_sub", BinnedCatalog),
         ("shear_photoz_stack", QPNOfZFile),
         ("lens_photoz_stack", QPNOfZFile),
         ("patch_centers", TextFile),
@@ -1095,8 +1094,8 @@ class TXTwoPointPixelExtCross(TXTwoPointPixel):
         ("density_maps", MapsFile),
         ("source_maps", MapsFile),
         ("binned_shear_catalog", BinnedCatalog),
-        ("binned_lens_catalog", HDFFile),
-        ("binned_random_catalog", HDFFile),
+        ("binned_lens_catalog", BinnedCatalog),
+        ("binned_random_catalog", BinnedCatalog),
         ("shear_photoz_stack", QPNOfZFile),
         ("lens_photoz_stack", QPNOfZFile),
         ("patch_centers", TextFile),

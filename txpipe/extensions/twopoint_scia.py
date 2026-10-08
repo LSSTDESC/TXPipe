@@ -50,7 +50,7 @@ class TXTwoPointSelfCalibrationIA(TXTwoPoint):
     name = "TXTwoPointSCIA"
     inputs = [
         ('binned_shear_catalog', BinnedCatalog),
-        ('binned_random_catalog_source', HDFFile),
+        ('binned_random_catalog_source', BinnedCatalog),
         ('shear_photoz_stack', QPNOfZFile),
         ('patch_centers', TextFile),
         ('fiducial_cosmology', FiducialCosmology),
@@ -712,7 +712,7 @@ class TXTwoPointSourcePixels(TXTwoPointSelfCalibrationIA):
     inputs = [
         ("source_maps", MapsFile),
         ("binned_shear_catalog", BinnedCatalog),
-        ("binned_random_catalog", HDFFile),
+        ("binned_random_catalog", BinnedCatalog),
         ("shear_photoz_stack", QPNOfZFile),
         ("patch_centers", TextFile),
         ("tracer_metadata", HDFFile),

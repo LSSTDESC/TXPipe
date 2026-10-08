@@ -285,7 +285,7 @@ class TXLensMaps(PipelineStage):
     dask_parallel = True
 
     inputs = [
-        ("binned_lens_catalog", HDFFile),
+        ("binned_lens_catalog", BinnedCatalog),
     ]
     outputs = [
         ("lens_maps", MapsFile),

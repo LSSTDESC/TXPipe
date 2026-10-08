@@ -173,6 +173,7 @@ class TXFourierGaussianCovariance(PipelineStage):
             sigma_e = 0.0
             n_eff = 0.0
             N_eff = 0.0
+            n_eff_arcmin = 0.0
 
 
         input_data.close()
