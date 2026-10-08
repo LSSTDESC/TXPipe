@@ -1,6 +1,7 @@
 from .scalar_metadetect import TXSourceSelectorScalarMetadetect
 from .base import select_weak_lensing_sample, TXSourceSelectorBase
-from ..shear_calibration import metadetect_variants, MetaDetectCalculator, band_variants, META_VARIANTS, scalar_metadetect_variants, ScalarMetaDetectCalculator
+from ..shear_calibration import metadetect_variants, MetaDetectCalculator, band_variants, SCALAR_META_VARIANTS, scalar_metadetect_variants, ScalarMetaDetectCalculator
+from ..data_types import HDFFile
 from ceci.config import StageParameter
 import numpy as np
 
@@ -45,6 +46,12 @@ class TXSourceSelectorScalarMetadetectDP2(TXSourceSelectorScalarMetadetect):
     """
 
     name = "TXSourceSelectorScalarMetadetectDP2"
+    # It would be nice to do all these in a single RAIL run
+    inputs = TXSourceSelectorScalarMetadetect.inputs + [
+        ("tomography_assignments_ns", HDFFile),
+        ("tomography_assignments_1m", HDFFile),
+        ("tomography_assignments_1p", HDFFile),
+    ]
 
     config_options = TXSourceSelectorScalarMetadetect.config_options | dp2_cut_options
 
@@ -58,25 +65,33 @@ class TXSourceSelectorScalarMetadetectDP2(TXSourceSelectorScalarMetadetect):
             self.config["bands"] = f.get_bands()
 
         # Core quantities we need
-        shear_cols = scalar_metadetect_variants("T", "s2n", "g1", "g2", "ra", "dec", "weight", "psf_T_mean", "flags",  "is_primary", "mfrac", "psfrec_g1", "psfrec_g2", "rmi", "imz", "g_flags")
+        shear_cols = ["T", "s2n", "g1", "g2", "ra", "dec", "weight", "psf_T_mean", "flags",  "is_primary", "mfrac", "psfrec_g1", "psfrec_g2", "rmi", "imz", "g_flags"]
 
-        # Magnitudes and errors
-        shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type=cat_type)
+        # Magnitudes and errors - we are going to deal with the variant in a minute so
+        # right now we just want mag_r, mag_i, etc.
+        shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="simple")
 
         # We need truth shears and/or PZ point-estimates for each shear too
         if self.config["input_pz"]:
-            shear_cols += scalar_metadetect_variants("mean_z")
+            shear_cols.append("mean_z")
         elif self.config["true_z"]:
-            shear_cols += scalar_metadetect_variants("redshift_true")
+            shear_cols.append("redshift_true")
+        
+        # Think this is wrong - check
+        tomo_cols = ["bin"]
 
-        # This is a parent ceci.PipelineStage method.
-        # It returns an iterator we loop through.
-        # The "longest=True" option means that the iterator will
-        # continue looping even when some of the columns have been exhausted, which is 
-        # what we want here since the different shear variants have different lengths.
-        # The calibration calculation needs to deal with this.
-        it = self.iterate_hdf("shear_catalog", "shear", shear_cols, chunk_rows, longest=True)
-        return it
+        # Now we have all the shear columns for a single variant. We are going
+        # to loop through the variants here one by one. This is a little different
+        # for how we have done this before which was inherited from metacal where all
+        # the lengths were the same
+        for variant in SCALAR_META_VARIANTS:
+            it1 = self.iterate_hdf("shear_catalog", f"shear/{variant}", shear_cols, chunk_rows)
+            it2 = self.iterate_hdf(f"tomography_assignments_{variant}", "/", tomo_cols, chunk_rows)
+            for ((s, e, shear_data), (s1, e1, tomo_data)) in zip(it1, it2):
+                if s != s1 or e != e1:
+                    raise ValueError("Error in tomo/shear column relationship")
+                shear_data.update(tomo_data)
+                yield shear_data
 
     def setup_response_calculators(self, nbin_source):
         delta_gamma = self.config["delta_gamma"]
@@ -146,7 +161,7 @@ def select_tomographic_weak_lensing_sample_metadetect_desc_dp2(data, config, bin
     same way that select_tomographic_weak_lensing_sample relates to
     select_weak_lensing_sample.
     """
-    zbin = data["zbin"]
+    zbin = data["bin"]
     verbose = config["verbose"]
 
     sel = select_weak_lensing_sample_metadetect_desc_dp2(data, config, calling_from_select=True)

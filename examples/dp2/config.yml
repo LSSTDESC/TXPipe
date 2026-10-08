@@ -2,6 +2,18 @@ global:
     chunk_rows: 1000000
     nside: 2048
     sparse: true
+    zbins_min: 0.0 
+    zbins_max: 3.0
+    zbins_dz: 0.02
+    redshift_col: z
+    som_wrap: false
+    som_take_log: true
+    convert_to_flux: false
+    som_shape:
+    - 32
+    - 32
+    debug: false
+    chunk_size: 100000
 
 TXIngestRubinMetaDetect:
     butler_repository_index: "/global/cfs/cdirs/lsst/production/gen3/shared/data-repos.yaml"
@@ -163,3 +175,112 @@ TXSourceDiagnosticPlots:
 
 TXReponseInBins:
     name: TXReponseInBins
+
+
+
+
+{% for variant in ["ns", "1p", "1m"] %}
+PZAssignGalaxiesToCells_{{ variant }}:
+    output_mode: default
+    hdf5_groupname: 'shear/{{ variant }}'
+    calculated_point_estimates:  []
+    recompute_point_estimates: false
+    inputs:
+    - flux_r
+    - flux_i
+    - flux_z
+    input_errs:
+    - flux_err_r
+    - flux_err_i
+    - flux_err_z
+    zero_points:
+    - 31.4
+    - 31.4
+    - 31.4
+    som_minerror: 0.001
+    set_threshold: true
+    thresh_val: 1.0e-05
+    name: PZAssignGalaxiesToCells_{{ variant }}
+    thresh_val_err: 1.0e-05
+    config: null
+
+PZTomographyAndNZ_{{ variant }}:
+    output_mode: default
+    hdf5_groupname: 'shear/{{ variant }}'
+    calculated_point_estimates: []
+    recompute_point_estimates: false
+    make_equal_occ_bins: false
+    bin_edges:
+    - 0.1
+    - 0.4
+    - 0.6
+    - 0.8
+    - 9999.9
+    name: PZTomographyAndNZ_{{ variant }}
+    balrog_groupname: "shear/{{ variant }}"
+{% endfor %}
+  
+PZAssignSpectroGalaxiesToCells:
+    output_mode: default
+    chunk_size: 10000
+    hdf5_groupname: ''
+    calculated_point_estimates: []
+    recompute_point_estimates: false
+    inputs:
+    - flux_r
+    - flux_i
+    - flux_z
+    input_errs:
+    - flux_err_r
+    - flux_err_i
+    - flux_err_z
+    zero_points:
+    - 31.4
+    - 31.4
+    - 31.4
+    som_shape:
+    - 32
+    - 32
+    som_minerror: 0.001
+    set_threshold: true
+    thresh_val: 1.0e-05
+    name: PZAssignSpectroGalaxiesToCells
+    thresh_val_err: 1.0e-05
+    config: null
+
+PZRedshiftsForCells:
+    output_mode: default
+    chunk_size: 10000
+    hdf5_groupname: ''
+    calculated_point_estimates: []
+    recompute_point_estimates: false
+    deep_groupname: ''
+    name: PZRedshiftsForCells
+
+
+
+PZSOMInformer:
+    output_mode: default
+    redshift_col: z
+    hdf5_groupname: ''
+    inputs:
+    - flux_r
+    - flux_i
+    - flux_z
+    input_errs:
+    - flux_err_r
+    - flux_err_i
+    - flux_err_z
+    zero_points:
+    - 31.4
+    - 31.4
+    - 31.4
+    som_shape: [32, 32]
+    som_minerror: 0.001
+    som_wrap: false
+    som_take_log: true
+    convert_to_flux: false
+    set_threshold: true
+    thresh_val: 1.0e-05
+    thresh_val_err: 1.0e-05
+    name: PZSOMInformer
