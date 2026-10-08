@@ -187,7 +187,6 @@ class TXTwoPointPlotsFourier(PipelineStage):
             theory_sacc_files=[filename_theory],
             theory_labels=["Fiducial"],
             xi=False,
-            xlogscale=True,
         )
 
         for fig in outputs.values():
@@ -212,7 +211,6 @@ class TXTwoPointPlotsFourier(PipelineStage):
             theory_sacc_files=[filename_theory],
             theory_labels=["Fiducial"],
             xi=False,
-            xlogscale=True,
             ratios=True,
         )
 
