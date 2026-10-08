@@ -168,6 +168,8 @@ jobs:
           - os: ubuntu-latest
             pipeline: metadetect
           - os: ubuntu-latest
+            pipeline: scalar_metadetect
+          - os: ubuntu-latest
             pipeline: metacal
           - os: ubuntu-latest
             pipeline: redmagic
@@ -217,6 +219,9 @@ jobs:
         # we activate the debug mode with an env var
         if [ "${{ matrix.pipeline }}" == "metadetect_source_only" ]; then
           export TX_DASK_DEBUG=1
+        fi
+        if [ "${{ matrix.pipeline }}" == "scalar_metadetect" ]; then
+          python bin/make_scalar_metadetect.py
         fi
         ceci examples/${{ matrix.pipeline }}/pipeline.yml
 

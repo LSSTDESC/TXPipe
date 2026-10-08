@@ -1105,56 +1105,30 @@ class TXGalaxyStarShear(PipelineStage):
         cat_type = read_shear_catalog_type(self)
         _, cal = Calibrator.load(self.get_input("shear_tomography_catalog"))
 
-        # load tomography data
-        with self.open_input("shear_tomography_catalog") as f:
-            source_bin = f["tomography/bin"][:]
+        with self.open_input("shear_catalog", wrapper=True) as f:
+            primary_group = f.get_primary_catalog_group()
+            primary_bin = f.get_primary_tomography_bin_column()
+            extra_cal_cols = f.get_extra_calibration_columns()
+
+        with self.open_input("shear_tomography_catalog", wrapper=True) as f:
+            source_bin = f.file[f"tomography/{primary_bin}"][:]
             mask = source_bin != -1  # Only use the sources that pass the fiducial cuts
-            if cat_type == "metacal":
-                R_total_2d = f["response/R_S_2d"][:] + f["response/R_gamma_mean_2d"][:]
-            elif cat_type == "metadetect":
-                R_total_2d = f["response/R_2d"][:]
 
-        with self.open_input("shear_catalog") as f:
-            g = f["shear"]
-
-            # Get the base catalog for metadetect
-            if cat_type == "metadetect":
-                g = g["ns"]
+        with self.open_input("shear_catalog", wrapper=True) as f:
+            g = f.file[primary_group]
+            extra_cal_cols = f.get_extra_calibration_columns()
 
             ra = g["ra"][:][mask]
             dec = g["dec"][:][mask]
+            g1 = g["g1"][:][mask]
+            g2 = g["g2"][:][mask]
+            weight = g["weight"][:][mask]
+            extra = {col: g[col][:][mask] for col in extra_cal_cols}
 
-            if cat_type == "metacal":
-                g1 = g["g1"][:][mask]
-                g2 = g["g2"][:][mask]
-                weight = g["weight"][:][mask]
-
-            elif cat_type == "metadetect":
-                g1 = g["g1"][:][mask]
-                g2 = g["g2"][:][mask]
-                weight = g["weight"][:][mask]
-
-            else:
-                g1 = g["g1"][:][mask]
-                g2 = g["g2"][:][mask]
-                weight = g["weight"][:][mask]
-                sigma_e = g["sigma_e"][:][mask]
-                m = g["m"][:][mask]
+        g1, g2 = cal.apply(g1, g2, **extra)
 
         if self.config["flip_g2"]:
             g2 *= -1
-
-        if cat_type == "metacal" or cat_type == "metadetect":
-            # We use S=0 here because we have already included it in R_total
-            g1, g2 = cal.apply(g1, g2)
-
-        elif cat_type == "lensfit":
-            # In KiDS, the additive bias is calculated and removed per North and South field
-            # therefore, we add dec to split data into these fields.
-            # You can choose not to by setting dec_cut = 90 in the config, for example.
-            g1, g2 = cal.apply(g1, g2, dec)
-        else:
-            print("Shear calibration type not recognized.")
 
         return ra, dec, g1, g2, weight
 
@@ -1366,9 +1340,7 @@ class TXGalaxyStarDensity(PipelineStage):
             mask = source_bin != -1  # Only use the sources that pass the fiducial cuts
 
         with self.open_input("shear_catalog", wrapper=True) as f:
-            g = f.file["shear"]
-            if f.catalog_type == "metadetect":
-                g = g["ns"]
+            g = f.file[f.get_primary_catalog_group()]
             ra = g["ra"][:][mask]
             dec = g["dec"][:][mask]
 
