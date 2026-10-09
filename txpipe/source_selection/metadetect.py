@@ -75,7 +75,10 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         # The basic "bin" column was set up to be the same as the 00 variant,
         # so we can just write to all of them.
         for i, v in enumerate(META_VARIANTS):
+            start = self.current_bin_output_index[v]
+            end = start + source_bin[i].size
             outfile[f"tomography/bin_{v}"][start:end] = source_bin[i]
+            self.current_bin_output_index[v] = end
 
         assert per_object_response is None, "MetaDetect does not produce per-object response values, only per-bin values, so this should be None"
 
@@ -138,6 +141,10 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         group.create_dataset("R", (nbin_source, 2, 2), dtype="f")
         # Global calibration matrix
         group.create_dataset("R_2d", (2, 2), dtype="f")
+
+        # Store the index to which we have currently written each column
+        self.current_bin_output_index = {v: 0 for v in SCALAR_META_VARIANTS}
+
         return outfile
 
 

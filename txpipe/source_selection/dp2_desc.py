@@ -66,16 +66,6 @@ class TXSourceSelectorScalarMetadetectDP2(TXSourceSelectorScalarMetadetect):
             return output
         return classifier
 
-    def write_tomography(self, outfile, start, end, source_bin, per_object_response):
-        # Write out each of the individual variants.
-        # The basic "bin" column was set up to be the same as the 00 variant,
-        # so we can just write to all of them.
-        for i, v in enumerate(SCALAR_META_VARIANTS):
-            col = source_bin[i]
-            outfile[f"tomography/bin_{v}"][start:start+col.size] = col
-
-        assert per_object_response is None, "MetaDetect does not produce per-object response values, only per-bin values, so this should be None"
-
 
     def data_iterator(self):
         # As above, this is where we work out which columns we need.
