@@ -6,6 +6,10 @@
 stages:
   - name: TXSourceSelectorScalarMetadetectDP2    # select and split objects into source bins
     nprocess: 64
+    aliases:
+      tomography_assignments_ns: bhat_for_wide_data_ns
+      tomography_assignments_1p: bhat_for_wide_data_1p
+      tomography_assignments_1m: bhat_for_wide_data_1m
   - name: TXSourceTomography
     threads_per_process: 8
   - name: TXShearCalibration       # Calibrate and split the source sample tomographically

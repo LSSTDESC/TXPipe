@@ -55,6 +55,17 @@ class TXSourceSelectorScalarMetadetectDP2(TXSourceSelectorScalarMetadetect):
 
     config_options = TXSourceSelectorScalarMetadetect.config_options | dp2_cut_options
 
+    def make_tomographic_bin_chooser_function(self):
+        # In this case the tomography has already been done by an external
+        # selector, so we can just copy the redshift bin across to the new dict.
+        def classifier(start, end, shear_data):
+            output = {}
+            for v in SCALAR_META_VARIANTS:
+                output[f"{v}/zbin"] = shear_data[f"{v}/zbin"]
+            return output
+        return classifier
+
+
     def data_iterator(self):
         # As above, this is where we work out which columns we need.
         chunk_rows = self.config["chunk_rows"]
@@ -67,9 +78,11 @@ class TXSourceSelectorScalarMetadetectDP2(TXSourceSelectorScalarMetadetect):
         # Core quantities we need
         shear_cols = ["T", "s2n", "g1", "g2", "ra", "dec", "weight", "psf_T_mean", "flags",  "is_primary", "mfrac", "psfrec_g1", "psfrec_g2", "rmi", "imz", "g_flags"]
 
+
         # Magnitudes and errors - we are going to deal with the variant in a minute so
         # right now we just want mag_r, mag_i, etc.
         shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="simple")
+
 
         # We need truth shears and/or PZ point-estimates for each shear too
         if self.config["input_pz"]:
@@ -78,20 +91,32 @@ class TXSourceSelectorScalarMetadetectDP2(TXSourceSelectorScalarMetadetect):
             shear_cols.append("redshift_true")
         
         # Think this is wrong - check
-        tomo_cols = ["bin"]
+        tomo_cols = ["bhat_for_wide_data"]
+
+        variant_shear_cols = scalar_metadetect_variants(shear_cols.keys())
+
+
+        # The slightly odd way that this is all set up, which is descended from metacal,
+        # means that the calibration calculators are going to expect dictionaries containing
+        # all the different variants at once for a block of data. Even if in this case
+        # most of them are empty.
+        def generate_empty():
+            return {col: np.zeros(0, dtype=np.float64) for col in variant_shear_cols}
 
         # Now we have all the shear columns for a single variant. We are going
         # to loop through the variants here one by one. This is a little different
         # for how we have done this before which was inherited from metacal where all
         # the lengths were the same
         for variant in SCALAR_META_VARIANTS:
-            it1 = self.iterate_hdf("shear_catalog", f"shear/{variant}", shear_cols, chunk_rows)
+            it1 = self.iterate_hdf("shear_catalog", "shear", variant_shear_cols, chunk_rows)
             it2 = self.iterate_hdf(f"tomography_assignments_{variant}", "/", tomo_cols, chunk_rows)
             for ((s, e, shear_data), (s1, e1, tomo_data)) in zip(it1, it2):
                 if s != s1 or e != e1:
                     raise ValueError("Error in tomo/shear column relationship")
-                shear_data.update(tomo_data)
-                yield shear_data
+                data = generate_empty()
+                data.update(shear_data)
+                data[f'{variant}/zbin'] = tomo_data['bhat_for_wide_data']
+                yield data
 
     def setup_response_calculators(self, nbin_source):
         delta_gamma = self.config["delta_gamma"]
@@ -127,32 +152,45 @@ def select_weak_lensing_sample_metadetect_desc_dp2(data, config, calling_from_se
     mfrac_max = config["mfrac_max"]
 
     T_ratio = data["T"] / data["psf_T_mean"]
-    
+
+    cutter = Cutter(data["ra"].size, verbose=config["verbose"])
+    cutter.keep(data["is_primary"] == True, "is_primary")
     # Basic cuts
-    sel = np.ones(data["ra"].size, dtype=bool)
-    sel &= (data["is_primary"] == True)
-    sel &= (data["flags"] == 0)
-    sel &= data["mfrac"] < mfrac_max
+    cutter.keep(data["flags"] == 0, "flags")
+    cutter.keep(data["mfrac"] < mfrac_max, "mfrac")
 
     # Image quality cuts
     psfrec_gmax = np.maximum(data['psfrec_g1'], data['psfrec_g2'])
-    sel &= np.abs(psfrec_gmax) < max_psf_g
+    cutter.keep(np.abs(psfrec_gmax) < max_psf_g, "psf ellipticity")
 
     # Sanity cuts on color and size; somewhat arbitrary at this stage
-    sel &= (data["rmi"] > rmi_min) & (data["rmi"] < rmi_max)
-    sel &= (data["imz"] > imz_min) & (data["imz"] < imz_max)
-    sel &= (data["T"] < T_max)
-    sel &= (T_ratio < Tratio_max)
-    sel &= (data["s2n"] < s2n_max)
+    cutter.keep((data["rmi"] > rmi_min) & (data["rmi"] < rmi_max), "r-i color")
+    cutter.keep((data["imz"] > imz_min) & (data["imz"] < imz_max), "i-z color")
+    cutter.keep(data["T"] < T_max, "T maximum")
+    cutter.keep(T_ratio < Tratio_max, "T ratio maximum")
+    cutter.keep(data["s2n"] < s2n_max, "S/N maximum")
 
     # Good ellipticities
-    sel &= (data["g_flags"] == 0)
+    cutter.keep(data["g_flags"] == 0, "ellipticity flags")
 
     # Galaxy cuts
-    sel &= (T_ratio > Tratio_min)
-    sel &= (data["s2n"] > s2n_min)
+    cutter.keep(T_ratio > Tratio_min, "T ratio minimum")
+    cutter.keep(data["s2n"] > s2n_min, "S/N minimum")
 
-    return sel
+    return cutter.sel
+
+class Cutter:
+    def __init__(self, n, verbose=False):
+        self.sel = np.ones(n, dtype=bool)
+        self.verbose = verbose
+        self.size = n
+
+    def keep(self, sel, name):
+        f1 = sel.sum() / self.size
+        self.sel &= sel
+        f2 = self.sel.sum() / sel.size
+        if self.verbose:
+            print(f" - {name} cuts {f1*100:.1f}% and leaves {f2*100:.1f}% cumulatively cut afterwards")
 
 
 def select_tomographic_weak_lensing_sample_metadetect_desc_dp2(data, config, bin_index):
@@ -161,7 +199,7 @@ def select_tomographic_weak_lensing_sample_metadetect_desc_dp2(data, config, bin
     same way that select_tomographic_weak_lensing_sample relates to
     select_weak_lensing_sample.
     """
-    zbin = data["bin"]
+    zbin = data["zbin"]
     verbose = config["verbose"]
 
     sel = select_weak_lensing_sample_metadetect_desc_dp2(data, config, calling_from_select=True)
@@ -169,8 +207,7 @@ def select_tomographic_weak_lensing_sample_metadetect_desc_dp2(data, config, bin
     f4 = sel.sum() / sel.size
 
     if verbose:
-        print(f"{f4:.2%} z for bin {bin_index}")
-        print("total tomo", sel.sum())
+        print(f"{f4:.2%} z for bin {bin_index}, total tomo", sel.sum())
 
     return sel
 
