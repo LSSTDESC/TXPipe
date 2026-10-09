@@ -1029,7 +1029,10 @@ class QPNOfZFile(QPBaseFile):
             read = tables_io.io.readHdf5GroupToDict
         except AttributeError:
             read = tables_io.hdf5.read_HDF5_group_to_dict
-        tables = dict([(key, read(val)) for key, val in self.file["qp"].items()])
+        if "qp" in self.file.keys():
+            tables = dict([(key, read(val)) for key, val in self.file["qp"].items()])
+        else:
+            tables = dict([(key, read(val)) for key, val in self.file.items()])
 
         self._ensemble = qp.from_tables(tables)
         return self._ensemble

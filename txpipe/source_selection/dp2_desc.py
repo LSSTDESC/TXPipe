@@ -61,9 +61,20 @@ class TXSourceSelectorScalarMetadetectDP2(TXSourceSelectorScalarMetadetect):
         def classifier(start, end, shear_data):
             output = {}
             for v in SCALAR_META_VARIANTS:
+                print("copying ",v, shear_data[f"{v}/zbin"].size)
                 output[f"{v}/zbin"] = shear_data[f"{v}/zbin"]
             return output
         return classifier
+
+    def write_tomography(self, outfile, start, end, source_bin, per_object_response):
+        # Write out each of the individual variants.
+        # The basic "bin" column was set up to be the same as the 00 variant,
+        # so we can just write to all of them.
+        for i, v in enumerate(SCALAR_META_VARIANTS):
+            col = source_bin[i]
+            outfile[f"tomography/bin_{v}"][start:start+col.size] = col
+
+        assert per_object_response is None, "MetaDetect does not produce per-object response values, only per-bin values, so this should be None"
 
 
     def data_iterator(self):
@@ -93,7 +104,7 @@ class TXSourceSelectorScalarMetadetectDP2(TXSourceSelectorScalarMetadetect):
         # Think this is wrong - check
         tomo_cols = ["bhat_for_wide_data"]
 
-        variant_shear_cols = scalar_metadetect_variants(shear_cols.keys())
+        variant_shear_cols = scalar_metadetect_variants(*shear_cols)
 
 
         # The slightly odd way that this is all set up, which is descended from metacal,
@@ -101,14 +112,18 @@ class TXSourceSelectorScalarMetadetectDP2(TXSourceSelectorScalarMetadetect):
         # all the different variants at once for a block of data. Even if in this case
         # most of them are empty.
         def generate_empty():
-            return {col: np.zeros(0, dtype=np.float64) for col in variant_shear_cols}
+            out = {col: np.zeros(0, dtype=np.float64) for col in variant_shear_cols}
+            for v in SCALAR_META_VARIANTS:
+                out[f'{v}/zbin'] = np.zeros(0, dtype=np.int64)
+            return out
 
         # Now we have all the shear columns for a single variant. We are going
         # to loop through the variants here one by one. This is a little different
         # for how we have done this before which was inherited from metacal where all
         # the lengths were the same
         for variant in SCALAR_META_VARIANTS:
-            it1 = self.iterate_hdf("shear_catalog", "shear", variant_shear_cols, chunk_rows)
+            v_shear_cols = [f"{variant}/{col}" for col in shear_cols]
+            it1 = self.iterate_hdf("shear_catalog", "shear", v_shear_cols, chunk_rows)
             it2 = self.iterate_hdf(f"tomography_assignments_{variant}", "/", tomo_cols, chunk_rows)
             for ((s, e, shear_data), (s1, e1, tomo_data)) in zip(it1, it2):
                 if s != s1 or e != e1:
@@ -116,7 +131,7 @@ class TXSourceSelectorScalarMetadetectDP2(TXSourceSelectorScalarMetadetect):
                 data = generate_empty()
                 data.update(shear_data)
                 data[f'{variant}/zbin'] = tomo_data['bhat_for_wide_data']
-                yield data
+                yield s, e, data
 
     def setup_response_calculators(self, nbin_source):
         delta_gamma = self.config["delta_gamma"]
@@ -138,6 +153,9 @@ def select_weak_lensing_sample_metadetect_desc_dp2(data, config, calling_from_se
     that only make sense for metadetect catalogs. Add / remove cuts below
     and re-run to iterate.
     """
+    # shortcut if no data
+    if data["T"].size == 0:
+        return np.zeros(0, dtype=bool)
 
     max_psf_g = config["max_psf_g"]
     rmi_min = config["rmi_min"]
@@ -177,6 +195,14 @@ def select_weak_lensing_sample_metadetect_desc_dp2(data, config, calling_from_se
     cutter.keep(T_ratio > Tratio_min, "T ratio minimum")
     cutter.keep(data["s2n"] > s2n_min, "S/N minimum")
 
+    # It's not obvious whether, when we are using an external selection to choose
+    # tomographic bins, our "non-tomographic" sample should include objects that
+    # are not selected into any valid tomographic bin. But right now our design
+    # requires that, because the designation for non-tomographic objects is just
+    # any selected tomographic bin. If we want a separate sample where non-tomographic
+    # also means we ignore the RAIL SOM selection then that should be a separate run
+    # of TXPipe right now.
+    cutter.keep(data["zbin"] >= 0, "Any z bin")
     return cutter.sel
 
 class Cutter:
@@ -188,9 +214,10 @@ class Cutter:
     def keep(self, sel, name):
         f1 = sel.sum() / self.size
         self.sel &= sel
-        f2 = self.sel.sum() / sel.size
+        final_size = self.sel.sum()
+        f2 = final_size / sel.size
         if self.verbose:
-            print(f" - {name} cuts {f1*100:.1f}% and leaves {f2*100:.1f}% cumulatively cut afterwards")
+            print(f" - {name} cuts {f1:.1%} and leaves {f2:.1%} cumulatively cut [ = {final_size:,}] afterwards")
 
 
 def select_tomographic_weak_lensing_sample_metadetect_desc_dp2(data, config, bin_index):
@@ -199,6 +226,9 @@ def select_tomographic_weak_lensing_sample_metadetect_desc_dp2(data, config, bin
     same way that select_tomographic_weak_lensing_sample relates to
     select_weak_lensing_sample.
     """
+    # shortcut if no data
+    if data["zbin"].size == 0:
+        return np.zeros(0, dtype=bool)
     zbin = data["zbin"]
     verbose = config["verbose"]
 
