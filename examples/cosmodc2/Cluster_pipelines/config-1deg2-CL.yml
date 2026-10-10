@@ -66,7 +66,7 @@ CLClusterBinningRedshiftRichness:
 
 CLClusterShearCatalogs:
     chunk_rows: 100_000  # rows to read at once from source cat
-    max_radius: 5   # Mpc
+    max_radius: 5.5   # Mpc
     delta_z: 0.2   # redshift buffer
     redshift_cut_criterion: ztrue
     redshift_weight_criterion: ztrue
@@ -80,8 +80,7 @@ CLClusterEnsembleProfiles:
     r_min: 0.5  #in Mpc
     r_max: 5.  #in Mpc
     nbins: 5  # number of bins
+    cov_type: sample_covariance
     #type of profile
-    delta_sigma_profile: true
-    shear_profile: false
     magnification_profile: false
 
