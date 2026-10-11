@@ -11,7 +11,7 @@ global:
 
 
 TXIngestDP2Catalog:
-  fits_path: /pscratch/sd/a/anicola/dp2/data/catalog_bsm1.1.0_bgm2.0.0/cat_registry_riz.fits
+  fits_path: /global/cfs/cdirs/lsst/groups/WLSS/users/anicola/dp2/data/catalog_bsm1.1.0_bgm2.0.0/cat_registry_riz.fits
   bands: [r, i, z]
   nside: 1024
   dummy_redshift: 0.5
@@ -40,7 +40,7 @@ TXLSSDensityNullTests:
   # supreme_path_root is a glob prefix (globs f"{root}*.hsp" etc.), not a
   # directory -- the trailing "*_nside1024" selects only the nside=1024
   # survey-property maps and skips the native-resolution maglim map.
-  supreme_path_root: /pscratch/sd/a/anicola/dp2/data/spmaps/*_nside1024
+  supreme_path_root: /global/cfs/cdirs/lsst/groups/WLSS/users/anicola/dp2/data/spmaps/*_nside1024
   fill_missing_pix: True
   simple_cov: True
 
@@ -74,7 +74,7 @@ TXTwoPointFourier:
   # deprojected, twopoint_data_fourier_no_deproj holds the same spectra without
   deproject_syst_clustering: True
   also_compute_no_deproj: True
-  systmaps_clustering_dir: /pscratch/sd/a/anicola/dp2/data/spmaps_nside1024
+  systmaps_clustering_dir: /global/cfs/cdirs/lsst/groups/WLSS/users/anicola/dp2/data/spmaps_nside1024
   systmaps_healsparse_reduction: mean
 
   cache_dir: data/cache_dp2_snri5_thresh0p3
@@ -83,7 +83,7 @@ TXTwoPointFourier:
 
 TXSystematicsTwoPointFourier:
   # the 48 nside=1024 survey-property maps (links; same set as TXLSSDensityNullTests)
-  systmaps_clustering_dir: /pscratch/sd/a/anicola/dp2/data/spmaps_nside1024
+  systmaps_clustering_dir: /global/cfs/cdirs/lsst/groups/WLSS/users/anicola/dp2/data/spmaps_nside1024
   systmaps_healsparse_reduction: mean
   # same mask threshold and ell binning as TXTwoPointFourier
   mask_threshold: 0.0
