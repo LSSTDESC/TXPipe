@@ -9,7 +9,7 @@ global:
 
 
 TXIngestDP2Catalog:
-  fits_path: /global/cfs/cdirs/lsst/groups/WLSS/users/anicola/dp2/data/catalog_bsm1.1.0_bgm2.0.0/cat_registry_riz.fits
+  fits_path: /global/cfs/cdirs/lsst/groups/WLSS/users/anicola/dp2/data/catalog_bsm1.1.0_bgm2.0.0_gaapugrizy_f99csfd/cat_registry_riz.fits
   bands: [r, i, z]
   nside: 1024
   dummy_redshift: 0.5
@@ -79,7 +79,7 @@ TXTwoPointFourier:
   # config_thresh0p3.yaml etc.) -- NaMaster workspace caches (w22.fits) are
   # sized for a specific mask's sky fraction, so two runs with different
   # masks sharing a cache dir race and corrupt each other's cached files.
-  cache_dir: data/cache_dp2_snri5
+  cache_dir: data/cache_dp2_snri5_f99csfd
   analytic_noise: True
 
 
@@ -94,7 +94,7 @@ TXSystematicsTwoPointFourier:
   n_ell: 20
   ell_spacing: log
   # own cache per mask variant (NaMaster workspaces depend on the mask)
-  cache_dir: data/cache_systematics_dp2_snri5
+  cache_dir: data/cache_systematics_dp2_snri5_f99csfd
 
 TXFourierNamasterCovariance:
   use_true_shear: False
@@ -103,4 +103,4 @@ TXFourierNamasterCovariance:
   # no reliable n(z)/bias yet (all galaxies at the placeholder z=0.5), so build the
   # Gaussian covariance from the measured C_ell rather than a CCL prediction
   covariance_input_cls: measured
-  scratch_dir: data/temp_dp2_snri5
+  scratch_dir: data/temp_dp2_snri5_f99csfd

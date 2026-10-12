@@ -40,7 +40,7 @@ modules: >
     txpipe
     txpipe.extensions
 
-output_dir: data/outputs/dp2_snri5
+output_dir: data/outputs/dp2_snri5_f99csfd
 
 launcher:
   name: mini
@@ -55,7 +55,7 @@ config: examples/dp2/config.yaml
 inputs:
   fiducial_cosmology: data/fiducial_cosmology.yml
 
-  mask: /global/cfs/cdirs/lsst/groups/WLSS/users/anicola/dp2/data/masks/rubin_dp2_wide_footprint_riz_wf0.2.0_bsm1.1.0_bgm2.0.0_starmasked_galmasked_ebv_maglim_nside1024_sfd_connected.hdf5
+  mask: /global/cfs/cdirs/lsst/groups/WLSS/users/anicola/dp2/data/masks/rubin_dp2_wide_footprint_riz_wf0.2.0_bsm1.1.0_bgm2.0.0_starmasked_galmasked_ebv_maglim_nside1024_csfd_connected.hdf5
   # mask: /global/cfs/cdirs/lsst/groups/WLSS/users/anicola/dp2/data/masks/survey_mask_nside1024_sfd.hdf5
 
   none: none
@@ -69,5 +69,5 @@ inputs:
   lens_noise_maps: data/inputs/source_noise_maps.hdf5
 
 resume: True
-log_dir: data/logs
-pipeline_log: data/pipeline_log.txt
+log_dir: data/logs_f99csfd
+pipeline_log: data/pipeline_log_f99csfd.txt
