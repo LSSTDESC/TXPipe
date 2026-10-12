@@ -37,7 +37,7 @@ jobs:
         # update this when we change package contents and want
         # to force an update
         key: example-data-${{ env.EXAMPLE_DATA_FILE_VERSION }}
-        # if data is already in cache no need to actually get if from there.
+        # If the data is already cached, there is no need to retrieve it.
         lookup-only: true
 
     - name: Download test data
