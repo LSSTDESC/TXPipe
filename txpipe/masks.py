@@ -591,7 +591,7 @@ class TXCutCatalog(PipelineStage):
     outputs = [("cut_catalog", HDFFile)]
     config_options = {
         "chunk_rows": StageParameter(int, 100000, msg="Number of rows to read per chunk."),
-        "catalog_group": StageParameter(str, "catalog", msg="HDF5 group name in the input catalog."),
+        "catalog_groups": StageParameter(list, ["catalog"], msg="HDF5 group names in the input catalog."),
         "ra_col": StageParameter(str, "ra", msg="RA column name."),
         "dec_col": StageParameter(str, "dec", msg="Dec column name."),
     }
