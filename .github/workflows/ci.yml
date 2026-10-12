@@ -18,6 +18,8 @@ env:
   UCX_NET_DEVICES: all
   OMPI_MCA_pml: ob1
   OMPI_MCA_btl: tcp,self,vader
+  # This should help with Illegal Instruction diagnosis
+  PYTHONFAULTHANDLER: "1"
 jobs:
   # Run a download step first so that it is in
   # the cache, because all the other jobs will be running
