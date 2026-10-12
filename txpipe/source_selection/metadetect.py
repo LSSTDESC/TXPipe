@@ -143,7 +143,7 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         group.create_dataset("R_2d", (2, 2), dtype="f")
 
         # Store the index to which we have currently written each column
-        self.current_bin_output_index = {v: 0 for v in SCALAR_META_VARIANTS}
+        self.current_bin_output_index = {v: 0 for v in META_VARIANTS}
 
         return outfile
 
