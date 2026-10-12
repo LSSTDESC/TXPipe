@@ -137,10 +137,6 @@ class ShearCatalog(HDFFile):
     def get_classifier_suffixes():
         return [""]
 
-    @staticmethod
-    def get_classifier_variants():
-        return list(zip(ShearCatalog.get_classifier_prefixes(), ShearCatalog.get_classifier_suffixes()))
-
     def get_extra_calibration_columns(self):
         return []
 
