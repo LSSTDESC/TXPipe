@@ -116,7 +116,7 @@ jobs:
     - name: Test with pytest
       run: |
         source conda/bin/activate
-        python -m pip install -v --no-binary=ducc0 --force-reinstall ducc0
+        python -m pip install -v --no-binary=ducc0 --force-reinstall --no-deps  ducc0
         ceci --version
         pytest txpipe
 
@@ -157,7 +157,7 @@ jobs:
         mkdir -p cache/workspaces
         source ./conda/bin/activate
         # Manually re-install ducc0 to try and avoid illegal instruction crashes
-        python -m pip install -v --no-binary=ducc0 --force-reinstall ducc0
+        python -m pip install -v --no-binary=ducc0 --force-reinstall --no-deps  ducc0
         ceci examples/cmb/quaia.yml
         test -f data/cmb/outputs_quaia/twopoint_data_fourier_cmb_cross_density_plot.png
 
@@ -223,7 +223,7 @@ jobs:
       run: |
         mkdir -p cache/workspaces
         source ./conda/bin/activate
-        python -m pip install -v --no-binary=ducc0 --force-reinstall ducc0
+        python -m pip install -v --no-binary=ducc0 --force-reinstall --no-deps  --no-deps  ducc0
         # Just for the metadetect source pipeline
         # we activate the debug mode with an env var
         if [ "${{ matrix.pipeline }}" == "metadetect_source_only" ]; then
@@ -241,7 +241,7 @@ jobs:
       if: ${{ matrix.pipeline == 'metadetect' && matrix.os == 'ubuntu-latest' }}
       run: |
         source ./conda/bin/activate
-        python -m pip install -v --no-binary=ducc0 --force-reinstall ducc0
+        python -m pip install -v --no-binary=ducc0 --force-reinstall --no-deps  ducc0
 
         # remove the old target file
         rm -f data/example/outputs_${{ matrix.pipeline }}/shear_xi_plus.png
