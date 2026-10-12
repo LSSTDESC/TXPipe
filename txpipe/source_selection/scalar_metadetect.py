@@ -65,8 +65,13 @@ class TXSourceSelectorScalarMetadetect(TXSourceSelectorBase):
         return calculators
 
     def write_tomography(self, outfile, start, end, source_bin, per_object_response):
+        # The stated start and end values are not relevant here as they are the global
+        # start and end index assuming a single block catalog.
         for i, v in enumerate(SCALAR_META_VARIANTS):
+            start = self.current_bin_output_index[v]
+            end = start + source_bin[i].size
             outfile[f"tomography/bin_{v}"][start:end] = source_bin[i]
+            self.current_bin_output_index[v] = end
 
         assert per_object_response is None, (
             "ScalarMetaDetect does not produce per-object response values, only per-bin values, "
@@ -114,6 +119,8 @@ class TXSourceSelectorScalarMetadetect(TXSourceSelectorBase):
         group = outfile.create_group("response")
         group.create_dataset("R", (nbin_source,), dtype="f")
         group.create_dataset("R_2d", (1,), dtype="f")
+
+        self.current_bin_output_index = {v: 0 for v in SCALAR_META_VARIANTS}
         return outfile
 
     def calculate_tomography(self, pz_data, shear_data, calculators):
