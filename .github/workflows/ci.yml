@@ -153,6 +153,7 @@ jobs:
 
     - name: Run pipeline
       run: |
+        python -m pip install --no-binary=ducc0 --force-reinstall ducc0
         mkdir -p cache/workspaces
         source ./conda/bin/activate
         ceci examples/cmb/quaia.yml
