@@ -65,7 +65,7 @@ class TXDiagnosticQuantiles(PipelineStage):
                 "s2n": f"{group}/s2n",
                 "T": f"{group}/T",
             }
-psf_suffix = (
+            psf_suffix = (
                 "_original"
                 if self.config["use_psf_originals"] and f.catalog_type.endswith("metadetect")
                 else ""
