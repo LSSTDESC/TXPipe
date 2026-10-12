@@ -343,7 +343,7 @@ class ScalarMetaDetectCatalog(MetaDetectShearCatalog):
         shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="scalar_metadetect")
         return shear_cols
 
-@staticmethod
+    @staticmethod
     def get_tomography_bin_column_rename_dict():
         return {f"bin_{v}": f"{v}/bin" for v in SCALAR_META_VARIANTS}
 
