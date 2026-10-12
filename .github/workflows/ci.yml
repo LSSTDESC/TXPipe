@@ -73,6 +73,9 @@ jobs:
       env:
         cache-name: cache-conda-environment
       with:
+        # if the cache is present we don't need to actually
+        # download it.
+        lookup-only: true
         path: ./conda
         key: ${{ matrix.os }}-conda-${{ hashFiles('bin/install.sh','bin/environment*.yml' ) }}
         fail-on-cache-miss: false
