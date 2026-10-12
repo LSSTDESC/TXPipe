@@ -153,9 +153,10 @@ jobs:
 
     - name: Run pipeline
       run: |
-        python -m pip install --no-binary=ducc0 --force-reinstall ducc0
         mkdir -p cache/workspaces
         source ./conda/bin/activate
+        # For some reason this tries to reinst
+        python -m pip install --no-deps --no-binary=ducc0 --force-reinstall ducc0
         ceci examples/cmb/quaia.yml
         test -f data/cmb/outputs_quaia/twopoint_data_fourier_cmb_cross_density_plot.png
 
