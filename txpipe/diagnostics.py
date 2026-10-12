@@ -65,7 +65,11 @@ class TXDiagnosticQuantiles(PipelineStage):
                 "s2n": f"{group}/s2n",
                 "T": f"{group}/T",
             }
-            psf_suffix = "_original" if self.config["use_psf_originals"] else ""
+psf_suffix = (
+                "_original"
+                if self.config["use_psf_originals"] and f.catalog_type.endswith("metadetect")
+                else ""
+            )
             col_names["psf_g1"] = f"{group}/psf_g1{psf_suffix}"
 
         for band in self.config["bands"]:
