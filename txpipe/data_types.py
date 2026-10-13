@@ -1125,3 +1125,6 @@ class QPMultiFile(HDFFile):
             subgroup = group.create_group(subgroup_name)
             for key, val in subtables.items():
                 subgroup.create_dataset(key, dtype=val.dtype, data=val.data)
+
+class CatalogSelection(HDFFile):
+    pass

@@ -77,12 +77,12 @@ class TXSourceSelectorScalarMetadetectDP2(TXSourceSelectorScalarMetadetect):
             self.config["bands"] = f.get_bands()
 
         # Core quantities we need
-        shear_cols = ["T", "s2n", "g1", "g2", "ra", "dec", "weight", "psf_T_mean", "flags",  "is_primary", "mfrac", "psfrec_g1", "psfrec_g2", "rmi", "imz", "g_flags"]
+        shear_cols = scalar_metadetect_variants("T", "s2n", "g1", "g2", "ra", "dec", "weight", "psf_T_mean", "flags",  "is_primary", "mfrac", "psfrec_g1", "psfrec_g2", "rmi", "imz", "g_flags")
 
 
         # Magnitudes and errors - we are going to deal with the variant in a minute so
         # right now we just want mag_r, mag_i, etc.
-        shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="simple")
+        shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="scalar_metadetect")
 
 
         # We need truth shears and/or PZ point-estimates for each shear too
@@ -91,36 +91,21 @@ class TXSourceSelectorScalarMetadetectDP2(TXSourceSelectorScalarMetadetect):
         elif self.config["true_z"]:
             shear_cols.append("redshift_true")
         
-        # Think this is wrong - check
-        tomo_cols = ["bhat_for_wide_data"]
+        tomo_col = "bhat_for_wide_data"
 
-        variant_shear_cols = scalar_metadetect_variants(*shear_cols)
+        # We can't use combined_iterators correctly here because the lengths
+        # don't work
+        it_shear = self.iterate_hdf("shear_catalog", "shear", shear_cols, chunk_rows)
+        with (
+            self.open_input("tomography_assignments_ns", parallel=True) as f_ns,
+            self.open_input("tomography_assignments_1p", parallel=True) as f_1p,
+            self.open_input("tomography_assignments_1m", parallel=True) as f_1m,
+        ):
 
-
-        # The slightly odd way that this is all set up, which is descended from metacal,
-        # means that the calibration calculators are going to expect dictionaries containing
-        # all the different variants at once for a block of data. Even if in this case
-        # most of them are empty.
-        def generate_empty():
-            out = {col: np.zeros(0, dtype=np.float64) for col in variant_shear_cols}
-            for v in SCALAR_META_VARIANTS:
-                out[f'{v}/zbin'] = np.zeros(0, dtype=np.int64)
-            return out
-
-        # Now we have all the shear columns for a single variant. We are going
-        # to loop through the variants here one by one. This is a little different
-        # for how we have done this before which was inherited from metacal where all
-        # the lengths were the same
-        for variant in SCALAR_META_VARIANTS:
-            v_shear_cols = [f"{variant}/{col}" for col in shear_cols]
-            it1 = self.iterate_hdf("shear_catalog", "shear", v_shear_cols, chunk_rows)
-            it2 = self.iterate_hdf(f"tomography_assignments_{variant}", "/", tomo_cols, chunk_rows)
-            for ((s, e, shear_data), (s1, e1, tomo_data)) in zip(it1, it2):
-                if s != s1 or e != e1:
-                    raise ValueError("Error in tomo/shear column relationship")
-                data = generate_empty()
-                data.update(shear_data)
-                data[f'{variant}/zbin'] = tomo_data['bhat_for_wide_data']
+            for (s, e, data) in it_shear:
+                data["ns/zbin"] = f_ns[tomo_col][s:e]
+                data["1p/zbin"] = f_ns[tomo_col][s:e]
+                data["1m/zbin"] = f_ns[tomo_col][s:e]
                 yield s, e, data
 
     def setup_response_calculators(self, nbin_source):

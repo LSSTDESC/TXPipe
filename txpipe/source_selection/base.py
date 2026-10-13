@@ -1,10 +1,48 @@
 from ..base_stage import PipelineStage
-from ..data_types import ShearCatalog, TomographyCatalog, HDFFile, PickleFile
+from ..data_types import ShearCatalog, TomographyCatalog, HDFFile, PickleFile, CatalogSelection
 from ..utils import read_shear_catalog_type
 from ..binning import apply_classifier
 from ceci.config import StageParameter
 import numpy as np
 
+
+class TXBasicSelection(PipelineStage):
+    """Compute non-redshift related shear catalog cuts
+    """
+    name = "TXBasicSelection"
+    inputs = [
+        ("shear_catalog", ShearCatalog),
+    ]
+    outputs = [
+        ("shear_catalog_selection", CatalogSelection)
+    ]
+    groups = ["shear"]
+
+    def run(self):
+        # make basic selections on all relevant groups
+        # save to a CatalogSelection
+        fin = self.open_input("shear_catalog")
+        fout = self.open_output("shear_catalog_selection", parallel=True)
+
+        for group in self.groups:
+            g_out = fout.create_group(group)
+            # maybe add compression here since can be very effective on this?
+            sel_out = g_out.create_dataset("selection", dtype=bool) 
+            for (s, e, data) in self.data_iterator(group):
+                sel = self.compute_selection(s, e, data)
+                sel_out[s: e] = sel
+
+        f.create_dataset("selection", shape=(n, ), compression="gzip")
+
+    def data_iterator(self, group):
+        raise NotImplementedError("Do not use this class directly")
+
+    def compute_selection(self, start, end, data):
+        raise NotImplementedError("Do not use this class directly")
+
+
+class TXMetaDetectSelection(TXBasicSelection):
+    pass
 
 
 class TXSourceSelectorBase(PipelineStage):
