@@ -28,3 +28,4 @@ conda/
 Mambaforge3.sh
 *.code-workspace
 txpipe_clp
+CLAUDE.md

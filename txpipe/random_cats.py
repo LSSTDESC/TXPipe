@@ -23,7 +23,7 @@ class TXRandomCat(PipelineStage):
 
     name = "TXRandomCat"
     inputs = [
-        ("aux_lens_maps", MapsFile),
+        ("depth_map", MapsFile),
         ("mask", MapsFile),
         ("lens_photoz_stack", QPNOfZFile),
         ("fiducial_cosmology", FiducialCosmology),
@@ -60,11 +60,12 @@ class TXRandomCat(PipelineStage):
         depth_band = self.config["depth_band"]
         if depth_band:
             depth_band = "_" + depth_band
-        with self.open_input("aux_lens_maps", wrapper=True) as maps_file:
+        with self.open_input("depth_map", wrapper=True) as maps_file:
             depth = maps_file.read_map(f"depth/depth{depth_band}")
-            info = maps_file.read_map_info(f"depth/depth{depth_band}")
-            nside = info["nside"]
-            scheme = choose_pixelization(**info)
+            nside = depth.nside_sparse
+            # Maps are always returned as Healsparse maps which are in the NEST
+            # scheme.
+            scheme = choose_pixelization(pixelization="healpix", nside=nside, nest=True)
 
         # Load the input mask
         with self.open_input("mask", wrapper=True) as maps_file:
@@ -80,6 +81,11 @@ class TXRandomCat(PipelineStage):
         # for each random, for use in Rlens type metrics
         with self.open_input("fiducial_cosmology", wrapper=True) as f:
             cosmo = f.to_ccl()
+
+        if mask.nside_sparse != depth.nside_sparse:
+            raise ValueError(
+                f"Mask and depth map have different nside: {mask.nside_sparse} vs {depth.nside_sparse}"
+            )
 
         # Cut down to pixels that have any objects in
         pixel = mask.valid_pixels
@@ -132,7 +138,7 @@ class TXRandomCat(PipelineStage):
         if self.rank == 0:
             for j in range(Ntomo):
                 # Poisson distribution about mean
-                numbers[j] = scipy.stats.poisson.rvs(density * pix_area, 1)
+                numbers[j] = scipy.stats.poisson.rvs(density * pix_area)
 
         # give all processors the same values
         if self.comm is not None:

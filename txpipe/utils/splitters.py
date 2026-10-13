@@ -240,3 +240,12 @@ class MetaDetectSplitter(DynamicSplitter):
         # Make a subgroup for each bin in our data
         self.subgroups = {b: self.group.create_group(f"{b}") for b in self.bins}
         self._setup_columns(dtypes or {})
+
+    def _setup_columns(self, dtypes):
+        # same as in the parent class except we make the starting size the max
+        # size
+        for b, sz in self.bin_sizes.items():
+            sub = self.subgroups[b]
+            for col in self.columns:
+                dt = dtypes.get(col, "f8")
+                sub.create_dataset(col, (sz,), dtype=dt, maxshape=(sz,))

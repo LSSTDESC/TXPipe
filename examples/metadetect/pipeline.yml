@@ -59,8 +59,10 @@ stages:
   - name: TXLSSWeightsUnit         # add systematic weights to the lens sample (weight=1 for this example)
   - name: TXSourceMaps             # make source g1 and g2 maps
   - name: TXLensMaps               # make source lens and n_gal maps
-  - name: TXAuxiliarySourceMaps    # make PSF and flag maps
-  - name: TXAuxiliaryLensMaps      # make depth and bright object maps
+  - name: TXPSFMaps    # make PSF maps
+  - name: TXFlagMaps
+  - name: TXDepthMaps      # make depth and bright object maps
+  - name: TXBrightObjectMaps      # make depth and bright object maps
   - name: TXSimpleMaskFrac       # combine maps to make a simple mask
   - name: TXSourceNoiseMaps      # Compute shear noise using rotations
   - name: TXLensNoiseMaps        # Compute lens noise using half-splits
@@ -76,9 +78,9 @@ stages:
   - name: TXTwoPointTheoryReal   # compute theory using CCL to save in sacc file and plot later
   - name: TXTwoPointPlots        # Make plots of 2pt correlations
   - name: TXDiagnosticQuantiles
-#  - name: TXSourceDiagnosticPlots      # Make a suite of diagnostic plots
-#    nprocess: 2
-#  - name: TXLensDiagnosticPlots      # Make a suite of diagnostic plots
+  - name: TXSourceDiagnosticPlots      # Make a suite of diagnostic plots
+    nprocess: 2
+  - name: TXLensDiagnosticPlots      # Make a suite of diagnostic plots
   - name: TXGammaTFieldCenters   # Compute and plot gamma_t around center points
     threads_per_process: 2
   - name: TXGammaTStars    # Compute and plot gamma_t around bright stars
@@ -91,7 +93,7 @@ stages:
   - name: TXGalaxyStarShear      # Compute and plot the star-galaxy shear cross-correlation
   - name: TXPSFDiagnostics       # Compute and plots other PSF diagnostics
   - name: TXTauStatistics        # Compute and plot the tau statistics
-#  - name: TXBrighterFatterPlot   # Make plots tracking the brighter-fatter effect
+  - name: TXBrighterFatterPlot   # Make plots tracking the brighter-fatter effect
   - name: TXPhotozPlotSource          # Plot the bin n(z)
     classname: TXPhotozPlot
     aliases:
@@ -117,11 +119,15 @@ stages:
   - name: TXMapCorrelations      # plot the correlations between systematics and data
   - name: TXApertureMass          # Compute aperture-mass statistics
     threads_per_process: 2
- # - name: TXTwoPointFourier      # Compute power spectra C_ell
- # - name: TXTwoPointFourierCatalog
- # - name: HOSFSB
+  - name: TXTwoPointFourier      # Compute power spectra C_ell
+  - name: TXTwoPointFourierCatalog
+  - name: HOSFSB
     # Disabled since not yet synchronised with new Treecorr MPI
- # - name: TXTwoPointSCIA   # Self-calibration intrinsic alignments of galaxies
+  - name: TXTwoPointSCIA   # Self-calibration intrinsic alignments of galaxies
+  - name: TXDeltaSigma
+  - name: TXDeltaSigmaTheory
+  - name: TXDeltaSigmaPlots
+  - name: TXResponseInBins
 
     # Disabling these as they takes too long for a quick test.
     # The latter two need NaMaster

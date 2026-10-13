@@ -37,3 +37,5 @@ pz-rail[dev]==0.99.1
 tjpcov
 glass
 kmeans-radec==0.9.0
+# SQLAlchemy>=2.1 defaults postgresql:// to psycopg v3 (needed by dataregistry)
+psycopg[binary]

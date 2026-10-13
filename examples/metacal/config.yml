@@ -7,7 +7,7 @@ global:
     chunk_rows: 100000
     # These mapping options are also read by a range of stages
     pixelization: healpix
-    nside: 64
+    nside: 512
     sparse: true  # Generate sparse maps - faster if using small areas
 
 TXGCRTwoCatalogInput:
@@ -242,10 +242,6 @@ TXSourceMaps:
     sparse: true  # Generate sparse maps - faster if using small areas
 
 TXLensMaps:
-    sparse: true  # Generate sparse maps - faster if using small areas
-
-# For redmagic mapping
-TXExternalLensMaps:
     chunk_rows: 100000
     sparse: true
     pixelization: healpix
@@ -253,15 +249,16 @@ TXExternalLensMaps:
 
 
 
-TXAuxiliarySourceMaps:
-    flag_exponent_max: 8
+TXPSFMaps: {}
 
-TXAuxiliaryLensMaps:
+TXFlagMaps:
     flag_exponent_max: 8
-    bright_obj_threshold: 22.0 # The magnitude threshold for a object to be counted as bright
+TXDepthMaps:
     depth_band: i
     snr_threshold: 10.0  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)
     snr_delta: 1.0  # The range threshold +/- delta is used for finding objects at the boundary
+TXBrightObjectMaps:
+    bright_obj_threshold: 22.0 # The magnitude threshold for a object to be counted as bright
 
 TXRealGaussianCovariance:
     min_sep: 2.5
@@ -354,3 +351,6 @@ NZDirInformerLens:
     name: NZDirInformerLens
     usecols: ugrizy
     hdf5_groupname: photometry
+
+TXDensityMaps:
+    nside: 512
