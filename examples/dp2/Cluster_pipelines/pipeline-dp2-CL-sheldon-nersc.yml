@@ -1,0 +1,126 @@
+# DP2 cluster-lensing pipeline for the SHELDON (DESC) METADETECT shear catalog: from the
+# cluster CSV file to stacked Delta Sigma and g_t profiles, in one ceci run.
+#   cluster catalog: CSV -> TXPipe cluster file -> redshift/richness bins
+#   shear catalog:   registry mask -> cut catalog -> source selection + calibration
+#                    -> BPZ photo-z per source
+#   profiles:        cluster-source pairs and stacked profiles, first Delta Sigma
+#                    (Mpc), then the reduced tangential shear g_t (arcmin)
+# From the TXPipe directory, submit with
+#     sbatch examples/dp2/Cluster_pipelines/dp2-sheldon-nersc.sub
+# Settings live in config-dp2-CL.yml (shared by all shear catalogs).
+#
+# Differences from pipeline-dp2-CL-rubin-nersc.yml: the catalog has only the
+# ns/1p/1m (g1) shear steps, so TXPipe calibrates with R = R11 for both
+# components; the source selector applies E. Sheldon's cuts; and there is no
+# TXPSFMaps, because this catalog has no psf_g1/psf_g2 columns.
+
+#this step depends on where you run
+#for NERSC
+site:
+    name: nersc-interactive
+
+#all the following steps should not depend on where you run
+launcher:
+    name: mini
+    interval: 3.0
+
+modules: >
+    txpipe
+    txpipe.extensions.cluster_counts.bin_cluster
+    txpipe.extensions.cluster_counts.sources_select_compute
+    txpipe.extensions.cluster_counts.make_ensemble_profile
+    rail.estimation.algos.bpz_lite
+    txpipe.extensions.cluster_counts.ingest_csv
+
+python_paths: []
+
+stages:
+  # ---- cluster catalog
+  - name: CLIngestClusterCSV       # cluster CSV -> TXPipe cluster_catalog
+  - name: CLClusterBinningRedshiftRichness
+    nprocess: 1
+
+  # ---- shear catalog
+  - name: TXIngestHealsparseMask   # registry .hsp mask -> TXPipe mask file (format conversion only)
+  - name: TXCutShearCatalog        # keep the objects inside the mask
+    nprocess: 64
+    aliases:
+      shear_catalog: full_shear_catalog
+      cut_shear_catalog: shear_catalog
+  - name: TXSourceTomography
+    threads_per_process: 8
+  - name: TXSourceSelectorScalarMetadetectDP2    # E. Sheldon's cuts; R11 from 1p/1m for both components
+    nprocess: 64
+  - name: TXShearCalibration
+    nprocess: 64
+  - name: TXSourceMaps
+    nprocess: 1
+  - name: TXJackknifeCentersSource
+
+  # ---- source photo-z
+  - name: BPZliteInformer          # output_hdfn defaults to true, so this just uses the HDFN prior
+    nprocess: 1
+    aliases:
+      input: spectroscopic_catalog
+      model: source_photoz_model
+  - name: BPZliteEstimator         # per-object p(z) for the cut shear catalogue
+    nprocess: 64
+    aliases:
+      model: source_photoz_model
+      input: shear_catalog
+      output: source_photoz_pdfs
+
+  # ---- Delta Sigma profiles
+  - name: CLClusterShearCatalogsDeltaSigma
+    classname: CLClusterShearCatalogs
+    nprocess: 1
+    aliases:
+      cluster_shear_catalogs: delta_sigma/cluster_shear_catalogs
+  - name: CLClusterEnsembleProfilesDeltaSigma
+    classname: CLClusterEnsembleProfiles
+    nprocess: 1
+    aliases:
+      cluster_shear_catalogs: delta_sigma/cluster_shear_catalogs
+      cluster_profiles: delta_sigma/cluster_profiles
+
+  # ---- g_t profiles
+  - name: CLClusterShearCatalogsGt
+    classname: CLClusterShearCatalogs
+    nprocess: 1
+    aliases:
+      cluster_shear_catalogs: gt/cluster_shear_catalogs
+  - name: CLClusterEnsembleProfilesGt
+    classname: CLClusterEnsembleProfiles
+    nprocess: 1
+    aliases:
+      cluster_shear_catalogs: gt/cluster_shear_catalogs
+      cluster_profiles: gt/cluster_profiles
+
+# User-specific paths: change output_dir, log_dir, pipeline_log and the non-registry inputs to your own.
+# Here output_dir is the same directory as K. Tsiane's step-by-step DP2 pipelines (same settings),
+# so their outputs are reused (resume: true). The profiles go to the
+# delta_sigma/ and gt/ sub-directories, through the aliases above.
+output_dir: /pscratch/sd/k/kabelo/dp2/outputs/sheldon
+config: ./examples/dp2/Cluster_pipelines/config-dp2-CL.yml
+
+inputs:
+    # clusters: external catalogs (DES Y3 redMaPPer, ...) cross-matched to DP2 objects
+    cluster_catalog_csv: /pscratch/sd/k/kabelo/dp2/external_0723_x_dp2.csv
+    # shear catalog, from the DESC data registry:
+    # txpipe_dp2_shear_catalog_desc_metaDetect_masked 0.1.0 (J. Zuntz): E. Sheldon's metadetect v1.1,
+    # already cut to his wide footprint (registry mask 148). Cutting it with 151 keeps 148 & 151.
+    full_shear_catalog:
+        id: 147
+    # rubin_dp2_wide_metadetect_mask 0.2.0 (S. Mau): riz coverage, bright-star (metadetect v2)
+    # and bright-galaxy masks, b < -25
+    shear_mask:
+        id: 151
+    spectroscopic_catalog: /global/cfs/cdirs/m1727/kabelo/TXPipe/data/example/outputs_metadetect/spectroscopic_catalog.hdf5
+    fiducial_cosmology: /global/homes/k/kabelo/txp/cosmology_t17_fid.yml
+
+# needed for the `id:` lookups above; {} uses your default dataregistry config
+registry: {}
+
+resume: true
+log_dir: /pscratch/sd/k/kabelo/dp2/outputs/sheldon/logs
+pipeline_log: /pscratch/sd/k/kabelo/dp2/outputs/sheldon/log_CL_pipeline.txt
