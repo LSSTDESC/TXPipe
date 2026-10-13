@@ -57,7 +57,10 @@ class ShearCatalog(HDFFile):
     def __new__(cls, *args, **kwargs):
         import h5py
         filename = args[0]
-        mode = args[1]
+        if len(args) == 1:
+            mode = kwargs["mode"]
+        else:
+            mode = args[1]
 
         if (cls is ShearCatalog) and (mode == "r"):  # only dispatch when called on the base class
             cat_type = cls.get_catalog_type_from_filename(filename)

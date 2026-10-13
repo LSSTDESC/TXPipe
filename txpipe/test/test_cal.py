@@ -214,6 +214,7 @@ def core_scalar_metadet(comm):
         calibrator = stats.calibrator
         # print("R = ", calibrator.R)
         assert stats.source_count == N * nproc
+        assert np.allclose(calibrator.R, R_true)
 
 
 
