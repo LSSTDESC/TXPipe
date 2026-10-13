@@ -1,0 +1,37 @@
+# This is a draft ingestion pipeline, for DP2. Initially intended to be run on the RSP
+
+
+
+stages:
+  - name: TXIngestDESCMetaDetectV1_1
+    nprocess: 64
+    aliases:
+      shear_catalog: full_shear_catalog
+  - name: TXIngestHealsparseMask
+  - name: TXCutShearCatalog
+    nprocess: 64
+    aliases:
+      shear_catalog: full_shear_catalog
+      cut_shear_catalog: shear_catalog
+
+
+output_dir: data/metadetect_desc_dp2_ingest
+
+launcher:
+    name: mini
+    interval: 1.0
+
+site:
+    name: local
+
+modules: >
+    txpipe
+
+config: examples/dp2/config.yml
+inputs:
+    shear_mask: /pscratch/sd/e/esheldon/lsst-mdet-runs/run-dp2-v01.1/run-dp2-v01.1-wide-footprint-2026-09-24.hsp
+
+resume: true
+log_dir: data/dp2/logs
+pipeline_log: data/dp2/ingest_log.txt
+#registry: {}

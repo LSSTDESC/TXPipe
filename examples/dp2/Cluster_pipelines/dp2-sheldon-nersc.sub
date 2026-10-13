@@ -1,0 +1,16 @@
+#!/bin/bash
+#SBATCH -A m1727
+#SBATCH -C cpu
+#SBATCH --qos=regular
+#SBATCH --time=02:30:00
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=64
+#SBATCH --cpus-per-task=2
+# Full DP2 cluster-lensing pipeline for the sheldon shear catalog. From the TXPipe directory:
+#     sbatch examples/dp2/Cluster_pipelines/dp2-sheldon-nersc.sub
+# Expected run time from scratch: ~75 min (Oct 2026: ~60 min for the shear-catalog stages, BPZ alone ~45 min, + ~12 min of profiles).
+# resume: true in the pipeline file skips finished stages on reruns.
+
+module load python
+conda activate ./conda
+ceci examples/dp2/Cluster_pipelines/pipeline-dp2-CL-sheldon-nersc.yml

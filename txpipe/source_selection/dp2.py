@@ -1,8 +1,20 @@
 from .metadetect import TXSourceSelectorMetadetect
 from .base import select_weak_lensing_sample, TXSourceSelectorBase
-from ..shear_calibration import metadetect_variants, MetaDetectCalculator, band_variants, META_VARIANTS
+from ..shear_calibration import metadetect_variants, MetaDetectCalculator, band_variants, META_VARIANTS, scalar_metadetect_variants, ScalarMetaDetectCalculator
 from ceci.config import StageParameter
 import numpy as np
+
+dp2_cut_options = {
+    "mag_g_cut": StageParameter(float, required=True, msg="Magnitude cut threshold for object selection"),
+    "mag_r_cut": StageParameter(float, required=True, msg="Magnitude cut threshold for object selection"),
+    "mag_i_cut": StageParameter(float, required=True, msg="Magnitude cut threshold for object selection"),
+    "mag_z_cut": StageParameter(float, required=True, msg="Magnitude cut threshold for object selection"),
+    "gr_cut": StageParameter(float, required=True, msg="Color cut threshold for object selection"),
+    "ri_cut": StageParameter(float, required=True, msg="Color cut threshold for object selection"),
+    "iz_cut": StageParameter(float, required=True, msg="Color cut threshold for object selection"),
+    "mfrac_cut": StageParameter(float, required=True, msg="mfrac threshold for object selection"),
+    "T_max": StageParameter(float, required=True, msg="T threshold for object selection"),
+}
 
 class TXSourceSelectorMetadetectDP2(TXSourceSelectorMetadetect):
     """
@@ -17,28 +29,22 @@ class TXSourceSelectorMetadetectDP2(TXSourceSelectorMetadetect):
 
     name = "TXSourceSelectorMetadetectDP2"
 
-    config_options = {
-        **TXSourceSelectorMetadetect.config_options,
-        "mag_g_cut": StageParameter(float, required=True, msg="Magnitude cut threshold for object selection"),
-        "mag_r_cut": StageParameter(float, required=True, msg="Magnitude cut threshold for object selection"),
-        "mag_i_cut": StageParameter(float, required=True, msg="Magnitude cut threshold for object selection"),
-        "mag_z_cut": StageParameter(float, required=True, msg="Magnitude cut threshold for object selection"),
-        "gr_cut": StageParameter(float, required=True, msg="Color cut threshold for object selection"),
-        "ri_cut": StageParameter(float, required=True, msg="Color cut threshold for object selection"),
-        "iz_cut": StageParameter(float, required=True, msg="Color cut threshold for object selection"),
-        "mfrac_cut": StageParameter(float, required=True, msg="mfrac threshold for object selection"),
-    }
+    config_options = TXSourceSelectorMetadetect.config_options | dp2_cut_options
 
     def data_iterator(self):
         # As above, this is where we work out which columns we need.
         chunk_rows = self.config["chunk_rows"]
         bands = self.config["bands"]
+        cat_type = "metadetect"
+        self.config["T_col"] = "gauss_T"
+        with self.open_input("shear_catalog", wrapper=True) as f:
+            self.config["bands"] = f.get_bands()
 
         # Core quantities we need
-        shear_cols = metadetect_variants("T", "s2n", "g1", "g2", "ra", "dec", "weight", "psf_T_mean", "flags", "object_mask_fraction", "pgauss_T", "pgauss_TErr", "gauss_flags", "pgauss_flags", "gauss_shape_flags", "is_primary", "gauss_object_flags", "pgauss_object_flags", "psfOriginal_flags", "gauss_psfReconvolved_flags", "g_gaussFlux_flags", "g_pgaussFlux_flags", "r_gaussFlux_flags", "r_pgaussFlux_flags", "i_gaussFlux_flags", "i_pgaussFlux_flags", "z_gaussFlux_flags", "z_pgaussFlux_flags")
+        shear_cols = metadetect_variants("T", "s2n", "g1", "g2", "ra", "dec", "weight", "psf_T_mean", "flags",  "is_primary", "gauss_T", "mfrac")
 
         # Magnitudes and errors
-        shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="metadetect")
+        shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type=cat_type)
 
         # We need truth shears and/or PZ point-estimates for each shear too
         if self.config["input_pz"]:
@@ -57,12 +63,14 @@ class TXSourceSelectorMetadetectDP2(TXSourceSelectorMetadetect):
 
     def setup_response_calculators(self, nbin_source):
         delta_gamma = self.config["delta_gamma"]
+        calculator_class = MetaDetectCalculator
         calculators = [
             MetaDetectCalculator(select_tomographic_weak_lensing_sample_metadetect_dp2, delta_gamma)
             for i in range(nbin_source)
         ]
         calculators.append(MetaDetectCalculator(select_weak_lensing_sample_metadetect_dp2, delta_gamma))
         return calculators
+
 
 
 def select_weak_lensing_sample_metadetect_dp2(data, config, calling_from_select=False):
@@ -86,30 +94,30 @@ def select_weak_lensing_sample_metadetect_dp2(data, config, calling_from_select=
     gmr_cut = config["gr_cut"]
     rmi_cut = config["ri_cut"]
     imz_cut = config["iz_cut"]
+    T_max = config['T_max']
+    mfrac_cut = config['mfrac_cut']
+    bands = config['bands']
 
+    for b in bands:
+        sel &= (data[f"mag_{b}"] < config[f"mag_{b}_cut"])
+
+    if "g" in bands and "r" in bands:
+        sel &= (np.abs(data["mag_g"] - data["mag_r"]) < gmr_cut)
+    if "r" in bands and "i" in bands:
+        sel &= (np.abs(data["mag_r"] - data["mag_i"]) < rmi_cut)
+    if "i" in bands and "z" in bands:
+        sel &= (np.abs(data["mag_i"] - data["mag_z"]) < imz_cut)
     # We should also have some crazy color cuts and magnitude cuts which should come from PZ group
-    sel &= (data["mag_g"] < mag_g_cut) & \
-        (data["mag_r"] < mag_r_cut) & \
-        (data["mag_i"] < mag_i_cut) & \
-        (data["mag_z"] < mag_z_cut) & \
-        (np.abs(data["mag_g"] - data["mag_r"]) < gmr_cut) & \
-        (np.abs(data["mag_r"] - data["mag_i"]) < rmi_cut) & \
-        (np.abs(data["mag_i"] - data["mag_z"]) < imz_cut)
-
-    # Follow the same pattern as select_weak_lensing_sample, but add extra cuts for metadetect catalogs.:
-    mfrac_cut = config["mfrac_cut"]
-    mfrac = data["object_mask_fraction"]
-    sel &= mfrac < mfrac_cut
+    sel &= (data["gauss_T"] < T_max)
+    sel &= (data['mfrac'] < mfrac_cut)
+    sel &= np.isfinite(data["g1"])
+    sel &= np.isfinite(data["g2"])
+    sel &= np.isfinite(data["weight"])
 
     # Adding all the flags cut to make sure we are not using any objects with flags set.
-    sel &= (data["gauss_flags"] == 0) & \
-            (data["pgauss_flags"] == 0) & \
-            (data["gauss_shape_flags"] == 0) & \
-            (data["gauss_object_flags"] == 0) & \
-            (data["pgauss_object_flags"] == 0) & \
-            (data["psfOriginal_flags"] == 0) & \
-            (data["gauss_psfReconvolved_flags"] == 0) &\
-            (data["is_primary"] == True)
+    # The flags was made from all the ohter ones.
+    # is_primary should actually automatically be true
+    sel &= (data["flags"] == 0) & (data["is_primary"] == True)
 
     return sel
 
@@ -132,3 +140,5 @@ def select_tomographic_weak_lensing_sample_metadetect_dp2(data, config, bin_inde
         print("total tomo", sel.sum())
 
     return sel
+
+

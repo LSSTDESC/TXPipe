@@ -4,6 +4,7 @@ generic types in ceci.
 """
 from ceci.file_types import HDFFile, DataFile, YamlFile, TextFile, FitsFile, Directory, FileCollection, PickleFile, ParquetFile, PNGFile, FileValidationError
 from .mapping import degrade_healsparse
+from .shear_calibration.names import META_VARIANTS, SCALAR_META_VARIANTS
 import yaml
 import numpy as np
 
@@ -19,6 +20,22 @@ def metacalibration_names(names):
     for name in names:
         out += [name + "_" + s for s in suffices]
     return out
+
+
+def class_for_shear_catalog_type(shear_catalog_type):
+    if shear_catalog_type == "metacal":
+        return MetacalShearCatalog
+    elif shear_catalog_type == "simple":
+        return SimpleShearCatalog
+    elif shear_catalog_type == "metadetect":
+        return MetaDetectShearCatalog
+    elif shear_catalog_type == "scalar_metadetect":
+        return ScalarMetaDetectCatalog
+    elif shear_catalog_type == "lensfit":
+        return LensfitShearCatalog
+    elif shear_catalog_type == "hsc":
+        return HSCShearCatalog
+    raise ValueError(f"Unknown catalog type: {shear_catalog_type}")
 
 
 class PhotometryCatalog(HDFFile):
@@ -37,78 +54,117 @@ class ShearCatalog(HDFFile):
     """
     A generic shear catalog
     """
+    def __new__(cls, *args, **kwargs):
+        import h5py
+        filename = args[0]
+        mode = args[1]
 
-    # These are columns
+        if (cls is ShearCatalog) and (mode == "r"):  # only dispatch when called on the base class
+            cat_type = cls.get_catalog_type_from_filename(filename)
+            cat_cls = class_for_shear_catalog_type(cat_type)
+            return super().__new__(cat_cls)
+        return super().__new__(cls)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._catalog_type = None
 
-    def read_catalog_info(self):
-        try:
-            group = self.file["shear"]
-            info = dict(group.attrs)
-        except:
-            raise ValueError(f"Unable to read shear catalog")
-        shear_catalog_type = info.get("catalog_type")
-        return shear_catalog_type
+    @classmethod
+    def get_catalog_type_from_filename(cls, filename):
+        import h5py
+        with h5py.File(filename) as f:
+            return cls.get_catalog_type_from_file(f)
 
-    @property
-    def catalog_type(self):
-        if self._catalog_type is not None:
-            return self._catalog_type
-
-        if "catalog_type" in self.file["shear"].attrs:
-            t = self.file["shear"].attrs["catalog_type"]
-        elif "g1_1p" in self.file["shear"].keys():
+    @classmethod
+    def get_catalog_type_from_file(cls, f):
+        if "catalog_type" in f["shear"].attrs:
+            t = f["shear"].attrs["catalog_type"]
+        elif "g1_1p" in f["shear"].keys():
             t = "metacal"
-        elif "1p" in self.file["shear"].keys():
+        elif "2p" in f["shear"].keys():
             t = "metadetect"
-        elif "c1" in self.file["shear"].keys():
+        elif "1p" in f["shear"].keys():
+            t = "scalar_metadetect"
+        elif "c1" in f["shear"].keys():
             t = "lensfit"
         else:
             raise ValueError("Could not figure out catalog format")
-
-        self._catalog_type = t
         return t
+        
+
+    @property
+    def catalog_type(self):
+        if self._catalog_type is None:
+            self._catalog_type = self.get_catalog_type_from_file(self.file)
+        return self._catalog_type
 
     def get_size(self):
-        if self.catalog_type == "metadetect":
-            return self.file["shear/ns/ra"].size
-        else:
-            return self.file["shear/ra"].size
+        return self.file["shear/ra"].size
 
-    def get_primary_catalog_group(self):
-        if self.catalog_type == "metadetect":
-            return "shear/ns"
-        else:
-            return "shear"
+    @staticmethod
+    def get_primary_catalog_group():
+        return "shear"
 
-    def get_true_redshift_column(self):
-        if self.catalog_type == "metadetect":
-            return "ns/redshift_true"
-        else:
-            return "redshift_true"
+    @staticmethod
+    def get_primary_catalog_prefix():
+        return ""
+
+    @staticmethod
+    def get_primary_tomography_bin_column():
+        return "bin"
+
+    @staticmethod
+    def get_tomography_bin_columns():
+        return [ShearCatalog.get_primary_tomography_bin_column()]
+
+    @staticmethod
+    def get_tomography_bin_column_rename_dict():
+        return {}
+
+    @staticmethod
+    def get_true_redshift_column():
+        return "redshift_true"
+
+    @staticmethod
+    def get_column_name_variants(*columns):
+        return columns
+
+    @staticmethod
+    def get_classifier_prefixes():
+        return [""]
+
+    @staticmethod
+    def get_classifier_suffixes():
+        return [""]
+
+    @staticmethod
+    def get_classifier_variants():
+        return list(zip(ShearCatalog.get_classifier_prefixes(), ShearCatalog.get_classifier_suffixes()))
+
+    def get_extra_calibration_columns(self):
+        return []
+
+    def get_diagnostic_shear_columns(self, bands=None, use_psf_originals=False):
+        if bands is None:
+            bands = self.get_bands()
+        psf_suffix = "_original" if use_psf_originals else ""
+        return [
+            "dec",
+            "psf_g1",
+            "psf_g2",
+            "g1",
+            "g2",
+            f"psf_T_mean{psf_suffix}",
+            "s2n",
+            "T",
+            "weight",
+            "m",
+        ] + [f"mag_{b}" for b in bands]
 
     def get_primary_catalog_names(self, true_shear=False):
         if true_shear:
-            if self.catalog_type == "metadetect":
-                shear_cols = ["ns/true_g1", "ns/true_g2", "ns/ra", "ns/dec", "ns/weight"]
-                rename = {c: c[3:] for c in shear_cols}
-                rename["ns/true_g1"] = "g1"
-                rename["ns/true_g2"] = "g2"
-            else:
-                rename = {"true_g1": "g1", "true_g2": "g2"}
-                rename = {}
-        elif self.catalog_type == "metacal":
-            shear_cols = ["g1", "g2", "ra", "dec", "weight"]
-            rename = {}
-        elif self.catalog_type == "hsc":
-            shear_cols = ["g1", "g2", "c1", "c2", "ra", "dec", "weight"]
-            rename = {}
-        elif self.catalog_type == "metadetect":
-            shear_cols = ["ns/g1", "ns/g2", "ns/ra", "ns/dec", "ns/weight"]
-            rename = {c: c[3:] for c in shear_cols}
+            shear_cols = ["true_g1", "true_g2", "ra", "dec", "weight"]
+            rename = {"true_g1": "g1", "true_g2": "g2"}
         else:
             shear_cols = ["g1", "g2", "ra", "dec", "weight"]
             rename = {}
@@ -127,6 +183,196 @@ class ShearCatalog(HDFFile):
         band_cols = [c for c in group.keys() if c.startswith(f"mag_") and c.count("_") == 1]
         bands = [c[4:] for c in band_cols]
         return bands
+
+class SimpleShearCatalog(ShearCatalog):
+    pass
+
+class MetacalShearCatalog(ShearCatalog):
+    @staticmethod
+    def get_classifier_prefixes():
+        return [""] * 5
+
+    @staticmethod
+    def get_classifier_suffixes():
+        return ["", "_1p", "_2p", "_1m", "_2m"]
+
+    @staticmethod
+    def get_column_name_variants(*columns):
+        from .shear_calibration.names import metacal_variants
+        return metacal_variants(*columns)
+
+    def get_diagnostic_shear_columns(self, bands=None, use_psf_originals=False):
+        if bands is None:
+            bands = self.get_bands()
+        return [
+            "psf_g1",
+            "psf_g2",
+            "psf_T_mean",
+            "g1",
+            "g1_1p",
+            "g1_2p",
+            "g1_1m",
+            "g1_2m",
+            "g2",
+            "g2_1p",
+            "g2_2p",
+            "g2_1m",
+            "g2_2m",
+            "s2n",
+            "T",
+            "T_1p",
+            "T_2p",
+            "T_1m",
+            "T_2m",
+            "s2n_1p",
+            "s2n_2p",
+            "s2n_1m",
+            "s2n_2m",
+            "weight",
+        ] + [f"mag_{b}" for b in bands]
+
+    def get_primary_catalog_names(self, true_shear=False):
+        if true_shear:
+            shear_cols = ["true_g1", "true_g2", "ra", "dec", "weight"]
+            rename = {"true_g1": "g1", "true_g2": "g2"}
+        else:
+            shear_cols = ["g1", "g2", "ra", "dec", "weight"]
+            rename = {}
+        return shear_cols, rename
+
+class MetaDetectShearCatalog(ShearCatalog):
+    def get_size(self):
+        return self.file["shear/ns/ra"].size
+
+    @staticmethod
+    def get_classifier_prefixes():
+        return ["ns/", "1p/", "2p/", "1m/", "2m/"]
+
+    @staticmethod
+    def get_classifier_suffixes():
+        return [""] * 5
+
+    @staticmethod
+    def get_primary_catalog_group():
+        return "shear/ns"
+
+    @staticmethod
+    def get_primary_catalog_prefix():
+        return "ns/"
+
+    @staticmethod
+    def get_primary_tomography_bin_column():
+        return "bin_ns"
+
+    @staticmethod
+    def get_tomography_bin_columns():
+        return ["bin_ns", "bin_1p", "bin_1m", "bin_2p", "bin_2m"]
+
+    @staticmethod
+    def get_tomography_bin_column_rename_dict():
+        return {f"bin_{v}":f"{v}/bin" for v in META_VARIANTS}
+
+    @staticmethod
+    def get_true_redshift_column():
+        return "ns/redshift_true"
+
+    @staticmethod
+    def get_column_name_variants(*columns):
+        from .shear_calibration.names import metadetect_variants
+        return metadetect_variants(*columns)
+
+    def get_diagnostic_shear_columns(self, bands=None, use_psf_originals=False):
+        from .shear_calibration.names import metadetect_variants, band_variants
+        if bands is None:
+            bands = self.get_bands()
+        psf_suffix = "_original" if use_psf_originals else ""
+        shear_cols = metadetect_variants(
+            "g1",
+            "g2",
+            "T",
+            f"psf_g1{psf_suffix}",
+            f"psf_g2{psf_suffix}",
+            "psf_T_mean",
+            "s2n",
+            "weight",
+        )
+        shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="metadetect")
+        return shear_cols
+
+    def get_primary_catalog_names(self, true_shear=False):
+        if true_shear:
+            shear_cols = ["ns/true_g1", "ns/true_g2", "ns/ra", "ns/dec", "ns/weight"]
+            rename = {c: c[3:] for c in shear_cols}
+            rename["ns/true_g1"] = "g1"
+            rename["ns/true_g2"] = "g2"
+        else:
+            shear_cols = ["ns/g1", "ns/g2", "ns/ra", "ns/dec", "ns/weight"]
+            rename = {c: c[3:] for c in shear_cols}
+
+        return shear_cols, rename
+
+class ScalarMetaDetectCatalog(MetaDetectShearCatalog):
+    @staticmethod
+    def get_classifier_prefixes():
+        return ["ns/", "1p/", "1m/"]
+
+    @staticmethod
+    def get_classifier_suffixes():
+        return [""] * 3
+
+    @staticmethod
+    def get_tomography_bin_columns():
+        return ["bin_ns", "bin_1p", "bin_1m"]
+
+    @staticmethod
+    def get_column_name_variants(*columns):
+        from .shear_calibration.names import scalar_metadetect_variants
+        return scalar_metadetect_variants(*columns)
+
+    def get_diagnostic_shear_columns(self, bands=None, use_psf_originals=False):
+        from .shear_calibration.names import scalar_metadetect_variants, band_variants
+        if bands is None:
+            bands = self.get_bands()
+        psf_suffix = "_original" if use_psf_originals else ""
+        shear_cols = scalar_metadetect_variants(
+            "g1",
+            "g2",
+            "T",
+            f"psf_g1{psf_suffix}",
+            f"psf_g2{psf_suffix}",
+            "psf_T_mean",
+            "s2n",
+            "weight",
+        )
+        shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="scalar_metadetect")
+        return shear_cols
+
+    def get_tomography_bin_column_rename_dict(self):
+        return {f"bin_{v}":f"{v}/bin" for v in SCALAR_META_VARIANTS}
+
+
+class LensfitShearCatalog(ShearCatalog):
+    def get_primary_catalog_names(self, true_shear=False):
+        shear_cols = ["g1", "g2", "ra", "dec", "weight"]
+        rename = {}
+        return shear_cols, rename
+
+    def get_extra_calibration_columns(self):
+        return ["dec"]
+
+class HSCShearCatalog(ShearCatalog):
+    def get_primary_catalog_names(self, true_shear=False):
+        shear_cols = ["g1", "g2", "c1", "c2", "ra", "dec", "weight"]
+        if "aselepsf1" in self.file['shear'].keys():
+            shear_cols += ["aselepsf1", "aselepsf2", "msel"]
+        rename = {}
+        return shear_cols, rename
+
+    def get_extra_calibration_columns(self):
+        if "aselepsf1" in self.file['shear'].keys():
+            return ["c1", "c2", "aselepsf1", "aselepsf2", "msel"]
+        else:
+            return ["c1", "c2"]
 
 
 class BinnedCatalog(HDFFile):
