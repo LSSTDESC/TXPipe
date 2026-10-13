@@ -413,8 +413,8 @@ class ScalarMetaDetectCalibrator(Calibrator):
             whether to subtract the mean shear before dividing by the response
         """
         if subtract_mean:
-            g1 = self.Rinv * (g1 - self.mu[0])
-            g2 = self.Rinv * (g2 - self.mu[1])
+            g1 = self.Rinv * g1 - self.mu[0]
+            g2 = self.Rinv * g2 - self.mu[1]
         else:
             g1 = self.Rinv * g1
             g2 = self.Rinv * g2
