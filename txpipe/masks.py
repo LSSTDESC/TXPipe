@@ -630,7 +630,7 @@ class TXCutCatalog(PipelineStage):
                 chunk_info = []
                 local_selected_total = 0
                 for start in range(my_start, my_end, chunk_rows):
-                    end = min(start + chunk_rows, n_total)
+                    end = min(start + chunk_rows, my_end)
                     ra = g_in[ra_col][start:end]
                     dec = g_in[dec_col][start:end]
                     pix = hp.ang2pix(nside, ra, dec, lonlat=True, nest=True)
