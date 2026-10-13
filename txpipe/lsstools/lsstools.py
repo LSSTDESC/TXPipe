@@ -463,12 +463,13 @@ class DensityCorrelation:
                 chi2_map = calc_chi2(ndens, covmat, model[select_map])
                 self.chi2[model_name][map_index] = chi2_map
 
-    def save_to_group(self, parent_group):
+    def save_to_group(self, parent_group, suffix=""):
         """
         Save this DensityCorrelation to an HDF5 group within an existing file.
-        Returns the created group (e.g. f["density_0"]).
+        Returns the created group (e.g. f["density_0"]). The "suffix" parameter can optionally
+        be used to add some extra distinguisher to the group name.
         """
-        group_name = f"density_{self.tomobin}"
+        group_name = f"density_{self.tomobin}{suffix}"
         g = parent_group.create_group(group_name)
         g.attrs.update({"tomobin": self.tomobin})
 
