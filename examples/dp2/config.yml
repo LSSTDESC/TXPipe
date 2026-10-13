@@ -4,6 +4,7 @@ global:
     sparse: true
 
 TXIngestRubinMetaDetect:
+    butler_repository_index: "/global/cfs/cdirs/lsst/production/gen3/shared/data-repos.yaml"
     butler_config_file: "dp2"
     collections: "dp2"
     pre_response_shape_noise: 0.22
@@ -23,6 +24,12 @@ TXIngestRubinMetaDetect:
                 "pgaussFlux_flags"
                 ]
     all_columns: True
+
+TXIngestDESCMetaDetectV1_1:
+        base_dir: "/pscratch/sd/e/esheldon/lsst-mdet-runs/run-dp2-v01.1"
+        exclusion_flag: true
+        all_columns: true
+        pre_response_shape_noise: 0.22
 
 
 TXGenerateTractList:
@@ -68,8 +75,31 @@ TXSourceSelectorMetadetectDP2:
     ri_cut: 5.0
     iz_cut: 5.0
     mfrac_cut: 0.1
-    gauss_T_cut: 20.0
+    T_max: 20.0
 
+TXSourceSelectorScalarMetadetectDP2:
+    input_pz: false
+    true_z: false
+    delta_gamma: 0.02
+    bands: [r, i, z]
+    do_tomography: false
+    max_psf_g: 0.05
+    rmi_min: -2.0
+    rmi_max: 3.0
+    imz_min: -2.0
+    imz_max: 3.0
+    T_max: 20.0
+    Tratio_min: 0.5
+    Tratio_max: 20.
+    s2n_min: 10.0
+    s2n_max: 100.0
+    mfrac_max: 0.1
+    # not actually referenced:
+    source_zbin_edges: [0.1, 0.4, 0.6, 0.8, 3.0]
+    T_cut: -1.0
+    s2n_cut: -1.0
+ 
+    
 
 
 TXSourceTomography: 

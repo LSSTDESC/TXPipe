@@ -1,13 +1,13 @@
 from .base_stage import PipelineStage
 from .data_types import (
     HDFFile,
-    ShearCatalog,
     TomographyCatalog,
     RandomsCatalog,
     SACCFile,
     PNGFile,
     TextFile,
     QPNOfZFile,
+    BinnedCatalog,
 )
 import numpy as np
 from .twopoint import TXTwoPoint, SHEAR_SHEAR, SHEAR_POS, POS_POS, TREECORR_CONFIG
@@ -89,7 +89,7 @@ class TXGammaTFieldCenters(TXTwoPoint):
 
     name = "TXGammaTFieldCenters"
     inputs = [
-        ("binned_shear_catalog", ShearCatalog),
+        ("binned_shear_catalog", BinnedCatalog),
         ("random_cats", RandomsCatalog),
         ("exposures", HDFFile),
         ("patch_centers", TextFile),
@@ -270,10 +270,10 @@ class TXGammaTStars(TXTwoPoint):
 
     name = "TXGammaTStars"
     inputs = [
-        ("binned_shear_catalog", ShearCatalog),
+        ("binned_shear_catalog", BinnedCatalog),
         ("shear_tomography_catalog", TomographyCatalog),
         ("random_cats", RandomsCatalog),
-        ("binned_star_catalog", HDFFile),
+        ("binned_star_catalog", BinnedCatalog),
         ("patch_centers", TextFile),
         ("tracer_metadata", HDFFile),
         ("binned_random_catalog", HDFFile),
@@ -452,7 +452,7 @@ class TXGammaTRandoms(TXTwoPoint):
 
     name = "TXGammaTRandoms"
     inputs = [
-        ("binned_shear_catalog", ShearCatalog),
+        ("binned_shear_catalog", BinnedCatalog),
         ("random_cats", RandomsCatalog),
         ("patch_centers", TextFile),
         ("tracer_metadata", HDFFile),
@@ -620,7 +620,7 @@ class TXApertureMass(TXTwoPoint):
 
     name = "TXApertureMass"
     inputs = [
-        ("binned_shear_catalog", ShearCatalog),
+        ("binned_shear_catalog", BinnedCatalog),
         ("shear_photoz_stack", QPNOfZFile),
         ("patch_centers", TextFile),
         ("tracer_metadata", HDFFile),

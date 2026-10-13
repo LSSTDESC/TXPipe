@@ -9,7 +9,8 @@ from .data_types import (
     FitsFile,
     MapsFile,
     ParquetFile,
-    DataFile
+    DataFile,
+    BinnedCatalog,
 )
 from .utils import LensNumberDensityStats, Splitter, rename_iterated
 from .binning import build_tomographic_classifier, apply_classifier, read_training_data
@@ -571,7 +572,7 @@ class TXLensCatalogSplitter(PipelineStage):
     ]
 
     outputs = [
-        ("binned_lens_catalog_unweighted", HDFFile),
+        ("binned_lens_catalog_unweighted", BinnedCatalog),
     ]
 
     config_options = {
@@ -785,7 +786,7 @@ class TXTruthLensCatalogSplitterWeighted(TXTruthLensCatalogSplitter):
         ("fiducial_cosmology", FiducialCosmology),
     ]
     outputs = [
-        ("binned_lens_catalog", HDFFile),
+        ("binned_lens_catalog", BinnedCatalog),
     ]
 
     def get_lens_tomo_name(self):  # can overwrite this in a weighted subclass

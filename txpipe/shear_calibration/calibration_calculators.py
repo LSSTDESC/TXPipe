@@ -1,6 +1,6 @@
 import numpy as np
-from .names import META_VARIANTS
-from .calibrators import MetaCalibrator, LensfitCalibrator, HSCCalibrator, MetaDetectCalibrator, NullCalibrator
+from .names import META_VARIANTS, SCALAR_META_VARIANTS
+from .calibrators import MetaCalibrator, LensfitCalibrator, HSCCalibrator, MetaDetectCalibrator, NullCalibrator, ScalarMetaDetectCalibrator
 from .utils import BinStats
 
 class _DataWrapper:
@@ -105,6 +105,8 @@ class CalibrationCalculator:
             return MetacalCalculator(selector, config["delta_gamma"], config["resp_mean_diag"])
         elif cat_type == "metadetect":
             return MetaDetectCalculator(selector, config["delta_gamma"])
+        elif cat_type == "scalar_metadetect":
+            return ScalarMetaDetectCalculator(selector, config["delta_gamma"])
         elif cat_type == "lensfit":
             return LensfitCalculator(selector, config["dec_cut"], config["input_m_is_weighted"])
         elif cat_type == "hsc":
@@ -453,6 +455,133 @@ class MetaDetectCalculator(CalibrationCalculator):
         Neff = sum_weights[0] ** 2 / sum_sq_weights[0]
 
         calibrator = MetaDetectCalibrator(R, mean_e[:2], mu_is_calibrated=False)
+        mu = calibrator.apply(mean_e[0], mean_e[1], subtract_mean=False)
+        sigma_e = calibrator.calibrate_variance_to_sigma_e(var_e[0:2])
+        sigma = calibrator.calibrate_sigma(np.sqrt(var_e[:2]))
+        bin_stats = BinStats(counts[0], Neff, mu, sigma_e, sigma, calibrator)
+
+        # we just want the count of the 00 base catalog
+        return bin_stats
+
+class ScalarMetaDetectCalculator(CalibrationCalculator):
+    def __init__(self, selector, delta_gamma):
+        """
+
+        Parameters
+        ----------
+        selector: function
+            Function that selects objects
+        delta_gamma: float
+            The difference in applied g between 1p and 1m metacal variants
+        """
+        from parallel_statistics import ParallelMean, ParallelMeanVariance
+        # The ScalarMetaDetectCalculator variant of metadetect keeps track
+        # of three variants, ns, 1p, and 1m, and assumes that the response
+        # to the shear in the 2 direction is the same as the 1 direction
+        # (i.e. that the shear response matrix is a scalar times the identity)
+
+        self.selector = selector
+        self.counts = np.zeros(3, dtype=int)
+        self.sum_weights = np.zeros(3, dtype=float)
+        self.sum_sq_weights = np.zeros(3, dtype=float)
+        self.delta_gamma = delta_gamma
+        self.shear_stats = ParallelMeanVariance(size=6)
+
+
+    def add_data(self, data, *args, **kwargs):
+        """Select objects from a new chunk of data and tally their responses
+
+        Parameters
+        ----------
+        data: dict
+            Dictionary of data columns to select on and add
+        *args
+            Positional arguments to be passed to the selection function
+        **kwargs
+            Keyword arguments to be passed to the selection function
+
+        """
+        selections = []
+        prefixes = [m + "/" for m in SCALAR_META_VARIANTS]
+        for i, p in enumerate(prefixes):
+            data_p = _DataWrapper(data, prefix=p)
+            sel = self.selector(data_p, *args, **kwargs)
+            selections.append(sel)
+            w = data_p["weight"][sel]
+            if w.size == 0:
+                continue
+            g1 = data_p["g1"][sel]
+            g2 = data_p["g2"][sel]
+            # i = 0 is ns
+            # i = 1 is 1p
+            # i = 2 is 1m
+            # so 
+            self.shear_stats.add_data(2 * i, g1, w)
+            self.shear_stats.add_data(2 * i + 1, g2, w)
+            self.counts[i] += w.size
+            self.sum_weights[i] += np.sum(w)
+            self.sum_sq_weights[i] += np.sum(w**2)
+
+        return selections
+
+
+    def collect(self, comm=None, allgather=False) -> BinStats:
+        """
+        Finalize and sum up all the response values, and return a BinStats
+        object that collects calibration and statistics.
+
+        Parameters
+        ----------
+        comm: MPI Communicator
+            If supplied, all processors response values will be combined together.
+            All processes will return the same final value
+        allgather: bool
+            If True, the response values will be returned for all the processors.
+
+        Returns
+        -------
+        bin_stats: BinStats
+            An object containing the final calibration and statistics for this bin.
+        """
+        # collect all the things we need
+        mode = "allgather" if allgather else "gather"
+        _, mean_e, var_e = self.shear_stats.collect(comm, mode)
+
+        if comm is not None:
+            if allgather:
+                counts = comm.allreduce(self.counts)
+                sum_weights = comm.allreduce(self.sum_weights)
+                sum_sq_weights = comm.allreduce(self.sum_sq_weights)
+            else:
+                counts = comm.reduce(self.counts)
+                sum_weights = comm.reduce(self.sum_weights)
+                sum_sq_weights = comm.reduce(self.sum_sq_weights)
+
+                if comm.rank > 0:
+                    return None
+
+        else:
+            counts = self.counts
+            sum_weights = self.sum_weights
+            sum_sq_weights = self.sum_sq_weights
+
+        # The ordering of these arrays is, from above:
+        # 0: g1
+        # 1: g2
+        # 2: g1_1p
+        # 3: g2_1p
+        # 4: g1_1m
+        # 5: g2_1m
+
+        # Compute the mean R components
+        # (g1_1p - g1_1m) /  dg
+        R = (mean_e[2] - mean_e[4]) / self.delta_gamma  
+
+        # 3 and 5 are not actually referenced.
+
+        Neff = sum_weights[0] ** 2 / sum_sq_weights[0]
+
+        calibrator = ScalarMetaDetectCalibrator(R, mean_e[:2], mu_is_calibrated=False)
         mu = calibrator.apply(mean_e[0], mean_e[1], subtract_mean=False)
         sigma_e = calibrator.calibrate_variance_to_sigma_e(var_e[0:2])
         sigma = calibrator.calibrate_sigma(np.sqrt(var_e[:2]))

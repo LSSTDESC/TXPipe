@@ -1,5 +1,5 @@
 from .base_stage import PipelineStage
-from .data_types import TomographyCatalog, MapsFile, HDFFile
+from .data_types import TomographyCatalog, MapsFile, HDFFile, BinnedCatalog
 from ceci.config import StageParameter
 import numpy as np
 from .utils import unique_list, choose_pixelization, import_dask
@@ -162,7 +162,7 @@ class TXSourceMaps(PipelineStage):
     dask_parallel = True
 
     inputs = [
-        ("binned_shear_catalog", HDFFile),
+        ("binned_shear_catalog", BinnedCatalog),
     ]
 
     outputs = [
@@ -285,7 +285,7 @@ class TXLensMaps(PipelineStage):
     dask_parallel = True
 
     inputs = [
-        ("binned_lens_catalog", HDFFile),
+        ("binned_lens_catalog", BinnedCatalog),
     ]
     outputs = [
         ("lens_maps", MapsFile),
