@@ -84,12 +84,11 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
 
         # Otherwise we have to do it once for each variant
         pz_data = {}
-        variants = ["ns/", "1p/", "2p/", "1m/", "2m/"]
-        for v in variants:
+        for v in META_VARIANTS:
             if self.config["true_z"]:
-                zz = data[f"{v}redshift_true"]
+                zz = data[f"{v}/redshift_true"]
             else:
-                zz = data[f"{v}mean_z"]
+                zz = data[f"{v}/mean_z"]
 
             pz_data_v = np.zeros(len(zz), dtype=int) - 1
             for zi in range(len(self.config["source_zbin_edges"]) - 1):
@@ -98,15 +97,15 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
                 )
                 pz_data_v[mask_zbin] = zi
 
-            pz_data[f"{v}zbin"] = pz_data_v
+            pz_data[f"{v}/zbin"] = pz_data_v
 
         return pz_data
 
     def apply_no_tomography_cut(self, shear_data):
         pz_data = {}
-        variants = ["ns/", "1p/", "2p/", "1m/", "2m/"]
+        variants = META_VARIANTS
         for v in variants:
-            pz_data[f"{v}zbin"] = np.zeros(shear_data[f"{v}ra"].size, dtype=int)
+            pz_data[f"{v}/zbin"] = np.zeros(shear_data[f"{v}/ra"].size, dtype=int)
         return pz_data
 
 
@@ -139,6 +138,7 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         group.create_dataset("R", (nbin_source, 2, 2), dtype="f")
         # Global calibration matrix
         group.create_dataset("R_2d", (2, 2), dtype="f")
+
         return outfile
 
 
