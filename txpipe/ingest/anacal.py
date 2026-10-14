@@ -7,6 +7,7 @@ from .dp1_details import (
 from ceci.config import StageParameter
 import numpy as np
 from ..utils.hdf_tools import h5py_shorten, repack
+from ..utils.conversion import moments_to_shear
 import warnings
 
 # Suffixes on the merged catalog's photo-z point-estimate columns
@@ -77,8 +78,10 @@ class TXIngestAnacal(TXIngestCatalogFits):
             msg="scale radius for the convolution with Gaussian PSF",
         ),
         "delta_gamma": StageParameter(
-            float, 0.2,
-            msg="delta gamma value used for the analytical shearing."
+            float, 0.01,
+            msg="Shear step dg for the +/-dg variant columns (s2n_1p, esq_1p, "
+                "mag_<b>_1p, ...). Must equal TXSourceSelectorAnaCal.delta_gamma "
+                "and the +/-0.01 of xlens' photo-z distortions."
         ),
         "add_psf_properties": StageParameter(
             bool, True,
@@ -371,8 +374,11 @@ class TXIngestAnacal(TXIngestCatalogFits):
         # built them at dg=0.01, so the selector must use delta_gamma=0.01).
 
         # PSF ellipticity + size per band, from each band's PSF HSM second
-        # moments: psf_g1_{b}=(xx-yy)/(xx+yy), psf_g2_{b}=2xy/(xx+yy),
-        # psf_T_mean_{b}=xx+yy. Failed HSM fits (flag set) are NaN'd.
+        # moments: psf_g{1,2}_{b} is the shear-type ellipticity
+        # g = (xx-yy, 2xy) / (xx+yy+2*sqrt(xx*yy-xy^2)) (moments_to_shear, the
+        # convention of metadetect's psf_g and TXPipe's other ingests, ~half the
+        # distortion (xx-yy)/(xx+yy)); psf_T_mean_{b}=xx+yy. Failed HSM fits
+        # (flag set) are NaN'd.
         if self.config["add_psf_properties"]:
             for b in bands:
                 base = f"lsst_{b}_ext_shapeHSM_HsmPsfMoments"
@@ -381,9 +387,8 @@ class TXIngestAnacal(TXIngestCatalogFits):
                 pxy = np.asarray(data[f"{base}_xy"][:], dtype=np.float64)
                 ptr = pxx + pyy
                 with np.errstate(divide="ignore", invalid="ignore"):
-                    psf_g1 = (pxx - pyy) / ptr
-                    psf_g2 = 2.0 * pxy / ptr
-                bad = ~np.isfinite(ptr) | (ptr <= 0)
+                    psf_g1, psf_g2 = moments_to_shear(pxx, pyy, pxy)
+                bad = ~np.isfinite(ptr) | (ptr <= 0) | ~np.isfinite(psf_g1) | ~np.isfinite(psf_g2)
                 flag_col = f"{base}_flag"
                 if flag_col in colnames:
                     bad |= np.asarray(data[flag_col][:], dtype=bool)
