@@ -22,8 +22,10 @@ class TXSourceSelectorAnacal(TXSourceSelectorBase):
             msg="Delta gamma value for the AnaCal response calculation",
         ),
         "mask_threshold": StageParameter(
-            float, 40,
-            msg="mask threshold, for when to mask objects.",
+            float, 0.04,
+            msg="Keep objects with n_mask_base < mask_threshold; n_mask_base "
+                "is the Gaussian-weighted masked fraction in [0, 1] "
+                "(values >= 1 apply no cut).",
         ),
         # AnaCal-specific defaults for the two base cuts.  These override
         # the base class's required-with-no-default declarations so a
@@ -56,6 +58,30 @@ class TXSourceSelectorAnacal(TXSourceSelectorBase):
         "r_hi_cut": StageParameter(float, 50.0, msg="Upper r-mag cut."),
         "i_hi_cut": StageParameter(float, 50.0, msg="Upper i-mag cut."),
         "z_hi_cut": StageParameter(float, 50.0, msg="Upper z-mag cut."),
+        # Colour window |b1 - b2| < cut on the per-band mag_{b} (same names
+        # as TXSourceSelectorMetadetectDP2); applied only when both bands are
+        # in config.bands.  Uses the shifted mag_{b}_{1p,...}, so it enters
+        # the selection response.  Default 50: no cut.
+        "gr_cut": StageParameter(float, 50.0, msg="|g - r| colour cut."),
+        "ri_cut": StageParameter(float, 50.0, msg="|r - i| colour cut."),
+        "iz_cut": StageParameter(float, 50.0, msg="|i - z| colour cut."),
+        # PSF ellipticity cut |psf_g1|, |psf_g2| < psf_g_cut in EVERY band of
+        # config.bands, on the ingested shear-type psf_g{1,2}_{b}
+        # (moments_to_shear; ~half the distortion (xx-yy)/(xx+yy), so a
+        # distortion cut of 0.07 is psf_g_cut ~ 0.035).  A property of the
+        # PSF, so shear-independent.  Default 1: no cut.
+        "psf_g_cut": StageParameter(
+            float, 1.0,
+            msg="Per-band PSF ellipticity cut |psf_g1|,|psf_g2| < psf_g_cut (all bands, shear-type g)."),
+        # Depth cut on the fixed-aperture flux error (nJy), column
+        # flux_err_column.format(band=b).  Shear-independent.  Default: no cut.
+        "flux_err_column": StageParameter(
+            str, "lsst_{band}_flux_gauss2_err",
+            msg="Per-band flux-error column used by {b}_flux_err_cut."),
+        "g_flux_err_cut": StageParameter(float, 1e30, msg="Upper g flux-error cut [nJy]."),
+        "r_flux_err_cut": StageParameter(float, 1e30, msg="Upper r flux-error cut [nJy]."),
+        "i_flux_err_cut": StageParameter(float, 1e30, msg="Upper i flux-error cut [nJy]."),
+        "z_flux_err_cut": StageParameter(float, 1e30, msg="Upper z flux-error cut [nJy]."),
     }
 
     def data_iterator(self):
@@ -114,6 +140,14 @@ class TXSourceSelectorAnacal(TXSourceSelectorBase):
         # emitted by xlens.MergePipe — feeds the |e|<emax cut and its
         # ±γ variants.
         shear_cols += ["esq", "desq_dg1", "desq_dg2"]
+        # PSF ellipticity and flux error, read only when their (shear-
+        # independent) cuts are switched on, so catalogs without these
+        # columns still run with the defaults.
+        for b in bands:
+            if self.config["psf_g_cut"] < 1.0:
+                shear_cols += [f"psf_g1_{b}", f"psf_g2_{b}"]
+            if self.config[f"{b}_flux_err_cut"] < 1e30:
+                shear_cols += [self.config["flux_err_column"].format(band=b)]
 
         if self.config["input_pz"]:
             # Baseline photo-z + the four shifted variants used to derive
@@ -215,7 +249,12 @@ def select_anacal_weak_lensing_sample(
        fpfs1 shape by xlens.MergePipe).
     5. Per-band mag_{b} < {b}_hi_cut for every band in config.bands
        (variants from mag_{b}_dg{1,2}).
-    6. zbin >= 0 (variants from shifted mean_z).
+    6. Colour |b1 - b2| < {b1}{b2}_cut for (g,r), (r,i), (i,z) when both
+       bands are present (variants from the shifted mag_{b}).
+    7. PSF ellipticity |psf_g1|, |psf_g2| < psf_g_cut in every band
+       (shear-type g as ingested; shear-independent).
+    8. Flux error {b}_flux_err_cut in every band (shear-independent).
+    9. zbin >= 0 (variants from shifted mean_z).
     """
     s2n_cut = config["s2n_cut"]
     t_cut = config["T_cut"]
@@ -239,9 +278,28 @@ def select_anacal_weak_lensing_sample(
     sel &= data["esq"] < esq_max
     f4 = sel.sum() / n0
 
-    for b in config["bands"]:
+    bands = list(config["bands"])
+    for b in bands:
         sel &= data[f"mag_{b}"] < config[f"{b}_hi_cut"]
     f5 = sel.sum() / n0
+
+    for b1, b2 in (("g", "r"), ("r", "i"), ("i", "z")):
+        if b1 in bands and b2 in bands:
+            sel &= np.abs(data[f"mag_{b1}"] - data[f"mag_{b2}"]) < config[f"{b1}{b2}_cut"]
+    f_col = sel.sum() / n0
+
+    psf_g_cut = config["psf_g_cut"]
+    if psf_g_cut < 1.0:
+        for b in bands:
+            # NaN PSF (failed HSM fit) compares False, i.e. is rejected
+            sel &= (np.abs(data[f"psf_g1_{b}"]) < psf_g_cut) & (np.abs(data[f"psf_g2_{b}"]) < psf_g_cut)
+    f_psf = sel.sum() / n0
+
+    for b in bands:
+        cut = config[f"{b}_flux_err_cut"]
+        if cut < 1e30:
+            sel &= data[config["flux_err_column"].format(band=b)] < cut
+    f_err = sel.sum() / n0
 
     sel &= data["zbin"] >= 0
     f6 = sel.sum() / n0
@@ -249,13 +307,15 @@ def select_anacal_weak_lensing_sample(
     if verbose and calling_from_select:
         print(
             f"Tomo selection {f1:.2%} flag, {f2:.2%} SNR, {f3:.2%} size, "
-            f"{f4:.2%} |e|, {f5:.2%} mag, ",
+            f"{f4:.2%} |e|, {f5:.2%} mag, {f_col:.2%} colour, "
+            f"{f_psf:.2%} PSF g, {f_err:.2%} flux err, ",
             end="",
         )
     elif verbose:
         print(
             f"2D selection {f1:.2%} flag, {f2:.2%} SNR, {f3:.2%} size, "
-            f"{f4:.2%} |e|, {f5:.2%} mag, {f6:.2%} any z bin"
+            f"{f4:.2%} |e|, {f5:.2%} mag, {f_col:.2%} colour, "
+            f"{f_psf:.2%} PSF g, {f_err:.2%} flux err, {f6:.2%} any z bin"
         )
         print("total 2D", sel.sum())
     return sel
