@@ -1,0 +1,31 @@
+# This is a draft ingestion pipeline, for DP2. Initially intended to be run on the RSP
+
+
+
+stages:
+  - name: TXGenerateTractList
+  - name: TXIngestRubinMetaDetect
+  - name: TXIngestHealsparseMask
+
+
+output_dir: data/metadetect_dp2_ingest
+
+launcher:
+    name: mini
+    interval: 1.0
+
+site:
+    name: local
+
+modules: >
+    txpipe
+
+config: examples/dp2/config.yml
+inputs:
+    # the CVMFS science pipelines env doesn't have data registry in it.
+    shear_mask: /global/cfs/cdirs/lsst/utilities/data-registry/lsst_desc_working/user/smau/rubin_dp2_shear_mask_0.1.0.hsp
+
+resume: true
+log_dir: data/dp2/logs
+pipeline_log: data/dp2/ingest_log.txt
+#registry: {}

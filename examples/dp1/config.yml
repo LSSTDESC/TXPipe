@@ -21,8 +21,8 @@ BPZliteInformer:
     mag_err_min: 0.005
     inform_options: {save_train: false, load_model: false, modelfile: BPZpriormodel.out}
     madau_reddening: no
-    bands: riz
-    zp_errors: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+    bands: [r, i, z]
+    zp_errors: [0.01, 0.01, 0.01]
     hdf5_groupname: photometry
 
 
@@ -64,21 +64,21 @@ BPZliteEstimator:
 TXSourceSelectorSimple:
     input_pz: false
     true_z: false
-    bands: ugrizy
+    bands: [u, g, r, i, z, "y"]
     T_cut: 0.5
     s2n_cut: 10.0
     source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
 
 
 TXSourceTomography:
-    bands: ugrizy
+    bands: [u, g, r, i, z, "y"]
     source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
     spec_mag_column_format: "{band}_cModelMag"
     spec_redshift_column: redshift
 
 TXRandomForestLensSelector:
     verbose: true
-    bands: ugrizy
+    bands: [u, g, r, i, z, "y"]
     lens_zbin_edges: [0.1, 0.4, 0.6, 0.8, 1.0, 1.2]
     random_seed: 12344
     mag_i_limit: 24.1

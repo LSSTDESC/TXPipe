@@ -53,7 +53,7 @@ class CalibrationCalculator:
 
     The data that is added to the calculator should contain shear columns appropriate to
     the specific type of calibrationn used. For example, the metadetect calculator expects
-    columns 00/g1, 00/g2, etc.
+    columns ns/g1, ns/g2, etc.
 
     The selection function does not need to know about all these variants. The calculator
     will wrap the data dictionary passed in in a special class that chooses variant
@@ -98,6 +98,24 @@ class CalibrationCalculator:
         self.sum_weights = 0
         self.sum_sq_weights = 0
         self.shear_stats = ParallelMeanVariance(size=2)
+
+    @staticmethod
+    def create_calculator(cat_type, selector, config):
+        if cat_type == "metacal":
+            return MetacalCalculator(selector, config["delta_gamma"], config["resp_mean_diag"])
+        elif cat_type == "metadetect":
+            return MetaDetectCalculator(selector, config["delta_gamma"])
+        elif cat_type == "lensfit":
+            return LensfitCalculator(selector, config["dec_cut"], config["input_m_is_weighted"])
+        elif cat_type == "anacal":
+            return AnaCalCalculator(selector, config["delta_gamma"])
+        elif cat_type == "hsc":
+            return HSCCalculator(selector)
+        elif cat_type == "simple":
+            return MockCalculator(selector)
+        else:
+            raise ValueError(f"Unknown catalog type: {cat_type}")
+
 
 
 class MetacalCalculator(CalibrationCalculator):
@@ -794,7 +812,6 @@ class MockCalculator(CalibrationCalculator):
         self.shear_stats.add_data(0, g1[sel], w)
         self.shear_stats.add_data(1, g2[sel], w)
 
-
         return sel
 
     def collect(self, comm=None, allgather=False) -> BinStats:
@@ -1021,6 +1038,9 @@ class AnaCalCalculator(CalibrationCalculator):
         _, detect_means = self.detect_response.collect(comm, mode) # (2,) means
         _, sel_means = self.sel_response.collect(comm, mode)       # (4,) means
         _, mean_e, var_e = self.shear_stats.collect(comm, mode)
+
+        if comm is not None and not allgather and comm.rank > 0:
+            return None
 
         # Convention A: every mean is a plain sample mean ⟨wsel · X⟩ over
         # the baseline (shape, detect, μ) or ±γ variant (sel) sample.

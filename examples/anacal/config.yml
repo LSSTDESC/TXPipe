@@ -22,7 +22,7 @@ TXIngestAnacal:
     # measured on griz only (no u/y coadds).
     prefix: "fpfs1"
     scale: "gauss2"
-    bands: "griz"
+    bands: "riz"
 
 TXSourceSelectorAnaCal:
     # AnaCal shear-response step size for selection bias correction — must
@@ -55,7 +55,7 @@ TXSourceSelectorAnaCal:
     z_hi_cut: 50.0
 
     # Bands available in the a360 ingest.
-    bands: [g, r, i, z]
+    bands: [r, i, z]
 
     # 5 tomographic bins — will need edited to fit your science n(z).
     source_zbin_edges: [0.3, 0.6, 0.9, 1.2, 1.5, 2.0]

@@ -83,7 +83,7 @@ def apply_classifier(classifier, features, bands, shear_catalog_type, shear_data
         prefixes = ["", "", "", "", ""]
         suffixes = ["", "_1p", "_2p", "_1m", "_2m"]
     elif shear_catalog_type == "metadetect":
-        prefixes = ["00/", "1p/", "2p/", "1m/", "2m/"]
+        prefixes = ["ns/", "1p/", "2p/", "1m/", "2m/"]
         suffixes = ["", "", "", "", ""]
     else:
         prefixes = [""]

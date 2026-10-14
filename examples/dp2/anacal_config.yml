@@ -1,0 +1,157 @@
+global:
+    chunk_rows: 1000000
+    nside: 2048
+    sparse: true
+
+TXIngestAnacal:
+    # DP1-v3 AnaCal outputs for the a360 cluster field (per-tract).
+    butler_config_file: /global/cfs/cdirs/lsst/production/gen3/rubin/DP2/repo/butler.yaml
+    collections: "u/xiangchl/anacal-v0/merge_withz"
+
+    # a360 sits in the "Low Ecliptic Latitude Field" (LELF).  DP1_TRACTS["LELF"]
+    # contains the two live tracts 10463, 10464 (plus four never-processed).
+    cosmology_tracts_only: False
+
+    # Merged catalog carries band-combined shape moments under the "fpfs1_*"
+    # prefix and Gaussian-aperture fluxes at scale "gauss2".  Per-band
+    # columns are survey-prefixed as ``lsst_{band}_...`` (v3 schema) and
+    # carry pre-computed magnitudes + dmag/dg responses, so no
+    # nanojansky→mag conversion happens inside the ingest.  a360 was
+    # measured on griz only (no u/y coadds).
+    prefix: "fpfs1"
+    scale: "gauss2"
+    bands: "riz"
+
+
+TXGenerateTractList:
+    dec_min: -40.0
+    collections: LSSTCam/runs/DRP/DP2
+    butler_config_file: dp2
+
+TXIngestHealsparseMask: {}
+
+TXCutShearCatalog:
+    ra_col: ra
+    dec_col: dec
+
+TXMockGaussianPhotozStack:
+    means: [0.6]
+    sigmas: [0.2]
+
+
+TXSourceSelectorAnaCal:
+    # AnaCal shear-response step size for selection bias correction — must
+    # match the δγ used to build the on-disk photo-z distortions
+    # (zmode_{1p,1m,2p,2m}) in xlens' photoZPipe (currently ±0.01 in
+    # DISTORTIONS).
+    delta_gamma: 0.01
+
+    # mask_value threshold — sources with mask_value >= this get dropped.
+    # AnaCal reports a bit-packed flag; 1 means "any bit set" (strictest).
+    mask_threshold: 40
+
+    # AnaCal S/N cut (flux / flux_err).  Default in code is 5.0.
+    s2n_cut: 10.0
+
+    # Band-combined size cut (m00 + m20) / m00 > T_cut on fpfs1 moments.
+    # Default 0.1.
+    T_cut: 0.5
+
+    # Band-combined shape magnitude cut |e| < emax (selector applies
+    # esq < emax**2 on the ``esq`` column).
+    emax: 0.5
+
+    # Per-band AB mag upper bounds (uses pre-computed mag_{b} from v3
+    # ingest). Default 50 is above the xlens smooth-truncation cap
+    # (mag=40) so no cut is applied; set per band to gate on brightness.
+    g_hi_cut: 30.0
+    r_hi_cut: 30.0
+    i_hi_cut: 30.0
+    z_hi_cut: 30.0
+
+    # Bands available in the a360 ingest.
+    bands: [r, i, z]
+
+    # 5 tomographic bins — will need edited to fit your science n(z).
+    source_zbin_edges: [0.1, 3.0]
+
+    # ``input_pz: true`` reads ``mean_z`` from the shear catalog and skips the
+    # random-forest classifier.  TXIngestAnacal exposes ``mean_z`` (from
+    # ``zmode_0`` in the merged catalog) plus the four shifted variants
+    # ``mean_z_{1p,1m,2p,2m}`` (from ``zmode_{1p,1m,2p,2m}``) — the selector
+    # consumes the baseline column for tomographic binning and the four
+    # variants for the selection response computation.
+    # If ``input_pz: false``, a shear_tomography_classifier pickle +
+    # spectroscopic_catalog are required (see pipeline.yml inputs).
+    input_pz: true
+    true_z: false
+    verbose: True
+    chunk_rows: 100000
+
+TXShearCalibration:
+    shear_catalog_type: anacal
+    subtract_mean_shear: true
+    chunk_rows: 100000
+
+
+
+TXSourceTomography: 
+    bands: [r, i, z]
+    source_zbin_edges: [0.1, 0.4, 0.6, 0.8, 3.0]
+
+# nside is inherited from global settings
+TXSourceMaps: {}
+
+
+TXMapPlots: {}
+
+TXTracerMetadata: {}
+
+TXJackknifeCentersSource:
+    npatch: 50
+    every_nth: 100
+
+TXTwoPoint:
+    bin_slop: 0.01
+    delta_gamma: 0.01
+    do_pos_pos: false
+    do_shear_shear: true
+    do_shear_pos: false
+    flip_g2: false
+    min_sep: 2.5
+    max_sep: 240.0
+    nbins: 20
+    verbose: 1
+    subtract_mean_shear: true
+
+TXBlinding:
+    seed: 1972  ## seed uniquely specifies the shift in parameters
+    Omega_b: [0.0485, 0.001] ## fiducial_model_value, shift_sigma
+    Omega_c: [0.2545, 0.05]
+    w0: [-1.0, 0.1]
+    h: [0.682, 0.05]
+    sigma8: [0.801, 0.05]
+    n_s: [0.971, 0.03]
+    b0: 0.95  ## we use bias of the form b0/g
+    delete_unblinded: false
+
+TXTwoPointPlots: {}
+
+TXPhotozPlotSource:
+    name: TXPhotozPlotSource
+
+
+
+TXDiagnosticQuantiles:
+    name: TXDiagnosticQuantiles
+    use_psf_originals: true
+
+
+TXSourceDiagnosticPlots:
+    name: TXSourceDiagnosticPlots
+    use_psf_originals: False
+    delta_gamma: 0.01
+
+TXReponseInBins:
+    name: TXReponseInBins
+    delta_gamma: 0.01

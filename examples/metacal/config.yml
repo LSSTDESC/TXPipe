@@ -7,7 +7,7 @@ global:
     chunk_rows: 100000
     # These mapping options are also read by a range of stages
     pixelization: healpix
-    nside: 64
+    nside: 512
     sparse: true  # Generate sparse maps - faster if using small areas
 
 TXGCRTwoCatalogInput:
@@ -23,7 +23,7 @@ TXExposureInfo:
 
 TXCosmoDC2Mock:
     cat_name: cosmoDC2_v1.1.4_image
-    visits_per_band: 16
+    years: 1.0
     extra_cols: redshift_true size_true shear_1 shear_2
     flip_g2: true # to match metacal
 
@@ -56,7 +56,9 @@ PZPrepareEstimatorLens:
     mag_err_min: 0.005
     inform_options: {save_train: false, load_model: false, modelfile: BPZpriormodel.out}
     madau_reddening: no
-    bands: riz
+    band_names: [mag_u, mag_g, mag_r, mag_i, mag_z, mag_y]
+    bands: [mag_u, mag_g, mag_r, mag_i, mag_z, mag_y]
+    err_bands: [mag_err_u, mag_err_g, mag_err_r, mag_err_i, mag_err_z, mag_err_y]
     zp_errors: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
     hdf5_groupname: photometry
 
@@ -79,8 +81,8 @@ PZPrepareEstimatorSource:
     mag_err_min: 0.005
     inform_options: {save_train: false, load_model: false, modelfile: BPZpriormodel.out}
     madau_reddening: no
-    bands: riz
-    zp_errors: [0.01, 0.01, 0.01, 0.01, 0.01, 0.01]
+    bands: [r, i, z]
+    zp_errors: [0.01, 0.01, 0.01]
     hdf5_groupname: photometry
 
 
@@ -129,7 +131,7 @@ TXShearCalibration:
 TXSourceSelectorMetacal:
     input_pz: false
     true_z: true
-    bands: riz #used for selection
+    bands: [r, i, z] #used for selection
     T_cut: 0.5
     s2n_cut: 10.0
     max_rows: 1000
@@ -137,7 +139,7 @@ TXSourceSelectorMetacal:
     source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
 
 TXSourceTomography:
-    bands: riz #used for selection
+    bands: [r, i, z] #used for selection
     source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
 
 TXTruthLensSelector:
@@ -240,10 +242,6 @@ TXSourceMaps:
     sparse: true  # Generate sparse maps - faster if using small areas
 
 TXLensMaps:
-    sparse: true  # Generate sparse maps - faster if using small areas
-
-# For redmagic mapping
-TXExternalLensMaps:
     chunk_rows: 100000
     sparse: true
     pixelization: healpix
@@ -251,15 +249,16 @@ TXExternalLensMaps:
 
 
 
-TXAuxiliarySourceMaps:
-    flag_exponent_max: 8
+TXPSFMaps: {}
 
-TXAuxiliaryLensMaps:
+TXFlagMaps:
     flag_exponent_max: 8
-    bright_obj_threshold: 22.0 # The magnitude threshold for a object to be counted as bright
+TXDepthMaps:
     depth_band: i
     snr_threshold: 10.0  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)
     snr_delta: 1.0  # The range threshold +/- delta is used for finding objects at the boundary
+TXBrightObjectMaps:
+    bright_obj_threshold: 22.0 # The magnitude threshold for a object to be counted as bright
 
 TXRealGaussianCovariance:
     min_sep: 2.5
@@ -309,7 +308,7 @@ PZRailSummarizeLens:
     name: PZRailSummarizeLens
     catalog_group: lens
     tomography_name: lens
-    bands: ugrizy
+    bands: [u, g, r, i, z, "y"]
 
 
 PZRailSummarizeSource:
@@ -320,7 +319,7 @@ PZRailSummarizeSource:
     mag_prefix: /shear/mcal_mag_
     tomography_name: source
     catalog_group: shear
-    bands: riz
+    bands: [r, i, z]
     name: PZRailSummarizeSource
 
 TXPhotozPlotLens:
@@ -352,3 +351,6 @@ NZDirInformerLens:
     name: NZDirInformerLens
     usecols: ugrizy
     hdf5_groupname: photometry
+
+TXDensityMaps:
+    nside: 512

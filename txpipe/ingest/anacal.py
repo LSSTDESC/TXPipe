@@ -1,5 +1,5 @@
 from .base import TXIngestCatalogFits
-from ..data_types import ShearCatalog, FitsFile
+from ..data_types import ShearCatalog, FitsFile, TextFile
 from .dp1_details import (
     DP1_TRACTS,
     DP1_COSMOLOGY_TRACTS,
@@ -7,7 +7,7 @@ from .dp1_details import (
 from ceci.config import StageParameter
 import numpy as np
 from ..utils.hdf_tools import h5py_shorten, repack
-
+import warnings
 
 # Suffixes on the merged catalog's photo-z point-estimate columns
 # (zmode_0, zmode_1p, zmode_1m, zmode_2p, zmode_2m).  These become
@@ -26,7 +26,8 @@ class TXIngestAnacal(TXIngestCatalogFits):
 
     name = "TXIngestAnacal"
     inputs = [
-        ("anacal_catalog", FitsFile)
+        ("anacal_catalog", FitsFile),
+        ("tract_list", TextFile)
     ]
     outputs = [
         ("shear_catalog", ShearCatalog),
@@ -92,6 +93,7 @@ class TXIngestAnacal(TXIngestCatalogFits):
         if self.config["use_butler"]:
             self.butler_run()
         else:
+            warnings.warn("File run is a depricated method and might not function correctly.")
             self.file_run()
 
         print("repacking files")
@@ -122,6 +124,10 @@ class TXIngestAnacal(TXIngestCatalogFits):
         except Exception as e:
             raise RuntimeError(error_msg2) from e
 
+        tracts_file = self.get_input('tract_list')
+        if tracts_file != "none":
+            print("Using tracts_file:", tracts_file)
+            tracts = np.loadtxt(tracts_file, dtype=int)
         if self.config["select_field"]:
             tracts = DP1_TRACTS[self.config["select_field"]]
         elif self.config["select_tracts"]:
@@ -141,7 +147,6 @@ class TXIngestAnacal(TXIngestCatalogFits):
         created_files = False
         data_set_refs = butler.query_datasets(object_name)
         n_chunks = len(data_set_refs)
-        input_columns = self.setup_input()
 
         shear_start = 0
         for i, ref in enumerate(data_set_refs):
@@ -153,11 +158,9 @@ class TXIngestAnacal(TXIngestCatalogFits):
                 )
                 continue
 
-            d = butler.get(
-                object_name,
-                dataId=ref.dataId,
-                parameters={"columns": input_columns},
-            )
+            d = butler.get(object_name,
+                           dataId=ref.dataId,
+                           )
             chunk_size = len(d)
 
             if chunk_size == 0:
@@ -187,15 +190,23 @@ class TXIngestAnacal(TXIngestCatalogFits):
         for col in shear_data.keys():
             print("    ", col)
             h5py_shorten(shear_outfile["shear"], col, shear_end)
-
+        self.aliasing(shear_outfile)
         shear_outfile.close()
 
     def file_run(self):
         n, dtypes = self.get_meta("anacal_catalog")
-        cols = self.setup_input()
+
+        prefix = self.config["prefix"]
 
         file = self.open_input("anacal_catalog")
-        data = file[1][cols]
+        data = file[1]
+        if not hasattr(data, "colnames"):
+            warnings.warn(
+                f"file_run's input ({type(data)}) has no `.colnames` attribute;"
+                "process_anacal_shear_data exp[ects an astropy Table like butler_run "
+                "provides, so this will likely fail."
+            )
+
         shear_data = self.process_anacal_shear_data(data)
 
         shear_outfile = self.setup_output(
@@ -208,6 +219,7 @@ class TXIngestAnacal(TXIngestCatalogFits):
             print("    ", col)
             h5py_shorten(shear_outfile["shear"], col, len(shear_data["ra"]))
 
+        self.aliasing(shear_outfile)
         shear_outfile.close()
 
     def setup_input(self):
@@ -285,6 +297,8 @@ class TXIngestAnacal(TXIngestCatalogFits):
     def process_anacal_shear_data(self, data):
         bands = self.config["bands"]
         s = self.config["scale"]
+        output = {name: data[name][:] for name in data.colnames}
+
         prefix = self.config["prefix"]
         dg = self.config["delta_gamma"]
         # Column names work for both an astropy Table (butler mode) and a
@@ -307,24 +321,10 @@ class TXIngestAnacal(TXIngestCatalogFits):
         m00 = data[f"{prefix}_m00"][:]
         m20 = data[f"{prefix}_m20"][:]
 
-        output = {
-            "ra": data["ra"][:],
-            "dec": data["dec"][:],
-            "weight": np.ones_like(wsel),   # uniform 1 for treecorr
-            "wsel": wsel,                   # raw wsel (for R_shape)
-            "n_mask_base": data["n_mask_base"][:],
-            "weight_dg1": data["dwsel_dg1"][:],
-            "weight_dg2": data["dwsel_dg2"][:],
-            "e1": wsel * e1_raw,            # e_meas ≡ wsel · e_raw
-            "e2": wsel * e2_raw,
-            "e1_raw": e1_raw,               # raw shape (for R_detect)
-            "e2_raw": e2_raw,
-            "m00": m00,
-            "m20": m20,
-        }
-        for delta in ["de1", "de2", "dm00", "dm20"]:
-            output[f"{delta}_dg1"] = data[f"{prefix}_{delta}_dg1"][:]
-            output[f"{delta}_dg2"] = data[f"{prefix}_{delta}_dg2"][:]
+        output["weight"] = np.ones_like(wsel)
+        output["e1"] = wsel * e1_raw
+        output["e2"] = wsel * e2_raw
+        output["T"] = (m00 + m20) / m00
 
         # i-band S/N + shear response — passed through from the
         # pre-computed fpfs1 columns. ``scale`` only picks the flux
@@ -332,9 +332,6 @@ class TXIngestAnacal(TXIngestCatalogFits):
         s2n = data["lsst_i_s2n_fpfs1"][:]
         ds2n_dg1 = data["lsst_i_ds2n_fpfs1_dg1"][:]
         ds2n_dg2 = data["lsst_i_ds2n_fpfs1_dg2"][:]
-        output["s2n"] = s2n
-        output["ds2n_dg1"] = ds2n_dg1
-        output["ds2n_dg2"] = ds2n_dg2
 
         # Per-band AB magnitudes come pre-computed on the v3 merged
         # catalog (xlens.add_magnitude_columns writes them at the fixed
@@ -345,30 +342,22 @@ class TXIngestAnacal(TXIngestCatalogFits):
         # exposed as ``dmag_{band}_dg{c}`` / ``dmag_err_{band}_dg{c}`` on
         # the shear catalog so downstream stages can build ±γ variants
         # of every quantity a mag-based cut consumes.
-        for band in bands:
-            b = f"lsst_{band}"
-            output[f"mag_{band}"] = data[f"{b}_mag_{s}"][:]
-            output[f"mag_err_{band}"] = data[f"{b}_mag_{s}_err"][:]
-            for d in ("dg1", "dg2"):
-                output[f"dmag_{band}_{d}"] = data[f"{b}_dmag_{s}_{d}"][:]
-                output[f"dmag_err_{band}_{d}"] = (
-                    data[f"{b}_dmag_{s}_err_{d}"][:]
-                )
+        #for band in bands:
+        #    f = data[f"{band}_flux_{s}"][:]
+        #    f_err = data[f"{band}_flux_{s}_err"][:]
+        #    output[f"mag_{band}"] = nanojansky_to_mag_ab(f)
+        #    output[f"mag_err_{band}"] = nanojansky_err_to_mag_ab(f, f_err)
 
         # Per-band extinction a_<band>, from the merged catalog's
         # lsst_a_<band> column (the mags above are NOT dereddened, so these
         # give downstream a place to apply extinction).
-        for band in bands:
-            output[f"a_{band}"] = data[f"lsst_a_{band}"][:]
+            
 
         # Band-combined shape magnitude + shear derivatives — feeds the
         # |e|<emax cut and its ±γ variants in TXSourceSelectorAnaCal.
         esq = data["esq"][:]
         desq_dg1 = data["desq_dg1"][:]
         desq_dg2 = data["desq_dg2"][:]
-        output["esq"] = esq
-        output["desq_dg1"] = desq_dg1
-        output["desq_dg2"] = desq_dg2
 
         # zmode_0 → mean_z (baseline photo-z used by TXSourceSelectorAnaCal
         # in input_pz mode for tomographic binning).
@@ -380,9 +369,6 @@ class TXIngestAnacal(TXIngestCatalogFits):
         # zmode_0 → mean_z (baseline for tomographic binning), and the four
         # shifted variants zmode_{1p,1m,2p,2m} → mean_z_{...} (photoZPipe
         # built them at dg=0.01, so the selector must use delta_gamma=0.01).
-        output["mean_z"] = data["zmode_0"][:]
-        for suf in ("1p", "1m", "2p", "2m"):
-            output[f"mean_z_{suf}"] = data[f"zmode_{suf}"][:]
 
         # PSF ellipticity + size per band, from each band's PSF HSM second
         # moments: psf_g1_{b}=(xx-yy)/(xx+yy), psf_g2_{b}=2xy/(xx+yy),
@@ -482,3 +468,41 @@ class TXIngestAnacal(TXIngestCatalogFits):
             with pyarrow.parquet.ParquetFile(uri.path) as f:
                 n += f.metadata.num_rows
         return n
+
+    def aliasing(self, outfile):
+        prefix = self.config["prefix"]
+        g = outfile["shear"]
+        bands = self.config["bands"]
+        s = self.config["scale"]
+        #g["weight"] = g["wsel"]
+        g["weight_dg1"] = g["dwsel_dg1"]
+        g["weight_dg2"] = g["dwsel_dg2"]
+        g["e1_raw"] = g[f"{prefix}_e1"]
+        g["e2_raw"] = g[f"{prefix}_e2"]
+        g["m00"] = g[f"{prefix}_m00"]
+        g["m20"] = g[f"{prefix}_m20"]
+        g["s2n"] = g["lsst_i_s2n_fpfs1"] #setting the default to be i band
+        g["psf_g1"] = g["psf_g1_i"] #setting the default to be i band
+        g["psf_g2"] = g["psf_g2_i"] #setting the default to be i band
+        g["psf_T_mean"] = g["psf_T_mean_i"]
+        g["ds2n_dg1"] = g["lsst_i_ds2n_fpfs1_dg1"]
+        g["ds2n_dg2"] = g["lsst_i_ds2n_fpfs1_dg2"]
+        for delta in ["de1", "de2", "dm00", "dm20"]:
+            g[f"{delta}_dg1"] = g[f"{prefix}_{delta}_dg1"]
+            g[f"{delta}_dg2"] = g[f"{prefix}_{delta}_dg2"]
+        
+        g["mean_z"] = g["zmode_0"]
+        for suf in ["1p", "1m", "2p", "2m"]:
+            g[f"mean_z_{suf}"] = g[f"zmode_{suf}"]
+
+        for band in bands:
+            g[f"a_{band}"] = g[f"lsst_a_{band}"][:]
+            b = f"lsst_{band}"
+            g[f"mag_{band}"] = g[f"{b}_mag_{s}"]
+            g[f"mag_err_{band}"] = g[f"{b}_mag_{s}_err"]
+            for d in ("dg1", "dg2"):
+                g[f"dmag_{band}_{d}"] = g[f"{b}_dmag_{s}_{d}"][:]
+                g[f"dmag_err_{band}_{d}"] = (
+                    g[f"{b}_dmag_{s}_err_{d}"][:]
+                )
+

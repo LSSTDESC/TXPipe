@@ -1,5 +1,5 @@
 import numpy as np
-from .calibration_calculators import MetacalCalculator, MetaDetectCalculator, LensfitCalculator, HSCCalculator
+from .calibration_calculators import MetacalCalculator, MetaDetectCalculator, LensfitCalculator, HSCCalculator, AnaCalCalculator
 
 class MeanShearInBins:
     def __init__(
@@ -25,11 +25,16 @@ class MeanShearInBins:
             self.calibrators = [LensfitCalculator(self.selector, dec_cut=False) for i in range(self.size)]
         elif shear_catalog_type == "hsc":
             self.calibrators = [HSCCalculator(self.selector) for i in range(self.size)]
+        elif shear_catalog_type == "anacal":
+            self.calibrators = [AnaCalCalculator(self.selector, delta_gamma) for i in range(self.size)]
         else:
             raise ValueError(f"Please specify metacal, metadetect, lensfit or hsc for shear_catalog in config.")
 
     def selector(self, data, i):
-        x = data[self.x_name]
+        if self.shear_catalog_type == "metadetect" and self.x_name.startswith("ns/"):
+            x = data[self.x_name[3:]]
+        else:
+            x = data[self.x_name]
 
         # Hack to convert from pixel^2 to arcsec^2 for KIDS sizes, which are in pixel^2, but the cuts are in arcsec^2.
         # We should fix this on ingestion
@@ -39,10 +44,15 @@ class MeanShearInBins:
 
         # select objects in bin i of the x variable.
         w = (x > self.limits[i]) & (x < self.limits[i + 1])
-
+        
         # Optionally cut down to the source sample only
         if self.cut_source_bin:
-            w &= data["bin"] != -1
+            if self.shear_catalog_type == "metadetect":
+                prefix = getattr(data, 'prefix', 'ns/').rstrip('/')
+                bin_key = f"bin_{prefix if prefix else 'ns'}"
+                w &= (data[bin_key] != -1)
+            else:
+                w &= (data["bin"] != -1)
         return np.where(w)[0]
 
     def add_data(self, data):
@@ -55,7 +65,7 @@ class MeanShearInBins:
                 # for all 5 variants. We just want the unsheared on
                 # here.
                 w = w[0]
-                weight = data["00/weight"][w]
+                weight = data["ns/weight"][w]
             else:
                 weight = data["weight"][w]
     
@@ -71,7 +81,7 @@ class MeanShearInBins:
 
         for i in range(self.size):
             stats = self.calibrators[i].collect(comm, allgather=True)
-            sigma1[i], sigma2[i] = stats.sigma / np.sqrt(stats.N_eff)
+            sigma1[i], sigma2[i] = np.abs(stats.sigma) / np.sqrt(stats.N_eff)
             g1[i], g2[i] = stats.mean_e
 
         return mu, g1, g2, sigma1, sigma2

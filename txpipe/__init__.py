@@ -12,7 +12,7 @@ from .source_selection import (
     TXSourceSelectorMetadetect,
     TXSourceSelectorAnacal,
 )
-from .lens_selector import TXMeanLensSelector
+from .lens_selector import TXMeanLensSelector, TXDESISelector, TXDESIMockSelector
 from .photoz_stack import TXPhotozStack, TXPhotozPlot, TXTruePhotozStack
 from .random_cats import TXRandomCat
 from .twopoint_fourier import TXTwoPointFourier
@@ -24,7 +24,12 @@ from .exposure_info import TXExposureInfo
 from .psf_diagnostics import TXPSFDiagnostics, TXRoweStatistics
 from .noise_maps import TXSourceNoiseMaps, TXLensNoiseMaps, TXNoiseMapsJax
 from .maps import TXSourceMaps, TXLensMaps
-from .auxiliary_maps import TXAuxiliarySourceMaps, TXAuxiliaryLensMaps
+from .auxiliary_maps import (
+    TXPSFMaps,
+    TXFlagMaps,
+    TXDepthMaps,
+    TXBrightObjectMaps,
+)
 from .map_plots import TXMapPlots
 from .masks import TXSimpleMask, TXSimpleMaskFrac
 from .metadata import TXTracerMetadata
@@ -42,7 +47,7 @@ from .lssweights import TXLSSWeights
 from .simulation import TXLogNormalGlass
 from .magnification import TXSSIMagnification
 from .covariance_nmt import TXFourierNamasterCovariance, TXRealNamasterCovariance
-
+from .delta_sigma import TXDeltaSigma
 # We no longer import all the extensions automatically here to avoid
 # some dependency problems when running under the LSST environment on NERSC.
 # You can still import them explicitly in your pipeline scripts by doing:

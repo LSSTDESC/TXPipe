@@ -63,10 +63,14 @@ stages:
   - name: TXLensMaps
     nodes: 8
     nprocess: 64
-  - name: TXAuxiliarySourceMaps
+  - name: TXPSFMaps
+  - name: TXFlagMaps
     nodes: 2
     nprocess: 16
-  - name: TXAuxiliaryLensMaps
+  - name: TXDepthMaps
+    nodes: 2
+    nprocess: 16
+  - name: TXBrightObjectMaps
     nodes: 2
     nprocess: 16
   - name: TXTwoPointTheoryReal   # compute theory using CCL to save in sacc file and plot later
