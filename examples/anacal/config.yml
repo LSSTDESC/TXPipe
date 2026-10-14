@@ -8,6 +8,10 @@ TXIngestAnacal:
     # DP1-v3 AnaCal outputs for the a360 cluster field (per-tract).
     butler_config_file: /global/cfs/cdirs/lsst/production/gen3/rubin/DP1/repo/butler.yaml
     collections: "u/xiangchl/dp1-v3/a360_anacal2"
+    # Shear step for the +/-dg variant columns (s2n_1p, esq_1p, mag_*_1p, ...)
+    # the ingest builds; it MUST equal TXSourceSelectorAnaCal.delta_gamma (and
+    # the +/-0.01 of the photo-z distortions), otherwise R_sel is mis-scaled.
+    delta_gamma: 0.01
 
     # a360 sits in the "Low Ecliptic Latitude Field" (LELF).  DP1_TRACTS["LELF"]
     # contains the two live tracts 10463, 10464 (plus four never-processed).
@@ -31,9 +35,9 @@ TXSourceSelectorAnaCal:
     # DISTORTIONS).
     delta_gamma: 0.01
 
-    # mask_value threshold — sources with mask_value >= this get dropped.
-    # AnaCal reports a bit-packed flag; 1 means "any bit set" (strictest).
-    mask_threshold: 40
+    # Keep n_mask_base < mask_threshold.  n_mask_base is the Gaussian-weighted
+    # masked fraction in [0, 1] (xlens), so values >= 1 apply no cut.
+    mask_threshold: 0.04
 
     # AnaCal S/N cut (flux / flux_err).  Default in code is 5.0.
     s2n_cut: 5.0
@@ -53,6 +57,15 @@ TXSourceSelectorAnaCal:
     r_hi_cut: 50.0
     i_hi_cut: 50.0
     z_hi_cut: 50.0
+
+    # Optional cuts, off by default (see examples/dp2/anacal_config.yml for
+    # values in use): colour |b1 - b2| < gr_cut / ri_cut / iz_cut; PSF
+    # ellipticity |psf_g1|,|psf_g2| < psf_g_cut in every band (shear-type g; needs the
+    # ingest's add_psf_properties); depth {b}_flux_err_cut on lsst_{b}_flux_gauss2_err [nJy].
+    # ri_cut: 1.5
+    # iz_cut: 1.5
+    # psf_g_cut: 0.035
+    # r_flux_err_cut: 200.0
 
     # Bands available in the a360 ingest.
     bands: [r, i, z]
