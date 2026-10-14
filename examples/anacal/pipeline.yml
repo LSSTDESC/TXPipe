@@ -21,7 +21,7 @@ modules: >
 config: examples/anacal/config.yml
 
 inputs:
-    shear_catalog: /anacal_dp2/shear_catalog.hdf5
+    shear_catalog: data/example/anacal_inputs/shear_catalog.hdf5
     fiducial_cosmology: data/fiducial_cosmology.yml
     # Selector-side inputs.  With ``input_pz: true`` in config.yml the
     # selector reads ``mean_z`` from the shear catalog (populated by
