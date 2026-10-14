@@ -1,5 +1,4 @@
 from .base import TXSourceSelectorBase
-from .base import select_weak_lensing_sample, select_tomographic_weak_lensing_sample
 from ..shear_calibration import (
     metadetect_variants,
     MetaDetectCalculator,
@@ -64,10 +63,10 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
     def setup_response_calculators(self, nbin_source):
         delta_gamma = self.config["delta_gamma"]
         calculators = [
-            MetaDetectCalculator(select_tomographic_weak_lensing_sample, delta_gamma)
+            MetaDetectCalculator(self.select, delta_gamma)
             for i in range(nbin_source)
         ]
-        calculators.append(MetaDetectCalculator(select_weak_lensing_sample, delta_gamma))
+        calculators.append(MetaDetectCalculator(self.select_any_bin, delta_gamma))
         return calculators
 
     def write_tomography(self, outfile, start, end, source_bin, per_object_response):
@@ -79,34 +78,6 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
 
         assert per_object_response is None, "MetaDetect does not produce per-object response values, only per-bin values, so this should be None"
 
-
-    def apply_simple_redshift_cut(self, data):
-
-        # Otherwise we have to do it once for each variant
-        pz_data = {}
-        for v in META_VARIANTS:
-            if self.config["true_z"]:
-                zz = data[f"{v}/redshift_true"]
-            else:
-                zz = data[f"{v}/mean_z"]
-
-            pz_data_v = np.zeros(len(zz), dtype=int) - 1
-            for zi in range(len(self.config["source_zbin_edges"]) - 1):
-                mask_zbin = (zz >= self.config["source_zbin_edges"][zi]) & (
-                    zz < self.config["source_zbin_edges"][zi + 1]
-                )
-                pz_data_v[mask_zbin] = zi
-
-            pz_data[f"{v}/zbin"] = pz_data_v
-
-        return pz_data
-
-    def apply_no_tomography_cut(self, shear_data):
-        pz_data = {}
-        variants = META_VARIANTS
-        for v in variants:
-            pz_data[f"{v}/zbin"] = np.zeros(shear_data[f"{v}/ra"].size, dtype=int)
-        return pz_data
 
 
     def setup_output(self, nbin_source):
@@ -142,7 +113,7 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         return outfile
 
 
-    def calculate_tomography(self, pz_data, shear_data, calculators):
+    def accumulate_selection(self, pz_data, shear_data, calculators):
         """
         Select objects to go in each tomographic bin and their calibration.
 
@@ -168,12 +139,12 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         R = self.compute_per_object_response(data)
 
         for i in range(nbin):
-            selections = calculators[i].add_data(data, self.config, i)
+            selections = calculators[i].add_data(data, i)
             for j, v in enumerate(META_VARIANTS):
                 tomo_bins[j][selections[j]] = i
 
         # and calibrate the 2D sample.
         # This calibrator refers to select_weak_lensing_sample
-        calculators[-1].add_data(data, self.config)
+        calculators[-1].add_data(data)
 
-        return tomo_bins, R
+        return R

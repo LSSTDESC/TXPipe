@@ -143,6 +143,24 @@ def core_metadet(comm):
         assert np.allclose(calibrator.R_sel, 0.0)
         assert stats.source_count == N * nproc
 
+
+    # Also check that we can do this variant by variant instead
+    # of all at once
+    for sel in [select_all_bool, select_all_where, select_all_index]:
+        cal = MetaDetectCalculator(sel, delta_gamma)
+        for variant in ["ns", "1p", "1m", "2p", "2m"]:
+            data_v = {k: v for k, v in data.items() if k.startswith(variant)}
+            print(data_v)
+            cal.add_data(data_v)
+        stats = cal.collect(comm, allgather=True)
+        calibrator = stats.calibrator
+
+        assert np.allclose(calibrator.R, R_true)
+        assert np.allclose(calibrator.R_sel, 0.0)
+        assert stats.source_count == N * nproc
+
+
+
     # equal non-unit weights - everything should be the same.
     data["ns/weight"] *= 0.5
     data["1p/weight"] *= 0.5
@@ -193,12 +211,25 @@ def core_scalar_metadet(comm):
     # test each type of selector
     for sel in [select_all_bool, select_all_where, select_all_index]:
         cal = ScalarMetaDetectCalculator(sel, delta_gamma)
+        for variant in ["ns", "1p", "1m"]:
+            data_v = {k: v for k, v in data.items() if k.startswith(variant)}
+            cal.add_data(data_v)
+        stats = cal.collect(comm, allgather=True)
+        calibrator = stats.calibrator
+
+        assert np.allclose(calibrator.R, R_true)
+        assert stats.source_count == N * nproc
+
+    # test each type of selector
+    for sel in [select_all_bool, select_all_where, select_all_index]:
+        cal = ScalarMetaDetectCalculator(sel, delta_gamma)
         cal.add_data(data)
         stats = cal.collect(comm, allgather=True)
         calibrator = stats.calibrator
 
         assert np.allclose(calibrator.R, R_true)
         assert stats.source_count == N * nproc
+
 
     # equal non-unit weights - everything should be the same.
     data["ns/weight"] *= 0.5

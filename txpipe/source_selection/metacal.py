@@ -1,5 +1,4 @@
 from .base import TXSourceSelectorBase
-from .base import select_weak_lensing_sample, select_tomographic_weak_lensing_sample
 from ..shear_calibration import metacal_variants, MetacalCalculator, band_variants
 from ..data_types import HDFFile
 import numpy as np
@@ -32,6 +31,17 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
         ),
     }
 
+    def columns(self):
+        # for metacal
+        return [
+            {
+                "shear_catalog": metacal_variants("g1", "g2", "weight"),
+                "shear_bin_assignments": metacal_variants("zbin"),
+                "shear_selection": metacal_variants("selection"),
+            }
+        ]
+    
+
     # The main differences between the classes are to do with how the data is read
     # and what output response values are generated.
     def data_iterator(self):
@@ -41,11 +51,6 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
         We call to a parent class method to do the main iteration; the work here is
         just choosing which columns to read.
         """
-        with self.open_input("shear_catalog", wrapper=True) as f:
-            if "flags_1p" in f.file["shear"]:
-                flag_mode = "variant"
-            else:
-                flag_mode = "single"
         if self.rank == 0:
             print(f"Using {flag_mode} flags")
         bands = self.config["bands"]
@@ -98,8 +103,8 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
     def setup_response_calculators(self, nbin_source):
         delta_gamma = self.config["delta_gamma"]
         use_diagonal_response = self.config["use_diagonal_response"]
-        calculators = [MetacalCalculator(select_tomographic_weak_lensing_sample, delta_gamma, use_diagonal_response) for i in range(nbin_source)]
-        calculators.append(MetacalCalculator(select_weak_lensing_sample, delta_gamma, use_diagonal_response))
+        calculators = [MetacalCalculator(self.select, delta_gamma, use_diagonal_response) for i in range(nbin_source)]
+        calculators.append(MetacalCalculator(self.select_any_bin, delta_gamma, use_diagonal_response))
         return calculators
 
     def write_tomography(self, outfile, start, end, source_bin, R):

@@ -1,5 +1,4 @@
 from .base import TXSourceSelectorBase
-from .base import select_weak_lensing_sample
 from ..shear_calibration import band_variants, HSCCalculator
 import numpy as np
 from ceci.config import StageParameter
@@ -82,8 +81,8 @@ class TXSourceSelectorHSC(TXSourceSelectorBase):
         return R
 
     def setup_response_calculators(self, nbin_source):
-        calculators = [HSCCalculator(select_hsc_tomographic_weak_lensing_sample) for i in range(nbin_source)]
-        calculators.append(HSCCalculator(select_hsc_weak_lensing_sample))
+        calculators = [HSCCalculator(self.select) for i in range(nbin_source)]
+        calculators.append(HSCCalculator(self.select_any_bin))
         return calculators
     
 def select_hsc_tomographic_weak_lensing_sample(data, config, bin_index):

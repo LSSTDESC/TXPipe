@@ -1,5 +1,4 @@
 from .base import TXSourceSelectorBase
-from .base import select_weak_lensing_sample, select_tomographic_weak_lensing_sample
 from ..shear_calibration import (
     scalar_metadetect_variants,
     ScalarMetaDetectCalculator,
@@ -58,10 +57,10 @@ class TXSourceSelectorScalarMetadetect(TXSourceSelectorBase):
     def setup_response_calculators(self, nbin_source):
         delta_gamma = self.config["delta_gamma"]
         calculators = [
-            ScalarMetaDetectCalculator(select_tomographic_weak_lensing_sample, delta_gamma)
+            ScalarMetaDetectCalculator(self.select, delta_gamma)
             for i in range(nbin_source)
         ]
-        calculators.append(ScalarMetaDetectCalculator(select_weak_lensing_sample, delta_gamma))
+        calculators.append(ScalarMetaDetectCalculator(self.select_any_bin, delta_gamma))
         return calculators
 
     def write_tomography(self, outfile, start, end, source_bin, per_object_response):
@@ -119,7 +118,7 @@ class TXSourceSelectorScalarMetadetect(TXSourceSelectorBase):
 
         return outfile
 
-    def calculate_tomography(self, pz_data, shear_data, calculators):
+    def accumulate_selection(self, pz_data, shear_data, calculators):
         nbin = self.config["nbin_source"]
         n = len(list(shear_data.values())[0])
 
@@ -134,10 +133,10 @@ class TXSourceSelectorScalarMetadetect(TXSourceSelectorBase):
         R = self.compute_per_object_response(data)
 
         for i in range(nbin):
-            selections = calculators[i].add_data(data, self.config, i)
+            selections = calculators[i].add_data(data, i)
             for j, v in enumerate(SCALAR_META_VARIANTS):
                 tomo_bins[j][selections[j]] = i
 
-        calculators[-1].add_data(data, self.config)
+        calculators[-1].add_data(data)
 
-        return tomo_bins, R
+        return R

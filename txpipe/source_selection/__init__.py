@@ -6,4 +6,5 @@ from .metadetect import TXSourceSelectorMetadetect
 from .scalar_metadetect import TXSourceSelectorScalarMetadetect
 from .dp2 import TXSourceSelectorMetadetectDP2
 from .dp2_desc import TXSourceSelectorScalarMetadetectDP2
-from .tomography import TXSourceTomography
+from .tomography import TXTrainRandomForestTomography, TXComputeSourceTomography, TXApplyRandomForestSourceTomography, TXSimpleRedshiftSourceTomography
+from .cuts import TXBasicSelection

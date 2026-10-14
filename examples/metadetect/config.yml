@@ -416,3 +416,6 @@ HOSFSB:
     nfilters: 5
     include_n32: false
     nside: *nside_mid
+
+TXSimpleRedshiftSourceTomography:
+    source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]

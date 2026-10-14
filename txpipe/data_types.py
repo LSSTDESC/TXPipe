@@ -137,10 +137,6 @@ class ShearCatalog(HDFFile):
     def get_classifier_suffixes():
         return [""]
 
-    @staticmethod
-    def get_classifier_variants():
-        return list(zip(ShearCatalog.get_classifier_prefixes(), ShearCatalog.get_classifier_suffixes()))
-
     def get_extra_calibration_columns(self):
         return []
 
@@ -1127,4 +1123,14 @@ class QPMultiFile(HDFFile):
                 subgroup.create_dataset(key, dtype=val.dtype, data=val.data)
 
 class CatalogSelection(HDFFile):
+    """
+    Contains a boolean selection for whether rows in a catalog
+    are selected for use or not.
+
+    For simple catalogs this will just be a single column. For meta* shear
+    catalogs it can have multiple columns.
+    """
+    pass
+
+class BinAssignments(HDFFile):
     pass

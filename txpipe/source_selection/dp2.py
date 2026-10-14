@@ -1,5 +1,5 @@
 from .metadetect import TXSourceSelectorMetadetect
-from .base import select_weak_lensing_sample, TXSourceSelectorBase
+from .base import TXSourceSelectorBase
 from ..shear_calibration import metadetect_variants, MetaDetectCalculator, band_variants, META_VARIANTS, scalar_metadetect_variants, ScalarMetaDetectCalculator
 from ceci.config import StageParameter
 import numpy as np

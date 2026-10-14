@@ -1,5 +1,4 @@
 from .base import TXSourceSelectorBase
-from .base import select_weak_lensing_sample, select_tomographic_weak_lensing_sample
 from ..shear_calibration import band_variants, MockCalculator
 import numpy as np
 
@@ -39,6 +38,6 @@ class TXSourceSelectorSimple(TXSourceSelectorBase):
         return self.iterate_hdf("shear_catalog", "shear", shear_cols, chunk_rows)
 
     def setup_response_calculators(self, nbin_source):
-        calculators = [MockCalculator(select_tomographic_weak_lensing_sample) for i in range(nbin_source)]
-        calculators.append(MockCalculator(select_weak_lensing_sample))
+        calculators = [MockCalculator(self.select) for i in range(nbin_source)]
+        calculators.append(MockCalculator(self.select_any_bin))
         return calculators

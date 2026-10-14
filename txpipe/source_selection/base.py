@@ -1,48 +1,10 @@
 from ..base_stage import PipelineStage
-from ..data_types import ShearCatalog, TomographyCatalog, HDFFile, PickleFile, CatalogSelection
+from ..data_types import ShearCatalog, TomographyCatalog, HDFFile, PickleFile, CatalogSelection, BinAssignments
 from ..utils import read_shear_catalog_type
 from ..binning import apply_classifier
 from ceci.config import StageParameter
 import numpy as np
 
-
-class TXBasicSelection(PipelineStage):
-    """Compute non-redshift related shear catalog cuts
-    """
-    name = "TXBasicSelection"
-    inputs = [
-        ("shear_catalog", ShearCatalog),
-    ]
-    outputs = [
-        ("shear_catalog_selection", CatalogSelection)
-    ]
-    groups = ["shear"]
-
-    def run(self):
-        # make basic selections on all relevant groups
-        # save to a CatalogSelection
-        fin = self.open_input("shear_catalog")
-        fout = self.open_output("shear_catalog_selection", parallel=True)
-
-        for group in self.groups:
-            g_out = fout.create_group(group)
-            # maybe add compression here since can be very effective on this?
-            sel_out = g_out.create_dataset("selection", dtype=bool) 
-            for (s, e, data) in self.data_iterator(group):
-                sel = self.compute_selection(s, e, data)
-                sel_out[s: e] = sel
-
-        f.create_dataset("selection", shape=(n, ), compression="gzip")
-
-    def data_iterator(self, group):
-        raise NotImplementedError("Do not use this class directly")
-
-    def compute_selection(self, start, end, data):
-        raise NotImplementedError("Do not use this class directly")
-
-
-class TXMetaDetectSelection(TXBasicSelection):
-    pass
 
 
 class TXSourceSelectorBase(PipelineStage):
@@ -76,7 +38,8 @@ class TXSourceSelectorBase(PipelineStage):
 
     inputs = [
         ("shear_catalog", ShearCatalog),
-        ("shear_tomography_classifier", PickleFile),
+        ("shear_bin_assignments", BinAssignments),
+        ("shear_selection", CatalogSelection),
     ]
 
     outputs = [("shear_tomography_catalog", TomographyCatalog)]
@@ -86,15 +49,7 @@ class TXSourceSelectorBase(PipelineStage):
         "true_z": StageParameter(bool, False, msg="Whether to use true redshifts instead of photo-z"),
         "bands": StageParameter(list, ["r", "i", "z"], msg="Bands from the catalog to use for selection"),
         "verbose": StageParameter(bool, False, msg="Whether to print verbose output"),
-        "T_cut": StageParameter(float, required=True, msg="Size cut threshold for object selection"),
-        "s2n_cut": StageParameter(
-            float,
-            required=True,
-            msg="Signal-to-noise cut threshold for object selection",
-        ),
         "chunk_rows": StageParameter(int, 10000, msg="Number of rows to process in each chunk"),
-        "do_tomography": StageParameter(bool, True, msg="If false, skip tomography and just select everything into bin 0. Other cuts are still applied."),
-        "source_zbin_edges": StageParameter(list, required=True, msg="Redshift bin edges for source tomography"),
     }
 
     def run(self):
@@ -111,10 +66,7 @@ class TXSourceSelectorBase(PipelineStage):
         # Suppress some warnings from numpy that are not relevant
         original_warning_settings = np.seterr(all="ignore")
 
-        if self.config['do_tomography']:
-            nbin_source = len(self.config["source_zbin_edges"]) - 1
-        else:
-            nbin_source = 1
+        nbin_source = -1
         self.config["nbin_source"] = nbin_source
 
         # We will collect the selection biases for each bin
@@ -131,23 +83,16 @@ class TXSourceSelectorBase(PipelineStage):
         # problems with it before we get run the slow classifier.
         it = self.data_iterator()
 
-        # Get a function to split objects into tomographic bins
-        tomography_classifier = self.make_tomographic_bin_chooser_function()
 
         # Loop through the input data, processing it chunk by chunk
         for start, end, shear_data in it:
             print(f"Process {self.rank} running selection for rows {start:,}-{end:,}")
 
-            # Use the tomography function we created earlier to divide
-            # objects into bins. Note that this can also classify objects
-            # that are later rejected by size or SNR cuts.
-            pz_data = tomography_classifier(start, end, shear_data)
-
             # Combine this selection with size and snr cuts to produce a source selection
             # and calculate the shear bias it would generate.
             # Note that the per-object response can be None for methods like MetaDetect that
             # only calibrate the entire bin
-            tomo_bin, per_object_response = self.calculate_tomography(pz_data, shear_data, calculators)
+            per_object_response = self.accumulate_selection(pz_data, shear_data, calculators)
 
             # Save the tomography for this chunk
             self.write_tomography(output_file, start, end, tomo_bin, per_object_response)
@@ -162,90 +107,80 @@ class TXSourceSelectorBase(PipelineStage):
         # Restore the original warning settings in case we are being called from a library
         np.seterr(**original_warning_settings)
 
+    def select(self, data, bin_index):
+        zbin = data["zbin"]
+        sel = data["selected"]
+        return (zbin == bin_index) & sel
 
-    def make_tomographic_bin_chooser_function(self):
-        """Return a function tomography_classifier(start, end, shear_data) -> dict of zbin arrays."""
+    def select_any_bin(self, data):
+        zbin = data["zbin"]
+        sel = data["selected"]
+        return (zbin >= 0) & sel
 
-        # In the simple case we just have a straightforward
-        # redshfit cut, and we use the existing function for that.
-        # See below for a note about the start and end arguments.
-        if self.config["true_z"] or self.config["input_pz"]:
-            def tomography_classifier(start, end, shear_data):
-                return self.apply_simple_redshift_cut(shear_data)
-            return tomography_classifier
-
-        if not self.config["do_tomography"]:
-            def tomography_classifier(start, end, shear_data):
-                return self.apply_no_tomography_cut(shear_data)
-            return tomography_classifier
-    
-        # Are we using a metacal or lensfit catalog?
-        shear_catalog_type = read_shear_catalog_type(self)
-
-        # Build a classifier used to put objects into tomographic bins
-        classifier, features = self.read_tomography_classifier()
-        bands = self.config["bands"]
-
-        # Make a nested function to be our classifier.
-        # Note that this default implementation does not use
-        # the start and end functions, which are only needed right
-        # now in the DESY3 selector where we are getting the
-        # tomography selection from an external file.
-        def tomography_classifier(start, end, shear_data):
-            # or select most likely tomographic source bin, with a random forest
-            pz_data = apply_classifier(
-                classifier,
-                features,
-                bands,
-                shear_catalog_type,
-                shear_data,
-            )
-            return pz_data
-
-        return tomography_classifier
-
-    def read_tomography_classifier(self):
-        # Read the tomography classifier from file
-        with self.open_input("shear_tomography_classifier", wrapper=True) as infile:
-            pickle_data = infile.read()
-
-        # Check that the tomographer used the same configuration
-        # as we have here.
-        if not sorted(list(pickle_data["bands"])) == sorted(list(self.config["bands"])):
-            raise ValueError(
-                "Bands used in tomography classifier do not match those "
-                "in source selector configuration."
-            )
-        # Also check bin edges are close enough
-        if not np.allclose(pickle_data["source_zbin_edges"], self.config["source_zbin_edges"]):
-            raise ValueError(
-                "Source redshift bin edges used in tomography classifier do not match those "
-                "in source selector configuration."
-            )
-
-        # This is all that is actually needed in this class
-        classifier = pickle_data["classifier"]
-        features = pickle_data["features"]
-        return classifier, features
+    def columns(self):
+        return [
+            {
+                "shear_catalog": ["g1", "g2", "weight"],
+                "shear_bin_assignments": ["zbin"],
+                "shear_selection": ["selection"],
+            }
+        ]
 
 
-    def apply_simple_redshift_cut(self, shear_data):
-        if self.config["input_pz"]:
-            zz = shear_data["mean_z"]
-        else:
-            zz = shear_data["redshift_true"]
 
-        pz_data_bin = np.zeros(len(zz), dtype=int) - 1
-        for zi in range(len(self.config["source_zbin_edges"]) - 1):
-            mask_zbin = (zz >= self.config["source_zbin_edges"][zi]) & (zz < self.config["source_zbin_edges"][zi + 1])
-            pz_data_bin[mask_zbin] = zi
+    def columns(self):
+        # for metadetect
+        return [
+            {
+                "shear_catalog": [f"{v}/g1", f"{v}/g2", f"{v}/weight"],
+                "shear_bin_assignments": f"{v}/zbin",
+                "shear_selection": f"{v}/selection",
+            }
+            for v in META_VARIANTS
+        ]
 
-        return {"zbin": pz_data_bin}
+    def column_groups(self):
+        # for scalar_metadetect
+        return [
+            {
+                "shear_catalog": [f"{v}/g1", f"{v}/g2", f"{v}/weight"],
+                "shear_bin_assignments": f"{v}/zbin",
+                "shear_selection": f"{v}/selection",
+            }
+            for v in SCALAR_META_VARIANTS
+        ]
 
-    def apply_no_tomography_cut(self, shear_data):
-        return {"zbin": np.zeros(shear_data['ra'].size, dtype=int)}
 
-    def calculate_tomography(self, pz_data, shear_data, calculators):
+
+
+    def data_iterator(self):
+        # iterator over:
+        # - the "sel" columns in the selection catalog
+        # - the "zbin" columns in the tomo assignments
+        # - the g1, g2, and weight columns from the shear catalog
+        # - any other columns from the shear catalog that subclassses need
+        with self.open_input("shear_catalog", wrapper=True) as f:
+            calib_cols = f.get_extra_calibration_columns()
+
+
+        for col_group in self.column_groups():
+            for (s, e, data) in self.combined_iterators(
+                chunk_rows,
+                "shear_catalog",
+                "shear",
+                # fortunately the metadetect and metacal catalogs don't have any additional calib_cols
+                # or this would not quite work
+                col_group["shear_catalog"] + calib_cols,
+                "shear_bin_assignments",
+                "/",
+                col_group["shear_bin_assignments"],
+                "shear_selection",
+                "/",
+                col_group["shear_selection"],
+            ):
+                yield (s, e, data)
+
+    def accumulate_selection(self, pz_data, shear_data, calculators):
         """
         Select objects to go in each tomographic bin and their calibration.
 
@@ -269,7 +204,7 @@ class TXSourceSelectorBase(PipelineStage):
         R = self.compute_per_object_response(data)
 
         for i in range(nbin):
-            sel_00 = calculators[i].add_data(data, self.config, i)
+            sel_00 = calculators[i].add_data(data, i)
             tomo_bin[sel_00] = i
 
         # and calibrate the 2D sample.
@@ -377,77 +312,3 @@ class TXSourceSelectorBase(PipelineStage):
                 stats.write_to(outfile, i if i < len(calculators) - 1 else "2d")
 
 
-
-def select_tomographic_weak_lensing_sample(data, config, bin_index):
-    """
-    Select which objects are to be chosen in this tomographic bin.
-    We do this by calling out to the 2D selector, which does the
-    cuts on size and SNR, and then combining this with a cut on tomographic bin.
-
-    Note that we don't call this method directly in the selector classes. Instead
-    we pass it to the Calculator objects that call it, sometimes on different
-    columns of data.
-    """
-    zbin = data["zbin"]
-    verbose = config["verbose"]
-
-    sel = select_weak_lensing_sample(data, config, calling_from_select=True)
-    sel &= zbin == bin_index
-    f4 = sel.sum() / sel.size
-
-    if verbose:
-        print(f"{f4:.2%} z for bin {bin_index}")
-        print("total tomo", sel.sum())
-
-    return sel
-
-def select_weak_lensing_sample(data, config, calling_from_select=False):
-    # Select any objects that pass general WL cuts
-    # The calling_from_select option just specifies whether we
-    # are calling this function from within the select
-    # method above, because the useful printed verbose
-    # output is different in each case
-    s2n_cut = config["s2n_cut"]
-    T_cut = config["T_cut"]
-
-    verbose = config["verbose"]
-    variant = data.suffix
-
-    s2n = data[f"s2n{variant}"]
-    T = data[f"T{variant}"]
-    Tpsf = data[f"psf_T_mean"]
-    flag = data[f"flags{variant}"]
-
-    # Apply our cuts.  We keep track of the number of objects
-    # reject by each cut in case it's important.
-    # First we require flag = 0
-    n0 = len(flag)
-    sel = flag == 0
-    f1 = sel.sum() / n0
-
-    # Next we required a minimum object size compared to the PSF
-    sel &= (T / Tpsf) > T_cut
-    f2 = sel.sum() / n0
-
-    # Then we require a signal-to-noise minimum
-    sel &= s2n > s2n_cut
-    f3 = sel.sum() / n0
-
-    # Finally we want objects that have been put into any of our other
-    # tomographic bins
-    sel &= data["zbin"] >= 0
-    f4 = sel.sum() / n0
-
-    # Print out a message.  If we are selecting a 2D sample
-    # this is the complete message.  Otherwise if we are about
-    # to also apply a redshift bin cut about then the message will continue
-    # as above
-    if verbose and calling_from_select:
-        print(
-            f"Tomo selection ({variant}) {f1:.2%} flag, {f2:.2%} size, {f3:.2%} SNR, ",
-            end="",
-        )
-    elif verbose:
-        print(f"2D selection ({variant}) {f1:.2%} flag, {f2:.2%} size, {f3:.2%} SNR, {f4:.2%} any z bin")
-        print("total 2D", sel.sum())
-    return sel

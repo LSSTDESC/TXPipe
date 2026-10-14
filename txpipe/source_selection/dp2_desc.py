@@ -1,5 +1,5 @@
 from .scalar_metadetect import TXSourceSelectorScalarMetadetect
-from .base import select_weak_lensing_sample, TXSourceSelectorBase
+from .base import TXSourceSelectorBase
 from ..shear_calibration import metadetect_variants, MetaDetectCalculator, band_variants, SCALAR_META_VARIANTS, scalar_metadetect_variants, ScalarMetaDetectCalculator
 from ..data_types import HDFFile
 from ceci.config import StageParameter
@@ -180,19 +180,6 @@ def select_weak_lensing_sample_metadetect_desc_dp2(data, config, calling_from_se
     cutter.keep(data["zbin"] >= 0, "Any z bin")
     return cutter.sel
 
-class Cutter:
-    def __init__(self, n, verbose=False):
-        self.sel = np.ones(n, dtype=bool)
-        self.verbose = verbose
-        self.size = n
-
-    def keep(self, sel, name):
-        f1 = sel.sum() / self.size
-        self.sel &= sel
-        final_size = self.sel.sum()
-        f2 = final_size / sel.size
-        if self.verbose:
-            print(f" - {name} cuts {f1:.1%} and leaves {f2:.1%} cumulatively cut [ = {final_size:,}] afterwards")
 
 
 def select_tomographic_weak_lensing_sample_metadetect_desc_dp2(data, config, bin_index):
