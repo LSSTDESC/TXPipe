@@ -47,7 +47,7 @@ TXSourceTrueNumberDensity:
     zmax: 3.0
     chunk_rows: 100000
 
-TXSourceSelector:
+TXSourceSelectorMetacal:
     input_pz: false
     bands: [r, i, z] #used for selection
     T_cut: 0.5

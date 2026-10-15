@@ -25,7 +25,7 @@ stages:
     nprocess: 32
   - name: TXLensNoiseMaps
     nprocess: 32
-  - name: TXSourceSelector
+  - name: TXSourceSelectorMetacal
     nprocess: 32
   - name: TXSourceTomography
     threads_per_process: 4

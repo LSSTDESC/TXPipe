@@ -23,7 +23,7 @@ stages:
   - name: TXJackknifeCenters
   - name: TXSourceNoiseMaps
   - name: TXLensNoiseMaps
-  - name: TXSourceSelector
+  - name: TXSourceSelectorMetacal
   - name: TXSourceTomography
   - name: PZRailEstimateSource
   - name: PZRailEstimateLensFromSource
