@@ -9,9 +9,6 @@ TXSourceSelectorMetadetect:
     chunk_rows: 100000
     true_z: false
 
-TXSourceTomography:
-    bands: [r, i, z] #used for selection
-    source_zbin_edges: [0.1, 3.0]
 
 BPZliteInformer:
     zmin: 0.0
@@ -91,3 +88,28 @@ CLClusterEnsembleProfiles:
 CLClusterSACC:
     survey_name: 'cosmodc2-20deg2-CL'
     area: 20.0
+TXTrainRandomForestTomography:
+    bands: [r, i, z] #used for selection
+    source_zbin_edges: [0.1, 3.0]
+TXMetadetectSelection:
+    input_pz: false
+    bands: [r, i, z] #used for selection
+    T_cut: 0.5
+    s2n_cut: 10.0
+    max_rows: 1000
+    delta_gamma: 0.02
+    source_zbin_edges: [0.1, 3.0]
+    chunk_rows: 100000
+    true_z: false
+
+TXApplyRandomForestSourceTomography:
+    input_pz: false
+    bands: [r, i, z] #used for selection
+    T_cut: 0.5
+    s2n_cut: 10.0
+    max_rows: 1000
+    delta_gamma: 0.02
+    source_zbin_edges: [0.1, 3.0]
+    chunk_rows: 100000
+    true_z: false
+

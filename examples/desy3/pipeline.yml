@@ -58,7 +58,7 @@ stages:
     threads_per_process: 8
 
   # Train a tomography model from the spectroscopic sample for the sources
-  - name: TXSourceTomography
+  - name: TXTrainRandomForestTomography
     threads_per_process: 8
 
   # Compute metacalibration shear response and selection bias corrections
@@ -67,6 +67,8 @@ stages:
     threads_per_process: 4
 
   # Generate calibrated tomographic source catalogs
+  - name: TXDESY3Selection
+  - name: TXApplyRandomForestSourceTomography
   - name: TXShearCalibration
     nprocess: 8
     threads_per_process: 4

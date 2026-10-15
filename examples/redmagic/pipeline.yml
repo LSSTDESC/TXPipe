@@ -1,7 +1,9 @@
 # Stages to run
 stages:
   - name: TXSourceSelectorMetacal
-  - name: TXSourceTomography
+  - name: TXMetacalSelection
+  - name: TXSimpleRedshiftSourceTomography
+  - name: TXTrainRandomForestTomography
   - name: TXShearCalibration
   - name: TXExternalLensCatalogSplitter
   - name: TXStarCatalogSplitter

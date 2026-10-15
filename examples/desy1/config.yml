@@ -204,3 +204,22 @@ TXMapCorrelations:
     supreme_path_root: data/example/inputs/supreme
     outlier_fraction: 0.05
     nbin: 20
+TXMetacalSelection:
+    input_pz: true
+    true_z: false
+    bands: [r, i, z] #used for selection
+    T_cut: 0.5
+    s2n_cut: 10.0
+    max_rows: 1000
+    delta_gamma: 0.02
+    source_zbin_edges: [0.2, 0.43, 0.63, 0.90, 1.30]
+TXSimpleRedshiftSourceTomography:
+    input_pz: true
+    true_z: false
+    bands: [r, i, z] #used for selection
+    max_rows: 1000
+    delta_gamma: 0.02
+    source_zbin_edges: [0.2, 0.43, 0.63, 0.90, 1.30]
+    T_min: 0.5
+    s2n_min: 10.0
+    redshift_col: mean_z

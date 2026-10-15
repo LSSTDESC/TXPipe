@@ -73,11 +73,7 @@ TXSourceSelectorMetadetect:
     source_zbin_edges: [0.19285902, 0.40831394, 0.65503818, 0.94499109, 1.2947086, 1.72779632] # 5 bins
     # these are not the actual bin-edges of the SRD nzs, but it doesnt matter because the input catalogs are assigned using this fake input.
     chunk_rows: 100000
-    true_z: True
-
-TXSourceTomography:
-    bands: [r, i, z] #used for selection
-    source_zbin_edges: [0.19285902, 0.40831394, 0.65503818, 0.94499109, 1.2947086, 1.72779632] # 5 bins
+    true_z: true
 
 TXRandomCat:
     chunk_rows: 10000000 
@@ -178,3 +174,35 @@ TXSourceNoiseMaps:
     lensing_realizations: 20
 
 
+TXTrainRandomForestTomography:
+    bands: [r, i, z] #used for selection
+    source_zbin_edges: [0.19285902, 0.40831394, 0.65503818, 0.94499109, 
+            1.2947086, 1.72779632]                                                             # 5 bins
+
+TXMetadetectSelection:
+    input_pz: false
+    bands: [r, i, z] #used for selection
+    T_cut: 0.
+    s2n_cut: 0.0
+    max_rows: 1000
+    delta_gamma: 0.02
+    source_zbin_edges: [0.19285902, 0.40831394, 0.65503818, 0.94499109, 
+            1.2947086, 1.72779632]                                                             # 5 bins
+    # these are not the actual bin-edges of the SRD nzs, but it doesnt matter because the input catalogs are assigned using this fake input.
+    chunk_rows: 100000
+    true_z: true
+
+TXSimpleRedshiftSourceTomography:
+    input_pz: false
+    bands: [r, i, z] #used for selection
+    max_rows: 1000
+    delta_gamma: 0.02
+    source_zbin_edges: [0.19285902, 0.40831394, 0.65503818, 0.94499109, 
+            1.2947086, 1.72779632]                                                             # 5 bins
+    # these are not the actual bin-edges of the SRD nzs, but it doesnt matter because the input catalogs are assigned using this fake input.
+    chunk_rows: 100000
+    true_z: true
+
+    T_min: 0.
+    s2n_min: 0.0
+    redshift_col: redshift_true

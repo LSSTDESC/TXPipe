@@ -6,7 +6,9 @@ stages:
   - name: TXCutShearCatalog
   - name: TXSourceSelectorSimple
     aliases:
-      shear_catalog: cut_shear_catalog
+        shear_catalog: cut_shear_catalog
+  - name: TXSimpleSelection
+  - name: TXSimpleRedshiftSourceTomography
   - name: TXShearCalibration
     aliases:
       shear_catalog: cut_shear_catalog
@@ -28,7 +30,7 @@ stages:
   - name: TXDeltaSigma
   - name: TXDeltaSigmaTheory
   - name: TXDeltaSigmaPlots
-  - name: TXSourceTomography
+  - name: TXTrainRandomForestTomography
   - name: TXTruePhotozStackSource
     classname: TXTruePhotozStack
     aliases:

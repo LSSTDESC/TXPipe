@@ -21,7 +21,9 @@ stages:
     - name: TXSourceSelectorMetacal
       nprocess: 64
       nodes: 2
-    - name: TXSourceTomography
+    - name: TXMetacalSelection
+    - name: TXApplyRandomForestSourceTomography
+    - name: TXTrainRandomForestTomography
       threads_per_process: 4
     - name: TXSourceTrueNumberDensity
     - name: TXPhotozPlot
