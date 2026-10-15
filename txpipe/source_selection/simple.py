@@ -12,31 +12,6 @@ class TXSourceSelectorSimple(TXSourceSelectorBase):
     name = "TXSourceSelectorSimple"
     config_options = TXSourceSelectorBase.config_options.copy()
 
-    # def data_iterator(self):
-    #     chunk_rows = self.config["chunk_rows"]
-    #     bands = self.config["bands"]
-
-    #     # Select columns we need.
-    #     shear_cols = [
-    #         "psf_T_mean",
-    #         "weight",
-    #         "flags",
-    #         "T",
-    #         "s2n",
-    #         "g1",
-    #         "g2",
-    #         "weight",
-    #     ]
-    #     if self.config["input_pz"]:
-    #         shear_cols += ["mean_z"]
-    #     elif self.config["true_z"]:
-    #         shear_cols += ["redshift_true"]
-    #     else:
-    #         shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="simple")
-
-    #     # Iterate using parent class method
-    #     return self.iterate_hdf("shear_catalog", "shear", shear_cols, chunk_rows)
-
     def setup_response_calculators(self, nbin_source):
         calculators = [MockCalculator(self.select) for i in range(nbin_source)]
         calculators.append(MockCalculator(self.select_any_bin))
