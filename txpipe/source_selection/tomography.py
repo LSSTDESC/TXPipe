@@ -85,6 +85,8 @@ class TXComputeSourceTomography(PipelineStage):
         f_in = self.open_input("shear_catalog", wrapper=True)
         f_out = self.open_output("shear_bin_assignments", parallel=True)
 
+        self.save_metadata(f_out, info)
+
         prefixes = f_in.get_classifier_prefixes()
         suffices = f_in.get_classifier_suffixes()
         output_cols = f_in.get_tomography_bin_columns()
@@ -112,6 +114,9 @@ class TXComputeSourceTomography(PipelineStage):
 
     def choose_columns(self):
         return []
+
+    def save_metadata(self, output_file, info):
+        pass
 
 
 class TXApplyRandomForestSourceTomography(TXComputeSourceTomography):
@@ -153,6 +158,11 @@ class TXApplyRandomForestSourceTomography(TXComputeSourceTomography):
             data,
         )
 
+    def save_metadata(self, output_file, info):
+        output_file.attrs["bands"] = info["bands"]
+        output_file.attrs["bin_edges"] = info["bin_edges"]
+        output_file.attrs["nbin_source"] = len(info["bin_edges"]) - 1
+
 
 class TXSimpleRedshiftSourceTomography(TXComputeSourceTomography):
     name = "TXSimpleRedshiftSourceTomography"
@@ -179,3 +189,8 @@ class TXSimpleRedshiftSourceTomography(TXComputeSourceTomography):
 
     def choose_columns(self, info):
         return [self.config["redshift_col"]]
+
+    def save_metadata(self, output_file, info):
+        output_file.attrs["redshift_col"] = self.config["redshift_col"]
+        output_file.attrs["bin_edges"] = self.config["source_zbin_edges"]
+        output_file.attrs["nbin_source"] = len(self.config["source_zbin_edges"]) - 1

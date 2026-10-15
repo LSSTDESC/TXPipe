@@ -113,7 +113,7 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         return outfile
 
 
-    def accumulate_selection(self, pz_data, shear_data, calculators):
+    def accumulate_selection(self, data, calculators):
         """
         Select objects to go in each tomographic bin and their calibration.
 
@@ -126,15 +126,14 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
             A chunk of input shear data with metacalibration variants.
         """
         nbin = self.config["nbin_source"]
-        n = len(list(shear_data.values())[0])
+        n = len(list(data.values())[0])
 
         tomo_bins = []
         for v in META_VARIANTS:
-            n = len(shear_data[f"{v}/g1"])
+            n = len(data[f"{v}/g1"])
             tomo_bin = np.repeat(-1, n)
             tomo_bins.append(tomo_bin)
 
-        data = {**pz_data, **shear_data}
 
         R = self.compute_per_object_response(data)
 
@@ -147,4 +146,15 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         # This calibrator refers to select_weak_lensing_sample
         calculators[-1].add_data(data)
 
-        return R
+        return tomo_bins, R
+
+    def column_groups(self):
+        # for metadetect
+        return [
+            {
+                "shear_catalog": [f"{v}/g1", f"{v}/g2", f"{v}/weight"],
+                "shear_bin_assignments": f"{v}/zbin",
+                "shear_selection": f"{v}/selection",
+            }
+            for v in META_VARIANTS
+        ]

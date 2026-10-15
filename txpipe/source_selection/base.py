@@ -45,9 +45,6 @@ class TXSourceSelectorBase(PipelineStage):
     outputs = [("shear_tomography_catalog", TomographyCatalog)]
 
     config_options = {
-        "input_pz": StageParameter(bool, False, msg="Whether to use input photo-z posteriors"),
-        "true_z": StageParameter(bool, False, msg="Whether to use true redshifts instead of photo-z"),
-        "bands": StageParameter(list, ["r", "i", "z"], msg="Bands from the catalog to use for selection"),
         "verbose": StageParameter(bool, False, msg="Whether to print verbose output"),
         "chunk_rows": StageParameter(int, 10000, msg="Number of rows to process in each chunk"),
     }
@@ -66,7 +63,8 @@ class TXSourceSelectorBase(PipelineStage):
         # Suppress some warnings from numpy that are not relevant
         original_warning_settings = np.seterr(all="ignore")
 
-        nbin_source = -1
+        with self.open_input("shear_bin_assignments") as f:
+            nbin_source = f.attrs["nbin_source"]
         self.config["nbin_source"] = nbin_source
 
         # We will collect the selection biases for each bin
@@ -85,14 +83,14 @@ class TXSourceSelectorBase(PipelineStage):
 
 
         # Loop through the input data, processing it chunk by chunk
-        for start, end, shear_data in it:
+        for start, end, data in it:
             print(f"Process {self.rank} running selection for rows {start:,}-{end:,}")
 
             # Combine this selection with size and snr cuts to produce a source selection
             # and calculate the shear bias it would generate.
             # Note that the per-object response can be None for methods like MetaDetect that
             # only calibrate the entire bin
-            per_object_response = self.accumulate_selection(pz_data, shear_data, calculators)
+            tomo_bin, per_object_response = self.accumulate_selection(data, calculators)
 
             # Save the tomography for this chunk
             self.write_tomography(output_file, start, end, tomo_bin, per_object_response)
@@ -108,49 +106,23 @@ class TXSourceSelectorBase(PipelineStage):
         np.seterr(**original_warning_settings)
 
     def select(self, data, bin_index):
-        zbin = data["zbin"]
-        sel = data["selected"]
+        zbin = data["bin"]
+        sel = data["selection"]
         return (zbin == bin_index) & sel
 
     def select_any_bin(self, data):
-        zbin = data["zbin"]
-        sel = data["selected"]
+        zbin = data["bin"]
+        sel = data["selection"]
         return (zbin >= 0) & sel
 
-    def columns(self):
+    def column_groups(self):
         return [
             {
                 "shear_catalog": ["g1", "g2", "weight"],
-                "shear_bin_assignments": ["zbin"],
+                "shear_bin_assignments": ["bin"],
                 "shear_selection": ["selection"],
             }
         ]
-
-
-
-    def columns(self):
-        # for metadetect
-        return [
-            {
-                "shear_catalog": [f"{v}/g1", f"{v}/g2", f"{v}/weight"],
-                "shear_bin_assignments": f"{v}/zbin",
-                "shear_selection": f"{v}/selection",
-            }
-            for v in META_VARIANTS
-        ]
-
-    def column_groups(self):
-        # for scalar_metadetect
-        return [
-            {
-                "shear_catalog": [f"{v}/g1", f"{v}/g2", f"{v}/weight"],
-                "shear_bin_assignments": f"{v}/zbin",
-                "shear_selection": f"{v}/selection",
-            }
-            for v in SCALAR_META_VARIANTS
-        ]
-
-
 
 
     def data_iterator(self):
@@ -162,6 +134,7 @@ class TXSourceSelectorBase(PipelineStage):
         with self.open_input("shear_catalog", wrapper=True) as f:
             calib_cols = f.get_extra_calibration_columns()
 
+        chunk_rows = self.config["chunk_rows"]
 
         for col_group in self.column_groups():
             for (s, e, data) in self.combined_iterators(
@@ -171,16 +144,18 @@ class TXSourceSelectorBase(PipelineStage):
                 # fortunately the metadetect and metacal catalogs don't have any additional calib_cols
                 # or this would not quite work
                 col_group["shear_catalog"] + calib_cols,
+
                 "shear_bin_assignments",
                 "/",
                 col_group["shear_bin_assignments"],
+
                 "shear_selection",
-                "/",
+                "shear",
                 col_group["shear_selection"],
             ):
                 yield (s, e, data)
 
-    def accumulate_selection(self, pz_data, shear_data, calculators):
+    def accumulate_selection(self, data, calculators):
         """
         Select objects to go in each tomographic bin and their calibration.
 
@@ -193,13 +168,11 @@ class TXSourceSelectorBase(PipelineStage):
             A chunk of input shear data with metacalibration variants.
         """
         nbin = self.config['nbin_source']
-        n = len(list(shear_data.values())[0])
+        n = len(list(data.values())[0])
 
         # The main output data - the tomographic
         # bin index for each object, or -1 for no bin.
         tomo_bin = np.repeat(-1, n)
-
-        data = {**pz_data, **shear_data}
 
         R = self.compute_per_object_response(data)
 
@@ -209,7 +182,7 @@ class TXSourceSelectorBase(PipelineStage):
 
         # and calibrate the 2D sample.
         # This calibrator refers to select_weak_lensing_sample
-        calculators[-1].add_data(data, self.config)
+        calculators[-1].add_data(data)
 
         return tomo_bin, R
 
@@ -237,13 +210,8 @@ class TXSourceSelectorBase(PipelineStage):
         group = outfile.create_group("tomography")
         group.attrs["catalog_type"] = cat_type
 
-
-        if self.config['do_tomography']:
-           zbins = self.config["source_zbin_edges"]
-        else:
-            # Use mock z limits here in the output
-            # to indicate everything is selected.
-            zbins = [0.0, 999.]
+        with self.open_input("shear_bin_assignments") as f:
+            zbins = f.attrs["bin_edges"]
         output.write_zbins(zbins)
 
         group.create_dataset("bin", (n,), dtype="i")

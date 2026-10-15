@@ -31,7 +31,7 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
         ),
     }
 
-    def columns(self):
+    def column_groups(self):
         # for metacal
         return [
             {
