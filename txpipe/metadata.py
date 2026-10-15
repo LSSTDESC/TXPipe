@@ -65,6 +65,9 @@ class TXTracerMetadata(PipelineStage):
             elif shear_catalog_type == "metadetect":
                 copy(shear_tomo_file, "response", "tracers", "R", meta_file, metadata)
                 copy(shear_tomo_file, "response", "tracers", "R_2d", meta_file, metadata)
+            elif shear_catalog_type == "scalar_metadetect":
+                copy(shear_tomo_file, "response", "tracers", "R", meta_file, metadata)
+                copy(shear_tomo_file, "response", "tracers", "R_2d", meta_file, metadata)
             elif shear_catalog_type == "lensfit":
                 copy(shear_tomo_file, "response", "tracers", "K", meta_file, metadata)
                 copy(shear_tomo_file, "response", "tracers", "C_N", meta_file, metadata)

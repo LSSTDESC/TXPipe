@@ -1,5 +1,5 @@
 META_VARIANTS = ["ns", "1p", "1m", "2p", "2m"]
-
+SCALAR_META_VARIANTS = ["ns", "1p", "1m"]
 
 def metacal_variants(*names):
     return [name + suffix for suffix in ["", "_1p", "_1m", "_2p", "_2m"] for name in names]
@@ -7,6 +7,9 @@ def metacal_variants(*names):
 
 def metadetect_variants(*names):
     return [f"{group}/{name}" for group in META_VARIANTS for name in names]
+
+def scalar_metadetect_variants(*names):
+    return [f"{group}/{name}" for group in SCALAR_META_VARIANTS for name in names]
 
 
 def band_variants(bands, *names, shear_catalog_type="metacal"):
@@ -20,6 +23,10 @@ def band_variants(bands, *names, shear_catalog_type="metacal"):
     elif shear_catalog_type == "metadetect":
         return [
             f"{group}/{name}_{band}" for group in META_VARIANTS for band in bands for name in names
+        ]
+    elif shear_catalog_type == "scalar_metadetect":
+        return [
+            f"{group}/{name}_{band}" for group in SCALAR_META_VARIANTS for band in bands for name in names
         ]
     else:
         return [name + "_" + band for band in bands for name in names]

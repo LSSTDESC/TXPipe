@@ -1,0 +1,64 @@
+# output_dir: /global/cfs/cdirs/lsst/groups/PZ/users/zhzhuoqi/DP2_test/dp2_select_v0.1
+# log_dir: /global/cfs/cdirs/lsst/groups/PZ/users/zhzhuoqi/DP2_test/dp2_select_v0.1
+output_dir: data/pz_dp2
+log_dir: .
+resume: resume
+config: examples/dp2/pz_config.yml
+modules: rail
+{% set assign_procs = 128 %}
+inputs:
+  # deep_model: model_deep.pkl
+  # input_deep_data: /sdf/home/z/zhzhuoqi/rubin-user/DP2/DP2_test_WZ/mdet_catalog.hdf5
+  #input_deep_data: data/metadetect_dp2/shear_catalog.hdf5
+  input_deep_data: data/metadetect_desc_dp2_ingest/cut_shear_catalog.hdf5
+  #input_deep_data: mini_desc_dp2_shear_catalog.hdf5
+  input_deep_data_inform: data/pz_dp2_ingest/mdet_for_sompz.hdf5
+  # input_spec_data: /sdf/home/z/zhzhuoqi/rubin-user/DP2/DP2_test_WZ/mdet_redshift_for_sompz.hdf5
+  input_spec_data: data/pz_dp2_ingest/mdet_redshift_for_sompz.hdf5
+stages:
+- name: som_deep_informer_big
+  classname: SOMPZInformer
+  module_name: rail.estimation.algos.sompz
+  threads_per_process: 16
+  aliases:
+    model: deep_model
+    input_data: input_deep_data_inform
+{% for variant in ["ns", "1p", "1m"] %}
+- name: som_deepdeep_estimator_{{ variant }}
+  classname: SOMPZEstimatorDeep
+  nprocess: {{ assign_procs }}
+  module_name: rail.estimation.algos.sompz
+  aliases:
+    data: input_deep_data
+    assignment: assignment_som_deepdeep_estimator_{{ variant }}
+- name: sompz_tomobin_and_nz_onesom_binning5_{{ variant }}
+  classname: SOMPZ_tomobin_and_nz_onesom
+  nprocess: 1
+  module_name: rail.estimation.algos.sompz
+  aliases:
+    spec_data: input_spec_data
+    cell_deep_spec_data: assignment_som_deepspec_estimator
+    balrog_data: input_deep_data
+    cell_deep_balrog_data: assignment_som_deepdeep_estimator_{{ variant }}
+    pz_c: pz_c_som_pzc_stage
+    tomo_bins_wide: tomo_bins_wide_binning5_{{ variant }}
+    bhat_for_wide_data: bhat_for_wide_data_binning5_{{ variant }}
+    nz: nz_binning5_{{ variant }}
+{% endfor %}
+- name: som_deepspec_estimator
+  classname: SOMPZEstimatorDeep
+  module_name: rail.estimation.algos.sompz
+  aliases:
+    assignment: assignment_som_deepspec_estimator
+    data: input_spec_data
+- name: som_pzc_stage
+  classname: SOMPZPzc
+  nprocess: 1
+  module_name: rail.estimation.algos.sompz
+  aliases:
+    cell_deep_spec_data: assignment_som_deepspec_estimator
+    spec_data: input_spec_data
+    pz_c: pz_c_som_pzc_stage
+
+site:
+  name: nersc-interactive
