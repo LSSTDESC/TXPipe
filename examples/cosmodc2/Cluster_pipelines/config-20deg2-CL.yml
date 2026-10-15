@@ -91,7 +91,7 @@ CLClusterSACC:
 TXTrainRandomForestTomography:
     bands: [r, i, z] #used for selection
     source_zbin_edges: [0.1, 3.0]
-TXMetadetectSelection:
+TXMetaDetectSelection:
     input_pz: false
     bands: [r, i, z] #used for selection
     T_cut: 0.5

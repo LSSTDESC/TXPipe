@@ -3,7 +3,6 @@ stages:
   - name: TXSourceSelectorMetacal
   - name: TXMetacalSelection
   - name: TXSimpleRedshiftSourceTomography
-  - name: TXTrainRandomForestTomography
   - name: TXShearCalibration
   - name: TXExternalLensCatalogSplitter
   - name: TXStarCatalogSplitter

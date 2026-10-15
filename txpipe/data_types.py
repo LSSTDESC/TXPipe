@@ -249,7 +249,7 @@ class MetaDetectShearCatalog(ShearCatalog):
 
     @staticmethod
     def get_primary_tomography_bin_column():
-        return "bin_ns"
+        return "ns/bin"
 
     @staticmethod
     def get_tomography_bin_columns():

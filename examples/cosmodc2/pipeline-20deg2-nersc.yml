@@ -16,7 +16,7 @@ stages:
     nprocess: 32
   - name: TXSourceSelectorMetadetect
     nprocess: 32
-  - name: TXMetadetectSelection
+  - name: TXMetaDetectSelection
   - name: TXApplyRandomForestSourceTomography
   - name: TXTrainRandomForestTomography
     threads_per_process: 4

@@ -1214,7 +1214,6 @@ class TXResponseInBins(PipelineStage):
             cols = f.get_column_name_variants("g1", "g2", "weight", "s2n", "T", "psf_T_mean")
             cat_type = f.catalog_type
             tomo_cols = f.get_tomography_bin_columns()
-            rename = f.get_tomography_bin_column_rename_dict()
 
         chunk_rows = self.config['chunk_rows']
         
@@ -1228,7 +1227,7 @@ class TXResponseInBins(PipelineStage):
             tomo_cols,
             longest=True,
         )
-        return rename_iterated(it, rename)
+        return it
 
 
 

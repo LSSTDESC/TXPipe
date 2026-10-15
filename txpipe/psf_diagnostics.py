@@ -1109,9 +1109,10 @@ class TXGalaxyStarShear(PipelineStage):
             primary_group = f.get_primary_catalog_group()
             primary_bin = f.get_primary_tomography_bin_column()
             extra_cal_cols = f.get_extra_calibration_columns()
+            tomo_col = f.get_tomography_bin_columns()[0]
 
         with self.open_input("shear_tomography_catalog", wrapper=True) as f:
-            source_bin = f.file[f"tomography/{primary_bin}"][:]
+            source_bin = f.file[f"tomography/{tomo_col}"][:]
             mask = source_bin != -1  # Only use the sources that pass the fiducial cuts
 
         with self.open_input("shear_catalog", wrapper=True) as f:

@@ -413,7 +413,7 @@ HOSFSB:
     include_n32: false
     nside: *nside_mid
 
-TXSimpleRedshiftSourceTomography:
+TXApplyRandomForestSourceTomography:
     input_pz: false
     true_z: true
     bands: [r, i, z] #used for selection
@@ -423,10 +423,12 @@ TXSimpleRedshiftSourceTomography:
     T_min: 0.5
     s2n_min: 10.0
     redshift_col: redshift_true
+
 TXTrainRandomForestTomography:
     bands: [r, i, z] #used for selection
     source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
-TXMetadetectSelection:
+
+TXMetaDetectSelection:
     input_pz: false
     true_z: true
     bands: [r, i, z] #used for selection

@@ -82,11 +82,11 @@ def apply_classifier(classifier, features, bands, shear_data):
     for f in features:
         # may be a single band
         if len(f) == 1:
-            col = shear_data[f"{prefix}mag_{f}{suffix}"]
+            col = shear_data[f"mag_{f}"]
         # or a colour
         else:
             b1, b2 = f.split("-")
-            col = shear_data[f"{prefix}mag_{b1}{suffix}"] - shear_data[f"{prefix}mag_{b2}{suffix}"]
+            col = shear_data[f"mag_{b1}"] - shear_data[f"mag_{b2}"]
         if np.all(~np.isfinite(col)):
             # entire column is NaN.  Hopefully this will get deselected elsewhere
             col[:] = 30.0

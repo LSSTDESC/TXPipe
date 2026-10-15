@@ -49,7 +49,6 @@ stages:
   - name: TXSourceSelectorMetacal    # select and split objects into source bins
   - name: TXMetacalSelection
   - name: TXSimpleRedshiftSourceTomography
-  - name: TXTrainRandomForestTomography
   - name: NZDirInformerSource       # Prepare the DIR method inputs for the source sample
     classname: NZDirInformer
     aliases:

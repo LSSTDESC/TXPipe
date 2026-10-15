@@ -307,7 +307,7 @@ TXApplyRandomForestSourceTomography:
     # source_zbin_edges: [0.25588604, 0.55455363, 0.91863365, 1.38232001, 2.] # 4 bins
     true_z: false
 
-TXMetadetectSelection:
+TXMetaDetectSelection:
     input_pz: false
     bands: [r, i, z] #used for selection
     T_cut: 0.5
