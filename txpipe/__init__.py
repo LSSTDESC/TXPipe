@@ -43,7 +43,7 @@ from .magnification import TXSSIMagnification
 from .covariance_nmt import TXFourierNamasterCovariance, TXRealNamasterCovariance
 from .delta_sigma import TXDeltaSigma
 from .tomography import TXTrainRandomForestTomography, TXComputeSourceTomography, TXApplyRandomForestSourceTomography, TXSimpleRedshiftSourceTomography
-from .source_selection import TXBasicSelection, TXMetaDetectSelection, TXScalarMetaDetectSelection, TXMetacalSelection, TXLensfitSelection, TXHSCSelection
+from .source_selection import TXSimpleSelection, TXMetaDetectSelection, TXScalarMetaDetectSelection, TXMetacalSelection, TXLensfitSelection, TXHSCSelection
 from .shear_calibration import TXSourceSelectorSimple, TXSourceSelectorHSC, TXSourceSelectorLensfit, TXSourceSelectorMetacal, TXSourceSelectorMetadetect, TXSourceSelectorScalarMetadetect
 
 # We no longer import all the extensions automatically here to avoid

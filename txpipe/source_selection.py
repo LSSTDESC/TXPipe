@@ -20,13 +20,13 @@ class Cutter:
             print(f" - {name} retains {f1:.1%} and leaves {f2:.1%} cumulatively [ = {final_size:,}] afterwards")
 
 
-class TXBasicSelection(PipelineStage):
+class TXSimpleSelection(PipelineStage):
     """Compute non-redshift related shear catalog cuts.
     
     This can be used directly for simple shear catalogs, or
     subclasses can be used for any other type.
     """
-    name = "TXBasicSelection"
+    name = "TXSimpleSelection"
     inputs = [
         ("shear_catalog", ShearCatalog),
     ]
@@ -96,21 +96,21 @@ class TXBasicSelection(PipelineStage):
             return cutter.sel
 
 
-class TXMetaDetectSelection(TXBasicSelection):
+class TXMetaDetectSelection(TXSimpleSelection):
     name = "TXMetaDetectSelection"
     groups = ["shear/" + v for v in META_VARIANTS]
 
 
-class TXScalarMetaDetectSelection(TXBasicSelection):
+class TXScalarMetaDetectSelection(TXSimpleSelection):
     name = "TXScalarMetaDetectSelection"
     groups = ["shear/" + v for v in SCALAR_META_VARIANTS]
 
 
-class TXMetacalSelection(TXBasicSelection):
+class TXMetacalSelection(TXSimpleSelection):
     name = "TXMetacalSelection"
 
     def run(self):
-        # Shadow the class variable TXBasicSelection.columns with one
+        # Shadow the class variable TXSimpleSelection.columns with one
         # specific to this instance
         self.columns = metacal_variants("T", "s2n") + ["psf_T_mean"]
         with self.open_input("shear_catalog", wrapper=True) as f:
@@ -147,16 +147,16 @@ class TXMetacalSelection(TXBasicSelection):
 
 
 
-class TXLensfitSelection(TXBasicSelection):
+class TXLensfitSelection(TXSimpleSelection):
     name = "TXLensfitSelection"
 
 
-class TXHSCSelection(TXBasicSelection):
+class TXHSCSelection(TXSimpleSelection):
     name = "TXHSCSelection"
-    config_options = TXBasicSelection.config_options | {
+    config_options = TXSimpleSelection.config_options | {
         "max_shear_cut": StageParameter(float, 0.0, msg="Maximum shear value for object selection")
     }
-    columns = TXBasicSelection.columns + ["g1", "g2"]
+    columns = TXSimpleSelection.columns + ["g1", "g2"]
 
     def compute_selection(self, start, end, data):
         """

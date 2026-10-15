@@ -1,4 +1,4 @@
-from ..source_selection.cuts import TXBasicSelection, TXMetaDetectSelection, TXScalarMetaDetectSelection, TXMetacalSelection, TXLensfitSelection, TXHSCSelection
+from ..source_selection.cuts import TXSimpleSelection, TXMetaDetectSelection, TXScalarMetaDetectSelection, TXMetacalSelection, TXLensfitSelection, TXHSCSelection
 from ..source_selection.tomography import TXSimpleRedshiftSourceTomography
 from ..source_selection.simple import TXSourceSelectorSimple
 from ..source_selection.metadetect import TXSourceSelectorMetadetect
@@ -64,7 +64,7 @@ def test_simple_cuts():
             "verbose": True,
         }
 
-        stage = TXBasicSelection(args)
+        stage = TXSimpleSelection(args)
         stage.run()
         stage.finalize()
         assert os.path.exists(shear_sel)

@@ -112,6 +112,9 @@ class TXSourceSelectorDESY3(TXSourceSelectorMetacal):
         ("desy3_index_catalog", HDFFile),
     ]
 
+    def run(self):
+        raise ValueError("Have not re-written DESY3 pipeline")
+
     def make_tomographic_bin_chooser_function(self):
         import h5py
 
