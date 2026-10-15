@@ -34,31 +34,10 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         ),
     }
 
-    def data_iterator(self):
-        # As above, this is where we work out which columns we need.
-        chunk_rows = self.config["chunk_rows"]
-        bands = self.config["bands"]
+    # We always refer to the meta variants using this so that
+    # we can subclass to do the scalar version that just has 1p and 1m
+    variants = META_VARIANTS
 
-        # Core quantities we need
-        shear_cols = metadetect_variants("T", "s2n", "g1", "g2", "ra", "dec", "weight", "psf_T_mean", "flags")
-
-        # Magnitudes and errors
-        shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="metadetect")
-
-        # We need truth shears and/or PZ point-estimates for each shear too
-        if self.config["input_pz"]:
-            shear_cols += metadetect_variants("mean_z")
-        elif self.config["true_z"]:
-            shear_cols += metadetect_variants("redshift_true")
-
-        # This is a parent ceci.PipelineStage method.
-        # It returns an iterator we loop through.
-        # The "longest=True" option means that the iterator will
-        # continue looping even when some of the columns have been exhausted, which is 
-        # what we want here since the different shear variants have different lengths.
-        # The calibration calculation needs to deal with this.
-        it = self.iterate_hdf("shear_catalog", "shear", shear_cols, chunk_rows, longest=True)
-        return it
 
     def setup_response_calculators(self, nbin_source):
         delta_gamma = self.config["delta_gamma"]
@@ -70,14 +49,10 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         return calculators
 
     def write_tomography(self, outfile, start, end, source_bin, per_object_response):
-        # Write out each of the individual variants.
-        # The basic "bin" column was set up to be the same as the 00 variant,
-        # so we can just write to all of them.
-        for i, v in enumerate(META_VARIANTS):
-            outfile[f"tomography/bin_{v}"][start:end] = source_bin[i]
-
-        assert per_object_response is None, "MetaDetect does not produce per-object response values, only per-bin values, so this should be None"
-
+        # The per_object_response is not really that - see below in the accumulate_selection
+        # function. It actually just tells us which variant we are currently processing
+        variant = per_object_response
+        outfile[f"tomography/{variant}/bin"][start:end] = source_bin
 
 
     def setup_output(self, nbin_source):
@@ -96,12 +71,16 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         # case that was set up in the parent class call above, so we just link to that
         # dataset rather than creating a new one.
         with self.open_input("shear_catalog") as infile:
-            for v in META_VARIANTS[1:]:
+            for v in self.variants[1:]:
                 n = infile[f"shear/{v}/ra"].size
-                outfile["tomography"].create_dataset(f"bin_{v}", (n,), dtype=np.int32)
+                outfile["tomography"].create_dataset(f"{v}/bin", (n,), dtype=np.int16)
         # Link the 00 variant to the base tomography/bin dataset 
-        outfile["tomography/bin_ns"] = outfile["tomography/bin"]
+        outfile["tomography/ns/bin"] = outfile["tomography/bin"]
+        self.setup_response_output(outfile, nbin_source)
 
+        return outfile
+
+    def setup_response_output(self, outfile, nbin_source):
         # There is only global calibration information for metadetect, nothing
         # per-bin.
         group = outfile.create_group("response")
@@ -110,7 +89,6 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         # Global calibration matrix
         group.create_dataset("R_2d", (2, 2), dtype="f")
 
-        return outfile
 
 
     def accumulate_selection(self, data, calculators):
@@ -128,33 +106,46 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
         nbin = self.config["nbin_source"]
         n = len(list(data.values())[0])
 
-        tomo_bins = []
-        for v in META_VARIANTS:
-            n = len(data[f"{v}/g1"])
-            tomo_bin = np.repeat(-1, n)
-            tomo_bins.append(tomo_bin)
+        # The data in here will just be for a single tomo bin.
+        # Figure out which one. It should have bin_{v} in for one variant
+        for i, v in enumerate(self.variants):
+            if f'{v}/bin' in data:
+                variant = v
+                variant_index = i
+                break
+        else:
+            raise ValueError("Could not determine what was in this dictionary")
 
+        # Filled in below
+        tomo_bin = np.repeat(-1, n)
 
-        R = self.compute_per_object_response(data)
+        # There is no per-object response value in metadatect, but rather
+        # than re-write things more sensibly I am going to use this variable,
+        # which is just going to be passed back to us in write_tomography above,
+        # to store the variant we are running on.
+        not_really_per_object_response = variant
 
         for i in range(nbin):
             selections = calculators[i].add_data(data, i)
-            for j, v in enumerate(META_VARIANTS):
-                tomo_bins[j][selections[j]] = i
+            # For compatibilty with other uses of the calculator,
+            # like metacal, `selections` here will be for every variant,
+            # even though we only actually supplied one. The other
+            # variant selections will be empty.
+            selection = selections[variant_index]
+            tomo_bin[selection] = i
 
         # and calibrate the 2D sample.
-        # This calibrator refers to select_weak_lensing_sample
         calculators[-1].add_data(data)
 
-        return tomo_bins, R
+        return tomo_bin, not_really_per_object_response
 
     def column_groups(self):
         # for metadetect
         return [
             {
                 "shear_catalog": [f"{v}/g1", f"{v}/g2", f"{v}/weight"],
-                "shear_bin_assignments": f"{v}/zbin",
-                "shear_selection": f"{v}/selection",
+                "shear_bin_assignments": [f"{v}/bin"],
+                "shear_selection": [f"{v}/selection"],
             }
-            for v in META_VARIANTS
+            for v in self.variants
         ]

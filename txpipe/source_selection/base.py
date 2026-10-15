@@ -128,7 +128,7 @@ class TXSourceSelectorBase(PipelineStage):
     def data_iterator(self):
         # iterator over:
         # - the "sel" columns in the selection catalog
-        # - the "zbin" columns in the tomo assignments
+        # - the "bin" columns in the tomo assignments
         # - the g1, g2, and weight columns from the shear catalog
         # - any other columns from the shear catalog that subclassses need
         with self.open_input("shear_catalog", wrapper=True) as f:

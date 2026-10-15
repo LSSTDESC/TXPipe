@@ -1,4 +1,5 @@
 from .base import TXSourceSelectorBase
+from .metadetect import TXSourceSelectorMetadetect
 from ..shear_calibration import (
     scalar_metadetect_variants,
     ScalarMetaDetectCalculator,
@@ -9,7 +10,7 @@ import numpy as np
 from ceci.config import StageParameter
 
 
-class TXSourceSelectorScalarMetadetect(TXSourceSelectorBase):
+class TXSourceSelectorScalarMetadetect(TXSourceSelectorMetadetect):
     """
     Source selection and tomography for scalar metadetect catalogs.
 
@@ -18,41 +19,7 @@ class TXSourceSelectorScalarMetadetect(TXSourceSelectorBase):
     """
 
     name = "TXSourceSelectorScalarMetadetect"
-
-    config_options = {
-        **TXSourceSelectorBase.config_options,
-        "delta_gamma": StageParameter(
-            float,
-            required=True,
-            msg="Delta gamma value for scalar metadetect response calculation",
-        ),
-    }
-
-    def data_iterator(self):
-        chunk_rows = self.config["chunk_rows"]
-        bands = self.config["bands"]
-
-        shear_cols = scalar_metadetect_variants(
-            "T",
-            "s2n",
-            "g1",
-            "g2",
-            "ra",
-            "dec",
-            "weight",
-            "psf_T_mean",
-            "flags",
-        )
-
-        shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="scalar_metadetect")
-
-        if self.config["input_pz"]:
-            shear_cols += scalar_metadetect_variants("mean_z")
-        elif self.config["true_z"]:
-            shear_cols += scalar_metadetect_variants("redshift_true")
-
-        it = self.iterate_hdf("shear_catalog", "shear", shear_cols, chunk_rows, longest=True)
-        return it
+    variants = SCALAR_META_VARIANTS
 
     def setup_response_calculators(self, nbin_source):
         delta_gamma = self.config["delta_gamma"]
@@ -63,92 +30,8 @@ class TXSourceSelectorScalarMetadetect(TXSourceSelectorBase):
         calculators.append(ScalarMetaDetectCalculator(self.select_any_bin, delta_gamma))
         return calculators
 
-    def write_tomography(self, outfile, start, end, source_bin, per_object_response):
-        # The stated start and end values are not relevant here as they are the global
-        # start and end index assuming a single block catalog.
-        for i, v in enumerate(SCALAR_META_VARIANTS):
-            outfile[f"tomography/bin_{v}"][start:end] = source_bin[i]
 
-        assert per_object_response is None, (
-            "ScalarMetaDetect does not produce per-object response values, only per-bin values, "
-            "so this should be None"
-        )
-
-    def apply_simple_redshift_cut(self, data):
-        pz_data = {}
-        variants = SCALAR_META_VARIANTS
-        for v in variants:
-            if self.config["true_z"]:
-                zz = data[f"{v}/redshift_true"]
-            else:
-                zz = data[f"{v}/mean_z"]
-
-            pz_data_v = np.zeros(len(zz), dtype=int) - 1
-            for zi in range(len(self.config["source_zbin_edges"]) - 1):
-                mask_zbin = (zz >= self.config["source_zbin_edges"][zi]) & (
-                    zz < self.config["source_zbin_edges"][zi + 1]
-                )
-                pz_data_v[mask_zbin] = zi
-
-            pz_data[f"{v}/zbin"] = pz_data_v
-
-        return pz_data
-
-    def apply_no_tomography_cut(self, shear_data):
-        pz_data = {}
-        variants = SCALAR_META_VARIANTS
-        for v in variants:
-            pz_data[f"{v}/zbin"] = np.zeros(shear_data[f"{v}/ra"].size, dtype=int)
-        return pz_data
-
-
-    def setup_output(self, nbin_source):
-        outfile = super().setup_output(nbin_source)
-
-        with self.open_input("shear_catalog") as infile:
-            for v in SCALAR_META_VARIANTS[1:]:
-                n = infile[f"shear/{v}/ra"].size
-                outfile["tomography"].create_dataset(f"bin_{v}", (n,), dtype=np.int32)
-
-        outfile["tomography/bin_ns"] = outfile["tomography/bin"]
-
+    def setup_response_output(self, outfile, nbin_source):
         group = outfile.create_group("response")
         group.create_dataset("R", (nbin_source,), dtype="f")
         group.create_dataset("R_2d", (1,), dtype="f")
-
-        return outfile
-
-    def accumulate_selection(self, data, calculators):
-        nbin = self.config["nbin_source"]
-        n = len(list(data.values())[0])
-
-        tomo_bins = []
-        for v in SCALAR_META_VARIANTS:
-            n = len(data[f"{v}/g1"])
-            tomo_bin = np.repeat(-1, n)
-            tomo_bins.append(tomo_bin)
-
-
-        R = self.compute_per_object_response(data)
-
-        for i in range(nbin):
-            selections = calculators[i].add_data(data, i)
-            for j, v in enumerate(SCALAR_META_VARIANTS):
-                tomo_bins[j][selections[j]] = i
-
-        calculators[-1].add_data(data)
-
-        return tomo_bins, R
-
-
-
-    def column_groups(self):
-        # for scalar_metadetect
-        return [
-            {
-                "shear_catalog": [f"{v}/g1", f"{v}/g2", f"{v}/weight"],
-                "shear_bin_assignments": f"{v}/zbin",
-                "shear_selection": f"{v}/selection",
-            }
-            for v in SCALAR_META_VARIANTS
-        ]

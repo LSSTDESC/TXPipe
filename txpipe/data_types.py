@@ -9,19 +9,6 @@ import yaml
 import numpy as np
 
 
-def metacalibration_names(names):
-    """
-    Generate the metacalibrated variants of the inputs names,
-    that is, variants with _1p, _1m, _2p, and _2m on the end
-    of each name.
-    """
-    suffices = ["1p", "1m", "2p", "2m"]
-    out = []
-    for name in names:
-        out += [name + "_" + s for s in suffices]
-    return out
-
-
 def class_for_shear_catalog_type(shear_catalog_type):
     if shear_catalog_type == "metacal":
         return MetacalShearCatalog
@@ -190,12 +177,17 @@ class MetacalShearCatalog(ShearCatalog):
 
     @staticmethod
     def get_classifier_suffixes():
-        return ["", "_1p", "_2p", "_1m", "_2m"]
+        return ["", "_1p", "_1m", "_2p", "_2m"]
 
     @staticmethod
     def get_column_name_variants(*columns):
         from .shear_calibration.names import metacal_variants
         return metacal_variants(*columns)
+
+    @staticmethod
+    def get_tomography_bin_columns():
+        return ["bin", "bin_1p", "bin_1m", "bin_2p", "bin_2m"]
+
 
     def get_diagnostic_shear_columns(self, bands=None, use_psf_originals=False):
         if bands is None:
@@ -242,7 +234,7 @@ class MetaDetectShearCatalog(ShearCatalog):
 
     @staticmethod
     def get_classifier_prefixes():
-        return ["ns/", "1p/", "2p/", "1m/", "2m/"]
+        return ["ns/", "1p/", "1m/", "2p/", "2m/"]
 
     @staticmethod
     def get_classifier_suffixes():
@@ -262,7 +254,7 @@ class MetaDetectShearCatalog(ShearCatalog):
 
     @staticmethod
     def get_tomography_bin_columns():
-        return ["bin_ns", "bin_1p", "bin_1m", "bin_2p", "bin_2m"]
+        return ["ns/bin", "1p/bin", "1m/bin", "2p/bin", "2m/bin"]
 
     @staticmethod
     def get_tomography_bin_column_rename_dict():
@@ -318,7 +310,7 @@ class ScalarMetaDetectCatalog(MetaDetectShearCatalog):
 
     @staticmethod
     def get_tomography_bin_columns():
-        return ["bin_ns", "bin_1p", "bin_1m"]
+        return ["ns/bin", "1p/bin", "1m/bin"]
 
     @staticmethod
     def get_column_name_variants(*columns):
@@ -354,7 +346,7 @@ class LensfitShearCatalog(ShearCatalog):
         return shear_cols, rename
 
     def get_extra_calibration_columns(self):
-        return ["dec"]
+        return ["dec", "m"]
 
 class HSCShearCatalog(ShearCatalog):
     def get_primary_catalog_names(self, true_shear=False):

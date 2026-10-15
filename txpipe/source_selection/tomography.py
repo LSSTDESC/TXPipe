@@ -92,10 +92,22 @@ class TXComputeSourceTomography(PipelineStage):
         output_cols = f_in.get_tomography_bin_columns()
         
         for (pre, suf, out_col_name) in zip(prefixes, suffices, output_cols):
-            n = f_in.file[f"shear/{pre}ra{suf}"].size
+            n = f_in.file[f"shear/{pre}g1{suf}"].size
             out_col = f_out.create_dataset(out_col_name, shape=(n,), dtype=np.int16)
-            # Loop through input columns for this group
-            cols = [f"{pre}{col}{suf}" for col in input_columns]
+
+            # Determine the input column names for this group. Some names
+            # that we might care about get qualified for metacal, such as
+            # g1, mags, etc. If we have a redshift_true column that probably
+            # won't be qualified. So we check them here.
+            cols = []
+            with self.open_input("shear_catalog") as f:
+                for col in input_columns:
+                    var_col = f"{pre}{col}{suf}"
+                    if var_col in f:
+                        cols.append(var_col)
+                    else:
+                        cols.append(f"{pre}{col}")
+
             for (s, e, data) in self.iterate_hdf(
                 "shear_catalog",
                 "shear",

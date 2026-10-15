@@ -36,45 +36,11 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
         return [
             {
                 "shear_catalog": metacal_variants("g1", "g2", "weight"),
-                "shear_bin_assignments": metacal_variants("zbin"),
+                "shear_bin_assignments": metacal_variants("bin"),
                 "shear_selection": metacal_variants("selection"),
             }
         ]
     
-
-    # The main differences between the classes are to do with how the data is read
-    # and what output response values are generated.
-    def data_iterator(self):
-        """
-        This iterator returns chunks of data in dictionaries one by one.
-
-        We call to a parent class method to do the main iteration; the work here is
-        just choosing which columns to read.
-        """
-        if self.rank == 0:
-            print(f"Using {flag_mode} flags")
-        bands = self.config["bands"]
-        shear_cols = metacal_variants("T", "s2n", "g1", "g2", "weight")
-        if flag_mode == "variant":
-            shear_cols += metacal_variants("flags")
-        else:
-            shear_cols += ["flags"]
-        shear_cols += ["ra", "dec", "psf_T_mean"]
-        shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="metacal")
-
-        if self.config["input_pz"]:
-            shear_cols += metacal_variants("mean_z")
-        elif self.config["true_z"]:
-            shear_cols += ["redshift_true"]
-
-        chunk_rows = self.config["chunk_rows"]
-        for s, e, data in  self.iterate_hdf("shear_catalog", "shear", shear_cols, chunk_rows):
-            if flag_mode == "single":
-                data["flags_1p"] = data["flags"]
-                data["flags_1m"] = data["flags"]
-                data["flags_2p"] = data["flags"]
-                data["flags_2m"] = data["flags"]
-            yield s, e, data
 
     def setup_output(self, nbin_source):
         """
@@ -124,40 +90,10 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
         R[:, 1, 1] = (data["g2_2p"] - data["g2_2m"]) / delta_gamma
         return R
 
-    def apply_simple_redshift_cut(self, data):
-        # If we have the truth pz then we just need to do the binning once,
-        # as in the parent class
-        if self.config["true_z"]:
-            return super().apply_simple_redshift_cut(data)
-
-        # Otherwise we have to do it once for each variant, because
-        # we are using a point estimate and should have different
-        # values of it for each shear.
-
-        pz_data = {}
-        variants = ["", "_1p", "_2p", "_1m", "_2m"]
-        for v in variants:
-            zz = data[f"mean_z{v}"]
-
-            pz_data_v = np.zeros(len(zz), dtype=int) - 1
-            for zi in range(len(self.config["source_zbin_edges"]) - 1):
-                mask_zbin = (zz >= self.config["source_zbin_edges"][zi]) & (
-                    zz < self.config["source_zbin_edges"][zi + 1]
-                )
-                pz_data_v[mask_zbin] = zi
-
-            pz_data[f"zbin{v}"] = pz_data_v
-
-        return pz_data
-
-    def apply_no_tomography_cut(self, shear_data):
-        pz_data = {}
-        variants = ["", "_1p", "_2p", "_1m", "_2m"]
-        for v in variants:
-            pz_data[f"zbin{v}"] = np.zeros(shear_data["ra"].size, dtype=int)
-        return pz_data
-
-
+# Removed TXSourceSelectorDESY3
+# Need to replace it with an ingestion step that turns the
+# desy3_index_catalog into a pair of TXPipe tomography 
+# and selection files. These will be a bit redundant.
 class TXSourceSelectorDESY3(TXSourceSelectorMetacal):
     """
     Source selection and tomography for DESY3 catalogs
