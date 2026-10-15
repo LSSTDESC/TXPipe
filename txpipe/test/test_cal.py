@@ -1,4 +1,4 @@
-from ..shear_calibration import (
+from ..calibration_utils import (
     MeanShearInBins,
     MetacalCalculator,
     MetaDetectCalculator,

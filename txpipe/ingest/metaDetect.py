@@ -7,7 +7,7 @@ from ..utils.hdf_tools import h5py_shorten, repack
 from ..utils.splitters import MetaDetectSplitter
 from ..utils import nanojansky_err_to_mag_ab, nanojansky_to_mag_ab, moments_to_shear, mag_ab_to_nanojansky
 from ..utils.mpi_utils import in_place_reduce
-from ..shear_calibration.names import META_VARIANTS, SCALAR_META_VARIANTS
+from ..calibration_utils.names import META_VARIANTS, SCALAR_META_VARIANTS
 import numpy as np
 import os
 import pyarrow.parquet as pq

@@ -1,7 +1,7 @@
 from .base_stage import PipelineStage
 from .data_types import ShearCatalog, TomographyCatalog, FiducialCosmology
 from .utils import read_shear_catalog_type, Splitter, rename_iterated
-from .shear_calibration import Calibrator
+from .calibration_utils import Calibrator
 from ceci.config import StageParameter
 import numpy as np
 

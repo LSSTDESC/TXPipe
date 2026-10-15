@@ -1,6 +1,6 @@
 from .base import TXSourceSelectorBase
 from .metadetect import TXSourceSelectorMetadetect
-from ..shear_calibration import (
+from ..calibration_utils import (
     scalar_metadetect_variants,
     ScalarMetaDetectCalculator,
     band_variants,

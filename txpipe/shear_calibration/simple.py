@@ -1,5 +1,5 @@
 from .base import TXSourceSelectorBase
-from ..shear_calibration import band_variants, MockCalculator
+from ..calibration_utils import band_variants, MockCalculator
 import numpy as np
 
 
