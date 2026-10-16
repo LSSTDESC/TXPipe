@@ -68,7 +68,7 @@ TXDeltaSigma:
     n_jobs: 128
     n_jackknife: 30
 
-TXSourceSelectorHSC:
+TXComputeShearCalibrationHSC:
     input_pz: true
     true_z: false
     bands: i    #used for selection
@@ -117,7 +117,7 @@ TXTrueNumberDensity:
     nz: 301
     zmax: 3.0
 
-TXSourceSelectorMetacal:
+TXComputeShearCalibrationMetacal:
     input_pz: false
     true_z: true
     bands: riz #used for selection

@@ -134,7 +134,7 @@ TXTrueNumberDensity:
     nz: 301
     zmax: 3.0
 
-TXSourceSelectorMetadetect:
+TXComputeShearCalibrationMetadetect:
     input_pz: false
     true_z: true
     bands: [r, i, z] #used for selection
@@ -142,10 +142,6 @@ TXSourceSelectorMetadetect:
     s2n_cut: 10.0
     max_rows: 1000
     delta_gamma: 0.02
-    source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
-
-TXSourceTomography:
-    bands: [r, i, z] #used for selection
     source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
 
 TXTruthLensSelector:
@@ -416,3 +412,28 @@ HOSFSB:
     nfilters: 5
     include_n32: false
     nside: *nside_mid
+
+TXApplyRandomForestSourceTomography:
+    input_pz: false
+    true_z: true
+    bands: [r, i, z] #used for selection
+    max_rows: 1000
+    delta_gamma: 0.02
+    source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
+    T_min: 0.5
+    s2n_min: 10.0
+    redshift_col: redshift_true
+
+TXTrainRandomForestTomography:
+    bands: [r, i, z] #used for selection
+    source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
+
+TXMetaDetectSelection:
+    input_pz: false
+    true_z: true
+    bands: [r, i, z] #used for selection
+    T_cut: 0.5
+    s2n_cut: 10.0
+    max_rows: 1000
+    delta_gamma: 0.02
+    source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]

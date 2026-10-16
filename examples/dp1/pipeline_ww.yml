@@ -36,7 +36,7 @@ stages:
         output: photoz_pdfs
 
   # Selection & Calibration
-  - name: TXSourceSelectorSimple
+  - name: TXComputeShearCalibrationSimple
     nprocess: 1
     threads_per_process: 1
   - name: TXSourceTomography

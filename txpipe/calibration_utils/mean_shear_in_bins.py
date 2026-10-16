@@ -6,6 +6,7 @@ class MeanShearInBins:
         self, x_name, limits, delta_gamma, cut_source_bin=False, shear_catalog_type="metacal", psf_unit_conv=False
     ):
         from parallel_statistics import ParallelMeanVariance, ParallelMean
+        from ..data_types import class_for_shear_catalog_type
 
         self.x_name = x_name
         self.limits = limits
@@ -16,6 +17,8 @@ class MeanShearInBins:
         self.size = len(self.limits) - 1
         # We have to work out the mean g1, g2
         self.x = ParallelMean(self.size)
+        self.cat_class = class_for_shear_catalog_type(shear_catalog_type)
+        self.bin_key = self.cat_class.get_primary_tomography_bin_column()
 
         if shear_catalog_type == "metacal":
             self.calibrators = [MetacalCalculator(self.selector, delta_gamma) for i in range(self.size)]
@@ -47,12 +50,7 @@ class MeanShearInBins:
         
         # Optionally cut down to the source sample only
         if self.cut_source_bin:
-            if self.shear_catalog_type.endswith("metadetect"):
-                prefix = getattr(data, 'prefix', 'ns/').rstrip('/')
-                bin_key = f"bin_{prefix if prefix else 'ns'}"
-                w &= (data[bin_key] != -1)
-            else:
-                w &= (data["bin"] != -1)
+            w &= data[self.bin_key] != -1
         return np.where(w)[0]
 
     def add_data(self, data):
