@@ -1,5 +1,6 @@
 from ..base_stage import PipelineStage
-from ..data_types import HDFFile, PickleFile, PNGFile, QPMultiFile, QPNOfZFile, BinnedCatalog, TomographyCatalog
+from ..data_types import HDFFile, PickleFile, PNGFile, QPMultiFile, QPNOfZFile, BinnedCatalog, TomographyCatalog, BinAssignments
+from ..calibration_utils import META_VARIANTS, SCALAR_META_VARIANTS
 import numpy as np
 import os
 from ceci.config import StageParameter
@@ -279,3 +280,39 @@ class PZRealizationsPlot(PipelineStage):
 
                 ax.set_xlabel("z")
                 ax.set_ylabel(f"{tomo_bin} n(z)")
+
+
+
+class PZCollateRailAssignmentsMetadetect(PipelineStage):
+    name = "PZCollateRailAssignmentsMetadetect"
+    inputs = [
+        ("bhat_for_wide_data_ns", HDFFile),
+        ("bhat_for_wide_data_1p", HDFFile),
+        ("bhat_for_wide_data_1m", HDFFile),
+        ("bhat_for_wide_data_2p", HDFFile),
+        ("bhat_for_wide_data_2m", HDFFile),
+    ]
+    outputs = [
+        ("shear_bin_assignments", BinAssignments)
+    ]
+    config_options = {}
+    variants = META_VARIANTS
+    def run(self):
+        with self.open_output("shear_bin_assignments") as fout:
+            for v in self.variants:
+                with self.open_input(f"bhat_for_wide_data_{v}") as fin:
+                    g_out = f_out.create_group(v)
+                    f_in.copy("/bhat_for_wide_data", g_out, name="bin")
+
+class PZCollateRailAssignmentsScalarMetadetect(PZCollateRailAssignmentsMetadetect):
+    name = "PZCollateRailAssignmentsScalarMetadetect"
+    inputs = [
+        ("bhat_for_wide_data_ns", HDFFile),
+        ("bhat_for_wide_data_1p", HDFFile),
+        ("bhat_for_wide_data_1m", HDFFile),
+    ]
+    outputs = [
+        ("shear_bin_assignments", BinAssignments)
+    ]
+    config_options = {}
+    variants = SCALAR_META_VARIANTS

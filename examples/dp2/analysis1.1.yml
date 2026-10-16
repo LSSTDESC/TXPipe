@@ -4,14 +4,11 @@
 {% set assign_procs = 128 %}
 
 stages:
-  - name: TXComputeShearCalibrationScalarMetadetectDP2    # select and split objects into source bins
+  - name: TXDP2DESCSelection
     nprocess: 64
-    aliases:
-      tomography_assignments_ns: bhat_for_wide_data_ns
-      tomography_assignments_1p: bhat_for_wide_data_1p
-      tomography_assignments_1m: bhat_for_wide_data_1m
-  - name: TXSourceTomography
-    threads_per_process: 8
+  - name: PZCollateRailAssignmentsScalarMetadetect
+  - name: TXComputeShearCalibrationScalarMetadetect    # select and split objects into source bins
+    nprocess: 64
   - name: TXShearCalibration       # Calibrate and split the source sample tomographically
     nprocess: 64
   - name: TXSourceMaps             # make source g1 and g2 maps
