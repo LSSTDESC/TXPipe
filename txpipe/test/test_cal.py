@@ -2,8 +2,10 @@ from ..shear_calibration import (
     MeanShearInBins,
     MetacalCalculator,
     MetaDetectCalculator,
+    ScalarMetaDetectCalculator,
     MetaCalibrator,
     NullCalibrator,
+    AnaCalCalculator
 )
 
 import numpy as np
@@ -22,6 +24,8 @@ def select_all_where(data):
     # we just want to select everything here too
     return np.where(data["g2"] * 0 == 0)
 
+def select_all_anacal(data):
+    return np.repeat(True, data["e2"].size)
 
 
 
@@ -161,6 +165,131 @@ def core_metadet(comm):
         assert stats.source_count == N * nproc
 
 
+def core_anacal(comm):
+    # Half-step convention: each ±1 variant is at ±delta_gamma from baseline,
+    # matching xlens' photoZPipe DISTORTIONS (±0.01) and the on-disk zmode
+    # variants in the merged catalog.  Not to be confused with metacal, where
+    # delta_gamma above is the full 1p−1m separation (0.02 there).
+    delta_gamma = 0.01
+    nproc = 1 if comm is None else comm.size
+    N = 10
+
+    R_shape_true = 0.4 # known test value
+    R_weight_true = 0.3
+
+    # Convention A: TXIngestAnacal exposes the pre-multiplied observable
+    # "e1"/"e2" (= wsel · e_raw), plus separate "e1_raw"/"e2_raw" and "wsel"
+    # columns.  With wsel=1 uniformly (as in this test) the pre-multiplied
+    # and raw shapes coincide, and Σweight_dg·e / Σweight equals the plain
+    # ⟨weight_dg · e_raw⟩ that the new R_detect accumulator computes.
+    e1 = np.random.normal(0, 0.1, size=N)
+    e2 = np.random.normal(0, 0.1, size=N)
+    base_data = {
+        "e1": e1,
+        "e2": e2,
+        "e1_raw": e1,
+        "e2_raw": e2,
+        "wsel": np.ones(N),
+        "weight": np.ones(N),
+        "weight_dg1": np.zeros(N),
+        "weight_dg2": np.zeros(N),
+        "de1_dg1": np.zeros(N),
+        "de2_dg2": np.zeros(N),
+        "m00": np.ones(N),
+        "m20": np.ones(N),
+        "dm00_dg1": np.zeros(N),
+        "dm00_dg2": np.zeros(N),
+        "dm20_dg1": np.zeros(N),
+        "dm20_dg2": np.zeros(N),
+        "n_mask_base": np.zeros(N)
+    }
+
+    # case 1: pure shape response
+    data = {**base_data, "de1_dg1": np.full(N, R_shape_true), "de2_dg2": np.full(N, R_shape_true)}
+    cal = AnaCalCalculator(select_all_anacal, delta_gamma)
+    cal.add_data(data)
+    stats = cal.collect(comm, allgather=True)
+    assert np.allclose(stats.calibrator.R, R_shape_true)
+    assert stats.source_count == N * nproc
+
+    # case 2: pure weight-bias response
+    data = {**base_data, "weight_dg1": np.full(N, R_weight_true), "weight_dg2": np.full(N, R_weight_true)}
+    cal = AnaCalCalculator(select_all_anacal, delta_gamma)
+    cal.add_data(data)
+    stats = cal.collect(comm, allgather=True)
+    expected_R_weight = 0.5 * (np.sum(data["weight_dg1"] * data["e1"]) +
+                               np.sum(data["weight_dg2"] * data["e2"])) / np.sum(data["weight"])
+    assert np.allclose(stats.calibrator.R, expected_R_weight)
+
+    # Case 3: both contributions add correctly
+    data = {**base_data,
+            "de1_dg1": np.full(N, R_shape_true),
+            "de2_dg2": np.full(N, R_shape_true),
+            "weight_dg1": np.full(N, R_weight_true),
+            "weight_dg2": np.full(N, R_weight_true),
+            }
+    cal = AnaCalCalculator(select_all_anacal, delta_gamma)
+    cal.add_data(data)
+    stats = cal.collect(comm, allgather=True)
+    expected_R_weight = 0.5 * (np.sum(data["weight_dg1"] * data["e1"]) +
+                               np.sum(data["weight_dg2"] * data["e2"])) / np.sum(data["weight"])
+    assert np.allclose(stats.calibrator.R, R_shape_true + expected_R_weight)
+
+def core_scalar_metadet(comm):
+    delta_gamma = 0.02
+
+    nproc = 1 if comm is None else comm.size
+
+    N = 10
+    g1_true = np.random.normal(0, 0.1, size=N)
+    g2_true = np.random.normal(0, 0.1, size=N)
+    g_true = np.array([g1_true, g2_true])
+    R_true = 1.3
+    R_matrix = np.eye(2) * R_true
+    g = R_matrix @ g_true
+    g_1p = R_matrix @ (g_true + 0.5 * delta_gamma * np.array([+1, 0])[:, np.newaxis])
+    g_1m = R_matrix @ (g_true + 0.5 * delta_gamma * np.array([-1, 0])[:, np.newaxis])
+    weight = np.ones(N)
+
+    data = {
+        "ns/g1": g[0],
+        "1p/g1": g_1p[0],
+        "1m/g1": g_1m[0],
+        "ns/g2": g[1],
+        "1p/g2": g_1p[1],
+        "1m/g2": g_1m[1],
+        "ns/weight": weight.copy(),
+        "1p/weight": weight.copy(),
+        "1m/weight": weight.copy(),
+    }
+
+    # test each type of selector
+    for sel in [select_all_bool, select_all_where, select_all_index]:
+        cal = ScalarMetaDetectCalculator(sel, delta_gamma)
+        cal.add_data(data)
+        stats = cal.collect(comm, allgather=True)
+        calibrator = stats.calibrator
+
+        assert np.allclose(calibrator.R, R_true)
+        assert stats.source_count == N * nproc
+
+    # equal non-unit weights - everything should be the same.
+    data["ns/weight"] *= 0.5
+    data["1p/weight"] *= 0.5
+    data["1m/weight"] *= 0.5
+    print('weight = ', data['1p/weight'])
+
+    # test each type of selector
+    for sel in [select_all_bool, select_all_where, select_all_index]:
+        cal = ScalarMetaDetectCalculator(sel, delta_gamma)
+        cal.add_data(data)
+        stats = cal.collect(comm, allgather=True)
+        calibrator = stats.calibrator
+        # print("R = ", calibrator.R)
+        assert stats.source_count == N * nproc
+
+
+
 def test_metacalibrator_serial():
     core_metacal(None)
 
@@ -168,10 +297,20 @@ def test_metacalibrator_serial():
 def test_metadetect_serial():
     core_metadet(None)
 
+def test_anacal_serial():
+    core_anacal(None)
+
+def test_scalar_metadetect_serial():
+    core_scalar_metadet(None)
+
 
 def test_metadetect_parallel():
     mockmpi.mock_mpiexec(2, core_metadet)
     mockmpi.mock_mpiexec(10, core_metadet)
+
+def test_scalar_metadetect_parallel():
+    mockmpi.mock_mpiexec(2, core_scalar_metadet)
+    mockmpi.mock_mpiexec(10, core_scalar_metadet)
 
 
 def test_mean_shear_no_weights():
@@ -376,3 +515,4 @@ if __name__ == "__main__":
     test_metadetect_parallel()
     test_mean_shear_no_weights()
     test_mean_shear_weights()
+    test_anacal_serial()

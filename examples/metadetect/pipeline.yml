@@ -127,6 +127,7 @@ stages:
   - name: TXDeltaSigma
   - name: TXDeltaSigmaTheory
   - name: TXDeltaSigmaPlots
+  - name: TXResponseInBins
 
     # Disabling these as they takes too long for a quick test.
     # The latter two need NaMaster
