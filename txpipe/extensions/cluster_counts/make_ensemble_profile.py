@@ -130,7 +130,7 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
 
         # Extract cluster list from cluster_shears_cat
         cluster_shear_list = self.cluster_shears_cat["cluster_id"].tolist()
-        
+        #TODO: Some operation here for all clusters and galaxies in a bin combination must be done to apply anacla calibration before computing the profiles
         for cluster_index in range(ncluster) :
 
             # Select subset of background shear information for this particular cluster
@@ -168,6 +168,7 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             del bg_cat
 
             # Compute radial profile for the current cluster
+            #TODO: We need to apply a calibration for all galaxy sources from all clusters in a z x lambda x r combination, before computing the individual profiles
             gc_object.make_radial_profile(
                     bin_units, 
                     bins=self.distance_bins,

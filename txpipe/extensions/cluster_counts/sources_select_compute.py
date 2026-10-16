@@ -480,6 +480,7 @@ class CLClusterShearCatalogs(PipelineStage):
         # model is yet. Here this calibrator is just used for the
         # weight information calculation, which needs g1 and g2 estimates.
         # The same calibration should be used later for the actual shears.
+        # TODO: this should be changed to the next stage in the case of anacal
         if self.rank == 0:
             print("Using single 2D shear calibration!")
         _, shear_cal = Calibrator.load(self.get_input("shear_tomography_catalog"), null=use_true_shear)
@@ -570,6 +571,7 @@ class CLClusterShearCatalogs(PipelineStage):
             # Apply the shear calibration to this sample.
             # Optionally subtract the mean (of the whole WL sample,
             # not the local mean)
+            #TODO: here we apply the calibration to all galaxies at once, which should not be done with anacal catalogs
             data["g1"], data["g2"] = shear_cal.apply(data["g1"],
                                                      data["g2"],
                                                      subtract_mean=subtract_mean
