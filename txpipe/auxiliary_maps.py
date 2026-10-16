@@ -62,8 +62,8 @@ class TXPSFMaps(TXSourceAuxMapsBase):
         # force all columns to use the same block size
         block_size = ra.chunksize
         dec = da.from_array(shear_cat.file[f"{group}/dec"], block_size)
-        psf_g1 = da.from_array(shear_cat.file[f"{group}/g1"], block_size)
-        psf_g2 = da.from_array(shear_cat.file[f"{group}/g2"], block_size)
+        psf_g1 = da.from_array(shear_cat.file[f"{group}/psf_g1"], block_size)
+        psf_g2 = da.from_array(shear_cat.file[f"{group}/psf_g2"], block_size)
         weight = da.from_array(shear_cat.file[f"{group}/weight"], block_size)
         b = da.from_array(shear_tomo.file["tomography/bin"], block_size)
 

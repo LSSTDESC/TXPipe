@@ -1,0 +1,122 @@
+global:
+  zbins_min: 0.0 
+  zbins_max: 3.0
+  zbins_dz: 0.02
+  redshift_col: z
+  som_wrap: false
+  som_take_log: true
+  convert_to_flux: false
+  som_shape:
+  - 32
+  - 32
+  debug: false
+  chunk_size: 100000
+
+{% for variant in ["ns", "1p", "1m"] %}
+som_deepdeep_estimator_{{ variant }}:
+  output_mode: default
+  hdf5_groupname: 'shear/{{ variant }}'
+  calculated_point_estimates:  []
+  recompute_point_estimates: false
+  inputs:
+  - flux_r
+  - flux_i
+  - flux_z
+  input_errs:
+  - flux_err_r
+  - flux_err_i
+  - flux_err_z
+  zero_points:
+  - 31.4
+  - 31.4
+  - 31.4
+  som_minerror: 0.001
+  set_threshold: true
+  thresh_val: 1.0e-05
+  name: som_deepdeep_estimator_{{ variant }}
+  thresh_val_err: 1.0e-05
+  config: null
+
+sompz_tomobin_and_nz_onesom_binning5_{{ variant }}:
+  output_mode: default
+  hdf5_groupname: 'shear/{{ variant }}'
+  calculated_point_estimates: []
+  recompute_point_estimates: false
+  make_equal_occ_bins: false
+  bin_edges:
+  - 0.1
+  - 0.4
+  - 0.6
+  - 0.8
+  - 9999.9
+  name: sompz_tomobin_and_nz_onesom_binning5_{{ variant }}
+  balrog_groupname: "shear/{{ variant }}"
+{% endfor %}
+  
+som_deepspec_estimator:
+  output_mode: default
+  chunk_size: 10000
+  hdf5_groupname: ''
+  calculated_point_estimates: []
+  recompute_point_estimates: false
+  inputs:
+  - flux_r
+  - flux_i
+  - flux_z
+  input_errs:
+  - flux_err_r
+  - flux_err_i
+  - flux_err_z
+  zero_points:
+  - 31.4
+  - 31.4
+  - 31.4
+  som_shape:
+  - 32
+  - 32
+  som_minerror: 0.001
+  set_threshold: true
+  thresh_val: 1.0e-05
+  name: som_deepspec_estimator
+  
+  # model: model_deep.pkl
+  # data: /sdf/home/z/zhzhuoqi/rubin-user/DP2/DP2_test_WZ/mdet_redshift_for_sompz.hdf5
+  
+  thresh_val_err: 1.0e-05
+  config: null
+som_pzc_stage:
+  output_mode: default
+  chunk_size: 10000
+  hdf5_groupname: ''
+  calculated_point_estimates: []
+  recompute_point_estimates: false
+  deep_groupname: ''
+  name: som_pzc_stage
+
+
+
+som_deep_informer_big:
+  output_mode: default
+  redshift_col: z
+  hdf5_groupname: ''
+  inputs:
+  - flux_r
+  - flux_i
+  - flux_z
+  input_errs:
+  - flux_err_r
+  - flux_err_i
+  - flux_err_z
+  zero_points:
+  - 31.4
+  - 31.4
+  - 31.4
+  som_shape: [32, 32]
+  som_minerror: 0.001
+  som_wrap: false
+  som_take_log: true
+  convert_to_flux: false
+  set_threshold: true
+  thresh_val: 1.0e-05
+  thresh_val_err: 1.0e-05
+  name: som_deep_informer_big
