@@ -236,7 +236,7 @@ class TXDP2Selection(TXMetaDetectSelection):
 
 class TXDP2DESCSelection(TXScalarMetaDetectSelection):
     name = "TXDP2DESCSelection"
-    columns = ["T", "s2n", "g1", "g2", "ra", "dec", "weight", "psf_T_mean", "flags",  "is_primary", "mfrac", "psfrec_g1", "psfrec_g2", "rmi", "imz", "g_flags"] + band_variants("riz", "mag")
+    columns = ["T", "s2n", "g1", "g2", "ra", "dec", "weight", "psf_T_mean", "flags",  "is_primary", "mfrac", "psfrec_g1", "psfrec_g2", "rmi", "imz", "g_flags"] + band_variants("riz", "mag", shear_catalog_type="simple")
 
     config_options =TXScalarMetaDetectSelection.config_options | {
         "max_psf_g": StageParameter(float, default=0.05, msg="Maximum PSF ellipticity for object selection"),
@@ -255,6 +255,8 @@ class TXDP2DESCSelection(TXScalarMetaDetectSelection):
         # shortcut if no data
         if data["T"].size == 0:
             return np.zeros(0, dtype=bool)
+
+        config = self.config
 
         max_psf_g = config["max_psf_g"]
         rmi_min = config["rmi_min"]
@@ -294,14 +296,6 @@ class TXDP2DESCSelection(TXScalarMetaDetectSelection):
         cutter.keep(T_ratio > Tratio_min, "T ratio minimum")
         cutter.keep(data["s2n"] > s2n_min, "S/N minimum")
 
-        # It's not obvious whether, when we are using an external selection to choose
-        # tomographic bins, our "non-tomographic" sample should include objects that
-        # are not selected into any valid tomographic bin. But right now our design
-        # requires that, because the designation for non-tomographic objects is just
-        # any selected tomographic bin. If we want a separate sample where non-tomographic
-        # also means we ignore the RAIL SOM selection then that should be a separate run
-        # of TXPipe right now.
-        cutter.keep(data["zbin"] >= 0, "Any z bin")
         return cutter.sel
 
 

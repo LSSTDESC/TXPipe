@@ -1,7 +1,6 @@
 # Stages to run
 # Processors for PZ stages. There's a bug in rail_base logging
 # that crashes if you use too many. PR in progress.
-{% set assign_procs = 128 %}
 
 stages:
   - name: TXDP2DESCSelection
@@ -67,7 +66,7 @@ stages:
 {% for variant in ["ns", "1p", "1m"] %}
   - name: PZAssignGalaxiesToCells_{{ variant }}
     classname: SOMPZEstimatorDeep
-    nprocess: {{ assign_procs }}
+    nprocess: 128
     module_name: rail.estimation.algos.sompz
     aliases:
       data: shear_catalog
@@ -158,17 +157,15 @@ inputs:
     binned_random_catalog_sub: none
     lens_photoz_stack: none
     spectroscopic_catalog: data/example/inputs/mock_spectroscopic_catalog.hdf5
-    mask: tmp.hdf5
-    shear_catalog: tmp2.hdf5
+    mask:
+      id: 148
+    shear_catalog:
+        id: 147
     # input_deep_data: data/metadetect_desc_dp2_ingest/cut_shear_catalog.hdf5
     # TODO: Replace this with something that takes a random subsample
     # from the catalog.
     input_deep_data_inform: data/pz_dp2_ingest/mdet_for_sompz.hdf5
     input_spec_data: data/pz_dp2_ingest/mdet_redshift_for_sompz.hdf5
-    # mask:
-    #     id: 148
-    # shear_catalog:
-    #     id: 147
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted

@@ -195,7 +195,6 @@ PZAssignGalaxiesToCells_{{ variant }}:
     thresh_val: 1.0e-05
     name: PZAssignGalaxiesToCells_{{ variant }}
     thresh_val_err: 1.0e-05
-    config: null
 
 PZTomographyAndNZ_{{ variant }}:
     output_mode: default
@@ -239,7 +238,6 @@ PZAssignSpectroGalaxiesToCells:
     thresh_val: 1.0e-05
     name: PZAssignSpectroGalaxiesToCells
     thresh_val_err: 1.0e-05
-    config: null
 
 PZRedshiftsForCells:
     output_mode: default
