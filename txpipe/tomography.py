@@ -90,7 +90,7 @@ class TXComputeSourceTomography(PipelineStage):
 
         prefixes = f_in.get_classifier_prefixes()
         suffices = f_in.get_classifier_suffixes()
-        output_cols = f_in.get_tomography_bin_columns()
+        output_cols = f_in.get_classifier_output_columns()
         
         for (pre, suf, out_col_name) in zip(prefixes, suffices, output_cols):
             n = f_in.file[f"shear/{pre}g1{suf}"].size

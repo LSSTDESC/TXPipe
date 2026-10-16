@@ -104,6 +104,23 @@ class ShearCatalog(HDFFile):
     def get_tomography_bin_columns():
         return [ShearCatalog.get_primary_tomography_bin_column()]
 
+    @classmethod
+    def get_classifier_output_columns(cls):
+        """
+        Dataset names, in the shear_bin_assignments file, for the per-variant
+        tomographic bin assigned by each of this catalog's classifier
+        variants (see get_classifier_prefixes/get_classifier_suffixes).
+
+        For most catalog types this is the same set of names as end up in
+        the final calibrated shear_tomography_catalog, so it defaults to
+        get_tomography_bin_columns(). Metacal is the exception: it needs a
+        bin assignment for every sheared variant to compute its selection
+        response, but only the unsheared ("bin") assignment is carried
+        through to the final tomography catalog, so it overrides this
+        separately.
+        """
+        return cls.get_tomography_bin_columns()
+
     @staticmethod
     def get_true_redshift_column():
         return "redshift_true"
@@ -180,7 +197,11 @@ class MetacalShearCatalog(ShearCatalog):
         return metacal_variants(*columns)
 
     @staticmethod
-    def get_tomography_bin_columns():
+    def get_classifier_output_columns():
+        # Metacal needs a tomographic bin assignment for each sheared
+        # variant, to compute its selection response - but only the
+        # unsheared ("bin") assignment ends up in the final calibrated
+        # tomography catalog, via the inherited get_tomography_bin_columns().
         return ["bin", "bin_1p", "bin_1m", "bin_2p", "bin_2m"]
 
 
