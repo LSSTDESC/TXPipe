@@ -51,14 +51,6 @@ class MeanShearInBins:
         # Optionally cut down to the source sample only
         if self.cut_source_bin:
             w &= data[self.bin_key] != -1
-            # if self.shear_catalog_type.endswith("metadetect"):
-            #     bin_key = 'ns/bin'
-            # elif
-            #     prefix = getattr(data, 'prefix', 'ns/').rstrip('/')
-            #     bin_key = f"bin_{prefix if prefix else 'ns'}"
-            #     w &= (data[bin_key] != -1)
-            # else:
-            #     w &= (data["bin"] != -1)
         return np.where(w)[0]
 
     def add_data(self, data):

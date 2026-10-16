@@ -39,7 +39,7 @@ class TXComputeShearCalibrationHSC(TXComputeShearCalibrationBase):
         group.create_dataset("C", (nbin_source, 2), dtype="f")
         group.create_dataset("R_mean", (nbin_source,), dtype="f")
         group.create_dataset("K_2d", (1,), dtype="f")
-        group.create_dataset("C_2d", (2), dtype="f")
+        group.create_dataset("C_2d", (2,), dtype="f")
         group.create_dataset("R_mean_2d", (1,), dtype="f")
         return outfile
 

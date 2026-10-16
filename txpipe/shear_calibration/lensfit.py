@@ -43,8 +43,8 @@ class TXComputeShearCalibrationLensfit(TXComputeShearCalibrationBase):
         group.create_dataset("C_N", (nbin_source, 2), dtype="f")
         group.create_dataset("C_S", (nbin_source, 2), dtype="f")
         group.create_dataset("K_2d", (1,), dtype="f")
-        group.create_dataset("C_2d_N", (2), dtype="f")
-        group.create_dataset("C_2d_S", (2), dtype="f")
+        group.create_dataset("C_2d_N", (2,), dtype="f")
+        group.create_dataset("C_2d_S", (2,), dtype="f")
 
         return outfile
 

@@ -90,9 +90,9 @@ class TXComputeShearCalibrationMetacal(TXComputeShearCalibrationBase):
         R[:, 1, 1] = (data["g2_2p"] - data["g2_2m"]) / delta_gamma
         return R
 
-# Removed TXComputeShearCalibrationDESY3
+# TXComputeShearCalibrationDESY3 is currently disabled (see run() below).
 # Need to replace it with an ingestion step that turns the
-# desy3_index_catalog into a pair of TXPipe tomography 
+# desy3_index_catalog into a pair of TXPipe tomography
 # and selection files. These will be a bit redundant.
 class TXComputeShearCalibrationDESY3(TXComputeShearCalibrationMetacal):
     """

@@ -4,7 +4,7 @@ generic types in ceci.
 """
 from ceci.file_types import HDFFile, DataFile, YamlFile, TextFile, FitsFile, Directory, FileCollection, PickleFile, ParquetFile, PNGFile, FileValidationError
 from .mapping import degrade_healsparse
-from .calibration_utils.names import META_VARIANTS, SCALAR_META_VARIANTS, metadetect_variants, band_variants, scalar_metadetect_variants
+from .calibration_utils.names import metadetect_variants, band_variants, scalar_metadetect_variants
 import yaml
 import numpy as np
 
@@ -103,10 +103,6 @@ class ShearCatalog(HDFFile):
     @staticmethod
     def get_tomography_bin_columns():
         return [ShearCatalog.get_primary_tomography_bin_column()]
-
-    @staticmethod
-    def get_tomography_bin_column_rename_dict():
-        return {}
 
     @staticmethod
     def get_true_redshift_column():
@@ -256,10 +252,6 @@ class MetaDetectShearCatalog(ShearCatalog):
         return ["ns/bin", "1p/bin", "1m/bin", "2p/bin", "2m/bin"]
 
     @staticmethod
-    def get_tomography_bin_column_rename_dict():
-        return {f"bin_{v}":f"{v}/bin" for v in META_VARIANTS}
-
-    @staticmethod
     def get_true_redshift_column():
         return "ns/redshift_true"
 
@@ -329,9 +321,6 @@ class ScalarMetaDetectCatalog(MetaDetectShearCatalog):
         )
         shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="scalar_metadetect")
         return shear_cols
-
-    def get_tomography_bin_column_rename_dict(self):
-        return {f"bin_{v}":f"{v}/bin" for v in SCALAR_META_VARIANTS}
 
 
 class LensfitShearCatalog(ShearCatalog):

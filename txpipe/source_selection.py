@@ -88,7 +88,7 @@ class TXSimpleSelection(PipelineStage):
 
         cutter.keep(data["flags"] == 0, "Flag")
         cutter.keep(data["s2n"] > s2n_cut, "S/N")
-        cutter.keep(data["T"] / data[f"psf_T_mean"] > T_cut, "T/Tpsf")
+        cutter.keep(data["T"] / data["psf_T_mean"] > T_cut, "T/Tpsf")
 
         if return_cutter:
             return cutter
@@ -126,14 +126,14 @@ class TXMetacalSelection(TXSimpleSelection):
         g_out = fout.create_group("shear")
 
         n = fin["shear/ra"].size
-        g_out.create_dataset(f"selection", shape=(n,), dtype=bool) 
+        g_out.create_dataset("selection", shape=(n,), dtype=bool)
         for variant in META_VARIANTS[1:]:
             g_out.create_dataset(f"selection_{variant}", shape=(n,), dtype=bool) 
 
         for (s, e, data) in self.data_iterator("shear"):
             for variant in META_VARIANTS:
                 if variant == "ns":
-                    sel_out = g_out[f"selection"]
+                    sel_out = g_out["selection"]
                 else:
                     sel_out = g_out[f"selection_{variant}"]
                 # maybe add compression here since can be very effective on this?
@@ -169,7 +169,7 @@ class TXHSCSelection(TXSimpleSelection):
         shear_cut = self.config["max_shear_cut"]
         if shear_cut:
             g = np.sqrt(data["g1"] ** 2 + data["g2"] ** 2)
-            cutter.keep(g < shear_cut)
+            cutter.keep(g < shear_cut, "max_shear")
         return cutter.sel
 
 
@@ -197,7 +197,7 @@ class TXDP2Selection(TXMetaDetectSelection):
 
         cutter.keep(data["flags"] == 0, "Flag")
         cutter.keep(data["s2n"] > s2n_cut, "S/N")
-        cutter.keep(data["T"] / data[f"psf_T_mean"] > T_cut, "T/Tpsf")
+        cutter.keep(data["T"] / data["psf_T_mean"] > T_cut, "T/Tpsf")
 
 
         # --- metadetect-specific cuts go here ---
@@ -212,10 +212,10 @@ class TXDP2Selection(TXMetaDetectSelection):
         mfrac_cut = config['mfrac_cut']
         bands = config['bands']
 
-        cutter.keep(data[f"mag_g"] < config[f"mag_g_cut"], "mag_g")
-        cutter.keep(data[f"mag_r"] < config[f"mag_r_cut"], "mag_r")
-        cutter.keep(data[f"mag_i"] < config[f"mag_i_cut"], "mag_i")
-        cutter.keep(data[f"mag_z"] < config[f"mag_z_cut"], "mag_z")
+        cutter.keep(data["mag_g"] < config["mag_g_cut"], "mag_g")
+        cutter.keep(data["mag_r"] < config["mag_r_cut"], "mag_r")
+        cutter.keep(data["mag_i"] < config["mag_i_cut"], "mag_i")
+        cutter.keep(data["mag_z"] < config["mag_z_cut"], "mag_z")
 
         if "g" in bands and "r" in bands:
             cutter.keep(np.abs(data["mag_g"] - data["mag_r"]) < gmr_cut, "g - r")
