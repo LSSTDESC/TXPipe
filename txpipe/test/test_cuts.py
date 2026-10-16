@@ -1,10 +1,10 @@
-from ..source_selection.cuts import TXSimpleSelection, TXMetaDetectSelection, TXScalarMetaDetectSelection, TXMetacalSelection, TXLensfitSelection, TXHSCSelection
-from ..source_selection.tomography import TXSimpleRedshiftSourceTomography
-from ..source_selection.simple import TXSourceSelectorSimple
-from ..source_selection.metadetect import TXSourceSelectorMetadetect
-from ..source_selection.scalar_metadetect import TXSourceSelectorScalarMetadetect
-from ..source_selection.metacal import TXSourceSelectorMetacal
-from ..source_selection.lensfit import TXSourceSelectorLensfit
+from ..source_selection import TXSimpleSelection, TXMetaDetectSelection, TXScalarMetaDetectSelection, TXMetacalSelection, TXLensfitSelection, TXHSCSelection
+from ..tomography import TXSimpleRedshiftSourceTomography
+from ..shear_calibration.simple import TXSourceSelectorSimple
+from ..shear_calibration.metadetect import TXSourceSelectorMetadetect
+from ..shear_calibration.scalar_metadetect import TXSourceSelectorScalarMetadetect
+from ..shear_calibration.metacal import TXSourceSelectorMetacal
+from ..shear_calibration.lensfit import TXSourceSelectorLensfit
 from ..calibration_utils.names import META_VARIANTS, SCALAR_META_VARIANTS, metacal_variants, metadetect_variants, scalar_metadetect_variants
 from tempfile import TemporaryDirectory
 import os
