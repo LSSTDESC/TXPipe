@@ -1107,7 +1107,7 @@ class TXGalaxyStarShear(PipelineStage):
 
         with self.open_input("shear_catalog", wrapper=True) as f:
             primary_group = f.get_primary_catalog_group()
-            extra_cal_cols = f.get_extra_calibration_columns()
+            extra_cal_cols = f.get_extra_calibration_columns(mode="apply")
             tomo_col = f.get_tomography_bin_columns()[0]
 
         with self.open_input("shear_tomography_catalog", wrapper=True) as f:
@@ -1116,7 +1116,7 @@ class TXGalaxyStarShear(PipelineStage):
 
         with self.open_input("shear_catalog", wrapper=True) as f:
             g = f.file[primary_group]
-            extra_cal_cols = f.get_extra_calibration_columns()
+            extra_cal_cols = f.get_extra_calibration_columns(mode="apply")
 
             ra = g["ra"][:][mask]
             dec = g["dec"][:][mask]

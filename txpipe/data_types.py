@@ -137,7 +137,20 @@ class ShearCatalog(HDFFile):
     def get_classifier_suffixes():
         return [""]
 
-    def get_extra_calibration_columns(self):
+    def get_extra_calibration_columns(self, mode):
+        """
+        Extra shear-catalog columns (beyond g1/g2/weight) needed for calibration.
+
+        mode: str
+            Either "compute" - building up the calibration factors from the
+            raw catalog, as done in TXComputeShearCalibration* - or "apply" -
+            applying an already-computed calibration to catalog data, as done
+            when splitting the binned shear catalog or making diagnostic
+            plots. For most catalog types the same columns are needed in
+            both cases, but for some (e.g. lensfit) they differ.
+        """
+        if mode not in ("compute", "apply"):
+            raise ValueError(f"mode must be 'compute' or 'apply', not {mode!r}")
         return []
 
     def get_diagnostic_shear_columns(self, bands=None, use_psf_originals=False):
@@ -350,8 +363,18 @@ class LensfitShearCatalog(ShearCatalog):
         rename = {}
         return shear_cols, rename
 
-    def get_extra_calibration_columns(self):
-        return ["dec", "m"]
+    def get_extra_calibration_columns(self, mode):
+        if mode == "compute":
+            # Computing the calibration (K, the mean m) needs the per-object
+            # m value as well as dec, used for the north/south c-term split.
+            return ["dec", "m"]
+        elif mode == "apply":
+            # Applying the already-computed calibration only needs dec, to
+            # choose between the precomputed north/south c-terms; m is
+            # already baked into the calibrator itself.
+            return ["dec"]
+        else:
+            raise ValueError(f"mode must be 'compute' or 'apply', not {mode!r}")
 
 class HSCShearCatalog(ShearCatalog):
     def get_primary_catalog_names(self, true_shear=False):
@@ -361,7 +384,11 @@ class HSCShearCatalog(ShearCatalog):
         rename = {}
         return shear_cols, rename
 
-    def get_extra_calibration_columns(self):
+    def get_extra_calibration_columns(self, mode):
+        if mode not in ("compute", "apply"):
+            raise ValueError(f"mode must be 'compute' or 'apply', not {mode!r}")
+        # TODO: check whether compute and apply should need different
+        # columns here too, as they do for lensfit.
         if "aselepsf1" in self.file['shear'].keys():
             return ["c1", "c2", "aselepsf1", "aselepsf2", "msel"]
         else:

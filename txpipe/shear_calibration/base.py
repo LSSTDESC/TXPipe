@@ -132,7 +132,7 @@ class TXComputeShearCalibrationBase(PipelineStage):
         # - the g1, g2, and weight columns from the shear catalog
         # - any other columns from the shear catalog that subclassses need
         with self.open_input("shear_catalog", wrapper=True) as f:
-            calib_cols = f.get_extra_calibration_columns()
+            calib_cols = f.get_extra_calibration_columns(mode="compute")
 
         chunk_rows = self.config["chunk_rows"]
 

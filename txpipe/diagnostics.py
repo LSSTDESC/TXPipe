@@ -193,7 +193,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
             self.config["shear_prefix"] = f.get_primary_catalog_prefix()
             self.config["bin_type"] = f.get_primary_tomography_bin_column()
             self.config["shear_tomo_cols"] = shear_tomo_cols
-            self.config["extra_calibration_columns"] = f.get_extra_calibration_columns()
+            self.config["extra_calibration_columns"] = f.get_extra_calibration_columns(mode="apply")
 
         # Collect together all the methods on this class called self.plot_*
         # They are all expected to be python coroutines - generators that
