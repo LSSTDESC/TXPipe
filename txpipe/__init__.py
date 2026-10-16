@@ -44,7 +44,7 @@ from .covariance_nmt import TXFourierNamasterCovariance, TXRealNamasterCovarianc
 from .delta_sigma import TXDeltaSigma
 from .tomography import TXTrainRandomForestTomography, TXComputeSourceTomography, TXApplyRandomForestSourceTomography, TXSimpleRedshiftSourceTomography
 from .source_selection import TXSimpleSelection, TXMetaDetectSelection, TXScalarMetaDetectSelection, TXMetacalSelection, TXLensfitSelection, TXHSCSelection
-from .shear_calibration import TXSourceSelectorSimple, TXSourceSelectorHSC, TXSourceSelectorLensfit, TXSourceSelectorMetacal, TXSourceSelectorMetadetect, TXSourceSelectorScalarMetadetect
+from .shear_calibration import TXComputeShearCalibrationSimple, TXComputeShearCalibrationHSC, TXComputeShearCalibrationLensfit, TXComputeShearCalibrationMetacal, TXComputeShearCalibrationMetadetect, TXComputeShearCalibrationScalarMetadetect
 
 # We no longer import all the extensions automatically here to avoid
 # some dependency problems when running under the LSST environment on NERSC.

@@ -1,10 +1,10 @@
-from .base import TXSourceSelectorBase
+from .base import TXComputeShearCalibrationBase
 from ..calibration_utils import band_variants, HSCCalculator
 import numpy as np
 from ceci.config import StageParameter
 
 
-class TXSourceSelectorHSC(TXSourceSelectorBase):
+class TXComputeShearCalibrationHSC(TXComputeShearCalibrationBase):
     """
     Source selection and tomography for HSC catalogs
 
@@ -17,8 +17,8 @@ class TXSourceSelectorHSC(TXSourceSelectorBase):
     to compute_output_stats
     """
 
-    name = "TXSourceSelectorHSC"
-    config_options = TXSourceSelectorBase.config_options.copy()
+    name = "TXComputeShearCalibrationHSC"
+    config_options = TXComputeShearCalibrationBase.config_options.copy()
     config_options["max_shear_cut"] = StageParameter(float, 0.0, msg="Maximum shear value for object selection")
 
 

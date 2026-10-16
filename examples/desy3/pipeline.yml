@@ -62,7 +62,7 @@ stages:
     threads_per_process: 8
 
   # Compute metacalibration shear response and selection bias corrections
-  - name: TXSourceSelectorDESY3
+  - name: TXComputeShearCalibrationDESY3
     nprocess: 32
     threads_per_process: 4
 

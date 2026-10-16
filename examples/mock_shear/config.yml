@@ -5,7 +5,7 @@ global:
     sparse: true
 
 
-TXSourceSelectorSimple:
+TXComputeShearCalibrationSimple:
     input_pz: false
     true_z: true
     bands: [r, i, z]

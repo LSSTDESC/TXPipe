@@ -84,7 +84,7 @@ TXTrueNumberDensity:
     zmax: 3.0
     chunk_rows: 100000
 
-TXSourceSelectorMetacal:
+TXComputeShearCalibrationMetacal:
     input_pz: False
     bands: [r, i, z] #used for selection
     T_cut: 0.5
@@ -96,7 +96,7 @@ TXSourceSelectorMetacal:
     chunk_rows: 100000
     true_z: False
 
-TXSourceSelectorMetadetect:
+TXComputeShearCalibrationMetadetect:
     input_pz: False
     bands: [r, i, z] #used for selection
     T_cut: 0.5

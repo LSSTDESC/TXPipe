@@ -72,7 +72,7 @@ TXPhotozStack: {}
 
 
 
-TXSourceSelectorMetacal:
+TXComputeShearCalibrationMetacal:
     input_pz: false
     bands: [r, i, z] #used for selection
     T_cut: 0.5

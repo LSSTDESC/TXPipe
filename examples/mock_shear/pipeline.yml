@@ -1,7 +1,7 @@
 # Stages to run
 stages:
   - name: TXSimpleMock             # Convert a text file mock catalog to HDF5
-  - name: TXSourceSelectorSimple   # select and split objects into source bins
+  - name: TXComputeShearCalibrationSimple   # select and split objects into source bins
   - name: TXSimpleSelection
   - name: TXSimpleRedshiftSourceTomography
   - name: TXTrainRandomForestTomography

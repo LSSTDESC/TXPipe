@@ -1,11 +1,11 @@
-from .base import TXSourceSelectorBase
+from .base import TXComputeShearCalibrationBase
 from ..calibration_utils import metacal_variants, MetacalCalculator, band_variants
 from ..data_types import HDFFile
 import numpy as np
 from ceci.config import StageParameter
 
 
-class TXSourceSelectorMetacal(TXSourceSelectorBase):
+class TXComputeShearCalibrationMetacal(TXComputeShearCalibrationBase):
     """
     Source selection and tomography for metacal catalogs
 
@@ -14,11 +14,11 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
     superseded by MetaDetect, see below.
     """
 
-    name = "TXSourceSelectorMetacal"
+    name = "TXComputeShearCalibrationMetacal"
 
     # add one option to the base class configuration
     config_options = {
-        **TXSourceSelectorBase.config_options,
+        **TXComputeShearCalibrationBase.config_options,
         "delta_gamma": StageParameter(
             float,
             required=True,
@@ -90,11 +90,11 @@ class TXSourceSelectorMetacal(TXSourceSelectorBase):
         R[:, 1, 1] = (data["g2_2p"] - data["g2_2m"]) / delta_gamma
         return R
 
-# Removed TXSourceSelectorDESY3
+# Removed TXComputeShearCalibrationDESY3
 # Need to replace it with an ingestion step that turns the
 # desy3_index_catalog into a pair of TXPipe tomography 
 # and selection files. These will be a bit redundant.
-class TXSourceSelectorDESY3(TXSourceSelectorMetacal):
+class TXComputeShearCalibrationDESY3(TXComputeShearCalibrationMetacal):
     """
     Source selection and tomography for DESY3 catalogs
 
@@ -106,9 +106,9 @@ class TXSourceSelectorDESY3(TXSourceSelectorMetacal):
     tomography information
     """
 
-    name = "TXSourceSelectorDESY3"
+    name = "TXComputeShearCalibrationDESY3"
 
-    inputs = TXSourceSelectorMetacal.inputs + [
+    inputs = TXComputeShearCalibrationMetacal.inputs + [
         ("desy3_index_catalog", HDFFile),
     ]
 

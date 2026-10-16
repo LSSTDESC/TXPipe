@@ -69,7 +69,7 @@ TXTrueNumberDensity:
     nz: 301
     zmax: 3.0
 
-TXSourceSelectorMetacal:
+TXComputeShearCalibrationMetacal:
     input_pz: false
     true_z: true
     bands: [r, i, z] #used for selection

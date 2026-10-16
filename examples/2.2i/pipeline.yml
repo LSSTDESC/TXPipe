@@ -25,7 +25,7 @@ stages:
     nprocess: 32
   - name: TXLensNoiseMaps
     nprocess: 32
-  - name: TXSourceSelectorMetacal
+  - name: TXComputeShearCalibrationMetacal
     nprocess: 32
   - name: TXMetacalSelection
   - name: TXApplyRandomForestSourceTomography

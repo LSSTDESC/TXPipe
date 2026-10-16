@@ -61,7 +61,7 @@ TXMockGaussianPhotozStack:
     sigmas: [0.2]
 
 
-TXSourceSelectorMetadetect:
+TXComputeShearCalibrationMetadetect:
     input_pz: false
     true_z: false
     bands: [r, i, z]
@@ -70,7 +70,7 @@ TXSourceSelectorMetadetect:
     delta_gamma: 0.02
     do_tomography: false
 
-TXSourceSelectorMetadetectDP2:
+TXComputeShearCalibrationMetadetectDP2:
     input_pz: false
     true_z: false
     bands: [g, r, i, z]
@@ -88,7 +88,7 @@ TXSourceSelectorMetadetectDP2:
     mfrac_cut: 0.1
     T_max: 20.0
 
-TXSourceSelectorScalarMetadetectDP2:
+TXComputeShearCalibrationScalarMetadetectDP2:
     input_pz: false
     true_z: false
     delta_gamma: 0.02

@@ -30,7 +30,7 @@ stages:
     aliases:
         input: specz_catalog_pq
         output: spectroscopic_catalog
-  - name: TXSourceSelectorMetacal
+  - name: TXComputeShearCalibrationMetacal
     nprocess: 32
   - name: TXMetacalSelection
   - name: TXApplyRandomForestSourceTomography

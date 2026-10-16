@@ -1,9 +1,9 @@
-from .base import TXSourceSelectorBase
+from .base import TXComputeShearCalibrationBase
 from ..calibration_utils import LensfitCalculator, band_variants
 import numpy as np
 from ceci.config import StageParameter
 
-class TXSourceSelectorLensfit(TXSourceSelectorBase):
+class TXComputeShearCalibrationLensfit(TXComputeShearCalibrationBase):
     """
     Source selection and tomography for lensfit catalogs
 
@@ -13,11 +13,11 @@ class TXSourceSelectorLensfit(TXSourceSelectorBase):
     variant catalogs, just taking the mean of a value for one catalog.
     """
 
-    name = "TXSourceSelectorLensfit"
+    name = "TXComputeShearCalibrationLensfit"
 
     # add one option to the base class configuration
     config_options = {
-        **TXSourceSelectorBase.config_options,
+        **TXComputeShearCalibrationBase.config_options,
         "input_m_is_weighted": StageParameter(
             bool, required=True, msg="Whether the input m values are already weighted"
         ),

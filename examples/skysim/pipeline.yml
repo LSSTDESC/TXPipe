@@ -13,7 +13,7 @@ python_paths:
 
 stages:
   - name: TXRandomCat
-  - name: TXSourceSelectorMetacal
+  - name: TXComputeShearCalibrationMetacal
     nodes: 8
     nprocess: 256
   - name: TXMetacalSelection

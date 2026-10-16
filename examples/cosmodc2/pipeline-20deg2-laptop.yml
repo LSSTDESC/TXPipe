@@ -14,7 +14,7 @@ python_paths:
 stages:
   - name: TXRandomCat
     nprocess: 12
-  - name: TXSourceSelectorMetadetect
+  - name: TXComputeShearCalibrationMetadetect
     nprocess: 12
   - name: TXMetaDetectSelection
   - name: TXApplyRandomForestSourceTomography

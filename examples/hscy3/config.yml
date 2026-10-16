@@ -124,7 +124,7 @@ TXSourceTrueNumberDensity:
     nz: 301
     zmax: 3.0
 
-TXSourceSelectorHSC:
+TXComputeShearCalibrationHSC:
     input_pz: true
     true_z: false
     bands: [i]    #used for selection
@@ -134,7 +134,7 @@ TXSourceSelectorHSC:
     source_zbin_edges: [0.5, 1.5, 2.5, 3.5, 4.5]
     shear_catalog_type: hsc
 
-TXSourceSelectorMetacal:
+TXComputeShearCalibrationMetacal:
     input_pz: true
     true_z: false
     bands: [r, i, z] #used for selection

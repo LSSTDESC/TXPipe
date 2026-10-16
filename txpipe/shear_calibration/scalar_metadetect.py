@@ -1,5 +1,5 @@
-from .base import TXSourceSelectorBase
-from .metadetect import TXSourceSelectorMetadetect
+from .base import TXComputeShearCalibrationBase
+from .metadetect import TXComputeShearCalibrationMetadetect
 from ..calibration_utils import (
     scalar_metadetect_variants,
     ScalarMetaDetectCalculator,
@@ -10,7 +10,7 @@ import numpy as np
 from ceci.config import StageParameter
 
 
-class TXSourceSelectorScalarMetadetect(TXSourceSelectorMetadetect):
+class TXComputeShearCalibrationScalarMetadetect(TXComputeShearCalibrationMetadetect):
     """
     Source selection and tomography for scalar metadetect catalogs.
 
@@ -18,7 +18,7 @@ class TXSourceSelectorScalarMetadetect(TXSourceSelectorMetadetect):
     ns, 1p, and 1m variants and use a scalar response model.
     """
 
-    name = "TXSourceSelectorScalarMetadetect"
+    name = "TXComputeShearCalibrationScalarMetadetect"
     variants = SCALAR_META_VARIANTS
 
     def setup_response_calculators(self, nbin_source):

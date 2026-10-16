@@ -128,7 +128,7 @@ TXSourceTrueNumberDensity:
 TXShearCalibration:
     extra_cols: [redshift_true]
 
-TXSourceSelectorMetacal:
+TXComputeShearCalibrationMetacal:
     input_pz: false
     true_z: true
     bands: [r, i, z] #used for selection

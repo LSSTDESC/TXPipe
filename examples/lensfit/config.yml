@@ -44,7 +44,7 @@ TXLensTrueNumberDensity:
     nz: 301
     zmax: 3.0
 
-TXSourceSelectorLensfit:
+TXComputeShearCalibrationLensfit:
     input_pz: true
     bands: [r, i] #used for selection
     T_cut: 0.25

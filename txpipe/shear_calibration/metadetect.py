@@ -1,4 +1,4 @@
-from .base import TXSourceSelectorBase
+from .base import TXComputeShearCalibrationBase
 from ..calibration_utils import (
     metadetect_variants,
     MetaDetectCalculator,
@@ -10,7 +10,7 @@ from ceci.config import StageParameter
 from ..utils import rename_iterated
 
 
-class TXSourceSelectorMetadetect(TXSourceSelectorBase):
+class TXComputeShearCalibrationMetadetect(TXComputeShearCalibrationBase):
     """
     Source selection and tomography for metadetect catalogs
 
@@ -22,11 +22,11 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
     different objects are detected in each case.
     """
 
-    name = "TXSourceSelectorMetadetect"
+    name = "TXComputeShearCalibrationMetadetect"
 
     # add one option to the base class configuration
     config_options = {
-        **TXSourceSelectorBase.config_options,
+        **TXComputeShearCalibrationBase.config_options,
         "delta_gamma": StageParameter(
             float,
             required=True,

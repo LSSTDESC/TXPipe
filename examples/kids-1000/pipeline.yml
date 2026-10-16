@@ -1,7 +1,7 @@
 # Stages to run
 stages:
 
-    - name: TXSourceSelectorLensfit # select and split objects into source bins
+    - name: TXComputeShearCalibrationLensfit # select and split objects into source bins
     - name: TXLensfitSelection
     - name: TXSimpleRedshiftSourceTomography
     - name: TXShearCalibration   # Calibrate and split the source sample tomographically

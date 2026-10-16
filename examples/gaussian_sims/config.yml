@@ -63,7 +63,7 @@ TXMapPlots:
 TXConvergenceMapPlots:
     projection: Mollweide
 
-TXSourceSelectorMetadetect:
+TXComputeShearCalibrationMetadetect:
     input_pz: False
     bands: [r, i, z] #used for selection
     T_cut: 0.

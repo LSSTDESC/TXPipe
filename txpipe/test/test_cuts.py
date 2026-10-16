@@ -1,10 +1,10 @@
 from ..source_selection import TXSimpleSelection, TXMetaDetectSelection, TXScalarMetaDetectSelection, TXMetacalSelection, TXLensfitSelection, TXHSCSelection
 from ..tomography import TXSimpleRedshiftSourceTomography
-from ..shear_calibration.simple import TXSourceSelectorSimple
-from ..shear_calibration.metadetect import TXSourceSelectorMetadetect
-from ..shear_calibration.scalar_metadetect import TXSourceSelectorScalarMetadetect
-from ..shear_calibration.metacal import TXSourceSelectorMetacal
-from ..shear_calibration.lensfit import TXSourceSelectorLensfit
+from ..shear_calibration.simple import TXComputeShearCalibrationSimple
+from ..shear_calibration.metadetect import TXComputeShearCalibrationMetadetect
+from ..shear_calibration.scalar_metadetect import TXComputeShearCalibrationScalarMetadetect
+from ..shear_calibration.metacal import TXComputeShearCalibrationMetacal
+from ..shear_calibration.lensfit import TXComputeShearCalibrationLensfit
 from ..calibration_utils.names import META_VARIANTS, SCALAR_META_VARIANTS, metacal_variants, metadetect_variants, scalar_metadetect_variants
 from tempfile import TemporaryDirectory
 import os
@@ -103,7 +103,7 @@ def test_simple_cuts():
             "chunk_rows": 10_000,
             "verbose": True,
         }
-        stage = TXSourceSelectorSimple(args)
+        stage = TXComputeShearCalibrationSimple(args)
         stage.run()
         stage.finalize()
 
@@ -176,7 +176,7 @@ def test_metadetect_cuts():
             "input_pz": False,
             "verbose": True,
         }
-        stage = TXSourceSelectorMetadetect(args)
+        stage = TXComputeShearCalibrationMetadetect(args)
         stage.run()
         stage.finalize()
 
@@ -251,7 +251,7 @@ def test_scalar_metadetect_cuts():
             "input_pz": False,
             "verbose": True,
         }
-        stage = TXSourceSelectorScalarMetadetect(args)
+        stage = TXComputeShearCalibrationScalarMetadetect(args)
         stage.run()
         stage.finalize()
 
@@ -326,7 +326,7 @@ def test_metacal_cuts():
             "use_diagonal_response": False,
             "verbose": True,
         }
-        stage = TXSourceSelectorMetacal(args)
+        stage = TXComputeShearCalibrationMetacal(args)
         stage.run()
         stage.finalize()
 
@@ -389,7 +389,7 @@ def test_lensfit_cuts():
             "input_m_is_weighted": True,
             "verbose": True,
         }
-        stage = TXSourceSelectorLensfit(args)
+        stage = TXComputeShearCalibrationLensfit(args)
         stage.run()
         stage.finalize()
 

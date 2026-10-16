@@ -23,7 +23,7 @@ stages:
   - name: TXJackknifeCenters
   - name: TXSourceNoiseMaps
   - name: TXLensNoiseMaps
-  - name: TXSourceSelectorMetacal
+  - name: TXComputeShearCalibrationMetacal
   - name: TXMetacalSelection
   - name: TXApplyRandomForestSourceTomography
   - name: TXTrainRandomForestTomography

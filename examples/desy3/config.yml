@@ -185,7 +185,7 @@ TXSourceTomography:
     spec_mag_column_format: "photometry/mag_{band}"
 
 
-TXSourceSelectorDESY3:
+TXComputeShearCalibrationDESY3:
     input_pz: False
     true_z: False
     bands: [r, i, z] #used for selection

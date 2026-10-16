@@ -84,7 +84,7 @@ TXTrueNumberDensity:
     nz: 301
     zmax: 3.0
 
-TXSourceSelectorSimple:
+TXComputeShearCalibrationSimple:
     input_pz: false
     true_z: true
     bands: [u, g, r, i, z, "y"]

@@ -19,7 +19,7 @@ stages:
     nodes: 4
     nprocess: 64
   - name: TXIngestRedmagic
-  - name: TXSourceSelectorMetadetect
+  - name: TXComputeShearCalibrationMetadetect
     nprocess: 64
     nodes: 2
   - name: TXMetaDetectSelection

@@ -7,7 +7,7 @@ import numpy as np
 
 
 
-class TXSourceSelectorBase(PipelineStage):
+class TXComputeShearCalibrationBase(PipelineStage):
     """
     Base stage for source selection using S/N, size, and flag cuts and tomography
 
@@ -34,7 +34,7 @@ class TXSourceSelectorBase(PipelineStage):
     generating a set of Calibrator objects.
     """
 
-    name = "TXSourceSelector"
+    name = "TXComputeShearCalibration"
 
     inputs = [
         ("shear_catalog", ShearCatalog),
@@ -55,9 +55,9 @@ class TXSourceSelectorBase(PipelineStage):
 
         # This base class should no longer be used, so to avoid people
         # accidentally doing so we give a clear message if they try.
-        if self.name == "TXSourceSelector":
+        if self.name == "TXComputeShearCalibration":
             raise ValueError(
-                "Do not use the class TXSourceSelector any more. Use one of the subclasses like TXSourceSelectorMetacal"
+                "Do not use the class TXComputeShearCalibration any more. Use one of the subclasses like TXComputeShearCalibrationMetacal"
             )
 
         # Suppress some warnings from numpy that are not relevant

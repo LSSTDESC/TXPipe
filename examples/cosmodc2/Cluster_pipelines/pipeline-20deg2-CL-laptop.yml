@@ -21,7 +21,7 @@ modules: >
 python_paths: []
 
 stages:
-  - name: TXSourceSelectorMetadetect
+  - name: TXComputeShearCalibrationMetadetect
     nprocess: 6
   - name: TXMetaDetectSelection
   - name: TXApplyRandomForestSourceTomography

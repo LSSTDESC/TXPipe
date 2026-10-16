@@ -4,7 +4,7 @@ stages:
   - name: TXIngestFlagshipMocks
   - name: TXDESIJointMask
   - name: TXCutShearCatalog
-  - name: TXSourceSelectorSimple
+  - name: TXComputeShearCalibrationSimple
     aliases:
         shear_catalog: cut_shear_catalog
   - name: TXSimpleSelection

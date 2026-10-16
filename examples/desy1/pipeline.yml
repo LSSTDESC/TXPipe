@@ -2,7 +2,7 @@
 # Stages to run
 stages:
 
-    - name: TXSourceSelectorMetacal     # select and split objects into source bins
+    - name: TXComputeShearCalibrationMetacal     # select and split objects into source bins
     - name: TXMetacalSelection
     - name: TXSimpleRedshiftSourceTomography
     - name: TXShearCalibration   # Calibrate and split the source sample tomographically

@@ -1,6 +1,6 @@
 # Stages to run
 stages:
-  - name: TXSourceSelectorMetacal
+  - name: TXComputeShearCalibrationMetacal
   - name: TXMetacalSelection
   - name: TXSimpleRedshiftSourceTomography
   - name: TXShearCalibration

@@ -12,7 +12,7 @@ global:
 
 # Here's the list of stages we are using:
 #
-# TXSourceSelectorMetacal
+# TXComputeShearCalibrationMetacal
 # TXShearCalibration
 # TXTruthLensCatalogSplitter
 # TXStarCatalogSplitter     
@@ -51,7 +51,7 @@ global:
 ##- name: TXFourierNamasterCovariance # Compute the C_ell covariance
 ##- name: TXFourierTJPCovariance     # Compute the C_ell covariance with TJPCov 
 
-TXSourceSelectorMetacal:
+TXComputeShearCalibrationMetacal:
     input_pz: True
     true_z: False
     bands: [r, i, z] #used for selection

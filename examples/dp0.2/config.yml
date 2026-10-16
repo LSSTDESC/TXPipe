@@ -59,7 +59,7 @@ TXMeanLensSelector:
     maglim_limit: 24.0
 
 TXLensCatalogSplitter: {}
-TXSourceSelectorHSC:
+TXComputeShearCalibrationHSC:
     bands: [u, g, r, i, z, "y"]
     verbose: true
     T_cut: 1.3

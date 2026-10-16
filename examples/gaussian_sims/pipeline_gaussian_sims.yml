@@ -19,7 +19,7 @@ stages:
       nodes: 6
       nprocess: 64
     - name: TXUniformDepthMap
-    - name: TXSourceSelectorMetadetect
+    - name: TXComputeShearCalibrationMetadetect
       nprocess: 64
       nodes: 2
     - name: TXMetaDetectSelection
