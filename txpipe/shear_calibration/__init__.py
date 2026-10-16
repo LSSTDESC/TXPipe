@@ -5,10 +5,21 @@ from .calibrators import (
     LensfitCalibrator,
     HSCCalibrator,
     MetaDetectCalibrator,
+    AnaCalibrator,
     ScalarMetaDetectCalibrator,
 
 )
-from .calibration_calculators import  MetacalCalculator, LensfitCalculator, HSCCalculator, MetaDetectCalculator, MockCalculator, CalibrationCalculator, ScalarMetaDetectCalculator
+from .calibration_calculators import  (
+    CalibrationCalculator,
+    MetacalCalculator,
+    LensfitCalculator,
+    HSCCalculator,
+    MetaDetectCalculator,
+    MockCalculator,
+    AnaCalCalculator, 
+    ScalarMetaDetectCalculator
+    )
+
 from .mean_shear_in_bins import MeanShearInBins
 from .names import (
     band_variants,

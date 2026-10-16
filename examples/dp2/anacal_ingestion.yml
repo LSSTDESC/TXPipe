@@ -1,0 +1,38 @@
+# AnaCal ingestion pipeline for DP2: tract list, the AnaCal shear catalog
+# (TXIngestAnacal reads the per-tract merged catalogs from the butler; the
+# collection and cuts-independent settings are in examples/dp2/anacal_config.yml)
+# and the AnaCal healsparse footprint mask.  The outputs are the
+# full_shear_catalog and mask inputs of examples/dp2/anacal_analysis.yml.
+#
+# Needs the LSST stack (butler) environment.  Writing the 146M-row catalog
+# repacks it through $TMPDIR, so point TMPDIR at scratch on compute nodes
+# (/tmp there is RAM).
+
+stages:
+  - name: TXGenerateTractList
+  - name: TXIngestAnacal
+  - name: TXIngestHealsparseMask
+
+output_dir: data/anacal_dp2_ingest
+
+launcher:
+    name: mini
+    interval: 1.0
+
+site:
+    name: local
+
+modules: >
+    txpipe
+
+config: examples/dp2/anacal_config.yml
+
+inputs:
+    # Butler-mode ingest does not read this FITS input, but ceci needs every
+    # declared input to have a value.
+    anacal_catalog: None
+    shear_mask: /global/cfs/cdirs/lsst/utilities/data-registry/lsst_desc_working/user/smau/rubin_dp2_wide_anacal_mask_0.2.0.hsp
+
+resume: true
+log_dir: data/anacal_dp2_ingest/logs
+pipeline_log: data/anacal_dp2_ingest/ingest_log.txt
