@@ -13,7 +13,7 @@ import pickle
 class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
     name = "CLClusterEnsembleProfiles"
     inputs = [
-        #("cluster_catalog", HDFFile),
+        ("cluster_catalog", HDFFile), # positions for the k-means jackknife regions
         ("cluster_catalog_tomography", HDFFile), # TO TEST
         ("fiducial_cosmology", FiducialCosmology),
         ("cluster_shear_catalogs", HDFFile),
@@ -32,12 +32,14 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         "magnification_profile" : False,
         "bin_units": "mpc", # options are mpc or arcmin
         "cov_type" : "jackknife_covariance", #sample_covariance, jackknife_covariance, bootstrap_covariance
+        # regions of the jackknife covariance: "healpix" (pixels of jackknife_nside) or "kmeans"
+        # (jackknife_kmeans_nregions regions shared by all bins, defined from the positions
+        # of every cluster of cluster_catalog with background sources)
+        "jackknife_regions": "healpix",
         "jackknife_nside": 32,
+        "jackknife_kmeans_nregions": 30,
+        "jackknife_kmeans_seed": 11,
         "bootstrap_nboot": 100,
-        # kmeans jackknife covariance (tan_kmjk / cross_kmjk), computed in addition to cov_type:
-        # 0 = off, -1 = same number of regions as occupied healpix pixels (jackknife_nside), N>0 = N regions
-        "kmeans_jackknife_njk": 0,
-        "kmeans_seed": 11,
         #coordinate_system for shear
         #"coordinate_system" : 'euclidean' #Must be either 'celestial' or 'euclidean'
     }
@@ -54,9 +56,24 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         self.distance_bins = clmm.dataops.make_bins(bin_min, bin_max, nbins=self.config["nbins"], method="evenlog10width")
         print (self.distance_bins) 
         
-        self.cluster_shears_cat, self.coordinate_system, self.profile_type= self.load_cluster_shear_catalog() 
+        self.cluster_shears_cat, self.coordinate_system, self.profile_type= self.load_cluster_shear_catalog()
 
-        print (self.coordinate_system) 
+        print (self.coordinate_system)
+
+        # row of each cluster in cluster_shears_cat; with repeated ids, clusters would
+        # silently get the sources of another cluster
+        cluster_ids = self.cluster_shears_cat["cluster_id"]
+        if np.unique(cluster_ids).size != len(cluster_ids):
+            raise ValueError("cluster_id is not unique in cluster_shear_catalogs, "
+                             "so clusters cannot be matched to their sources")
+        self.cluster_shear_row = {cluster_id: i for i, cluster_id in enumerate(cluster_ids)}
+
+        if self.config["jackknife_regions"] not in ("healpix", "kmeans"):
+            raise ValueError(f"jackknife_regions must be 'healpix' or 'kmeans', "
+                             f"not '{self.config['jackknife_regions']}'")
+        self.jackknife_centers = None
+        if self.config["cov_type"] == "jackknife_covariance" and self.config["jackknife_regions"] == "kmeans":
+            self.jackknife_centers = self.compute_jackknife_centers()
 
         
         with self.open_input("fiducial_cosmology", wrapper=True) as f:
@@ -72,6 +89,26 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         pickle.dump(cluster_stack_dict, open(self.get_output("cluster_profiles"), 'wb'))
 
                     
+
+    def compute_jackknife_centers(self):
+        """Centers of the k-means jackknife regions shared by all bins, from the positions of
+        every cluster of cluster_catalog with background sources (no redshift or richness cut,
+        so the regions do not depend on the binning)."""
+        import clmm
+
+        with self.open_input("cluster_catalog") as f:
+            ra = f["clusters/ra"][:]
+            dec = f["clusters/dec"][:]
+            cluster_id = f["clusters/cluster_id"][:]
+        # cluster_shear_catalogs keeps the row order of cluster_catalog
+        if not np.array_equal(cluster_id, self.cluster_shears_cat["cluster_id"]):
+            raise ValueError("cluster_catalog and cluster_shear_catalogs rows do not match")
+        has_sources = np.asarray(self.cluster_shears_cat["cluster_sample_count"]) > 0
+        centers = clmm.utils.compute_kmeans_centers(
+            ra[has_sources], dec[has_sources], self.config["jackknife_kmeans_nregions"],
+            seed=self.config["jackknife_kmeans_seed"])
+        print(f"{len(centers)} k-means jackknife regions from {has_sources.sum()} clusters with sources")
+        return centers
 
     def load_cluster_shear_catalog(self, indices = None) :
         from astropy.table import Table
@@ -132,8 +169,7 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         ncluster = len(cluster_list)
         print('Ncluster', ncluster)
 
-        # Extract cluster list from cluster_shears_cat
-        cluster_shear_list = self.cluster_shears_cat["cluster_id"].tolist()
+        self.jackknife_info = {"n_jk": None}
         n_skipped = 0
 
         for cluster_index in range(ncluster) :
@@ -147,7 +183,7 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             id_cl = cluster_list[cluster_index]["id"]
 
             # Read cluster shear catalog data corresponding to the current cluster_id (i.e. id_cl)
-            cluster_cat_index = cluster_shear_list.index(id_cl)
+            cluster_cat_index = self.cluster_shear_row[id_cl]
             cluster_cat_indices = ( int(self.cluster_shears_cat["cluster_sample_start"][cluster_cat_index]),
                                     int(self.cluster_shears_cat["cluster_sample_count"][cluster_cat_index]))
             #print("-> cluster id ",id_cl,"  ",cluster_cat_index," ",cluster_cat_indices,"  ",cluster_cat_indices[0]+cluster_cat_indices[1])
@@ -220,29 +256,34 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         if self.config["cov_type"] == "sample_covariance":
             cluster_ensemble.compute_sample_covariance(tan_component="tangential_comp", cross_component="cross_comp")
         elif self.config["cov_type"] == "jackknife_covariance":
-            cluster_ensemble.compute_jackknife_covariance(tan_component="tangential_comp", cross_component="cross_comp", n_side = self.config["jackknife_nside"])
+            # healpix pixels, or the shared k-means regions when jackknife_centers is set
+            cluster_ensemble.compute_jackknife_covariance(tan_component="tangential_comp", cross_component="cross_comp",
+                                                          n_side = self.config["jackknife_nside"], centers=self.jackknife_centers)
+            self.jackknife_info = self.get_jackknife_info(cluster_ensemble)
+            print(f"jackknife covariance computed with {self.jackknife_info['n_jk']} "
+                  f"{self.config['jackknife_regions']} regions")
         elif self.config["cov_type"] == "bootstrap_covariance":
             cluster_ensemble.compute_bootstrap_covariance(tan_component="tangential_comp", cross_component="cross_comp", n_bootstrap = self.config["bootstrap_nboot"])
         print("covariance computed")
 
-        self.n_jk_healpix, self.n_jk_kmeans = None, None
-        njk = self.config["kmeans_jackknife_njk"]
-        if njk != 0:
-            import healpy
-            from .jk_kmeans import compute_kmeans_jackknife_covariance
-
-            pixels = healpy.ang2pix(self.config["jackknife_nside"], cluster_ensemble.data["ra"],
-                                    cluster_ensemble.data["dec"], nest=True, lonlat=True)
-            self.n_jk_healpix = np.unique(pixels).size
-            if njk < 0:
-                njk = self.n_jk_healpix
-            self.n_jk_kmeans, _ = compute_kmeans_jackknife_covariance(
-                cluster_ensemble, njk, tan_component="tangential_comp", cross_component="cross_comp",
-                seed=self.config["kmeans_seed"])
-            print("kmeans jackknife covariance computed: n_jk_healpix =", self.n_jk_healpix,
-                  " n_jk_kmeans =", self.n_jk_kmeans)
-
         return cluster_ensemble
+
+    def get_jackknife_info(self, cluster_ensemble):
+        """Jackknife regions of the clusters of an ensemble, for the output: number of occupied
+        regions, and for k-means the shared centers and the region of each cluster."""
+        import clmm
+        import healpy
+
+        ra, dec = cluster_ensemble.data["ra"], cluster_ensemble.data["dec"]
+        info = {"jackknife_regions": self.config["jackknife_regions"]}
+        if self.jackknife_centers is None:
+            labels = healpy.ang2pix(self.config["jackknife_nside"], ra, dec, nest=True, lonlat=True)
+        else:
+            labels = clmm.utils.assign_kmeans_regions(ra, dec, self.jackknife_centers)
+            info["jackknife_centers"] = self.jackknife_centers
+            info["jackknife_labels"] = labels
+        info["n_jk"] = np.unique(labels).size
+        return info
    
     
     def load_cluster_catalog_tomography_group(self): # NEED TO CHNAGE FUNCTION NAME
@@ -260,13 +301,13 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
                     cluster_stack = self.create_cluster_ensemble(clusters, cluster_ensemble_id=key)
                 else :
                     cluster_stack = None
-                    self.n_jk_healpix, self.n_jk_kmeans = None, None
+                    self.jackknife_info = {"n_jk": None}
                 print('cl_ensemble_created')
                 
                 #dict(dset_out[i].attrs), dset_out[i]['redshift'][:].size) 
                 
                 binned_cluster_stack[key]={'cluster_bin_edges':dict(group.attrs), 'n_cl':len(clusters), 'clmm_cluster_ensemble':cluster_stack, 'profile_type': self.profile_type,
-                                         'n_jk_healpix': self.n_jk_healpix, 'n_jk_kmeans': self.n_jk_kmeans}
+                                         **self.jackknife_info}
                 
             
         return binned_cluster_stack
