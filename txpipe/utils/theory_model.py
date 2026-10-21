@@ -1,13 +1,10 @@
-import os
 import pathlib
 
-import firecrown.likelihood.gauss_family.statistic.source.weak_lensing as wl
-import firecrown.likelihood.gauss_family.statistic.source.number_counts as nc
-from firecrown.likelihood.gauss_family.statistic.two_point import TwoPoint
-from firecrown.likelihood.gauss_family.gaussian import ConstGaussian
+from firecrown.likelihood import ConstGaussian, TwoPoint
+from firecrown.likelihood.weak_lensing import WeakLensing
+from firecrown.likelihood.number_counts import LinearBiasSystematic, NumberCounts
 from firecrown.modeling_tools import ModelingTools
 import sacc
-import pyccl as ccl
 import numpy as np
 
 
@@ -17,7 +14,7 @@ def build_likelihood(build_parameters):
     bias as a systematic.
 
     """
-    sacc_data = build_parameters["sacc_data"]
+    sacc_data = build_parameters.data["sacc_data"]
 
     # items in the build_parameters are supposed to be
     # just str, int, etc, not complicated parameters.
@@ -41,10 +38,10 @@ def build_likelihood(build_parameters):
 
     for tracer_name in sacc_data.tracers.keys():
         if tracer_name.startswith("source"):
-            tr = wl.WeakLensing(sacc_tracer=tracer_name)
+            tr = WeakLensing(sacc_tracer=tracer_name)
         elif tracer_name.startswith("lens"):
-            bias_systematic = nc.LinearBiasSystematic(sacc_tracer=tracer_name)
-            tr = nc.NumberCounts(sacc_tracer=tracer_name, systematics=[bias_systematic])
+            bias_systematic = LinearBiasSystematic(sacc_tracer=tracer_name)
+            tr = NumberCounts(sacc_tracer=tracer_name, systematics=[bias_systematic])
         else:
             raise ValueError(f"Unknown tracer in sacc file, non-3x2pt: {tracer_name}")
         sources[tracer_name] = tr

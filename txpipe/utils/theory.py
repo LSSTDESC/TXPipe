@@ -2,7 +2,6 @@ import pathlib
 import numpy as np
 import warnings
 import yaml
-import pathlib
 
 # same convention as elsewhere
 SHEAR_SHEAR = 0
@@ -146,10 +145,9 @@ def theory_3x2pt(
         A copy of the input sacc_data but with values
         replaced with theory predictions.
     """
-    from firecrown.likelihood.likelihood import load_likelihood_from_script
-    from firecrown.parameters import ParamsMap
+    from firecrown.likelihood import NamedParameters, load_likelihood
+    from firecrown.updatable import ParamsMap
     import sacc
-    import pathlib
 
     # Make sure we have computed P(k, z). If this
     # has already been calculated then this doesn't
@@ -175,18 +173,18 @@ def theory_3x2pt(
 
     # Use the FireCrown machinery to compute the likelihood and as
     # a by-product the theory
-    build_parameters = {
-        "sacc_data": sacc_data,
-    }
+    build_parameters = NamedParameters({"sacc_data": sacc_data})
 
     # These stages are a copy of what is done inside the FireCrown connectors
-    likelihood, tools = load_likelihood_from_script(theory_model, build_parameters)
+    likelihood, tools = load_likelihood(theory_model, build_parameters)
 
-    systematic_params = {**make_bias_parameters(bias, sacc_data, cosmo)}
+    cosmo_params = {k: v for (k, v) in cosmo.to_dict().items() if isinstance(v, (int, float))}
+    params_values = {**make_bias_parameters(bias, sacc_data, cosmo), **cosmo_params}
     # Apply the systematics parameters
-    likelihood.update(ParamsMap(systematic_params))
-    tools.update(ParamsMap(systematic_params))
-    tools.prepare(cosmo)
+    params = ParamsMap(params_values)
+    likelihood.update(params)
+    tools.update(params)
+    tools.prepare()
 
     # Ask the likelihood for a theory vector. We don't want
     # to print the actual likelihood because for many applications
