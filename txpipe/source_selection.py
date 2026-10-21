@@ -53,11 +53,16 @@ class TXSimpleSelection(PipelineStage):
             g_out = fout.create_group(group)
             n = g_in["ra"].size
             # maybe add compression here since can be very effective on this?
+            n_sel = 0
             sel_out = g_out.create_dataset("selection", shape=(n,), dtype=bool) 
             for (s, e, data) in self.data_iterator(group):
                 print(f"Rank {self.rank} processing rows {s:,} - {e:,}")
                 sel = self.compute_selection(s, e, data)
                 sel_out[s: e] = sel
+                n_sel += sel.sum()
+            if self.comm is not None:
+                n_sel = self.comm.allreduce(n_sel)
+                g_out.attrs["n_selected"] = n_sel
 
         fin.close()
         fout.close()
@@ -132,6 +137,7 @@ class TXMetacalSelection(TXSimpleSelection):
 
         for (s, e, data) in self.data_iterator("shear"):
             for variant in META_VARIANTS:
+                n_sel = 0
                 if variant == "ns":
                     sel_out = g_out["selection"]
                 else:
@@ -141,6 +147,10 @@ class TXMetacalSelection(TXSimpleSelection):
                 data_v = _DataWrapper(data, suffix="_"+variant)
                 sel = self.compute_selection(s, e, data_v)
                 sel_out[s: e] = sel
+
+            if self.comm is not None:
+                    n_sel = self.comm.allreduce(n_sel)
+                    g_out.attrs["n_selected"] = n_sel
 
         fin.close()
         fout.close()
