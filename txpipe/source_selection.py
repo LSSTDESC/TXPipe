@@ -62,7 +62,7 @@ class TXSimpleSelection(PipelineStage):
                 n_sel += sel.sum()
             if self.comm is not None:
                 n_sel = self.comm.allreduce(n_sel)
-                g_out.attrs["n_selected"] = n_sel
+            g_out.attrs["n_selected"] = n_sel
 
         fin.close()
         fout.close()
