@@ -29,7 +29,7 @@ class TXCosmoDC2Mock(PipelineStage):
 
     config_options = {
         "cat_name": StageParameter(str, "cosmoDC2", msg="Name of the mock catalog to use."),
-        "visits_per_band": StageParameter(int, 165, msg="Number of visits per band for noise simulation."),
+        "years": StageParameter(float, 1.0, msg="The number of years of data to simulate for noise"),
         "snr_limit": StageParameter(float, 4.0, msg="S/N limit for object selection."),
         "max_size": StageParameter(int, 99999999999999, msg="Maximum catalog size for testing."),
         "extra_cols": StageParameter(str, "", msg="Extra columns to include (space-separated)."),
@@ -240,7 +240,7 @@ class TXCosmoDC2Mock(PipelineStage):
         cols = ["ra", "dec", "extendedness"]
         for band in self.bands:
             cols.append(f"mag_{band}")
-            cols.append(f"mag_{band}_err")
+            cols.append(f"mag_err_{band}")
             cols.append(f"snr_{band}")
 
         for col in self.config["extra_cols"].split():
@@ -280,7 +280,7 @@ class TXCosmoDC2Mock(PipelineStage):
         ) + band_variants("riz", "mag", "mag_err", shear_catalog_type="metadetect")
 
         # Store the truth shear only for the primary catalog, true redshift for all variants
-        cols += ["00/true_g1", "00/true_g2"] + metadetect_variants("redshift_true")
+        cols += ["ns/true_g1", "ns/true_g2"] + metadetect_variants("redshift_true")
 
         # Make group for all the photometry
         group = metacal_file.create_group("shear")
@@ -414,9 +414,10 @@ class TXCosmoDC2Mock(PipelineStage):
 
     def make_mock_photometry(self, data):
         # The visit count affects the overall noise levels
-        n_visit = self.config["visits_per_band"]
+        n_year = self.config["years"]
+        unit_response = self.config["unit_response"]
         # Do all the work in the function below
-        photo = make_mock_photometry(n_visit, self.bands, data, self.config["unit_response"])
+        photo = make_mock_photometry(self.bands, data, unit_response, n_year)
 
         for col in self.config["extra_cols"].split():
             photo[col] = data[col]
@@ -425,7 +426,6 @@ class TXCosmoDC2Mock(PipelineStage):
 
     def make_mock_metadetect(self, data, photo):
         """
-        !!! This function is not working properly yet!!!
         Generate a mock metadetect table.
         This is a long and complicated function unfortunately.
 
@@ -580,12 +580,12 @@ class TXCosmoDC2Mock(PipelineStage):
             "2p/s2n": snr_2p,
             "2m/s2n": snr_2m,
             # Magntiudes and fluxes, just copied from the inputs.
+            "ns/mag_err_r": photo["mag_err_r"],
+            "ns/mag_err_i": photo["mag_err_i"],
+            "ns/mag_err_z": photo["mag_err_z"],
             "ns/mag_r": photo["mag_r"],
             "ns/mag_i": photo["mag_i"],
             "ns/mag_z": photo["mag_z"],
-            "ns/mag_err_r": photo["mag_r_err"],
-            "ns/mag_err_i": photo["mag_i_err"],
-            "ns/mag_err_z": photo["mag_z_err"],
             "1p/mag_r": photo["mag_r_1p"],
             "2p/mag_r": photo["mag_r_2p"],
             "1m/mag_r": photo["mag_r_1m"],
@@ -598,18 +598,18 @@ class TXCosmoDC2Mock(PipelineStage):
             "2p/mag_z": photo["mag_z_2p"],
             "1m/mag_z": photo["mag_z_1m"],
             "2m/mag_z": photo["mag_z_2m"],
-            "1p/mag_err_r": photo["mag_r_err"],
-            "2p/mag_err_r": photo["mag_r_err"],
-            "1m/mag_err_r": photo["mag_r_err"],
-            "2m/mag_err_r": photo["mag_r_err"],
-            "1p/mag_err_i": photo["mag_i_err"],
-            "2p/mag_err_i": photo["mag_i_err"],
-            "1m/mag_err_i": photo["mag_i_err"],
-            "2m/mag_err_i": photo["mag_i_err"],
-            "1p/mag_err_z": photo["mag_z_err"],
-            "2p/mag_err_z": photo["mag_z_err"],
-            "1m/mag_err_z": photo["mag_z_err"],
-            "2m/mag_err_z": photo["mag_z_err"],
+            "1p/mag_err_r": photo["mag_err_r"],
+            "2p/mag_err_r": photo["mag_err_r"],
+            "1m/mag_err_r": photo["mag_err_r"],
+            "2m/mag_err_r": photo["mag_err_r"],
+            "1p/mag_err_i": photo["mag_err_i"],
+            "2p/mag_err_i": photo["mag_err_i"],
+            "1m/mag_err_i": photo["mag_err_i"],
+            "2m/mag_err_i": photo["mag_err_i"],
+            "1p/mag_err_z": photo["mag_err_z"],
+            "2p/mag_err_z": photo["mag_err_z"],
+            "1m/mag_err_z": photo["mag_err_z"],
+            "2m/mag_err_z": photo["mag_err_z"],
             # Fixed PSF parameters - all round with same size
             "ns/psf_g1": zero,
             "1p/psf_g1": zero,
@@ -786,9 +786,9 @@ class TXCosmoDC2Mock(PipelineStage):
             "mag_r": photo["mag_r"],
             "mag_i": photo["mag_i"],
             "mag_z": photo["mag_z"],
-            "mag_err_r": photo["mag_r_err"],
-            "mag_err_i": photo["mag_i_err"],
-            "mag_err_z": photo["mag_z_err"],
+            "mag_err_r": photo["mag_err_r"],
+            "mag_err_i": photo["mag_err_i"],
+            "mag_err_z": photo["mag_err_z"],
             "mag_r_1p": photo["mag_r_1p"],
             "mag_r_2p": photo["mag_r_2p"],
             "mag_r_1m": photo["mag_r_1m"],
@@ -801,18 +801,18 @@ class TXCosmoDC2Mock(PipelineStage):
             "mag_z_2p": photo["mag_z_2p"],
             "mag_z_1m": photo["mag_z_1m"],
             "mag_z_2m": photo["mag_z_2m"],
-            "mag_err_r_1p": photo["mag_r_err"],
-            "mag_err_r_2p": photo["mag_r_err"],
-            "mag_err_r_1m": photo["mag_r_err"],
-            "mag_err_r_2m": photo["mag_r_err"],
-            "mag_err_i_1p": photo["mag_i_err"],
-            "mag_err_i_2p": photo["mag_i_err"],
-            "mag_err_i_1m": photo["mag_i_err"],
-            "mag_err_i_2m": photo["mag_i_err"],
-            "mag_err_z_1p": photo["mag_z_err"],
-            "mag_err_z_2p": photo["mag_z_err"],
-            "mag_err_z_1m": photo["mag_z_err"],
-            "mag_err_z_2m": photo["mag_z_err"],
+            "mag_err_r_1p": photo["mag_err_r"],
+            "mag_err_r_2p": photo["mag_err_r"],
+            "mag_err_r_1m": photo["mag_err_r"],
+            "mag_err_r_2m": photo["mag_err_r"],
+            "mag_err_i_1p": photo["mag_err_i"],
+            "mag_err_i_2p": photo["mag_err_i"],
+            "mag_err_i_1m": photo["mag_err_i"],
+            "mag_err_i_2m": photo["mag_err_i"],
+            "mag_err_z_1p": photo["mag_err_z"],
+            "mag_err_z_2p": photo["mag_err_z"],
+            "mag_err_z_1m": photo["mag_err_z"],
+            "mag_err_z_2m": photo["mag_err_z"],
             # Fixed PSF parameters - all round with same size
             "psf_g1": zero,
             "psf_g2": zero,
@@ -930,7 +930,7 @@ class TXBuzzardMock(TXCosmoDC2Mock):
 
     config_options = {
         "cat_name": StageParameter(str, "buzzard", msg="Name of the mock catalog to use."),
-        "visits_per_band": StageParameter(int, 165, msg="Number of visits per band for noise simulation."),
+        "years": StageParameter(float, 1.0, msg="Number of years of data for noise simulation."),
         "snr_limit": StageParameter(float, 4.0, msg="S/N limit for object selection."),
         "max_size": StageParameter(int, 99999999999999, msg="Maximum catalog size for testing."),
         "extra_cols": StageParameter(str, "", msg="Extra columns to include (space-separated)."),
@@ -964,7 +964,7 @@ class TXGaussianSimsMock(TXCosmoDC2Mock):
 
     config_options = {
         "cat_name": StageParameter(str, "GaussianSims", msg="Name of the Gaussian simulation catalog."),
-        "visits_per_band": StageParameter(int, 165, msg="Number of visits per band for noise simulation."),
+        "years": StageParameter(float, 1.0, msg="Number of years of data for noise simulation."),
         "snr_limit": StageParameter(float, 0.0, msg="S/N limit for object selection (0 for all)."),
         "max_size": StageParameter(int, 99999999999999, msg="Maximum catalog size for testing."),
         "extra_cols": StageParameter(str, "", msg="Extra columns to include (space-separated)."),
@@ -1051,7 +1051,7 @@ class TXGaussianSimsMock(TXCosmoDC2Mock):
         return cat, N
 
 
-def make_mock_photometry(n_visit, bands, data, unit_response):
+def make_mock_photometry(bands, data, unit_response, years):
     """
     Generate a mock photometric table with noise added
 
@@ -1060,6 +1060,8 @@ def make_mock_photometry(n_visit, bands, data, unit_response):
     retrieved here:
     http://faculty.washington.edu/ivezic/Teaching/Astr511/LSST_SNRdoc.pdf
     """
+    import pandas as pd
+    import photerr
 
     output = {}
     nobj = data["galaxy_id"].size
@@ -1069,27 +1071,6 @@ def make_mock_photometry(n_visit, bands, data, unit_response):
     output["extendedness"] = np.ones(nobj)
     if "redshift_true" in data:
         output["redshift_true"] = data["redshift_true"]
-    # Sky background, seeing FWHM, and system throughput,
-    # all from table 2 of Ivezic, Jones, & Lupton
-    B_b = np.array([85.07, 467.9, 1085.2, 1800.3, 2775.7, 3614.3])
-    fwhm = np.array([0.77, 0.73, 0.70, 0.67, 0.65, 0.63])
-    T_b = np.array([0.0379, 0.1493, 0.1386, 0.1198, 0.0838, 0.0413])
-
-    # effective pixels size for a Gaussian PSF, from equation
-    # 27 of Ivezic, Jones, & Lupton
-    pixel = 0.2  # arcsec
-    N_eff = 2.436 * (fwhm / pixel) ** 2
-
-    # other numbers from Ivezic, Jones, & Lupton
-    sigma_inst2 = 10.0**2  # instrumental noise in photons per pixel, just below eq 42
-    gain = 1  # ADU units per photon, also just below eq 42
-    D = 6.5  # primary mirror diameter in meters, from LSST key numbers page (effective clear diameter)
-    # Not sure what effective clear diameter means but it's closer to the number used in the paper
-    time = 30.0  # seconds per exposure, from LSST key numbers page
-    sigma_b2 = 0.0  # error on background, just above eq 42
-
-    # combination of these  used below, from various equations
-    factor = 5455.0 / gain * (D / 6.5) ** 2 * (time / 30.0)
 
     # Fake some metacal responses
     if unit_response:
@@ -1101,62 +1082,54 @@ def make_mock_photometry(n_visit, bands, data, unit_response):
     # that's the right thing to use here because we are doing m+ = m0 + dm/dy*dy
     # Use the same response for gamma1 and gamma2
 
-    for band, b_b, t_b, n_eff, mag_resp in zip(bands, B_b, T_b, N_eff, mag_responses):
-        # truth magnitude
-        mag = data[f"mag_true_{band}_lsst"]
-        output[f"mag_true_{band}_lsst"] = mag
+    df = pd.DataFrame.from_dict({
+        b: data[f"mag_true_{b}_lsst"]
+        for b in bands
+    })
+    error_model = photerr.LsstErrorModel(nYrObs=years)
+    noisy_df = error_model(df)
 
-        # expected signal photons, over all visits
-        c_b = factor * 10 ** (0.4 * (25 - mag)) * t_b * n_visit
+    for i, b in enumerate(bands):
+        mag_obs = np.array(noisy_df[b])
+        mag_err = np.array(noisy_df[b + "_err"])
+        output[f"mag_{b}"] = mag_obs
+        output[f"mag_err_{b}"] = mag_err
 
-        # expected background photons, over all visits
-        background = np.sqrt((b_b + sigma_inst2 + sigma_b2) * n_eff * n_visit)
-        # total expected photons
-        mu = c_b + background
+        # The response is d(mag)/d(gamma), so this
+        # m value gives us delta_mag
+        m = mag_responses[i] * delta_gamma
+ 
+        # Assume that the response is simple, i.e.
+        # that m_00 == m_11 and m_01 == m_10 == 0.
+        # In that case the 1p and 2p are the same,
+        # as are the 1m and 2m.
+        output[f"mag_{b}_1p"] = mag_obs + m
+        output[f"mag_{b}_1m"] = mag_obs - m
+        output[f"mag_{b}_2p"] = mag_obs + m
+        output[f"mag_{b}_2m"] = mag_obs - m
 
-        # Observed number of photons in excess of the expected background.
-        # This can go negative for faint magnitudes, indicating that the object is
-        # not going to be detected
-        n_obs = np.random.poisson(mu) - background
-        n_obs_err = np.sqrt(mu)
-
-        # signal to noise, true and estimated values
-        true_snr = c_b / background
-        obs_snr = n_obs / background
-
-        # observed magnitude from inverting c_b expression above
-        mag_obs = 25 - 2.5 * np.log10(n_obs / factor / t_b / n_visit)
-
-        # converting error on n_obs to error on mag
-        mag_err = 2.5 / np.log(10.0) / obs_snr
-
-        output[f"true_snr_{band}"] = true_snr
-        output[f"snr_{band}"] = obs_snr
-        output[f"mag_{band}"] = mag_obs
-        output[f"mag_err_{band}"] = mag_err
-        output[f"mag_{band}_err"] = mag_err
-
-        m = mag_resp * delta_gamma
-
-        m1 = mag_obs + m
-        m2 = mag_obs - m
-        mag_obs_1p = m1
-        mag_obs_1m = m2
-
-        output[f"mag_{band}_1p"] = m1
-        output[f"mag_{band}_1m"] = m2
-        output[f"mag_{band}_2p"] = m1
-        output[f"mag_{band}_2m"] = m2
-
-        # Scale the SNR values according the to change in magnitude.r
+        # Convert from magnitude error to
+        # SNR. This just comes from flux/flux_err
+        # See conversion.py for more.
+        snr = 2.5 / np.log(10) / mag_err
+        # We would like the SNR to vary with
+        # the applied shear too. In our approximation
+        # here the flux error doesn't vary with the
+        # shear, just the flux itself.
+        # So snr_1p / snr = f_1p / f
+        #                 = 10^{-0.4 M_1p} / 10^{-0.4 M}
+        #                 = 10^{-0.4 (M_1p - M)}
+        #                 = 10^{-0.4 m}
+        # This isn't the best way to do this but is adequate
+        # for our purposes here (you can also construct df/dgamma
+        # instead of using the dM = delta M approximation)
         s = np.power(10.0, -0.4 * m)
+        output[f"snr_{b}"] = snr
+        output[f"snr_{b}_1p"] = snr * s
+        output[f"snr_{b}_1m"] = snr / s
+        output[f"snr_{b}_2p"] = snr * s
+        output[f"snr_{b}_2m"] = snr / s
 
-        snr1 = obs_snr * s
-        snr2 = obs_snr / s
-        output[f"snr_{band}_1p"] = snr1
-        output[f"snr_{band}_1m"] = snr2
-        output[f"snr_{band}_2p"] = snr1
-        output[f"snr_{band}_2m"] = snr2
 
     return output
 
@@ -1272,18 +1245,29 @@ class TXMockTruthPZ(PipelineStage):
 
 
 def test():
-    import pylab
+    import matplotlib
+    matplotlib.use("agg")
+    import matplotlib.pyplot as plt
 
+    n = 1000
     data = {
-        "ra": None,
-        "dec": None,
-        "galaxy_id": None,
+        "ra": np.zeros(n),
+        "dec": np.zeros(n),
+        "galaxy_id": np.zeros(n),
     }
     bands = "ugrizy"
-    n_visit = 165
-    M5 = [24.22, 25.17, 24.74, 24.38, 23.80]
-    for b, m5 in zip(bands, M5):
-        data[f"mag_true_{b}_lsst"] = np.repeat(m5, 10000)
-    results = make_mock_photometry(n_visit, bands, data, True)
-    pylab.hist(results["snr_r"], bins=50, histtype="step")
-    pylab.savefig("snr_r.png")
+
+    years = 1
+    unit_response = True
+    for b in bands:
+        data[f"mag_true_{b}_lsst"] = np.linspace(19, 30, n)
+    results = make_mock_photometry(bands, data, unit_response, years)
+    for b in bands:
+        plt.figure()
+        plt.plot(data[f"mag_true_{b}_lsst"], results[f"snr_{b}"], ',')
+        plt.savefig(f"snr_{b}.png")
+        plt.close()
+        plt.figure()
+        plt.plot(data[f"mag_true_{b}_lsst"], results[f"mag_{b}"], ',')
+        plt.savefig(f"mag_{b}.png")
+        plt.close()

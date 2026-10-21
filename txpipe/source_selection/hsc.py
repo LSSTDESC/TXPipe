@@ -50,13 +50,12 @@ class TXSourceSelectorHSC(TXSourceSelectorBase):
         # Iterate using parent class method
         return self.iterate_hdf("shear_catalog", "shear", shear_cols, chunk_rows)
 
-    def setup_output(self):
+    def setup_output(self, nbin_source):
         # This call to the super-class method defined above sets up most of the output
         # here, so the rest of this method only does things specific to this
         # calibration scheme
-        outfile = super().setup_output()
+        outfile = super().setup_output(nbin_source)
         n = outfile["tomography/bin"].size
-        nbin_source = outfile["counts/counts"].size
         group = outfile.create_group("response")
 
         # There is a single scalar per-object value for this scheme
