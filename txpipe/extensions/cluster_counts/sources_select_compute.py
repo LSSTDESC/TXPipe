@@ -30,8 +30,8 @@ class CLClusterShearCatalogs(PipelineStage):
         "chunk_rows": 100_000,  # rows to read at once from source cat
         "max_radius": 10.0,  # Mpc
         "delta_z": 0.1,
-        "redshift_cut_criterion": "zmode",  # pdf / mean / true / median
-        "redshift_weight_criterion": "zmode",  # pdf or point
+        "redshift_cut_criterion": "zmode",  # pdf / mean / true / median / tomo_bins
+        "redshift_weight_criterion": "zmode",  # pdf / mean / true / 
         "redshift_cut_criterion_pdf_fraction": 0.9,  # pdf / mean / true / median
         "subtract_mean_shear": False, # Not clear if this is useful for clusters
         "coordinate_system": "celestial",
@@ -131,6 +131,12 @@ class CLClusterShearCatalogs(PipelineStage):
                 elif redshift_cut_criterion in ["ztrue", "zmode", "zmean"]:
                     zgal = z_info[0]
                     z_good = zgal > cluster_z + delta_z
+                elif redshift_cut_criterion == "tomo_bins":
+                    source_tomo_inds, tomo_edges = z_info
+                    tomo_bin_min = (tomo_edges[:,0] <= cluster_z + delta_z).sum() - 1
+                    if tomo_edges[-1, 0] < cluster_z + delta_z < tomo_edges[-1, 1]:
+                        tomo_bin_min -= 1
+                    z_good = (source_tomo_inds>tomo_bin_min)*(source_tomo_inds>=0)
                 else:
                     raise NotImplementedError("Not implemented other z cuts")
                 
@@ -410,6 +416,8 @@ class CLClusterShearCatalogs(PipelineStage):
             z_source = z_info[0]
             if is_deltasigma:
                 sigma_c = clmm_cosmo.eval_sigma_crit(z_cluster, z_source)
+        elif criterion is None:
+            pass
         else:
             raise NotImplementedError(f"Not implemented {criterion} weighting")
             
@@ -598,6 +606,15 @@ class CLClusterShearCatalogs(PipelineStage):
             zgal = data["redshift"][gal_index]
         elif criterion == "zmean":
             zgal = data["zmean"][gal_index]
+        elif criterion == "tomo_bins":
+            tomo = data["tomography"]
+            n_tomo_bins = tomo.attrs["nbin"]
+            tomo_edges = np.array(
+                [(tomo.attrs[f"zmin_{i}"], tomo.attrs[f"zmax_{i}"]) for i in range(nbin_source)]
+            )
+            source_tomo_inds = tomo["bin_00"][:]
+            # put in sub-optimal format
+            zgal, pdf_z = source_tomo_inds, tomo_edges
         else:
             raise NotImplementedError("Not implemented other z cuts")
         return (zgal, pdf_z)
