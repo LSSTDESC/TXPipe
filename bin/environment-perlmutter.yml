@@ -17,6 +17,7 @@ dependencies:
   - jaxlib=0.7.*
   - jupyter=1.1.*
   - lsstdesc-ceci=2.4.*
+  - lsstdesc-crow
   - matplotlib=3.10.*
   - mockmpi=0.8.*
   - mpi4py=4.1.*

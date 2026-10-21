@@ -11,27 +11,6 @@ POS_POS = 2
 default_theory_model = str(pathlib.Path(__file__).parents[0] / "theory_model.py")
 
 
-def _make_firecrown_build_parameters(sacc_data):
-    """Create Firecrown build parameters compatible with multiple versions.
-
-    Firecrown >=1.14 expects a NamedParameters instance, while some legacy
-    likelihood scripts still access build parameters with dict-style syntax.
-    """
-    try:
-        from firecrown.likelihood.likelihood import NamedParameters
-    except ImportError:
-        return {"sacc_data": sacc_data}
-
-    class TxBuildParameters(NamedParameters):
-        def __getitem__(self, key):
-            return self.data[key]
-
-        def get(self, key, default=None):
-            return self.data.get(key, default)
-
-    return TxBuildParameters({"sacc_data": sacc_data})
-
-
 def ccl_read_yaml(filename, **kwargs):
     import pyccl as ccl
 
@@ -166,10 +145,9 @@ def theory_3x2pt(
         A copy of the input sacc_data but with values
         replaced with theory predictions.
     """
-    from firecrown.likelihood.likelihood import load_likelihood_from_script
-    from firecrown.parameters import ParamsMap
+    from firecrown.likelihood import NamedParameters, load_likelihood
+    from firecrown.updatable import ParamsMap
     import sacc
-    import pathlib
 
     # Make sure we have computed P(k, z). If this
     # has already been calculated then this doesn't
@@ -195,10 +173,10 @@ def theory_3x2pt(
 
     # Use the FireCrown machinery to compute the likelihood and as
     # a by-product the theory
-    build_parameters = _make_firecrown_build_parameters(sacc_data)
+    build_parameters = NamedParameters({"sacc_data": sacc_data})
 
     # These stages are a copy of what is done inside the FireCrown connectors
-    likelihood, tools = load_likelihood_from_script(theory_model, build_parameters)
+    likelihood, tools = load_likelihood(theory_model, build_parameters)
 
     cosmo_params = {k: v for (k, v) in cosmo.to_dict().items() if isinstance(v, (int, float))}
     params_values = {**make_bias_parameters(bias, sacc_data, cosmo), **cosmo_params}
