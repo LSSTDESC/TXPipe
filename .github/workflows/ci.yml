@@ -109,6 +109,8 @@ jobs:
     - name: Test with pytest
       run: |
         source conda/bin/activate
+        python bin/make_metadetect_file_different_lengths.py
+        python bin/metadetect_to_scalar_metadetect.py data/example/inputs/metadetect_shear_catalog_different_lengths.hdf5 data/example/inputs/scalar_metadetect_shear_catalog.hdf5
         ceci --version
         pytest txpipe
 
