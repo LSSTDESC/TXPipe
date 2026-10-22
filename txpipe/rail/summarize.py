@@ -414,3 +414,30 @@ class PZGenerateSOMInformerSubsample(PipelineStage):
             for col in cols:
                 if n_my_sub_catalog > 0:
                     f[col][my_start:my_end] = sub_catalog[col]
+
+class PZAddNonTomographicNZ(PipelineStage):
+    """Sum up tomographic n(z)s in a file and append the non-tomographic one.
+    """
+    name = "PZAddNonTomographicNZ"
+    inputs = [
+        ("input_photoz_stack", QPNOfZFile),
+    ]
+
+    outputs = [
+        ("output_photoz_stack", QPNOfZFile),
+    ]
+
+    def run(self):
+        import qp
+        with self.open_input("input_photoz_stack", wrapper=True) as f:
+            ens = f.read_ensemble()
+        # TODO: Max this work for the histogram form too. Will crash here currently:
+        pdf_in = ens.dist.yvals
+        nbin, nz = pdf_in.shape
+        pdf_out = np.zeros((nbin + 1, nz))
+        pdf_out[:-1, :] = pdf_in
+        pdf_out[-1] = pdf_in.sum(axis=0)
+
+        q = qp.Ensemble(type(ens), data={"xvals": ens.dist.xvals, "pdfs": pdf_out})
+        with self.open_output("output_photoz_stack", wrapper=True) as f:
+            f.write_ensemble(q)
