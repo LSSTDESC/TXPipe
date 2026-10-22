@@ -296,7 +296,9 @@ class PZCollateRailAssignmentsMetadetect(PipelineStage):
     outputs = [
         ("shear_bin_assignments", BinAssignments)
     ]
-    config_options = {}
+    config_options = {
+        "source_zbin_edges": StageParameter(list, required=True, msg="Redshift bin edges for source tomography"),
+    }
     variants = META_VARIANTS
     def run(self):
         with self.open_output("shear_bin_assignments") as f_out:
@@ -307,6 +309,7 @@ class PZCollateRailAssignmentsMetadetect(PipelineStage):
                     if i == 0:
                         bin_max = f_in["bhat_for_wide_data"][:].max()
             f_out.attrs["nbin_source"] = bin_max + 1
+            f_out.attrs["bin_edges"] = np.array(self.config["source_zbin_edges"])
 
 class PZCollateRailAssignmentsScalarMetadetect(PZCollateRailAssignmentsMetadetect):
     name = "PZCollateRailAssignmentsScalarMetadetect"
@@ -318,7 +321,9 @@ class PZCollateRailAssignmentsScalarMetadetect(PZCollateRailAssignmentsMetadetec
     outputs = [
         ("shear_bin_assignments", BinAssignments)
     ]
-    config_options = {}
+    config_options = {
+        "source_zbin_edges": StageParameter(list, required=True, msg="Redshift bin edges for source tomography"),
+    }
     variants = SCALAR_META_VARIANTS
 
 
