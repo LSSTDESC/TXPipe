@@ -438,6 +438,6 @@ class PZAddNonTomographicNZ(PipelineStage):
         pdf_out[:-1, :] = pdf_in
         pdf_out[-1] = pdf_in.sum(axis=0)
 
-        q = qp.Ensemble(type(ens), data={"xvals": ens.dist.xvals, "pdfs": pdf_out})
+        q = qp.Ensemble(qp.interp, data={"xvals": ens.dist.xvals, "yvals": pdf_out})
         with self.open_output("output_photoz_stack", wrapper=True) as f:
             f.write_ensemble(q)

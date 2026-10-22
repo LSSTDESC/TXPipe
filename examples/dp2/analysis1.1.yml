@@ -28,6 +28,7 @@ stages:
     classname: TXPhotozPlot
     aliases:
         nz_plot: nz_source
+        photoz_stack: shear_photoz_stack
   - name: TXRealGaussianCovariance
     threads_per_process: 32
   - name: TXDiagnosticQuantiles
