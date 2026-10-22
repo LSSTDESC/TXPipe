@@ -27,11 +27,17 @@ TXIngestAnacal:
     scale: "gauss2"
     bands: "riz"
 
-
-TXGenerateTractList:
+TXGenerateTractList: &generate_tract_list
     dec_min: -40.0
     collections: LSSTCam/runs/DRP/DP2
     butler_config_file: dp2
+
+GenerateTractlistwide: *generate_tract_list
+GenerateTractlistedfs: *generate_tract_list
+GenerateTractlistcosmos: *generate_tract_list
+GenerateTractlistecdfs: *generate_tract_list
+GenerateTractlistelais_s1: *generate_tract_list
+
 
 TXIngestHealsparseMask: {}
 
