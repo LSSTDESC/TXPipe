@@ -19,8 +19,6 @@ stages:
     threads_per_process: 128
     nprocess: 1
     nodes: 1
-    aliases:
-      shear_photoz_stack: shear_photoz_stack_ns
   - name: TXBlinding             # Blind the data following Muir et al
     threads_per_process: 4
   - name: TXTwoPointPlots        # Make plots of 2pt correlations
@@ -29,7 +27,6 @@ stages:
   - name: TXPhotozPlotSource          # Plot the bin n(z)
     classname: TXPhotozPlot
     aliases:
-        photoz_stack: shear_photoz_stack_ns
         nz_plot: nz_source
   - name: TXRealGaussianCovariance
     threads_per_process: 32
@@ -89,6 +86,11 @@ stages:
       bhat_for_wide_data: bhat_for_wide_data_{{ variant }}
       nz: shear_photoz_stack_{{ variant }}
 {% endfor %}
+
+  - name: PZAddNonTomographicNZ
+    aliases:
+      input_photoz_stack: shear_photoz_stack_ns
+      output_photoz_stack: shear_photoz_stack
 
   # - name: TXFlagMaps
   # - name: TXSimpleMaskSource       # combine maps to make a simple mask
