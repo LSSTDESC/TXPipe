@@ -28,13 +28,14 @@ TXIngestAnacal:
     bands: "riz"
 
 _generate_tract_list: &generate_tract_list
-    dec_min: -40.0
+    dec_min: -70.0
     collections: LSSTCam/runs/DRP/DP2
     butler_config_file: dp2
 
 GenerateTractlistwide:
     <<: *generate_tract_list
     name: GenerateTractlistwide
+    dec_min: -40.0
 GenerateTractlistedfs:
     <<: *generate_tract_list
     name: GenerateTractlistedfs
