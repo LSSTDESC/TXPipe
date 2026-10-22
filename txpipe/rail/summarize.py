@@ -1,8 +1,9 @@
 from ..base_stage import PipelineStage
-from ..data_types import HDFFile, PickleFile, PNGFile, QPMultiFile, QPNOfZFile, BinnedCatalog, TomographyCatalog, BinAssignments, CatalogSelection
+from ..data_types import HDFFile, PickleFile, PNGFile, QPMultiFile, QPNOfZFile, BinnedCatalog, TomographyCatalog, BinAssignments, CatalogSelection, ShearCatalog
 from ..calibration_utils import META_VARIANTS, SCALAR_META_VARIANTS
 import numpy as np
 import os
+import h5py
 from ceci.config import StageParameter
 
 
@@ -331,68 +332,77 @@ class PZGenerateSOMInformerSubsample(PipelineStage):
     config_options = {
         "size": StageParameter(int, 5_000_000, msg="Approximate of selected objects to include."),
         "seed": StageParameter(int, 7953, msg="Random seed for sub-selection."),
+        "chunk_rows": StageParameter(int, 100_000, msg="Number of rows to process at once"),
     }
 
     def run(self):
         with self.open_input("shear_catalog", wrapper=True) as f:
             group = f.get_primary_catalog_group()
-            full_size = f.file[group]["ra"].size
-            cols = list(f.file[group].keys())
-            dtypes = {col: file.file[group][col].dtype for col in cols}
+            cols = [col for col in f.file[group].keys() if isinstance(f.file[group][col], h5py.Dataset)]
+            dtypes = {col: f.file[group][col].dtype for col in cols}
 
-        with self.open("shear_selection") as f:
-            # get the number selected in the primary group.
-            n_sel = f[group].attrs["n_selected"]
+        with self.open_input("shear_selection") as f:
+            # the number selected in the primary group.
+            n_sel = int(f[group].attrs["n_selected"])
 
         target_size = self.config["size"]
-        selection_fraction = target_size / n_sel
-        if selection_fraction > 1:
-            print("Warning: selection fraction > 1. Just copying everything selected")
-            max_size = n_sel
-        else:
-            # add 10 sigma of buffer space
-            max_size = int(target_size + 10 * np.sqrt(target_size))
-            max_size = min(max_size, n_sel)
-
+        chunk_rows = self.config["chunk_rows"]
         seed = self.config["seed"]
-        last_end_point = 0
-        with self.open_output("sub_selected_shear_data") as f:
+
+        # Each selected object is kept with this probability, so the final
+        # size is approximately target_size.
+        selection_fraction = min(target_size / n_sel, 1.0) if n_sel > 0 else 1.0
+        if target_size >= n_sel:
+            print("Warning: requested size >= number selected. Just copying everything selected")
+
+        # Each process keeps its sub-selected chunks in memory. We cannot do any
+        # collective MPI calls inside this loop, because different processes
+        # may have different numbers of chunks.
+        kept = {col: [] for col in cols}
+        for (s, e, data) in self.combined_iterators(
+            chunk_rows,
+            "shear_catalog",
+            group,
+            cols,
+            "shear_selection",
+            group,
+            ["selection"],
+        ):
+            # seeded by chunk start so results do not depend on the number of processes
+            rng = np.random.default_rng(seed=[seed, s])
+            selected = data["selection"].astype(bool)
+            n_sel_chunk = selected.sum()
+            sub_selected = rng.uniform(0, 1, size=n_sel_chunk) < selection_fraction
+            n_subsel_chunk = sub_selected.sum()
+            print(f"Rank {self.rank} processing rows {s:,} - {e:,} and sub-selected {n_subsel_chunk} from {n_sel_chunk} selected objects")
             for col in cols:
-                f.create_dataset(col, dtype=dtypes[col], shape=(max_size,))
+                kept[col].append(data[col][selected][sub_selected])
 
-            for (s, e, data) in self.combined_iterators(
-                chunk_rows,
-                "shear_catalog",
-                group,
-                cols,
-                "shear_selection",
-                group2,
-                ["selection"]
-            ):
-                rng = np.random.default_rng(seed=[seed, s])
-                selected = data["selection"]
-                # strip down to the selected data
-                data = {name: col[selected] for name,col in data.items()}
-                # the selection was cut down too, so it will just be lots of Trues,
-                # but we can use its size here
-                n_sel_chunk = data["selection"].size
-                sub_selected = rng.uniform(0, 1, size=n_sel_chunk) > selection_fraction
-                data = {name: col[sub_selected] for name,col in data.items()}
-                n_subsel_chunk = size = data["selection"].size
-                if self.comm is not None:
-                    output_chunk_sizes = np.zeros(self.size, dtype=int)
-                    output_chunk_sizes[self.rank] = n_subsel_chunk
-                    self.comm.Allreduce(output_chunk_sizes)
-                    my_start = last_end_point + output_chunk_sizes[:self.rank].sum()
-                    my_end = my_start + n_subsel_chunk
-                    last_end_point += output_chunk_sizes.sum()
-                else:
-                    my_start = last_end_point
-                    my_end = last_end_point + n_subsel_chunk
-                    last_end_point = my_end
+        # This is a small dataset, by design, so it's not a problem
+        # to store it all in memory. It's split up across the processes.
+        sub_catalog = {
+            col: np.concatenate(chunks) if chunks else np.empty(0, dtype=dtypes[col])
+            for col, chunks in kept.items()
+        }
+        n_my_sub_catalog = sub_catalog[cols[0]].size
 
-                for name, col in data.items():
-                    f[name][my_start:my_end] = col
+        # Single collective call, made by every process exactly once.
+        if self.comm is not None:
+            all_sizes = np.array(self.comm.allgather(n_my_sub_catalog), dtype=int)
+        else:
+            all_sizes = np.array([n_my_sub_catalog], dtype=int)
 
+        my_start = all_sizes[: self.rank].sum()
+        my_end = my_start + n_my_sub_catalog
+        total = all_sizes.sum()
 
+        if self.rank == 0:
+            print(f"Sub-selected {total:,} of {n_sel:,} selected objects")
 
+        # Actually output the reduced catalog
+        with self.open_output("sub_selected_shear_data", parallel=True) as f:
+            for col in cols:
+                f.create_dataset(col, dtype=dtypes[col], shape=(total,))
+            for col in cols:
+                if n_my_sub_catalog > 0:
+                    f[col][my_start:my_end] = sub_catalog[col]
