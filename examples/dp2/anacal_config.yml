@@ -27,16 +27,38 @@ TXIngestAnacal:
     scale: "gauss2"
     bands: "riz"
 
-TXGenerateTractList: &generate_tract_list
+_generate_tract_list: &generate_tract_list
     dec_min: -40.0
     collections: LSSTCam/runs/DRP/DP2
     butler_config_file: dp2
 
-GenerateTractlistwide: *generate_tract_list
-GenerateTractlistedfs: *generate_tract_list
-GenerateTractlistcosmos: *generate_tract_list
-GenerateTractlistecdfs: *generate_tract_list
-GenerateTractlistelais_s1: *generate_tract_list
+GenerateTractlistwide:
+    <<: *generate_tract_list
+    name: GenerateTractlistwide
+GenerateTractlistedfs:
+    <<: *generate_tract_list
+    name: GenerateTractlistedfs
+GenerateTractlistcosmos:
+    <<: *generate_tract_list
+    name: GenerateTractlistcosmos
+GenerateTractlistecdfs:
+    <<: *generate_tract_list
+    name: GenerateTractlistecdfs
+GenerateTractlistelais_s1:
+    <<: *generate_tract_list
+    name: GenerateTractlistelais_s1
+
+IngestMaskwide:
+    name: IngestMaskwide
+IngestMaskedfs:
+    name: IngestMaskedfs
+IngestMaskcosmos:
+    name: IngestMaskcosmos
+IngestMaskecdfs:
+    name: IngestMaskecdfs
+IngestMaskelais_s1:
+    name: IngestMaskelais_s1
+
 
 
 TXIngestHealsparseMask: {}
