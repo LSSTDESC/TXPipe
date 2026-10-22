@@ -62,13 +62,14 @@ stages:
       pz_c: pz_c_som_pzc_stage
 
   - name: PZGenerateSOMInformerSubsample
-
+    nprocess: 64 
 # Loop over the different variants we need to get tomographic
 # bin assignments for
 {% for variant in ["ns", "1p", "1m"] %}
   - name: PZAssignGalaxiesToCells_{{ variant }}
     classname: SOMPZEstimatorDeep
-    nprocess: 128
+    nprocess: 64
+    threads_per_process: 2
     module_name: rail.estimation.algos.sompz
     aliases:
       data: shear_catalog

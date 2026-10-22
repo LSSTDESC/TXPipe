@@ -299,7 +299,7 @@ class PZCollateRailAssignmentsMetadetect(PipelineStage):
     config_options = {}
     variants = META_VARIANTS
     def run(self):
-        with self.open_output("shear_bin_assignments") as fout:
+        with self.open_output("shear_bin_assignments") as f_out:
             for v in self.variants:
                 with self.open_input(f"bhat_for_wide_data_{v}") as f_in:
                     g_out = f_out.create_group(v)
