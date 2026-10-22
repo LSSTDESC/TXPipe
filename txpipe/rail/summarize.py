@@ -300,10 +300,13 @@ class PZCollateRailAssignmentsMetadetect(PipelineStage):
     variants = META_VARIANTS
     def run(self):
         with self.open_output("shear_bin_assignments") as f_out:
-            for v in self.variants:
+            for i, v in enumerate(self.variants):
                 with self.open_input(f"bhat_for_wide_data_{v}") as f_in:
                     g_out = f_out.create_group(v)
                     f_in.copy("/bhat_for_wide_data", g_out, name="bin")
+                    if i == 0:
+                        bin_max = f_in["bhat_for_wide_data"][:].max()
+            f_out.attrs["nbin_source"] = bin_max + 1
 
 class PZCollateRailAssignmentsScalarMetadetect(PZCollateRailAssignmentsMetadetect):
     name = "PZCollateRailAssignmentsScalarMetadetect"
