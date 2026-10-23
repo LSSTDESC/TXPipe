@@ -1,9 +1,13 @@
 # Stages to run
+# Processors for PZ stages. There's a bug in rail_base logging
+# that crashes if you use too many. PR in progress.
+
 stages:
-  - name: TXSourceSelectorScalarMetadetectDP2    # select and split objects into source bins
+  - name: TXDP2DESCSelection
     nprocess: 64
-  - name: TXSourceTomography
-    threads_per_process: 8
+  - name: PZCollateRailAssignmentsScalarMetadetect
+  - name: TXComputeShearCalibrationScalarMetadetect    # select and split objects into source bins
+    nprocess: 64
   - name: TXShearCalibration       # Calibrate and split the source sample tomographically
     nprocess: 64
   - name: TXSourceMaps             # make source g1 and g2 maps
@@ -11,9 +15,6 @@ stages:
   - name: TXMapPlots             # make pictures of all the maps
   - name: TXTracerMetadata       # collate metadata
   - name: TXJackknifeCentersSource     # Split the area into jackknife regions
-  - name: TXMockGaussianPhotozStack
-    aliases:
-      photoz_stack: shear_photoz_stack
   - name: TXTwoPoint             # Compute real-space 2-point correlations
     threads_per_process: 128
     nprocess: 1
@@ -26,8 +27,8 @@ stages:
   - name: TXPhotozPlotSource          # Plot the bin n(z)
     classname: TXPhotozPlot
     aliases:
-        photoz_stack: shear_photoz_stack
         nz_plot: nz_source
+        photoz_stack: shear_photoz_stack
   - name: TXRealGaussianCovariance
     threads_per_process: 32
   - name: TXDiagnosticQuantiles
@@ -36,29 +37,65 @@ stages:
     nprocess: 64
   - name: TXResponseInBins
     nprocess: 64
-  # - name: PZRailSummarizeSource    # Run the DIR method on the lens sample to find n(z)
-  #   classname: PZRailSummarize
-  #   aliases:
-  #       tomography_catalog: shear_tomography_catalog
-  #       binned_catalog: binned_shear_catalog
-  #       model: source_direct_calibration_model
-  #       photoz_stack: shear_photoz_stack
-  #       photoz_realizations: source_photoz_realizations
-  # - name: NZDirInformerSource       # Prepare the DIR method inputs for the source sample
-  #   classname: NZDirInformer
-  #   aliases:
-  #       input: spectroscopic_catalog
-  #       model: source_direct_calibration_model
-  # - name: TXPSFMaps    # make PSF maps
+  - name: PZSOMInformer
+    classname: SOMPZInformer
+    module_name: rail.estimation.algos.sompz
+    threads_per_process: 16
+    aliases:
+      model: deep_model
+      input_data: sub_selected_shear_data
+  - name: PZAssignSpectroGalaxiesToCells
+    classname: SOMPZEstimatorDeep
+    module_name: rail.estimation.algos.sompz
+    aliases:
+      assignment: assignment_som_deepspec_estimator
+      data: input_spec_data
+  - name: PZRedshiftsForCells
+    classname: SOMPZPzc
+    nprocess: 1
+    module_name: rail.estimation.algos.sompz
+    aliases:
+      cell_deep_spec_data: assignment_som_deepspec_estimator
+      spec_data: input_spec_data
+      pz_c: pz_c_som_pzc_stage
+
+  - name: PZGenerateSOMInformerSubsample
+    nprocess: 64 
+# Loop over the different variants we need to get tomographic
+# bin assignments for
+{% for variant in ["ns", "1p", "1m"] %}
+  - name: PZAssignGalaxiesToCells_{{ variant }}
+    classname: SOMPZEstimatorDeep
+    nprocess: 64
+    threads_per_process: 2
+    module_name: rail.estimation.algos.sompz
+    aliases:
+      data: shear_catalog
+      assignment: assignment_som_deepdeep_estimator_{{ variant }}
+
+  - name: PZTomographyAndNZ_{{ variant }}
+    classname: SOMPZ_tomobin_and_nz_onesom
+    nprocess: 1
+    module_name: rail.estimation.algos.sompz
+    aliases:
+      spec_data: input_spec_data
+      cell_deep_spec_data: assignment_som_deepspec_estimator
+      balrog_data: shear_catalog
+      cell_deep_balrog_data: assignment_som_deepdeep_estimator_{{ variant }}
+      pz_c: pz_c_som_pzc_stage
+      tomo_bins_wide: tomo_bins_wide_{{ variant }}
+      bhat_for_wide_data: bhat_for_wide_data_{{ variant }}
+      nz: shear_photoz_stack_{{ variant }}
+{% endfor %}
+
+  - name: PZAddNonTomographicNZ
+    aliases:
+      input_photoz_stack: shear_photoz_stack_ns
+      output_photoz_stack: shear_photoz_stack
+
   # - name: TXFlagMaps
   # - name: TXSimpleMaskSource       # combine maps to make a simple mask
   # - name: TXSourceNoiseMaps      # Compute shear noise using rotations
-  # - name: TXPhotozStack
-  #   aliases:
-  #     tomography_catalog: shear_tomography_catalog
-  #     photoz_stack: shear_photoz_stack
-  # - name: TXDiagnosticQuantiles
-  # - name: TXSourceDiagnosticPlots      # Make a suite of diagnostic plots
   # - name: TXRoweStatistics       # Compute and plot Rowe statistics
   #   threads_per_process: 2
   # - name: TXGalaxyStarShear      # Compute and plot the star-galaxy shear cross-correlation
@@ -114,8 +151,8 @@ inputs:
     # star_catalog: data/example/inputs/star_catalog.hdf5
     # This file comes with the code
     fiducial_cosmology: data/fiducial_cosmology.yml
-    # For the self-calibration extension we are not using Random_cat_source for now
-    # So it is set to Null, so the yaml intepreter returns a None value to python. 
+    # This is a shear-only analysis (no clustering or GGL) so we use
+    # these placeholders for all the lens-related files
     lens_maps: none
     depth_map: none
     bright_object_map: none
@@ -125,11 +162,11 @@ inputs:
     binned_random_catalog: none
     binned_random_catalog_sub: none
     lens_photoz_stack: none
-    spectroscopic_catalog: data/example/inputs/mock_spectroscopic_catalog.hdf5
     mask:
-        id: 148
+      id: 148
     shear_catalog:
         id: 147
+    input_spec_data: data/pz_dp2_ingest/mdet_redshift_for_sompz.hdf5
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted

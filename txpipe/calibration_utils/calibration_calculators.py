@@ -376,6 +376,16 @@ class MetaDetectCalculator(CalibrationCalculator):
         selections = []
         prefixes = [m + "/" for m in META_VARIANTS]
         for i, p in enumerate(prefixes):
+            # With metadetect, unlike the other catalog approaches,
+            # we might want to iterate through the variants in an outer
+            # loop and so all the data that we add in a chunk might be
+            # from one variant. So it's possible that this data chunk might
+            # not have anything from this variant in. Skip if so.
+            if p + "g1" not in data:
+                sel = np.zeros(0, dtype=int)
+                selections.append(sel)
+                continue
+
             data_p = _DataWrapper(data, prefix=p)
             sel = self.selector(data_p, *args, **kwargs)
             selections.append(sel)
@@ -504,6 +514,10 @@ class ScalarMetaDetectCalculator(CalibrationCalculator):
         selections = []
         prefixes = [m + "/" for m in SCALAR_META_VARIANTS]
         for i, p in enumerate(prefixes):
+            if p + "g1" not in data:
+                sel = np.zeros(0, dtype=bool)
+                selections.append(sel)
+                continue
             data_p = _DataWrapper(data, prefix=p)
             sel = self.selector(data_p, *args, **kwargs)
             selections.append(sel)

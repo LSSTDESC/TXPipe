@@ -15,7 +15,7 @@ from .utils import (
     read_shear_catalog_type,
     rename_iterated,
 )
-from .shear_calibration import Calibrator
+from .calibration_utils import Calibrator
 from ceci.config import StageParameter
 
 
