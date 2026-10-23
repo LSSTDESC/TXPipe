@@ -569,15 +569,18 @@ class ScalarMetaDetectCalculator(CalibrationCalculator):
         # 0: g1
         # 1: g2
         # 2: g1_1p
-        # 3: g2_1p
+        # 3: g2_1p - not used for calibration
         # 4: g1_1m
-        # 5: g2_1m
+        # 5: g2_1m - not used for calibration
+        # The two g2_ outputs are by-products of the fact that
+        # we do want to calculate the mean shear of the catalog,
+        # so have to process g2. But the response of g2 to 1-shear
+        # is assumed to be zero, and its respons to 2-shear is assumed
+        # to be the same as g1's response to 1-shear.
 
         # Compute the mean R components
         # (g1_1p - g1_1m) /  dg
         R = (mean_e[2] - mean_e[4]) / self.delta_gamma  
-
-        # 3 and 5 are not actually referenced.
 
         Neff = sum_weights[0] ** 2 / sum_sq_weights[0]
 
@@ -586,8 +589,6 @@ class ScalarMetaDetectCalculator(CalibrationCalculator):
         sigma_e = calibrator.calibrate_variance_to_sigma_e(var_e[0:2])
         sigma = calibrator.calibrate_sigma(np.sqrt(var_e[:2]))
         bin_stats = BinStats(counts[0], Neff, mu, sigma_e, sigma, calibrator)
-
-        # we just want the count of the 00 base catalog
         return bin_stats
 
 
