@@ -145,7 +145,7 @@ def summarize_txt(filename):
     return "\n".join(lines)
 
 def summarize_png(filename):
-    return fr"![{filename}]({filename})\ "
+    return fr"![{filename}]({filename})"
 
 def summarize_yml(filename):
     with open(filename) as f:
