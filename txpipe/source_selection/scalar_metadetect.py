@@ -77,8 +77,7 @@ class TXSourceSelectorScalarMetadetect(TXSourceSelectorBase):
 
     def apply_simple_redshift_cut(self, data):
         pz_data = {}
-        variants = SCALAR_META_VARIANTS
-        for v in variants:
+        for v in SCALAR_META_VARIANTS:
             if self.config["true_z"]:
                 zz = data[f"{v}/redshift_true"]
             else:
