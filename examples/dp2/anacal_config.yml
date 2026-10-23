@@ -28,7 +28,7 @@ TXIngestAnacal:
     bands: "riz"
 
 _generate_tract_list: &generate_tract_list
-    dec_min: -70.0
+    dec_min: -inf
     collections: LSSTCam/runs/DRP/DP2
     butler_config_file: dp2
 
