@@ -96,8 +96,7 @@ class TXSourceSelectorScalarMetadetect(TXSourceSelectorBase):
 
     def apply_no_tomography_cut(self, shear_data):
         pz_data = {}
-        variants = SCALAR_META_VARIANTS
-        for v in variants:
+        for v in SCALAR_META_VARIANTS:
             pz_data[f"{v}/zbin"] = np.zeros(shear_data[f"{v}/ra"].size, dtype=int)
         return pz_data
 

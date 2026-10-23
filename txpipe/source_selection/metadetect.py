@@ -103,8 +103,7 @@ class TXSourceSelectorMetadetect(TXSourceSelectorBase):
 
     def apply_no_tomography_cut(self, shear_data):
         pz_data = {}
-        variants = META_VARIANTS
-        for v in variants:
+        for v in META_VARIANTS:
             pz_data[f"{v}/zbin"] = np.zeros(shear_data[f"{v}/ra"].size, dtype=int)
         return pz_data
 
