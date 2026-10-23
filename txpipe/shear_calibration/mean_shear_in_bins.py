@@ -1,5 +1,5 @@
 import numpy as np
-from .calibration_calculators import MetacalCalculator, MetaDetectCalculator, LensfitCalculator, HSCCalculator, ScalarMetaDetectCalculator
+from .calibration_calculators import MetacalCalculator, MetaDetectCalculator, LensfitCalculator, HSCCalculator, AnaCalCalculator, ScalarMetaDetectCalculator
 
 class MeanShearInBins:
     def __init__(
@@ -25,6 +25,8 @@ class MeanShearInBins:
             self.calibrators = [LensfitCalculator(self.selector, dec_cut=False) for i in range(self.size)]
         elif shear_catalog_type == "hsc":
             self.calibrators = [HSCCalculator(self.selector) for i in range(self.size)]
+        elif shear_catalog_type == "anacal":
+            self.calibrators = [AnaCalCalculator(self.selector, delta_gamma) for i in range(self.size)]
         elif shear_catalog_type == "scalar_metadetect":
             self.calibrators = [ScalarMetaDetectCalculator(self.selector, delta_gamma) for i in range(self.size)]
         else:

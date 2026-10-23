@@ -1,0 +1,97 @@
+# AnaCal ingestion pipeline for DP2: tract list, the AnaCal shear catalog
+# (TXIngestAnacal reads the per-tract merged catalogs from the butler; the
+# collection and cuts-independent settings are in examples/dp2/anacal_config.yml)
+# and the AnaCal healsparse footprint mask.  The outputs are the
+# full_shear_catalog and mask inputs of examples/dp2/anacal_analysis.yml.
+#
+# Needs the LSST stack (butler) environment.  Writing the 146M-row catalog
+# repacks it through $TMPDIR, so point TMPDIR at scratch on compute nodes
+# (/tmp there is RAM).
+
+stages:
+  - name: GenerateTractlistwide
+    classname: TXGenerateTractList
+    aliases:
+      shear_mask: shear_mask_wide
+      tract_list: tract_list_wide
+      tract_list_plot: tract_plot_wide
+  - name: GenerateTractlistedfs
+    classname: TXGenerateTractList
+    aliases:
+      shear_mask: shear_mask_edfs
+      tract_list: tract_list_edfs
+      tract_list_plot: tract_plot_edfs
+  - name: GenerateTractlistcosmos
+    classname: TXGenerateTractList
+    aliases:
+      shear_mask: shear_mask_cosmos
+      tract_list: tract_list_cosmos
+      tract_list_plot: tract_plot_cosmos
+  - name: GenerateTractlistecdfs
+    classname: TXGenerateTractList
+    aliases:
+      shear_mask: shear_mask_ecdfs
+      tract_list: tract_list_ecdfs
+      tract_list_plot: tract_plot_ecdfs
+  - name: GenerateTractlistelais_s1
+    classname: TXGenerateTractList
+    aliases:
+      shear_mask: shear_mask_elais_s1
+      tract_list: tract_list_elais_s1
+      tract_list_plot: tract_plot_elais_s1      
+  - name: IngestMaskwide
+    classname: TXIngestHealsparseMask
+    aliases:
+      shear_mask: shear_mask_wide
+      mask: mask_wide
+  - name: IngestMaskedfs
+    classname: TXIngestHealsparseMask
+    aliases:
+      shear_mask: shear_mask_edfs
+      mask: mask_edfs
+  - name: IngestMaskcosmos
+    classname: TXIngestHealsparseMask
+    aliases:
+      shear_mask: shear_mask_cosmos
+      mask: mask_cosmos
+  - name: IngestMaskecdfs
+    classname: TXIngestHealsparseMask
+    aliases:
+      shear_mask: shear_mask_ecdfs
+      mask: mask_ecdfs 
+  - name: IngestMaskelais_s1
+    classname: TXIngestHealsparseMask
+    aliases:
+      shear_mask: shear_mask_elais_s1
+      mask: mask_elais_e1 
+  - name: TXCombineTractLists
+  - name: TXIngestAnacal
+
+
+output_dir: data/anacal_dp2_ingest
+
+launcher:
+    name: mini
+    interval: 1.0
+
+site:
+    name: local
+
+modules: >
+    txpipe
+
+config: examples/dp2/anacal_config.yml
+
+inputs:
+    # Butler-mode ingest does not read this FITS input, but ceci needs every
+    # declared input to have a value.
+    anacal_catalog: None
+    shear_mask_wide: /global/cfs/cdirs/lsst/utilities/data-registry/lsst_desc_working/user/smau/rubin_dp2_wide_anacal_mask_0.2.0.hsp
+    shear_mask_edfs: /global/cfs/cdirs/lsst/utilities/data-registry/lsst_desc_working/user/smau/rubin_dp2_edfs_anacal_mask_0.2.0.hsp
+    shear_mask_cosmos: /global/cfs/cdirs/lsst/utilities/data-registry/lsst_desc_working/user/smau/rubin_dp2_cosmos_anacal_mask_0.2.0.hsp
+    shear_mask_ecdfs: /global/cfs/cdirs/lsst/utilities/data-registry/lsst_desc_working/user/smau/rubin_dp2_ecdfs_anacal_mask_0.2.0.hsp
+    shear_mask_elais_s1: /global/cfs/cdirs/lsst/utilities/data-registry/lsst_desc_working/user/smau/rubin_dp2_elais_s1_anacal_mask_0.2.0.hsp
+
+resume: true
+log_dir: data/anacal_dp2_ingest/logs
+pipeline_log: data/anacal_dp2_ingest/ingest_log.txt
