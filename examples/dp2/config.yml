@@ -281,3 +281,5 @@ TXComputeShearCalibrationScalarMetadetect:
     delta_gamma: 0.02
 
 
+TXPSFMaps:
+    use_psf_originals: true

@@ -50,7 +50,7 @@ class MeanShearInBins:
         
         # Optionally cut down to the source sample only
         if self.cut_source_bin:
-            w &= data[self.bin_key] != -1
+            w &= data["bin"] != -1
         return np.where(w)[0]
 
     def add_data(self, data):
