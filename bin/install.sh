@@ -26,26 +26,29 @@ fi
 export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
 
 
-# We only install conda if it is not present
+# We only install mamba if it is not present
 if command -v mamba &> /dev/null
 then
     echo "Using pre-installed mamba to create environment"
-    mamba create -p ./conda -y --file bin/environment-local.yml
+    MAMBA=mamba
 else
     echo "mamba is not installed, installing mamba"
-    # URL to download
-    INSTALLER_VERSION=24.3.0-0
+    # We install a temporary copy of mamba outside the ./conda directory
+    # and use it to create the real environment. We must not install into
+    # ./conda and then update it in place, because that replaces mamba itself
+    # while it is running, which breaks package post-link scripts.
+    BOOTSTRAP_DIR=$(mktemp -d)
     URL="https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
-    # Download and run the conda installer Miniforge conda installer
     echo "Downloading mamba installer from $URL"
-    curl -L -o Mambaforge3.sh $URL
-    chmod +x Mambaforge3.sh
-    ./Mambaforge3.sh -b -p ./conda
-    # Install everything
-    source ./conda/bin/activate
-
-    mamba env update --yes --file bin/environment-local.yml
+    curl -L -o "$BOOTSTRAP_DIR/miniforge.sh" "$URL"
+    bash "$BOOTSTRAP_DIR/miniforge.sh" -b -p "$BOOTSTRAP_DIR/mamba"
+    MAMBA="$BOOTSTRAP_DIR/mamba/bin/mamba"
 fi
+
+# We include conda itself so that ./conda/bin/activate exists.
+$MAMBA create -p ./conda -y --file bin/environment-local.yml conda
+
+mkdir -p ./conda/etc/conda/activate.d
 
 
 # We do this to get around a bug in the healpy installation
