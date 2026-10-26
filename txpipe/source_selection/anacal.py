@@ -227,8 +227,6 @@ class TXSourceSelectorAnacal(TXSourceSelectorBase):
 
     def write_tomography(self, outfile, start, end, source_bin, r):
         super().write_tomography(outfile, start, end, source_bin, r)
-        group = outfile["response"]
-        group["R"][start:end] = r
 
 
 def select_anacal_weak_lensing_sample(
