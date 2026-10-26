@@ -26,8 +26,8 @@ modules: >
     txpipe
 
 python_paths: []
-config: examples/star_catalog/config.yml
+config: examples/dp2/star_catalog_config.yml
 inputs: {}
 resume: restart
 log_dir: data/star_catalog/logs
-pipeline_log: data/star_catalogs/ingest_log.txt
+pipeline_log: data/star_catalog/ingest_log.txt
