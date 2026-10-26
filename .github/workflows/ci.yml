@@ -253,7 +253,7 @@ jobs:
       run: |
         source ./conda/bin/activate
         python -m pip install -v --no-binary=ducc0 --force-reinstall --no-deps  ducc0
-        python -m pip install -v git+https://github.com/LSSTDESC/
+        python -m pip install -v git+https://github.com/LSSTDESC/ceci
 
         # remove the old target file
         rm -f data/example/outputs_${{ matrix.pipeline }}/shear_xi_plus.png
