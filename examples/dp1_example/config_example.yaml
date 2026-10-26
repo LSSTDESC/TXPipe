@@ -1,0 +1,97 @@
+# Values in this section are accessible to all the different stages.
+# They can be overridden by individual stages though.
+global:
+    # This is read by many stages that read complete
+    # catalog data, and tells them how many rows to read
+    # at once
+    chunk_rows: 100000
+    # These mapping options are also read by a range of stages
+    pixelization: healpix
+    sparse: true  # Generate sparse maps - faster if using small areas
+
+_nsides:
+  nside_high: &nside_high 256    # nside used for aux maps and mask
+  nside_mid:  &nside_mid  128    # nside used for making source and lens maps
+  nside_low:  &nside_low  64     # nside used for plotting
+
+
+TXIngestMetadetect:
+    use_butler: False
+    # butler_config_file: 
+    bands: griz
+    collections: "u/mgorsuch/metadetect/dp1/consolidated"
+    select_field: EDFS
+    prefix: "gauss"
+
+TXSourceSelectorMetadetectDP2:
+    verbose: true
+    input_pz: false
+    true_z: false
+    bands: ["r", "i", "g", "z"] #used for selection
+    T_cut: 0.5
+    s2n_cut: 10.0
+    mag_g_cut: 26.5
+    mag_r_cut: 26.5
+    mag_i_cut: 24.7
+    mag_z_cut: 25.6
+    gr_cut: 5.0
+    ri_cut: 5.0
+    iz_cut: 5.0
+    mfrac_cut: 0.1
+    max_rows: 1000
+    delta_gamma: 0.02
+    source_zbin_edges: [0.0, 3.0]
+
+TXDiagnosticQuantiles:
+    nbins: 5
+
+TXSourceDiagnosticPlots:
+    nbins: 5
+    g_min: -1
+    g_max: 1
+    psfT_min: 0
+    psfT_max: 1.0
+    T_min: 0
+    T_max: 10
+    s2n_min: 10
+    s2n_max: 1000
+
+TXShearCalibration:
+    add_fiducial_distance: false
+    copy_redshift: false
+    redshift_name: '00/redshift_true'
+
+TXSourceMaps:
+    # Fine enough (1.7 arcmin pixels) for the mask to follow the edges of
+    # the ~2 deg DP1 fields; the star randoms are drawn from this mask.
+    nside: 2048
+
+TXCutStarCatalog:
+    name: TXCutStarCatalog
+    catalog_group: stars
+
+TXStarCatalogSplitter:
+    # mag_r is really Gaia G here; see bin/make_dp1_star_catalog.py.
+    # Lower bright_mag_min to include the G < 14 stars.
+    mag_col: mag_r
+    bright_mag_min: 14.0
+    bright_mag_max: 18.2
+    dim_mag_min: 18.2
+    dim_mag_max: 22.0
+
+TXStarRandomCat:
+    density: 10.0         # per sq arcmin
+    coverage_nside: 256   # 14 arcmin pixels; the SV_95_-25 field has no stars
+
+TXJackknifeCenters:
+    npatch: 40
+    every_nth: 10
+
+TXGammaTStars:
+    use_randoms: true
+    var_method: jackknife
+    # DP1 fields are only ~2 deg across, and 40 patches are ~20 arcmin wide
+    min_sep: 0.5
+    max_sep: 60.0
+    nbins: 8
+    flip_g2: true   # the default; not independently verified for DP1 metadetect

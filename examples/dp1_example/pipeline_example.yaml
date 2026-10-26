@@ -1,0 +1,233 @@
+# Stages to run
+stages:
+  # - name: FlowCreator               # Simulate a spectroscopic population
+  #   aliases:
+  #       output: ideal_specz_catalog
+  #       model: flow
+  # - name: GridSelection            # Simulate a spectroscopic sample
+  #   aliases:
+  #       input: ideal_specz_catalog
+  #       output: specz_catalog_pq
+  # - name: TXParqetToHDF            # Convert the spec sample format
+  #   aliases:
+  #       input: specz_catalog_pq
+  #       output: spectroscopic_catalog
+  # - name: TXIngestMetadetect
+  # - name: PZPrepareEstimatorLens     # Prepare the p(z) estimator
+  #   classname: BPZliteInformer
+  #   aliases:
+  #       input: spectroscopic_catalog
+  #       model: lens_photoz_model
+  # - name: PZEstimatorLens          # Measure lens galaxy PDFs
+  #   classname: BPZliteEstimator
+  #   threads_per_process: 1
+  #   aliases:
+  #       model: lens_photoz_model
+  #       input: photometry_catalog
+  #       output: lens_photoz_pdfs
+  # - name: TXMeanLensSelector       # select objects for lens bins from the PDFs
+  # - name: NZDirInformerLens         # Prepare the DIR method inputs for the lens sample     
+  #   classname: NZDirInformer
+  #   aliases:
+  #       input: spectroscopic_catalog
+  #       model: lens_direct_calibration_model
+  # - name: PZRailSummarizeLens      # Run the DIR method on the lens sample to find n(z)
+  #   classname: PZRailSummarize
+  #   aliases:
+  #       tomography_catalog: lens_tomography_catalog
+  #       binned_catalog: binned_lens_catalog
+  #       model: lens_direct_calibration_model
+  #       photoz_stack: lens_photoz_stack
+  #       photoz_realizations: lens_photoz_realizations
+  # - name: PZRailSummarizeSource    # Run the DIR method on the lens sample to find n(z)
+  #   classname: PZRailSummarize
+  #   aliases:
+  #       tomography_catalog: shear_tomography_catalog
+  #       binned_catalog: binned_shear_catalog
+  #       model: source_direct_calibration_model
+  #       photoz_stack: shear_photoz_stack
+  #       photoz_realizations: source_photoz_realizations
+
+  - name: TXSourceSelectorMetadetectDP2    # select and split objects into source bins
+  # - name: NZDirInformerSource       # Prepare the DIR method inputs for the source sample
+  #   classname: NZDirInformer
+  #   aliases:
+  #       input: spectroscopic_catalog
+  #       model: source_direct_calibration_model
+  - name: TXShearCalibration       # Calibrate and split the source sample tomographically
+
+  # 1pt null tests for the source sample
+  - name: TXDiagnosticQuantiles
+  - name: TXSourceDiagnosticPlots
+
+  # - name: TXLensCatalogSplitter    # Split the lens sample tomographically
+  # - name: TXStarCatalogSplitter    # Split the star catalog into separate bins (psf/non-psf)
+  # - name: TXLSSWeightsUnit         # add systematic weights to the lens sample (weight=1 for this example)
+  - name: TXSourceMaps             # only needed to feed the source mask, which we skip
+  # - name: TXLensMaps               # make source lens and n_gal maps
+  # - name: TXAuxiliarySourceMaps    # make PSF and flag maps
+  # - name: TXAuxiliaryLensMaps      # make depth and bright object maps
+  # - name: TXSimpleMaskFrac       # combine maps to make a simple mask
+  # - name: TXSourceNoiseMaps      # Compute shear noise using rotations
+  # - name: TXLensNoiseMaps        # Compute lens noise using half-splits
+  # - name: TXDensityMaps          # turn mask and ngal maps into overdensity maps
+  # - name: TXMapPlots             # make pictures of all the maps
+  # - name: TXTracerMetadata       # collate metadata
+  # - name: TXRandomCat            # generate lens bin random catalogs
+  # - name: TXJackknifeCenters     # Split the area into jackknife regions
+  # - name: TXTwoPoint             # Compute real-space 2-point correlations
+  #   threads_per_process: 2
+  # - name: TXBlinding             # Blind the data following Muir et al
+  #   threads_per_process: 2
+  # - name: TXTwoPointTheoryReal   # compute theory using CCL to save in sacc file and plot later
+  # - name: TXTwoPointPlots        # Make plots of 2pt correlations
+  #   nprocess: 2
+  # - name: TXLensDiagnosticPlots      # Make a suite of diagnostic plots
+  # - name: TXGammaTFieldCenters   # Compute and plot gamma_t around center points
+  #   threads_per_process: 2
+  - name: TXSimpleMaskSource        # source_maps -> mask   (source-only mask)
+  - name: TXTracerMetadata          # -> tracer_metadata    (handles lens=none)
+
+  # gamma_t around stars. Stars are cut to the shear mask, and the randoms
+  # and jackknife patches follow the stars rather than the whole shear footprint.
+  - name: TXCutStarCatalog          # star_catalog -> masked_star_catalog
+    classname: TXCutCatalog
+    aliases:
+        catalog: star_catalog
+        cut_catalog: masked_star_catalog
+  - name: TXStarCatalogSplitter     # -> binned_star_catalog (bright / dim)
+    aliases:
+        star_catalog: masked_star_catalog
+  - name: TXStarRandomCat           # mask + stars -> star_random_catalog (TXRandomCat with placeholder depth and n(z))
+    aliases:
+        random_cats: star_random_catalog
+        binned_random_catalog: star_binned_random_catalog
+        binned_random_catalog_sub: star_binned_random_catalog_sub
+  - name: TXJackknifeCenters        # star randoms -> patch_centers
+    aliases:
+        random_cats: star_random_catalog
+  - name: TXGammaTStars             # Compute and plot gamma_t around bright and dim stars
+    threads_per_process: 2
+    aliases:
+        random_cats: star_random_catalog
+  # - name: TXGalaxyStarShear
+  # - name: TXRoweStatistics
+  # - name: TXGammaTRandoms        # Compute and plot gamma_t around randoms
+  #   threads_per_process: 2
+  # - name: TXRoweStatistics       # Compute and plot Rowe statistics
+  #   threads_per_process: 2
+  # - name: TXGalaxyStarDensity    # Compute and plot the star-galaxy density cross-correlation
+  # - name: TXGalaxyStarShear      # Compute and plot the star-galaxy shear cross-correlation
+  # - name: TXPSFDiagnostics       # Compute and plots other PSF diagnostics
+  # - name: TXTauStatistics        # Compute and plot the tau statistics
+  # - name: TXBrighterFatterPlot   # Make plots tracking the brighter-fatter effect
+  # - name: TXPhotozPlotSource          # Plot the bin n(z)
+  #   classname: TXPhotozPlot
+  #   aliases:
+  #       photoz_stack: shear_photoz_stack
+  #       nz_plot: nz_source
+  # - name: TXPhotozPlotLens          # Plot the bin n(z)
+  #   classname: TXPhotozPlot
+  #   aliases:
+  #       photoz_stack: lens_photoz_stack
+  #       nz_plot: nz_lens
+  # - name: PZRealizationsPlotSource     # Plot n(z) realizations
+  #   classname: PZRealizationsPlot
+  #   aliases:
+  #       photoz_realizations: source_photoz_realizations
+  #       photoz_realizations_plot: source_photoz_realizations_plot
+  # - name: PZRealizationsPlotLens     # Plot n(z) realizations
+  #   classname: PZRealizationsPlot
+  #   aliases:
+  #       photoz_realizations: lens_photoz_realizations
+  #       photoz_realizations_plot: lens_photoz_realizations_plot
+  # - name: TXConvergenceMaps      # Make convergence kappa maps from g1, g2 maps
+  # - name: TXConvergenceMapPlots   # Plot the convergence map
+  # - name: TXMapCorrelations      # plot the correlations between systematics and data
+  # - name: TXApertureMass          # Compute aperture-mass statistics
+  #   threads_per_process: 2
+  # - name: TXTwoPointFourier      # Compute power spectra C_ell
+  # - name: TXTwoPointFourierCatalog
+  # - name: HOSFSB
+  #   # Disabled since not yet synchronised with new Treecorr MPI
+  # - name: TXTwoPointSCIA   # Self-calibration intrinsic alignments of galaxies
+
+
+
+# modules and packages to import that have pipeline
+# stages defined in them
+modules: >
+    txpipe
+    txpipe.extensions
+    txpipe.extensions.hos.fsb
+    rail.creation.degraders.grid_selection
+    rail.creation.engines.flowEngine
+    rail.estimation.algos.nz_dir
+    rail.estimation.algos.bpz_lite
+
+# where to find any modules that are not in this repo,
+# and any other code we need.
+python_paths:
+  - submodules/WLMassMap/python/desc/
+  - submodules/pyfsb
+
+# Where to put outputs
+output_dir: data/example/outputs_metadetect_dp1_sel
+
+# How to run the pipeline: mini, parsl, or cwl
+launcher:
+    name: mini
+    interval: 1.0
+
+# Where to run the pipeline: cori-interactive, cori-batch, or local
+site:
+    name: local
+    max_threads: 2
+
+# configuration settings
+config: examples/dp1_example/config_example.yaml
+
+# On NERSC, set this before running:
+# export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
+
+inputs:
+    # See README for paths to download these files
+    # metadetect_catalog: none
+    shear_catalog: data/txpipe_dp1_all/download/ingested_shear_DP1_precut.hdf5
+    photometry_catalog: none
+    shear_tomography_classifier: data/txpipe_dp1_all/download/shear_tomography_classifier_onebin.pkl
+    spectroscopic_catalog: none
+    # exposures: data/txpipe_dp1_all/download/anacal2_gaia_stars/combined.hdf5
+    # Built by bin/make_dp1_star_catalog.py from combined.hdf5
+    star_catalog: data/txpipe_dp1_all/download/anacal2_gaia_stars/star_catalog.hdf5
+    # This file comes with the code
+    fiducial_cosmology: data/fiducial_cosmology.yml
+    # For the self-calibration extension if we are not using random_catalog_source for now
+    # So it is set to Null, so the yaml intepreter returns a None value to python. OBS 
+    # the binned_random_catalog_source should also be set to Null in this case.
+    binned_random_catalog_source: None
+    flow: data/example/inputs/example_flow.pkl
+    # Built by bin/make_dp1_source_nz.py from the SITCOMTN-154 gold photo-z table
+    shear_photoz_stack: data/txpipe_dp1_all/download/shear_photoz_stack_fzboost.hdf5
+    # Built by bin/make_dp1_tracer_metadata.py (replaces TXTracerMetadata; no lens mask)
+    # tracer_metadata: data/example/outputs_metadetect_dp1_sel/tracer_metadata.hdf5
+    lens_photoz_stack: none
+    binned_random_catalog: none
+    binned_random_catalog_sub: none
+    lens_tomography_catalog: none
+    random_cats: none
+    # lens_photoz_stack: None
+    # shear_photoz_stack: None
+    # random_cats: None
+    # binned_random_catalog: None
+    # binned_star_catalog: None
+    # patch_centers: None
+    # tracer_metadata: None
+
+# if supported by the launcher, restart the pipeline where it left off
+# if interrupted
+resume: true
+# where to put output logs for individual stages
+log_dir: data/example/logs_metadetect-dp1_sel
+# where to put an overall parsl pipeline log
+pipeline_log: data/example/log_dp1_sel.txt

@@ -1,6 +1,7 @@
 from .base_stage import PipelineStage
 from .data_types import (
     HDFFile,
+    MapsFile,
     TomographyCatalog,
     RandomsCatalog,
     SACCFile,
@@ -8,10 +9,12 @@ from .data_types import (
     TextFile,
     QPNOfZFile,
     BinnedCatalog,
+    FiducialCosmology,
 )
 import numpy as np
 from .twopoint import TXTwoPoint, SHEAR_SHEAR, SHEAR_POS, POS_POS, TREECORR_CONFIG
 from .utils import DynamicSplitter
+from .random_cats import TXRandomCat
 from ceci.config import StageParameter
 
 
@@ -34,10 +37,16 @@ class TXStarCatalogSplitter(PipelineStage):
     config_options = {
         "chunk_rows": StageParameter(int, 100_000, msg="Number of rows to process in each chunk."),
         "initial_size": StageParameter(int, 100_000, msg="Initial size for star catalog bins."),
+        "mag_col": StageParameter(str, "mag_r", msg="Magnitude column used to split bright from dim stars."),
+        "bright_mag_min": StageParameter(float, 14.0, msg="Bright star bin lower magnitude limit."),
+        "bright_mag_max": StageParameter(float, 18.2, msg="Bright star bin upper magnitude limit."),
+        "dim_mag_min": StageParameter(float, 18.2, msg="Dim star bin lower magnitude limit."),
+        "dim_mag_max": StageParameter(float, 22.0, msg="Dim star bin upper magnitude limit."),
     }
 
     def run(self):
         cols = ["ra", "dec"]
+        mag_col = self.config["mag_col"]
 
         #  Object we use to make the separate lens bins catalog
         output = self.open_output("binned_star_catalog")
@@ -52,22 +61,20 @@ class TXStarCatalogSplitter(PipelineStage):
 
         splitter = DynamicSplitter(group, "bin", cols, bins)
 
-        # Also read the r band mag.  We don't save it as we don't
+        # Also read the magnitude.  We don't save it as we don't
         # need it later (?) but we do use it for the split
         it = self.iterate_hdf(
             "star_catalog",
             "stars",
-            cols + ["mag_r"],
+            cols + [mag_col],
             self.config["chunk_rows"],
         )
 
         for s, e, data in it:
             print(f"Process 0 binning data in range {s:,} - {e:,}")
-            r = data["mag_r"]
-            mag_bins = np.repeat("      ", r.size)
-            mag_bins = np.zeros(r.size, dtype=int)
-            dim_cut = (r > 18.2) & (r < 22.0)
-            bright_cut = (r > 14.0) & (r < 18.2)
+            mag = data.pop(mag_col)
+            dim_cut = (mag > self.config["dim_mag_min"]) & (mag < self.config["dim_mag_max"])
+            bright_cut = (mag > self.config["bright_mag_min"]) & (mag < self.config["bright_mag_max"])
 
             dim = {name: col[dim_cut] for name, col in data.items()}
             bright = {name: col[bright_cut] for name, col in data.items()}
@@ -77,6 +84,109 @@ class TXStarCatalogSplitter(PipelineStage):
 
         splitter.finish()
         output.close()
+
+
+class TXStarRandomCat(TXRandomCat):
+    """
+    Generate randoms covering the star catalog footprint, for TXGammaTStars
+
+    A wrapper around TXRandomCat for source-only pipelines, which have no
+    depth map or lens n(z). It writes placeholder versions of those inputs
+    and then runs TXRandomCat unchanged:
+
+    - a constant depth map, so the density is the configured ``density`` everywhere
+    - a flat n(z), since gamma_t around stars does not use the random redshifts
+    - the mask restricted to the coarse pixels that contain at least one star,
+      so that fields with no stars get no randoms
+
+    The stars should be cut to the same mask, e.g. with TXCutCatalog.
+    """
+
+    name = "TXStarRandomCat"
+    # The placeholder files are written to a local temporary directory
+    parallel = False
+
+    inputs = [
+        ("mask", MapsFile),
+        ("binned_star_catalog", BinnedCatalog),
+        ("fiducial_cosmology", FiducialCosmology),
+    ]
+
+    config_options = TXRandomCat.config_options | {
+        "coverage_nside": StageParameter(
+            int, 256, msg="Nside of the star occupancy map used to decide which parts of the mask the stars cover."
+        ),
+    }
+
+    # TXRandomCat inputs that we replace with placeholder files
+    placeholder_types = {"depth_map": MapsFile, "lens_photoz_stack": QPNOfZFile, "mask": MapsFile}
+    placeholder_paths = None
+
+    def run(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            self.placeholder_paths = self.write_placeholder_inputs(tmp)
+            super().run()
+
+    def get_input(self, tag):
+        if self.placeholder_paths and tag in self.placeholder_paths:
+            return self.placeholder_paths[tag]
+        return super().get_input(tag)
+
+    def get_input_type(self, tag):
+        if self.placeholder_paths and tag in self.placeholder_paths:
+            return self.placeholder_types[tag]
+        return super().get_input_type(tag)
+
+    def write_placeholder_inputs(self, tmp):
+        import healpy
+        import healsparse
+        import qp
+
+        with self.open_input("mask", wrapper=True) as f:
+            mask = f.read_map("mask")
+            metadata = dict(f.file["maps/mask"].attrs)
+        nside = mask.nside_sparse
+        coverage_nside = self.config["coverage_nside"]
+        if coverage_nside > nside:
+            raise ValueError(f"coverage_nside ({coverage_nside}) must not be larger than the mask nside ({nside})")
+
+        # Coarse pixels that contain at least one star in either bin
+        star_pix = []
+        with self.open_input("binned_star_catalog") as f:
+            for b in ["bright", "dim"]:
+                g = f[f"stars/bin_{b}"]
+                star_pix.append(healpy.ang2pix(coverage_nside, g["ra"][:], g["dec"][:], lonlat=True, nest=True))
+        star_pix = np.unique(np.concatenate(star_pix))
+
+        # Keep the mask pixels whose parent coarse pixel has stars. In the
+        # NEST scheme each halving of nside drops two bits of pixel index.
+        pix = mask.valid_pixels
+        shift = 2 * int(np.log2(nside // coverage_nside))
+        pix = pix[np.isin(pix >> shift, star_pix)]
+        print(f"Stars cover {pix.size:,} of the {mask.n_valid:,} mask pixels")
+
+        star_mask = healsparse.HealSparseMap.make_empty_like(mask)
+        star_mask[pix] = mask[pix]
+
+        # Any constant depth gives the configured density everywhere
+        depth = healsparse.HealSparseMap.make_empty(mask.nside_coverage, nside, np.float64)
+        depth[pix] = 25.0
+        depth_band = self.config["depth_band"]
+        depth_name = f"depth/depth_{depth_band}" if depth_band else "depth/depth"
+
+        # One flat tomographic bin plus the 2D n(z)
+        n_of_z = qp.Ensemble(qp.interp, data=dict(xvals=np.linspace(0.0, 3.0, 31), yvals=np.ones((2, 31))))
+
+        paths = {tag: f"{tmp}/{tag}.hdf5" for tag in self.placeholder_types}
+        with MapsFile(paths["mask"], "w") as f:
+            f.write_map("mask", star_mask, metadata)
+        with MapsFile(paths["depth_map"], "w") as f:
+            f.write_map(depth_name, depth, metadata)
+        with QPNOfZFile(paths["lens_photoz_stack"], "w") as f:
+            f.write_ensemble(n_of_z)
+        return paths
 
 
 class TXGammaTFieldCenters(TXTwoPoint):
@@ -368,13 +478,16 @@ class TXGammaTStars(TXTwoPoint):
         dvalue = d.object.xi
         derror = np.sqrt(d.object.varxi)
         dtheta = np.exp(d.object.meanlogr)
+        dvalue_x = d.object.xi_im
+        cov_x = self.gamma_x_cov(d)
+        derror_x = np.sqrt(np.diag(cov_x))
 
         fig = self.open_output(image_file, wrapper=True)
 
-        # compute the mean and the chi^2/dof
-        z = (dvalue) / derror
-        chi2 = np.sum(z**2)
-        chi2dof = chi2 / (len(dtheta) - 1)
+        # compute the chi^2 against zero
+        chi2, pte, ndof = self.null_chi2(d, dvalue, d.object.cov, resampled=True)
+        chi2_x, pte_x, _ = self.null_chi2(d, dvalue_x, cov_x, resampled=True)
+        print(f"{text} stars: gamma_t chi^2 = {chi2:.2f}, gamma_x chi^2 = {chi2_x:.2f} for {ndof} dof")
 
         plt.errorbar(
             dtheta,
@@ -382,16 +495,55 @@ class TXGammaTStars(TXTwoPoint):
             dtheta * derror,
             fmt="ro",
             capsize=3,
-            label=rf"$\chi^2/dof = {chi2dof:.2f}$",
+            label=rf"$\gamma_t$: $\chi^2/dof = {chi2:.1f}/{ndof}$, PTE = {pte:.2f}",
         )
+        # Offset gamma_x slightly so the error bars do not overlap
+        plt.errorbar(
+            dtheta * 1.05,
+            dtheta * dvalue_x,
+            dtheta * derror_x,
+            fmt="bs",
+            capsize=3,
+            label=rf"$\gamma_\times$ ($\gamma_t$ cov): $\chi^2/dof = {chi2_x:.1f}/{ndof}$, PTE = {pte_x:.2f}",
+        )
+        plt.axhline(0, color="k", lw=0.5)
         plt.legend(loc="best")
         plt.xscale("log")
 
         plt.xlabel(r"$\theta$ / arcmin")
-        plt.ylabel(r"$\theta \cdot \gamma_t(\theta)$")
+        plt.ylabel(r"$\theta \cdot \gamma(\theta)$")
         plt.title(f"{text} Star Centers Tangential Shear")
+        plt.tight_layout()
 
         fig.close()
+
+    def gamma_x_cov(self, d):
+        # Use the gamma_t covariance for gamma_x too. With no signal around
+        # stars both components see the same shape noise and edge effects.
+        # treecorr 5.1 cannot resample gamma_x itself when randoms are
+        # attached, as it does not subtract them from gamma_x in each sample,
+        # and shot noise misses the large-scale scatter in small fields.
+        return d.object.cov
+
+    def null_chi2(self, d, value, cov, resampled):
+        """
+        chi^2 of value against zero, its PTE, and the number of bins used
+        """
+        import scipy.stats
+        from .utils.fitting import calc_chi2
+
+        # Empty bins have zero value and variance, so leave them out
+        use = d.object.npairs > 0
+        ndof = int(use.sum())
+        chi2 = calc_chi2(value[use], cov[np.ix_(use, use)], np.zeros(ndof))
+
+        # Debias the inverse of a resampled covariance (Hartlap et al 2007)
+        method = self.config["var_method"]
+        if resampled and method != "shot":
+            nsample = d.object.num_bootstrap if "bootstrap" in method else d.object.npatch1
+            chi2 *= (nsample - ndof - 2) / (nsample - 1) if nsample > ndof + 2 else np.nan
+
+        return chi2, scipy.stats.chi2.sf(chi2, ndof), ndof
 
     def write_output_sacc(self, meta, d, sacc_file, text):
         # We write out the results slightly differently here
@@ -428,6 +580,24 @@ class TXGammaTStars(TXTwoPoint):
                 npair=dnpair[i],
                 weight=dweight[i],
             )
+
+        # The cross component, which should also be zero
+        dvalue_x = d.object.xi_im
+        cov_x = self.gamma_x_cov(d)
+        derror_x = np.sqrt(np.diag(cov_x))
+        for i in range(n):
+            S.add_data_point(
+                "galaxyStar_shearDensity_xi_x",
+                ("source2d", name),
+                dvalue_x[i],
+                theta=dtheta[i],
+                error=derror_x[i],
+                npair=dnpair[i],
+                weight=dweight[i],
+            )
+
+        # Block-diagonal, as in TXTwoPoint.add_gamma_x_data_points
+        S.add_covariance([d.object.cov, cov_x])
 
         self.write_metadata(S, meta)
 

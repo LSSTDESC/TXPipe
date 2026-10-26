@@ -223,7 +223,12 @@ class TXSimpleMaskSource(TXBaseMask):
                 lw = f.read_map(f"lensing_weight_{i}")
                 lensing_weights.append(lw)
 
-        if self.config["require_all_bins"]:
+        if len(lensing_weights) == 1:
+            # healsparse operations need at least two maps, which we
+            # don't have in the non-tomographic case
+            lw = lensing_weights[0]
+            valid_pix = lw.valid_pixels[lw[lw.valid_pixels] > 0.0]
+        elif self.config["require_all_bins"]:
             # if *all* bins have a positive lensing weight, set mask to True
             # find min lensing weight across all bins
             # if min > 0.0 -> all bins have a non-zeros lensing weight so we set that pixel to True
