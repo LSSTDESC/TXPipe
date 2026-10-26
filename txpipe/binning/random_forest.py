@@ -1,6 +1,18 @@
 import numpy as np
 
 
+def _get_classifier_prefixes_and_suffixes(shear_catalog_type):
+    """Return the per-variant column prefixes/suffixes for a given shear catalog layout."""
+    from ..data_types import ShearCatalog, class_for_shear_catalog_type
+
+    try:
+        cat_cls = class_for_shear_catalog_type(shear_catalog_type)
+    except ValueError:
+        cat_cls = ShearCatalog
+
+    return cat_cls.get_classifier_prefixes(), cat_cls.get_classifier_suffixes()
+
+
 def read_training_data(spec_file, bands, spec_mag_column_format, spec_redshift_column):
     fmt = spec_mag_column_format
     zfmt = spec_redshift_column

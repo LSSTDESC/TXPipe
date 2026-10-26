@@ -1340,9 +1340,7 @@ class TXGalaxyStarDensity(PipelineStage):
             mask = source_bin != -1  # Only use the sources that pass the fiducial cuts
 
         with self.open_input("shear_catalog", wrapper=True) as f:
-            g = f.file["shear"]
-            if f.catalog_type == "metadetect":
-                g = g["ns"]
+            g = f.file[f.get_primary_catalog_group()]
             ra = g["ra"][:][mask]
             dec = g["dec"][:][mask]
 

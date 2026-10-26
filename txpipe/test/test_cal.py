@@ -230,7 +230,6 @@ def core_scalar_metadet(comm):
         assert np.allclose(calibrator.R, R_true)
         assert stats.source_count == N * nproc
 
-
     # equal non-unit weights - everything should be the same.
     data["ns/weight"] *= 0.5
     data["1p/weight"] *= 0.5
@@ -245,6 +244,7 @@ def core_scalar_metadet(comm):
         calibrator = stats.calibrator
         # print("R = ", calibrator.R)
         assert stats.source_count == N * nproc
+        assert np.allclose(calibrator.R, R_true)
 
 
 

@@ -4,9 +4,25 @@ generic types in ceci.
 """
 from ceci.file_types import HDFFile, DataFile, YamlFile, TextFile, FitsFile, Directory, FileCollection, PickleFile, ParquetFile, PNGFile, FileValidationError
 from .mapping import degrade_healsparse
-from .calibration_utils.names import metadetect_variants, band_variants, scalar_metadetect_variants
+from .shear_calibration.names import META_VARIANTS, SCALAR_META_VARIANTS
 import yaml
 import numpy as np
+
+
+def class_for_shear_catalog_type(shear_catalog_type):
+    if shear_catalog_type == "metacal":
+        return MetacalShearCatalog
+    elif shear_catalog_type == "simple":
+        return SimpleShearCatalog
+    elif shear_catalog_type == "metadetect":
+        return MetaDetectShearCatalog
+    elif shear_catalog_type == "scalar_metadetect":
+        return ScalarMetaDetectCatalog
+    elif shear_catalog_type == "lensfit":
+        return LensfitShearCatalog
+    elif shear_catalog_type == "hsc":
+        return HSCShearCatalog
+    raise ValueError(f"Unknown catalog type: {shear_catalog_type}")
 
 
 def class_for_shear_catalog_type(shear_catalog_type):
@@ -44,7 +60,10 @@ class ShearCatalog(HDFFile):
     def __new__(cls, *args, **kwargs):
         import h5py
         filename = args[0]
-        mode = args[1]
+        if len(args) == 1:
+            mode = kwargs["mode"]
+        else:
+            mode = args[1]
 
         if (cls is ShearCatalog) and (mode == "r"):  # only dispatch when called on the base class
             cat_type = cls.get_catalog_type_from_filename(filename)
@@ -207,6 +226,7 @@ class MetacalShearCatalog(ShearCatalog):
 
     @staticmethod
     def get_column_name_variants(*columns):
+        from .shear_calibration.names import metacal_variants
         return metacal_variants(*columns)
 
     @staticmethod
@@ -337,9 +357,11 @@ class ScalarMetaDetectCatalog(MetaDetectShearCatalog):
 
     @staticmethod
     def get_column_name_variants(*columns):
+        from .shear_calibration.names import scalar_metadetect_variants
         return scalar_metadetect_variants(*columns)
 
     def get_diagnostic_shear_columns(self, bands=None, use_psf_originals=False):
+        from .shear_calibration.names import scalar_metadetect_variants, band_variants
         if bands is None:
             bands = self.get_bands()
         psf_suffix = "_original" if use_psf_originals else ""

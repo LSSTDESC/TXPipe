@@ -18,6 +18,8 @@ env:
   UCX_NET_DEVICES: all
   OMPI_MCA_pml: ob1
   OMPI_MCA_btl: tcp,self,vader
+  # This should help with Illegal Instruction diagnosis
+  PYTHONFAULTHANDLER: "1"
 jobs:
   # Run a download step first so that it is in
   # the cache, because all the other jobs will be running
@@ -37,6 +39,8 @@ jobs:
         # update this when we change package contents and want
         # to force an update
         key: example-data-${{ env.EXAMPLE_DATA_FILE_VERSION }}
+        # If the data is already cached, there is no need to retrieve it.
+        lookup-only: true
 
     - name: Download test data
       if: steps.cache-example.outputs.cache-hit != 'true'
@@ -46,45 +50,8 @@ jobs:
         wget -O example-cmb-lensing.tar.gz "https://portal.nersc.gov/cfs/lsst/txpipe/data/example-cmb-lensing.tar.gz"
 
         
-  Run_Installer:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-14]
-        include:
-          - os: ubuntu-latest
-            INSTALL_DEPS: sudo apt-get update && sudo apt-get -y install wget
-          - os: macos-14
-            INSTALL_DEPS: echo nothing to do
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        submodules: true
-
-    - name: Install wget
-      run: |
-        ${{ matrix.INSTALL_DEPS }}
-
-    - name: Cache conda environment
-      id: cache-conda
-      uses: actions/cache@v4
-      env:
-        cache-name: cache-conda-environment
-      with:
-        path: ./conda
-        key: ${{ matrix.os }}-conda-${{ hashFiles('bin/install.sh','bin/environment*.yml' ) }}
-        fail-on-cache-miss: false
-
-    - name: Run installer
-      if: steps.cache-conda.outputs.cache-hit != 'true'
-      run: |
-        ./bin/install.sh
-
   Unit_Tests:
     runs-on: ${{ matrix.os }}
-    needs: [Run_Installer, Download_Data]
     strategy:
       fail-fast: false
       matrix:
@@ -96,15 +63,31 @@ jobs:
       with:
         submodules: true
 
-    - name: Restore conda environment
-      id: restore-conda
+    - name: Cache conda packages
       uses: actions/cache@v4
-      env:
-        cache-name: cache-conda-environment
       with:
-        path: ./conda
-        key: ${{ matrix.os }}-conda-${{ hashFiles('bin/install.sh','bin/environment*.yml' ) }}
-        fail-on-cache-miss: true
+        # Only the downloaded packages are cached, not the environment itself.
+        # This lives outside ./conda so that it is independent of the install.
+        path: ~/conda-pkgs
+        key: ${{ matrix.os }}-conda-pkgs-${{ hashFiles('bin/install.sh','bin/environment*.yml') }}
+        restore-keys: |
+          ${{ matrix.os }}-conda-pkgs-
+
+    - name: Cache pip packages
+      uses: actions/cache@v4
+      with:
+        path: ~/pip-cache
+        key: ${{ matrix.os }}-pip-${{ hashFiles('bin/install.sh','bin/environment*.yml') }}
+        restore-keys: |
+          ${{ matrix.os }}-pip-
+
+    - name: Set pip cache location
+      run: echo "PIP_CACHE_DIR=$HOME/pip-cache" >> "$GITHUB_ENV"
+
+    - name: Install conda environment
+      run: |
+        export CONDA_PKGS_DIRS="$HOME/conda-pkgs"
+        ./bin/install.sh
 
     - name: Restore example data
       uses: actions/cache@v4
@@ -122,6 +105,7 @@ jobs:
     - name: Test with pytest
       run: |
         source conda/bin/activate
+        python -m pip install -v --no-binary=ducc0 --force-reinstall --no-deps  ducc0
         python bin/make_metadetect_file_different_lengths.py
         python bin/metadetect_to_scalar_metadetect.py data/example/inputs/metadetect_shear_catalog_different_lengths.hdf5 data/example/inputs/scalar_metadetect_shear_catalog.hdf5
         ceci --version
@@ -129,22 +113,38 @@ jobs:
 
   CMB_Lensing_Pipeline:
     runs-on: ubuntu-latest
-    needs: [Run_Installer, Download_Data]
+    needs: Download_Data
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
         submodules: true
 
-    - name: Restore conda environment
-      id: restore-conda
+    - name: Cache conda packages
       uses: actions/cache@v4
-      env:
-        cache-name: cache-conda-environment
       with:
-        path: ./conda
-        key: ubuntu-latest-conda-${{ hashFiles('bin/install.sh','bin/environment*.yml' ) }}
-        fail-on-cache-miss: true
+        # Only the downloaded packages are cached, not the environment itself.
+        # This lives outside ./conda so that it is independent of the install.
+        path: ~/conda-pkgs
+        key: ubuntu-latest-conda-pkgs-${{ hashFiles('bin/install.sh','bin/environment*.yml') }}
+        restore-keys: |
+          ubuntu-latest-conda-pkgs-
+
+    - name: Cache pip packages
+      uses: actions/cache@v4
+      with:
+        path: ~/pip-cache
+        key: ubuntu-latest-pip-${{ hashFiles('bin/install.sh','bin/environment*.yml') }}
+        restore-keys: |
+          ubuntu-latest-pip-
+
+    - name: Set pip cache location
+      run: echo "PIP_CACHE_DIR=$HOME/pip-cache" >> "$GITHUB_ENV"
+
+    - name: Install conda environment
+      run: |
+        export CONDA_PKGS_DIRS="$HOME/conda-pkgs"
+        ./bin/install.sh
 
     - name: Restore example data
       uses: actions/cache@v4
@@ -163,6 +163,8 @@ jobs:
       run: |
         mkdir -p cache/workspaces
         source ./conda/bin/activate
+        # Manually re-install ducc0 to try and avoid illegal instruction crashes
+        python -m pip install -v --no-binary=ducc0 --force-reinstall --no-deps  ducc0
         ceci examples/cmb/quaia.yml
         test -f data/cmb/outputs_quaia/twopoint_data_fourier_cmb_cross_density_plot.png
 
@@ -175,13 +177,15 @@ jobs:
         
   Pipelines:
     runs-on: ${{ matrix.os }}
-    needs: [Run_Installer, Download_Data]
+    needs: Download_Data
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
             pipeline: metadetect
+          - os: ubuntu-latest
+            pipeline: scalar_metadetect
           - os: ubuntu-latest
             pipeline: metacal
           - os: ubuntu-latest
@@ -201,15 +205,31 @@ jobs:
       with:
         submodules: true
 
-    - name: Restore conda environment
-      id: restore-conda
+    - name: Cache conda packages
       uses: actions/cache@v4
-      env:
-        cache-name: cache-conda-environment
       with:
-        path: ./conda
-        key: ${{ matrix.os }}-conda-${{ hashFiles('bin/install.sh','bin/environment*.yml' ) }}
-        fail-on-cache-miss: true
+        # Only the downloaded packages are cached, not the environment itself.
+        # This lives outside ./conda so that it is independent of the install.
+        path: ~/conda-pkgs
+        key: ${{ matrix.os }}-conda-pkgs-${{ hashFiles('bin/install.sh','bin/environment*.yml') }}
+        restore-keys: |
+          ${{ matrix.os }}-conda-pkgs-
+
+    - name: Cache pip packages
+      uses: actions/cache@v4
+      with:
+        path: ~/pip-cache
+        key: ${{ matrix.os }}-pip-${{ hashFiles('bin/install.sh','bin/environment*.yml') }}
+        restore-keys: |
+          ${{ matrix.os }}-pip-
+
+    - name: Set pip cache location
+      run: echo "PIP_CACHE_DIR=$HOME/pip-cache" >> "$GITHUB_ENV"
+
+    - name: Install conda environment
+      run: |
+        export CONDA_PKGS_DIRS="$HOME/conda-pkgs"
+        ./bin/install.sh
 
     - name: Restore example data
       uses: actions/cache@v4
@@ -228,10 +248,14 @@ jobs:
       run: |
         mkdir -p cache/workspaces
         source ./conda/bin/activate
+        python -m pip install -v --no-binary=ducc0 --force-reinstall --no-deps  --no-deps  ducc0
         # Just for the metadetect source pipeline
         # we activate the debug mode with an env var
         if [ "${{ matrix.pipeline }}" == "metadetect_source_only" ]; then
           export TX_DASK_DEBUG=1
+        fi
+        if [ "${{ matrix.pipeline }}" == "scalar_metadetect" ]; then
+          python bin/make_scalar_metadetect.py
         fi
         ceci examples/${{ matrix.pipeline }}/pipeline.yml
 
@@ -245,6 +269,7 @@ jobs:
       if: ${{ matrix.pipeline == 'metadetect' && matrix.os == 'ubuntu-latest' }}
       run: |
         source ./conda/bin/activate
+        python -m pip install -v --no-binary=ducc0 --force-reinstall --no-deps  ducc0
 
         # remove the old target file
         rm -f data/example/outputs_${{ matrix.pipeline }}/shear_xi_plus.png
