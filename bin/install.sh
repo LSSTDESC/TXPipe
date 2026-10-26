@@ -26,13 +26,18 @@ fi
 export SKLEARN_ALLOW_DEPRECATED_SKLEARN_PACKAGE_INSTALL=True
 
 
-# We only install mamba if it is not present
+# We prefer a pre-installed mamba, then a pre-installed conda, and only
+# install our own mamba if neither is present
 if command -v mamba &> /dev/null
 then
     echo "Using pre-installed mamba to create environment"
     MAMBA=mamba
+elif command -v conda &> /dev/null
+then
+    echo "Using pre-installed conda to create environment"
+    MAMBA=conda
 else
-    echo "mamba is not installed, installing mamba"
+    echo "Neither conda nor mamba is installed, installing mamba"
     # We install a temporary copy of mamba outside the ./conda directory
     # and use it to create the real environment. We must not install into
     # ./conda and then update it in place, because that replaces mamba itself
