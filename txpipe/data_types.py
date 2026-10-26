@@ -4,7 +4,7 @@ generic types in ceci.
 """
 from ceci.file_types import HDFFile, DataFile, YamlFile, TextFile, FitsFile, Directory, FileCollection, PickleFile, ParquetFile, PNGFile, FileValidationError
 from .mapping import degrade_healsparse
-from .shear_calibration.names import META_VARIANTS, SCALAR_META_VARIANTS
+from .calibration_utils.names import META_VARIANTS, SCALAR_META_VARIANTS
 import yaml
 import numpy as np
 
@@ -226,7 +226,6 @@ class MetacalShearCatalog(ShearCatalog):
 
     @staticmethod
     def get_column_name_variants(*columns):
-        from .shear_calibration.names import metacal_variants
         return metacal_variants(*columns)
 
     @staticmethod
@@ -357,11 +356,9 @@ class ScalarMetaDetectCatalog(MetaDetectShearCatalog):
 
     @staticmethod
     def get_column_name_variants(*columns):
-        from .shear_calibration.names import scalar_metadetect_variants
         return scalar_metadetect_variants(*columns)
 
     def get_diagnostic_shear_columns(self, bands=None, use_psf_originals=False):
-        from .shear_calibration.names import scalar_metadetect_variants, band_variants
         if bands is None:
             bands = self.get_bands()
         psf_suffix = "_original" if use_psf_originals else ""
