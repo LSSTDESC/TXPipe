@@ -5,9 +5,11 @@ from .shear_calibration import (
     MeanShearInBins,
     metadetect_variants,
     band_variants,
+    CalibrationCalculator,
+    META_VARIANTS
 )
 from .utils.fitting import fit_straight_line
-from .utils import import_dask, read_shear_catalog_type
+from .utils import import_dask, read_shear_catalog_type, rename_iterated
 
 from .plotting import manual_step_histogram
 import numpy as np
@@ -47,7 +49,9 @@ class TXDiagnosticQuantiles(PipelineStage):
     }
 
     def run(self):
-        _, da = import_dask()
+        # Dask's percentile algorithm is not very accurate in
+        # the tails, so we fall back to numpy for now.
+        _, da = import_dask(actually_numpy=True)
 
         # Configuration parameters
         chunk_rows = self.config["chunk_rows"]
@@ -57,24 +61,14 @@ class TXDiagnosticQuantiles(PipelineStage):
 
         with self.open_input("shear_catalog", wrapper=True) as f:
             group = f.get_primary_catalog_group()
-
-        cat_type = read_shear_catalog_type(self)
-        # We canonicalise the names here
-        if cat_type == "metadetect":
-            psf_suffix = "_original" if self.config["use_psf_originals"] else ""
             col_names = {
-                "psf_g1": f"{group}/psf_g1{psf_suffix}",
+                "psf_g1": f"{group}/psf_g1",
                 "psf_T_mean": f"{group}/psf_T_mean",
                 "s2n": f"{group}/s2n",
                 "T": f"{group}/T",
             }
-        else:
-            col_names = {
-                            "psf_g1": f"{group}/psf_g1",
-                            "psf_T_mean": f"{group}/psf_T_mean",
-                            "s2n": f"{group}/s2n",
-                            "T": f"{group}/T",
-                        }
+            psf_suffix = "_original" if self.config["use_psf_originals"] else ""
+            col_names["psf_g1"] = f"{group}/psf_g1{psf_suffix}"
 
         for band in self.config["bands"]:
             col_names[f"mag_{band}"] = f"{group}/mag_{band}"
@@ -109,6 +103,15 @@ class TXDiagnosticQuantiles(PipelineStage):
                 # method is called below. When that happens, it will
                 # chunk up the data and calculate the percentiles in parallel.
                 quantile_values[new_name] = da.percentile(masked, percentiles)
+            
+            T_col = da.from_array(f[col_names["T"]], chunks=chunk_rows)
+            T_psf_col = da.from_array(f[col_names["psf_T_mean"]], chunks=chunk_rows)
+            T_col = T_col[selected]
+            T_psf_col = T_psf_col[selected]
+            T_col = T_col.compute_chunk_sizes()
+            T_psf_col = T_psf_col.compute_chunk_sizes()
+            T_ratio = T_col / T_psf_col
+            quantile_values["T_ratio"] = da.percentile(T_ratio, percentiles)
 
             # Now ask dask to actually do the calculations
             (quantile_values,) = da.compute(quantile_values)
@@ -182,6 +185,15 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         # this also sets self.config["shear_catalog_type"]
         cat_type = read_shear_catalog_type(self)
+        bands = self.config["bands"]
+
+        with self.open_input("shear_catalog", wrapper=True) as f:
+            shear_cols = f.get_diagnostic_shear_columns(bands=bands, use_psf_originals=self.config["use_psf_originals"])
+            shear_tomo_cols = f.get_tomography_bin_columns()
+            self.config["shear_prefix"] = f.get_primary_catalog_prefix()
+            self.config["bin_type"] = f.get_primary_tomography_bin_column()
+            self.config["shear_tomo_cols"] = shear_tomo_cols
+            self.config["extra_calibration_columns"] = f.get_extra_calibration_columns()
 
         # Collect together all the methods on this class called self.plot_*
         # They are all expected to be python coroutines - generators that
@@ -198,69 +210,9 @@ class TXSourceDiagnosticPlots(PipelineStage):
         # This method automatically splits up data among the processes,
         # so the plotters should handle this.
         chunk_rows = self.config["chunk_rows"]
-        bands = self.config["bands"]
         if self.rank == 0:
             print("Catalog type = ", cat_type)
 
-        if cat_type == "metacal":
-            shear_cols = [
-                f"psf_g1",
-                f"psf_g2",
-                f"psf_T_mean",
-                "g1",
-                "g1_1p",
-                "g1_2p",
-                "g1_1m",
-                "g1_2m",
-                "g2",
-                "g2_1p",
-                "g2_2p",
-                "g2_1m",
-                "g2_2m",
-                "s2n",
-                "T",
-                "T_1p",
-                "T_2p",
-                "T_1m",
-                "T_2m",
-                "s2n_1p",
-                "s2n_2p",
-                "s2n_1m",
-                "s2n_2m",
-                "weight",
-            ] + [f"mag_{b}" for b in bands]
-        elif cat_type == "metadetect":
-            # g1, g2, T, psf_g1, psf_g2, T, s2n, weight, magnitudes
-            psf_suffix = "_original" if self.config["use_psf_originals"] else ""
-            shear_cols = metadetect_variants(
-                "g1",
-                "g2",
-                "T",
-                f"psf_g1{psf_suffix}",
-                f"psf_g2{psf_suffix}",
-                "psf_T_mean",
-                "s2n",
-                "weight",
-            )
-            shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="metadetect")
-        else:
-            shear_cols = [
-                "dec",
-                "psf_g1",
-                "psf_g2",
-                "g1",
-                "g2",
-                "psf_T_mean",
-                "s2n",
-                "T",
-                "weight",
-                "m",
-            ] + [f"mag_{b}" for b in self.config["bands"]]
-
-        if self.config["shear_catalog_type"] == "metadetect":
-            shear_tomo_cols = ["bin_ns", "bin_1p", "bin_1m", "bin_2p", "bin_2m"]
-        else:
-            shear_tomo_cols = ["bin"]
 
         if self.config["shear_catalog_type"] == "metacal":
             more_iters = ["shear_tomography_catalog", "response", ["R_gamma"]]
@@ -282,7 +234,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         # Now loop through each chunk of input data, one at a time.
         # Each time we get a new segment of data, which goes to all the plotters
         for start, end, data in it:
-            print(f"Read data {start} - {end}")
+            print(f"Process {self.rank} read data {start:,} - {end:,}")
             # This causes each data = yield statement in each plotter to
             # be given this data chunk as the variable data.
 
@@ -315,8 +267,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
         delta_gamma = self.config["delta_gamma"]
 
         psf_g_edges = self.get_bin_edges("psf_g1")
-        shear_prefix = "ns/" if self.config["shear_catalog_type"] == "metadetect" else ""
-        psf_suffix = psf_suffix = "_original" if self.config["use_psf_originals"] else ""
+        shear_prefix = self.config["shear_prefix"]
+        psf_suffix = "_original" if self.config["use_psf_originals"] else ""
 
         p1 = MeanShearInBins(
             f"{shear_prefix}psf_g1{psf_suffix}",
@@ -416,7 +368,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         delta_gamma = self.config["delta_gamma"]
 
         psf_T_edges = self.get_bin_edges("psf_T_mean")
-        shear_prefix = "ns/" if self.config["shear_catalog_type"] == "metadetect" else ""
+        shear_prefix = self.config["shear_prefix"]
 
         binnedShear = MeanShearInBins(
             f"{shear_prefix}psf_T_mean",
@@ -477,7 +429,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         # Parameters of the binning in SNR
         shear_catalog_type = self.config["shear_catalog_type"]
-        shear_prefix = "ns/" if shear_catalog_type == "metadetect" else ""
+        shear_prefix = self.config["shear_prefix"]
         delta_gamma = self.config["delta_gamma"]
 
         snr_edges = self.get_bin_edges("s2n")
@@ -528,6 +480,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.xlabel("SNR")
         plt.ylabel("Mean g")
         plt.legend()
+        plt.xscale("log")
         plt.tight_layout()
         fig.close()
 
@@ -543,7 +496,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         from scipy import stats
 
         shear_catalog_type = self.config["shear_catalog_type"]
-        shear_prefix = "ns/" if shear_catalog_type == "metadetect" else ""
+        shear_prefix = self.config["shear_prefix"]
         delta_gamma = self.config["delta_gamma"]
 
         T_edges = self.get_bin_edges("T")
@@ -608,7 +561,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         from scipy import stats
 
         shear_catalog_type = self.config["shear_catalog_type"]
-        shear_prefix = "ns/" if shear_catalog_type == "metadetect" else ""
+        shear_prefix = self.config["shear_prefix"]
         delta_gamma = self.config["delta_gamma"]
         nbins = self.config["nbins"]
 
@@ -726,7 +679,9 @@ class TXSourceDiagnosticPlots(PipelineStage):
         from scipy import stats
 
         cat_type = self.config["shear_catalog_type"]
+        extra_cal_columns = self.config["extra_calibration_columns"]
         delta_gamma = self.config["delta_gamma"]
+        shear_prefix = self.config["shear_prefix"]
         bins = 20
         edges = np.linspace(-1, 1, bins + 1)
         mids = 0.5 * (edges[1:] + edges[:-1])
@@ -746,37 +701,12 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 break
 
             #qual_cut = data["bin"] != -1
+            g1 = data[f"{shear_prefix}g1"]
+            g2 = data[f"{shear_prefix}g2"]
+            w = data[f"{shear_prefix}weight"]
+            extra_cal = {col: data[f"{shear_prefix}{col}"] for col in extra_cal_columns}
 
-            if cat_type == "metacal":
-                g1 = data["g1"]
-                g2 = data["g2"]
-                w = data["weight"]
-            elif cat_type == "metadetect":
-                g1 = data["ns/g1"]
-                g2 = data["ns/g2"]
-                w = data["ns/weight"]
-            elif cat_type == "lensfit":
-                dec = data["dec"]
-                g1 = data["g1"]
-                g2 = data["g2"]
-                w = data["weight"]
-            else:
-                g1 = data["g1"]
-                g2 = data["g2"]
-                c1 = data["c1"]
-                c2 = data["c2"]
-                w = data["weight"]
-
-            if cat_type == "metacal" or cat_type == "metadetect":
-                g1, g2 = cal.apply(g1, g2)
-
-            elif cat_type == "lensfit":
-                # In KiDS, the additive bias is calculated and removed per North and South field
-                # therefore, we add dec to split data into these fields.
-                # You can choose not to by setting dec_cut = 90 in the config, for example.
-                g1, g2 = cal.apply(g1, g2, dec)
-            else:
-                g1, g2 = cal.apply(g1, g2, c1, c2)
+            g1, g2 = cal.apply(g1, g2, **extra_cal)
 
             H1.add_data(g1)
             H2.add_data(g2)
@@ -803,7 +733,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 )
                 plt.bar(
                     mids,
-                    weight,
+                    weight * (count.sum()/weight.sum()),
                     width=width,
                     align="center",
                     color="none",
@@ -812,7 +742,6 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 )
                 plt.xlabel(f"g{i}")
                 plt.ylabel("Count")
-                plt.ylim(0, 1.1 * max(count1))
                 plt.legend()
 
     def plot_snr_histogram(self):
@@ -823,8 +752,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
         delta_gamma = self.config["delta_gamma"]
         shear_catalog_type = self.config["shear_catalog_type"]
-        shear_prefix = "ns/" if shear_catalog_type == "metadetect" else ""
-        bin_type = "bin_ns" if self.config["shear_catalog_type"] == "metadetect" else "bin"
+        shear_prefix = self.config["shear_prefix"]
+        bin_type = self.config["bin_type"]
         bins = 10
         edges = np.logspace(1, 3, bins + 1)
         mids = 0.5 * (edges[1:] + edges[:-1])
@@ -900,7 +829,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
             if data is None:
                 break
 
-            if cat_type == "metadetect":
+            if cat_type.endswith("metadetect"):
                 # No per-object R values in metadetect
                 continue
 
@@ -1013,8 +942,8 @@ class TXSourceDiagnosticPlots(PipelineStage):
         mid = 0.5 * (edges[1:] + edges[:-1])
         width = edges[1] - edges[0]
         bands = self.config["bands"]
-        shear_prefix = "ns/" if self.config["shear_catalog_type"] == "metadetect" else ""
-        bin_type = "bin_ns" if self.config["shear_catalog_type"] == "metadetect" else "bin"
+        shear_prefix = self.config["shear_prefix"]
+        bin_type = self.config["bin_type"]
         nband = len(bands)
         full_hists = [np.zeros(size, dtype=int) for b in bands]
         source_hists = [np.zeros(size, dtype=int) for b in bands]
@@ -1053,6 +982,255 @@ class TXSourceDiagnosticPlots(PipelineStage):
                     plt.legend()
             plt.tight_layout()
             fig.close()
+
+
+class TXResponseInBins(PipelineStage):
+    name = "TXResponseInBins"
+    inputs = [
+        ("shear_catalog", ShearCatalog),
+        ("shear_tomography_catalog", TomographyCatalog),
+        ("shear_catalog_quantiles", HDFFile),
+    ]
+    outputs = [
+        ("response_in_bins", HDFFile),
+        ("response_in_bins_plot", PNGFile),
+    ]
+
+    config_options = {
+        "delta_gamma": StageParameter(
+            float,
+            0.02,
+            msg="Delta gamma value for metacal/metadetect response calculation",
+        ),
+        "use_diagonal_response": StageParameter(
+            bool,
+            False,
+            msg="Whether to use only diagonal elements of the response matrix for metacal",
+        ),
+        "dec_cut": StageParameter(
+            bool,
+            True,
+            msg="Whether to do a declination cut for lensfit catalogs",
+        ),
+        "input_m_is_weighted": StageParameter(
+            bool,
+            True,
+            msg="Whether the input m values are already weighted for lensfit catalogs"
+        ),
+        "chunk_rows": StageParameter(
+            int,
+            100_000,
+            msg="Number of rows to load at once"
+        ),
+        "nbin": StageParameter(
+            int,
+            20,
+            msg="Number of bins in SNR and T",
+        )
+    }
+    
+
+    def run(self):
+        calculators = self.setup_calculators()
+
+        for s, e, data in self.data_iterator():
+            print(f"Rank {self.rank} processing rows {s:,} - {e:,}")
+            for (cal, bin_definition) in calculators:
+                cal.add_data(data, bin_definition)
+
+        results = []
+        for (cal, bin_def) in calculators:
+            bin_stats = cal.collect(self.comm)
+            results.append((bin_stats, bin_def))
+
+        if self.rank != 0:
+            return
+        
+        self.save_results(results)
+
+
+    def save_results(self, results):
+        import matplotlib.pyplot as plt
+        import matplotlib
+        # root process saves all the results
+        nbin = self.config["nbin"]
+
+        f = self.open_output("response_in_bins")
+        group = f.create_group("response")
+
+        T = group.create_dataset("T_edges", nbin+1, dtype="f")
+        S = group.create_dataset("log10_s2n_edges", nbin+1, dtype="f")
+        R = group.create_dataset("R", (nbin, nbin, 2, 2), dtype="f")
+        count = group.create_dataset("n", (nbin, nbin), dtype="i")
+        neff = group.create_dataset("neff", (nbin, nbin), dtype="f")
+
+        for bin_stats, bin_def in results:
+            # The signal-to-noise edges for this bin
+            _, s0, s1, i = bin_def[0]
+            # The size edge for this bin
+            _, t0, t1, j = bin_def[1]
+
+            # This does a lot of overwriting but I don't care.
+            S[i] = s0
+            T[j] = t0
+            if i == nbin - 1:
+                S[nbin] = s1
+            if j == nbin - 1:
+                T[nbin] = t1
+
+            R[i, j] = bin_stats.calibrator.get_total_response()
+            count[i, j] = bin_stats.source_count
+            neff[i, j] = bin_stats.N_eff
+        
+        # Now we might as well re-use the values we have just made
+        # for the plot directly.
+        with self.open_output("response_in_bins_plot", wrapper=True, figsize=(8, 8)) as f:
+            fig = f.file
+            axes = fig.subplots(3, 2, sharex=True, sharey=True)
+            R_diag = 0.5 * (R[:, :, 0, 0] + R[:, :, 1, 1])
+
+            def plot_r(ax, R):
+                Rf = R[np.isfinite(R)]
+                vmin = np.percentile(Rf, 10)
+                vmax = np.percentile(Rf, 90)
+                print(vmin, vmax)
+                # print(R)
+                qm = ax.pcolormesh(S, T, R, vmin=vmin, vmax=vmax)
+                return qm
+
+            # Main four panels, the different R components
+            ax = axes[0, 0]
+            qm = plot_r(ax, R[:, :, 0, 0])
+            plt.colorbar(qm, ax=ax)
+            ax.set_title("R11")
+            ax.set_ylabel("T / T_psf")
+
+            ax = axes[1, 0]
+            qm = qm = plot_r(ax, R[:, :, 1, 0])
+            plt.colorbar(qm, ax=ax)
+            ax.set_title("R21")
+            ax.set_ylabel("T  / T_psf")
+
+            ax = axes[0, 1]
+            qm = qm = plot_r(ax, R[:, :, 0, 1])
+            plt.colorbar(qm, ax=ax)
+            ax.set_title("R12")
+
+            ax = axes[1, 1]
+            qm = qm = plot_r(ax, R[:, :, 1, 1])
+            plt.colorbar(qm, ax=ax)
+            ax.set_title("R22")
+
+            # Extra plot for the mean diagonal, the scalar
+            # estimate of the response
+            ax = axes[2, 0]
+            qm = qm = plot_r(ax, R_diag)
+            plt.colorbar(qm, ax=ax)
+            ax.set_title("Mean R diagonal")
+            ax.set_ylabel("T / T_psf")
+            ax.set_xlabel("log10(SNR)")
+
+            # panel for the weighted count
+            ax = axes[2, 1]
+            vmin = np.nanmin(neff[:])
+            vmax = np.nanmax(neff[:])
+            norm = matplotlib.colors.LogNorm(vmin=vmin, vmax=vmax)
+            qm = ax.pcolormesh(S, T, neff, norm=norm)
+            plt.colorbar(qm, ax=ax)
+            ax.set_title("N_eff")
+            ax.set_xlabel("log10(SNR)")
+
+
+    def select(self, data, bin_definition):
+        #bin_definition is a list of triples (name, min_val, max_val)
+        n = data["g1"].size
+
+        # first select down to the main sample.
+        # Not tomographic for now.
+        out = data["bin"] >= 0
+        for (name, min_val, max_val, _) in bin_definition:
+            if name == "log10_s2n":
+                val = np.log10(data["s2n"])
+            elif name == "T_ratio":
+                val = data["T"] / data["psf_T_mean"]
+            else:
+                # support future stuff
+                val = data[name]
+            out &= (val >= min_val)
+            out &= (val < max_val)
+        return out
+    
+    def create_bins(self):
+        # TODO: expand this stage to let the user specify the quantities
+        # instead of fixing to SNR and T
+
+        nbin = self.config["nbin"]
+
+        # Take the second and second-to-last quantiles for the ranges
+        # typically these are 5% and 95%
+        with self.open_input("shear_catalog_quantiles") as f:
+            low_snr = f["quantiles/s2n"][1]
+            high_snr = f["quantiles/s2n"][-2]
+            low_T = f["quantiles/T_ratio"][1]
+            high_T = f["quantiles/T_ratio"][-2]
+
+        # Make the edges for each quantity
+        s_edges = np.linspace(np.log10(low_snr), np.log10(high_snr), nbin+1)
+        T_edges = np.linspace(low_T, high_T, nbin+1)
+
+        # Make the actual bin definition (name, min, max)
+        # for each quantity. One of these will be passed
+        # into self.select for each bin.
+        bin_definitions = []
+        for i in range(nbin):
+            for j in range(nbin):
+                bin_def = [
+                    ("log10_s2n", s_edges[i], s_edges[i+1], i),
+                    ("T_ratio", T_edges[j], T_edges[j+1], j),
+                ]
+                bin_definitions.append(bin_def)
+        return bin_definitions
+
+            
+    def setup_calculators(self):
+        # This config option is awkwardly named in code so we give a nicer
+        # external name
+        self.config["resp_mean_diag"] = self.config["use_diagonal_response"]
+
+        with self.open_input("shear_catalog", wrapper=True) as f:
+            cat_type = f.catalog_type
+
+        # Make a calibrator 
+        bin_definitions = self.create_bins()
+        outputs = []
+        for bin_definition in bin_definitions:
+            cal = CalibrationCalculator.create_calculator(cat_type, self.select, self.config)
+            outputs.append((cal, bin_definition))
+        return outputs
+
+        
+    def data_iterator(self):
+        with self.open_input("shear_catalog", wrapper=True) as f:
+            cols = f.get_column_name_variants("g1", "g2", "weight", "s2n", "T", "psf_T_mean")
+            cat_type = f.catalog_type
+            tomo_cols = f.get_tomography_bin_columns()
+            rename = f.get_tomography_bin_column_rename_dict()
+
+        chunk_rows = self.config['chunk_rows']
+        
+        it = self.combined_iterators(
+            chunk_rows,
+            "shear_catalog",
+            "shear",
+            cols,
+            "shear_tomography_catalog",
+            "tomography",
+            tomo_cols,
+            longest=True,
+        )
+        return rename_iterated(it, rename)
+
+
 
 
 class TXLensDiagnosticPlots(PipelineStage):
