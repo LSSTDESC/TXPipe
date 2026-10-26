@@ -4,4 +4,5 @@ from .lensfit import TXSourceSelectorLensfit
 from .metacal import TXSourceSelectorMetacal
 from .metadetect import TXSourceSelectorMetadetect
 from .dp2 import TXSourceSelectorMetadetectDP2
+from .scalar_metadetect import TXSourceSelectorScalarMetadetect
 from .tomography import TXSourceTomography
