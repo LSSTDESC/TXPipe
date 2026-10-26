@@ -2,9 +2,6 @@ from ..base_stage import PipelineStage
 from ..data_types import HDFFile
 from ceci.config import StageParameter
 
-from dask.distributed import Client
-import lsdb
-
 
 class TXIngestStarCatalog(PipelineStage):
     """
@@ -23,12 +20,16 @@ class TXIngestStarCatalog(PipelineStage):
 
     config_options = {
         "bands": StageParameter(list, ["r", "i", "z"], msg="Bands to get for catalog."),
+        "hats_path": str,
+        "num_lsdb_daskwokers": int
     }
 
     def get_star_catalog(self, band_name):
         """
         Function to retrieve a lsdb catalog from the HATS files.
         """
+
+        import lsdb
 
         columns = [
             "objectId",
@@ -83,8 +84,13 @@ class TXIngestStarCatalog(PipelineStage):
         HDF5 file while stripping the band name from the variables.
         """
 
+        from dask.distributed import Client
+        import lsdb
+
         # Make Dask cluster
-        client = Client(n_workers=10, memory_limit="auto")
+        num_workers = self.config["num_lsdb_daskwokers"]
+        print(f"Setting up dask cluster for LSDB with {num_workers} workers.")
+        client = Client(n_workers=num_workers, memory_limit="auto")
 
         # Get the catalog
         bands = self.config["bands"]
