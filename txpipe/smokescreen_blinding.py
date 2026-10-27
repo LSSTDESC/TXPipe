@@ -58,6 +58,13 @@ class SmokescreenBlinding(PipelineStage):
             msg="TXPipe theory model only, if systematics is empty: lens bias b0/growth. Zero means unset.",
         ),
         "seed": StageParameter(str, "2112", msg="Seed that uniquely specifies the shifts."),
+        "encrypt_unblinded": StageParameter(
+            bool, False, msg="Whether to save an encrypted copy of the unblinded data, and its key."
+        ),
+        "encryption_dir": StageParameter(
+            str, "", msg="Directory for the encrypted data and key. Empty means next to the unblinded data."
+        ),
+        "delete_unblinded": StageParameter(bool, False, msg="Whether to delete unblinded data after blinding."),
     }
 
     def run(self):
@@ -68,6 +75,7 @@ class SmokescreenBlinding(PipelineStage):
          - Select the points the likelihood models
          - Blind them with Smokescreen
          - Save the blinded data
+         - Optionally encrypt and/or delete the unblinded data
         """
         import sacc
 
@@ -106,6 +114,30 @@ class SmokescreenBlinding(PipelineStage):
         blinded_sack.save_fits(self.get_output("twopoint_data_blinded"), overwrite=True)
 
         print("Congratulations you are now blind.")
+
+        if self.config["encrypt_unblinded"]:
+            self.encrypt_unblinded(unblinded_fname)
+
+        # Optionally make sure we stay blind by deleting the pre-blinding
+        # data. We leave an empty file so the pipeline still sees it.
+        if self.config["delete_unblinded"]:
+            print(f"Replacing {unblinded_fname} with empty file.")
+            open(unblinded_fname, "w").close()
+
+    def encrypt_unblinded(self, unblinded_fname):
+        """
+        Save an encrypted copy of the unblinded data with Smokescreen,
+        so it can be recovered later with the key.
+        """
+        from smokescreen.encryption import encrypt_file
+
+        encryption_dir = self.config["encryption_dir"] or os.path.dirname(unblinded_fname)
+        encrypt_file(unblinded_fname, path_to_save=encryption_dir, save_file=True, keep_original=True)
+
+        # This is the naming scheme Smokescreen uses
+        stem = os.path.join(encryption_dir, os.path.basename(unblinded_fname).split(".")[0])
+        print(f"Saved encrypted unblinded data to {stem}.encrpt")
+        print(f"Warning: move the key {stem}.key somewhere safe, away from the data, to stay blind.")
 
     def conceal(self, modelled_sack, likelihood_path):
         """
