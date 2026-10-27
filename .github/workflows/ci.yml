@@ -181,6 +181,8 @@ jobs:
             pipeline: metadetect_source_only
           - os: ubuntu-latest
             pipeline: mock_shear
+          - os: ubuntu-latest
+            pipeline: metadetect_cluster
           - os: macos-14
             pipeline: metadetect
 
@@ -246,6 +248,8 @@ jobs:
 
         if [ "${{ matrix.pipeline }}" == "mock_shear" ]; then
           test -f data/example/outputs_mock_shear/binned_shear_catalog.hdf5
+        elif [ "${{ matrix.pipeline }}" == "metadetect_cluster" ]; then
+          test -f data/example/outputs_metadetect_cluster/cluster_sacc_catalog.sacc
         else
           test -f data/example/outputs_${{ matrix.pipeline }}/shear_xi_plus.png
         fi
