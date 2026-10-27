@@ -480,7 +480,7 @@ class CLClusterShearCatalogs(PipelineStage):
         # format where the mode and mean are stored in a file called
         # "ancil". The columns are called zmode and zmean.
         redshift_cut_criterion = self.config["redshift_cut_criterion"]
-        redshift_weight_criterion = self.config["redshift_cut_criterion"]
+        redshift_weight_criterion = self.config["redshift_weight_criterion"]
         want_pdf = (redshift_cut_criterion == "pdf") or (redshift_weight_criterion == "pdf")
 
         # The truth redshifts are keps in the shear catalog not
