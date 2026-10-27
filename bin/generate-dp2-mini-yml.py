@@ -19,6 +19,10 @@ pipeline = pipeline.replace("mask:\n      id: 148", "mask: /global/cfs/cdirs/lss
 pipeline = pipeline.replace("shear_catalog:\n        id: 147", "shear_catalog: /global/cfs/cdirs/lsst/utilities/data-registry/lsst_desc_working/user/zuntz/.gen_paths/txpipe_dp2_shear_catalog_desc_metaDetect_1deg2_0.3.0/mini_desc_dp2_shear_catalog.hdf5")
 pipeline = pipeline.replace("registry: {}", "#registry: {}")
 pipeline = pipeline.replace("name: nersc-interactive", "name: local")
+pipeline = pipeline.replace("output_dir: data/metadetect_desc_dp2", "output_dir: data/metadetect_desc_dp2_mini")
+
+
+
 pipeline = pipeline.replace("""classname: SOMPZEstimatorDeep
     nprocess: 8
     threads_per_process: 2""", """classname: SOMPZEstimatorDeep
