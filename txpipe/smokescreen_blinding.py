@@ -65,6 +65,9 @@ class SmokescreenBlinding(PipelineStage):
         Run the analysis for this stage.
 
          - Load the unblinded two-point sacc file
+         - Select the points the likelihood models
+         - Blind them with Smokescreen
+         - Save the blinded data
         """
         import sacc
 
@@ -85,6 +88,91 @@ class SmokescreenBlinding(PipelineStage):
         print(f"Blinding {unblinded_fname} with Smokescreen, likelihood {likelihood_path}")
 
         modelled_sack, modelled_indices = self.select_modelled_data(sack, likelihood_path)
+        concealed_vector = self.conceal(modelled_sack, likelihood_path)
+
+        # Put the blinded values into a copy of the full data, so that the
+        # covariance, tracers, window functions, and any unmodelled points
+        # are kept as they were.
+        blinded_sack = sack.copy()
+        for i, value in zip(modelled_indices, concealed_vector):
+            blinded_sack.data[i].value = value
+
+        import smokescreen
+
+        blinded_sack.metadata["concealed"] = True
+        blinded_sack.metadata["blinding_method"] = "smokescreen"
+        blinded_sack.metadata["smokescreen_version"] = smokescreen.__version__
+        blinded_sack.metadata["blinding_likelihood"] = os.path.basename(likelihood_path)
+        blinded_sack.save_fits(self.get_output("twopoint_data_blinded"), overwrite=True)
+
+        print("Congratulations you are now blind.")
+
+    def conceal(self, modelled_sack, likelihood_path):
+        """
+        Compute the blinded data vector with Smokescreen.
+
+        Parameters
+        ----------
+        modelled_sack: sacc.Sacc
+            The data to blind, containing only points the likelihood models
+
+        likelihood_path: str
+            The firecrown likelihood file
+
+        Returns
+        -------
+        array
+            The blinded data vector, in the same order as modelled_sack
+        """
+        from smokescreen import ConcealDataVector
+        from smokescreen.utils import load_cosmology_from_partial_dict
+        import numpy as np
+
+        cosmo = load_cosmology_from_partial_dict(self.config["reference_cosmology"])
+
+        # YAML gives us lists, but Smokescreen expects ranges to be tuples
+        shifts = {
+            name: tuple(value) if isinstance(value, (list, tuple)) else value
+            for name, value in self.config["shifts_dict"].items()
+        }
+        if not shifts:
+            raise ValueError("No shifts_dict was set for SmokescreenBlinding, so nothing would be blinded")
+
+        blinder = ConcealDataVector(
+            cosmo,
+            likelihood_path,
+            shifts,
+            modelled_sack,
+            self.get_systematics(modelled_sack, cosmo),
+            seed=self.config["seed"],
+            shift_distr=self.config["shift_distribution"],
+        )
+
+        # We built modelled_sack so that the likelihood uses its points in order.
+        indices = np.array(blinder.likelihood.get_sacc_indices())
+        if not np.array_equal(indices, np.arange(len(modelled_sack))):
+            raise RuntimeError("The likelihood did not use the blinding data points in the expected order")
+
+        blinder.calculate_concealing_factor(factor_type=self.config["shift_type"])
+        return blinder.apply_concealing_to_likelihood_datavec()
+
+    def get_systematics(self, modelled_sack, cosmo):
+        """
+        Get the systematics parameter values for the likelihood.
+
+        Returns None if Smokescreen should use the likelihood's defaults.
+        """
+        from .utils.theory import make_bias_parameters
+
+        systematics = self.config["systematics"]
+        if systematics:
+            return {name: float(value) for name, value in systematics.items()}
+
+        # As in TXBlinding, the TXPipe model can use a bias b0 / growth
+        if self.using_default_model() and self.config["b0"] != 0:
+            return make_bias_parameters(self.config["b0"], modelled_sack, cosmo)
+
+        return None
 
     def select_modelled_data(self, sack, likelihood_path):
         """
