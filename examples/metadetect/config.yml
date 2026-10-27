@@ -220,6 +220,44 @@ TXBlinding:
     b0: 0.95  ## we use bias of the form b0/g
     delete_unblinded: true
 
+# Smokescreen blinding, used in pipeline_smokescreen.yml. The options follow
+# the Smokescreen command line tool. Shifts are drawn uniformly in [a, b].
+SmokescreenBlindingReal:
+    name: SmokescreenBlindingReal
+    reference_cosmology:
+        Omega_c: 0.2545
+        Omega_b: 0.0485
+        h: 0.682
+        sigma8: 0.801
+        n_s: 0.971
+    shifts_dict:
+        Omega_c: [0.22, 0.29]
+        sigma8: [0.75, 0.85]
+        w0: [-1.2, -0.8]
+    shift_distribution: flat
+    shift_type: add
+    b0: 0.95  ## TXPipe theory model lens bias b0/growth
+    seed: "1972"
+    delete_unblinded: true
+
+SmokescreenBlindingFourier:
+    name: SmokescreenBlindingFourier
+    reference_cosmology:
+        Omega_c: 0.2545
+        Omega_b: 0.0485
+        h: 0.682
+        sigma8: 0.801
+        n_s: 0.971
+    shifts_dict:
+        Omega_c: [0.22, 0.29]
+        sigma8: [0.75, 0.85]
+        w0: [-1.2, -0.8]
+    shift_distribution: flat
+    shift_type: add
+    b0: 0.95
+    seed: "1972"
+    delete_unblinded: true
+
 TXDiagnosticQuantiles:
     nbins: 20
 
