@@ -1,6 +1,5 @@
 from ...extensions.cluster_counts import CLClusterSACC
-from .cluster_mocks import run_stage
-from .test_ensemble_profiles import make_cluster_profiles, NBINS_RADIUS, N_PER_BIN, ZEDGE, RICHEDGE, COV_KEY
+from .cluster_mocks import run_stage, make_cluster_profiles, NBINS_RADIUS, N_PER_BIN, ZEDGE, RICHEDGE, COV_KEY
 import numpy as np
 import tempfile
 import os
