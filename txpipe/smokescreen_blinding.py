@@ -242,6 +242,16 @@ class SmokescreenBlinding(PipelineStage):
         modelled_sack = sack.copy()
         modelled_sack.reorder(modelled_indices)
 
+        # The likelihood's sacc indices must refer to the input file. They will
+        # not if it removes points from the sacc data, e.g. to make scale cuts.
+        if not np.array_equal(modelled_sack.mean, likelihood.get_data_vector()):
+            raise ValueError(
+                f"The data vector of likelihood {likelihood_path} does not match the "
+                "input data at its sacc indices. If it removes points from the sacc "
+                "data (for example for scale cuts) it should select them instead, "
+                "so that the indices still refer to the original file."
+            )
+
         # The TXPipe theory model always uses a dummy covariance, because the
         # measured one may be missing (harmonic space) or not positive-definite
         # (real space jackknife). The covariance does not affect the blinding
