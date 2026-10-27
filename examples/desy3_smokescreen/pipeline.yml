@@ -1,0 +1,33 @@
+# Blind the DES Y3 MagLim 3x2pt data vector with Smokescreen, using the
+# DES Y3 firecrown likelihood in this directory.
+#
+# First make the input file with:
+#     python examples/desy3_smokescreen/prepare_data.py
+# then run:
+#     ceci examples/desy3_smokescreen/pipeline.yml
+stages:
+  - name: SmokescreenBlinding
+    aliases:
+        twopoint_data_blinded: twopoint_data_real
+
+modules: txpipe
+
+output_dir: data/desy3/outputs_smokescreen
+
+launcher:
+    name: mini
+    interval: 1.0
+
+site:
+    name: local
+    max_threads: 1
+
+config: examples/desy3_smokescreen/config.yml
+
+inputs:
+    # Made by prepare_data.py
+    twopoint_data_raw: data/desy3/inputs/des_y3_3x2pt_maglim.sacc
+
+resume: false
+log_dir: data/desy3/outputs_smokescreen/logs
+pipeline_log: data/desy3/outputs_smokescreen/log.txt
