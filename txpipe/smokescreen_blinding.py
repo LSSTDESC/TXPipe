@@ -84,6 +84,63 @@ class SmokescreenBlinding(PipelineStage):
         likelihood_path = self.get_likelihood_path()
         print(f"Blinding {unblinded_fname} with Smokescreen, likelihood {likelihood_path}")
 
+        modelled_sack, modelled_indices = self.select_modelled_data(sack, likelihood_path)
+
+    def select_modelled_data(self, sack, likelihood_path):
+        """
+        Make a copy of the data containing only the points that the
+        likelihood models, in the order the likelihood uses them.
+
+        Smokescreen checks that the sacc data it is given matches the
+        likelihood's data vector exactly. TXPipe two-point files can contain
+        points the likelihood does not model, like B-modes in harmonic space
+        or points removed by scale cuts, so we cut these out here. They are
+        left unchanged (unblinded) in the output.
+
+        Parameters
+        ----------
+        sack: sacc.Sacc
+            The full unblinded data
+
+        likelihood_path: str
+            The firecrown likelihood file
+
+        Returns
+        -------
+        modelled_sack: sacc.Sacc
+            A copy of the data with only the modelled points
+
+        modelled_indices: array
+            The index in the full data of each point in modelled_sack
+        """
+        from firecrown.likelihood import load_likelihood, NamedParameters
+        import numpy as np
+
+        likelihood, _ = load_likelihood(likelihood_path, NamedParameters({"sacc_data": sack.copy()}))
+        modelled_indices = np.array(likelihood.get_sacc_indices())
+
+        modelled_sack = sack.copy()
+        modelled_sack.reorder(modelled_indices)
+
+        # The TXPipe theory model always uses a dummy covariance, because the
+        # measured one may be missing (harmonic space) or not positive-definite
+        # (real space jackknife). The covariance does not affect the blinding
+        # shift, but Smokescreen checks it matches the likelihood's, so we use
+        # the same dummy one here. Other likelihoods use the data covariance.
+        if self.using_default_model():
+            modelled_sack.add_covariance(np.ones(len(modelled_sack)), overwrite=True)
+
+        n_unmodelled = len(sack) - len(modelled_indices)
+        if n_unmodelled:
+            unmodelled = np.setdiff1d(np.arange(len(sack)), modelled_indices)
+            data_types = sorted(set(sack.data[i].data_type for i in unmodelled))
+            print(
+                f"Warning: {n_unmodelled} of {len(sack)} data points are not modelled by the "
+                f"likelihood and will NOT be blinded. Data types: {', '.join(data_types)}"
+            )
+
+        return modelled_sack, modelled_indices
+
     def get_likelihood_path(self):
         """
         Return the path to the firecrown likelihood file to use.
