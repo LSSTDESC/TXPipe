@@ -14,3 +14,5 @@ from .dp1 import TXIngestDataPreview1
 from .stage3 import TXIngestDESY3Gold
 from .flagship_mocks import TXIngestFlagshipMocks
 from .metaDetect import TXIngestRubinMetaDetect
+from .star_catalog import TXIngestStarCatalog
+
