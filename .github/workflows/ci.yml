@@ -164,7 +164,7 @@ jobs:
         mkdir -p cache/workspaces
         source ./conda/bin/activate
         # Manually re-install ducc0 to try and avoid illegal instruction crashes
-        python -m pip install -v --no-binary=ducc0 --force-reinstall --no-deps  ducc0
+        python -m pip install -vv --no-binary=ducc0 --force-reinstall --no-deps  ducc0
         ceci examples/cmb/quaia.yml
         test -f data/cmb/outputs_quaia/twopoint_data_fourier_cmb_cross_density_plot.png
 
