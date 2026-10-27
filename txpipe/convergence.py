@@ -122,7 +122,7 @@ class TXConvergenceMapPlots(PipelineStage):
         fig = self.open_output("convergence_map", wrapper=True, figsize=(5 * nbin_source, 5))
 
         # 2 x nbin for kappa_E and kappa_B
-        _, axes = plt.subplots(2, nbin_source, num=fig.file.number)
+        axes = fig.file.subplots(2, nbin_source, squeeze=False)
 
         # Loop through bins
         for i in range(nbin_source):
