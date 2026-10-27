@@ -4,7 +4,7 @@ generic types in ceci.
 """
 from ceci.file_types import HDFFile, DataFile, YamlFile, TextFile, FitsFile, Directory, FileCollection, PickleFile, ParquetFile, PNGFile, FileValidationError
 from .mapping import degrade_healsparse
-from .calibration_utils.names import META_VARIANTS, SCALAR_META_VARIANTS
+from .calibration_utils.names import META_VARIANTS, SCALAR_META_VARIANTS, metacal_variants, metadetect_variants, scalar_metadetect_variants, band_variants
 import yaml
 import numpy as np
 
