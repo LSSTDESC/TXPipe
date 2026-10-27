@@ -7,6 +7,8 @@ stages:
   - name: TXIngestDESY3SpeczCat
   - name: TXIngestDESY3Shear
   - name: TXCustomMask
+    aliases:
+      footprint_maps: des_footprint_maps
   - name: TXIngestDESY3SourceRedshift
 
   # PER-OBJECT PHOTO-Z
@@ -56,15 +58,17 @@ stages:
     threads_per_process: 8
 
   # Train a tomography model from the spectroscopic sample for the sources
-  - name: TXSourceTomography
+  - name: TXTrainRandomForestTomography
     threads_per_process: 8
 
   # Compute metacalibration shear response and selection bias corrections
-  - name: TXSourceSelectorDESY3
+  - name: TXComputeShearCalibrationDESY3
     nprocess: 32
     threads_per_process: 4
 
   # Generate calibrated tomographic source catalogs
+  - name: TXDESY3Selection
+  - name: TXApplyRandomForestSourceTomography
   - name: TXShearCalibration
     nprocess: 8
     threads_per_process: 4
@@ -127,7 +131,8 @@ stages:
   # MAPPING
   
   # Make PSF and similar maps for the sources
-  - name: TXAuxiliarySourceMaps
+  - name: TXPSFMaps
+  - name: TXFlagMaps
 
   # Make maps of the lens counts
   - name: TXLensMaps

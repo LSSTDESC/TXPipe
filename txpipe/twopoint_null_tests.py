@@ -1,13 +1,13 @@
 from .base_stage import PipelineStage
 from .data_types import (
     HDFFile,
-    ShearCatalog,
     TomographyCatalog,
     RandomsCatalog,
     SACCFile,
     PNGFile,
     TextFile,
     QPNOfZFile,
+    BinnedCatalog,
 )
 import numpy as np
 from .twopoint import TXTwoPoint, SHEAR_SHEAR, SHEAR_POS, POS_POS, TREECORR_CONFIG
@@ -89,9 +89,7 @@ class TXGammaTFieldCenters(TXTwoPoint):
 
     name = "TXGammaTFieldCenters"
     inputs = [
-        ("binned_shear_catalog", ShearCatalog),
-        ("shear_photoz_stack", QPNOfZFile),
-        ("lens_photoz_stack", QPNOfZFile),
+        ("binned_shear_catalog", BinnedCatalog),
         ("random_cats", RandomsCatalog),
         ("exposures", HDFFile),
         ("patch_centers", TextFile),
@@ -225,14 +223,10 @@ class TXGammaTFieldCenters(TXTwoPoint):
 
         S = sacc.Sacc()
 
-        with self.open_input("shear_photoz_stack", wrapper=True) as f:
-            # The last entry represents the 2D n(z)
-            z, Nz = f.get_2d_n_of_z(-1)
-
         # Add the data points that we have one by one, recording which
         # tracer they each require
         S.add_tracer("Misc", "fieldcenter")
-        S.add_tracer("NZ", "source2d", z, Nz)
+        S.add_tracer("Misc", "source2d")
 
         d = results[0]
         assert len(results) == 1
@@ -276,12 +270,10 @@ class TXGammaTStars(TXTwoPoint):
 
     name = "TXGammaTStars"
     inputs = [
-        ("binned_shear_catalog", ShearCatalog),
+        ("binned_shear_catalog", BinnedCatalog),
         ("shear_tomography_catalog", TomographyCatalog),
-        ("shear_photoz_stack", QPNOfZFile),
-        ("lens_photoz_stack", QPNOfZFile),
         ("random_cats", RandomsCatalog),
-        ("binned_star_catalog", HDFFile),
+        ("binned_star_catalog", BinnedCatalog),
         ("patch_centers", TextFile),
         ("tracer_metadata", HDFFile),
         ("binned_random_catalog", HDFFile),
@@ -411,14 +403,11 @@ class TXGammaTStars(TXTwoPoint):
 
         S = sacc.Sacc()
 
-        with self.open_input("shear_photoz_stack", wrapper=True) as f:
-            z, Nz = f.get_2d_n_of_z(-1)
-
         # Add the data points that we have one by one, recording which
         # tracer they each require
         name = "{}_stars".format(text.lower())
         S.add_tracer("Misc", name)
-        S.add_tracer("NZ", "source2d", z, Nz)
+        S.add_tracer("Misc", "source2d")
 
         dvalue = d.object.xi
         derror = np.sqrt(d.object.varxi)
@@ -463,8 +452,7 @@ class TXGammaTRandoms(TXTwoPoint):
 
     name = "TXGammaTRandoms"
     inputs = [
-        ("binned_shear_catalog", ShearCatalog),
-        ("shear_photoz_stack", QPNOfZFile),
+        ("binned_shear_catalog", BinnedCatalog),
         ("random_cats", RandomsCatalog),
         ("patch_centers", TextFile),
         ("tracer_metadata", HDFFile),
@@ -583,13 +571,10 @@ class TXGammaTRandoms(TXTwoPoint):
 
         S = sacc.Sacc()
 
-        with self.open_input("shear_photoz_stack", wrapper=True) as f:
-            z, Nz = f.get_2d_n_of_z(-1)
-
         # Add the data points that we have one by one, recording which
         # tracer they each require
         S.add_tracer("Misc", "randoms")
-        S.add_tracer("NZ", "source2d", z, Nz)
+        S.add_tracer("Misc", "source2d")
 
         d = results[0]
         assert len(results) == 1
@@ -635,7 +620,7 @@ class TXApertureMass(TXTwoPoint):
 
     name = "TXApertureMass"
     inputs = [
-        ("binned_shear_catalog", ShearCatalog),
+        ("binned_shear_catalog", BinnedCatalog),
         ("shear_photoz_stack", QPNOfZFile),
         ("patch_centers", TextFile),
         ("tracer_metadata", HDFFile),

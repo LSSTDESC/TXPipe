@@ -12,7 +12,9 @@ stages:
     aliases:
         input: specz_catalog_pq
         output: spectroscopic_catalog
-  - name: TXSourceSelectorLensfit
+  - name: TXComputeShearCalibrationLensfit
+  - name: TXLensfitSelection
+  - name: TXSimpleRedshiftSourceTomography
   - name: TXShearCalibration
   - name: TXLensCatalogSplitter
   - name: TXStarCatalogSplitter
@@ -44,8 +46,10 @@ stages:
         photoz_stack: lens_photoz_stack
   - name: TXSourceMaps
   - name: TXLensMaps
-  - name: TXAuxiliarySourceMaps
-  - name: TXAuxiliaryLensMaps
+  - name: TXPSFMaps
+  - name: TXFlagMaps
+  - name: TXDepthMaps
+  - name: TXBrightObjectMaps
   - name: TXSimpleMask
   - name: TXLSSWeightsUnit
   - name: TXDensityMaps

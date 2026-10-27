@@ -46,8 +46,9 @@ stages:
         model: source_direct_calibration_model
         photoz_stack: shear_photoz_stack
         photoz_realizations: source_photoz_realizations
-  - name: TXSourceSelectorMetacal    # select and split objects into source bins
-  - name: TXSourceTomography
+  - name: TXComputeShearCalibrationMetacal    # select and split objects into source bins
+  - name: TXMetacalSelection
+  - name: TXSimpleRedshiftSourceTomography
   - name: NZDirInformerSource       # Prepare the DIR method inputs for the source sample
     classname: NZDirInformer
     aliases:
@@ -58,8 +59,10 @@ stages:
   - name: TXStarCatalogSplitter    # Split the star catalog into separate bins (psf/non-psf)
   - name: TXSourceMaps             # make source g1 and g2 maps
   - name: TXLensMaps               # make source lens and n_gal maps
-  - name: TXAuxiliarySourceMaps    # make PSF and flag maps
-  - name: TXAuxiliaryLensMaps      # make depth and bright object maps
+  - name: TXPSFMaps    # make PSF maps
+  - name: TXFlagMaps
+  - name: TXDepthMaps      # make depth and bright object maps
+  - name: TXBrightObjectMaps      # make depth and bright object maps
   - name: TXSimpleMask           # combine maps to make a simple mask
   - name: TXLSSWeightsUnit       # add systematic weights to the lens sample (weight=1 for this example)
   - name: TXSourceNoiseMaps      # Compute shear noise using rotations

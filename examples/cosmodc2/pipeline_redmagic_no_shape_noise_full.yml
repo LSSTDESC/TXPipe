@@ -18,10 +18,12 @@ stages:
       nodes: 1
     - name: TXRandomCat
     - name: TXIngestRedmagic
-    - name: TXSourceSelector
+    - name: TXComputeShearCalibrationMetacal
       nprocess: 64
       nodes: 2
-    - name: TXSourceTomography
+    - name: TXMetacalSelection
+    - name: TXApplyRandomForestSourceTomography
+    - name: TXTrainRandomForestTomography
       threads_per_process: 4
     - name: TXSourceTrueNumberDensity
     - name: TXPhotozPlot
@@ -32,12 +34,17 @@ stages:
       nprocess: 12
       threads_per_process: 1
       nodes: 2
-    - name: TXExternalLensMaps
-    - name: TXAuxiliarySourceMaps
+    - name: TXLensMaps
+    - name: TXPSFMaps
+    - name: TXFlagMaps
       nprocess: 16
       threads_per_process: 1
       nodes: 2
-    - name: TXAuxiliaryLensMaps
+    - name: TXDepthMaps
+      nprocess: 16
+      threads_per_process: 1
+      nodes: 2
+    - name: TXBrightObjectMaps
       nprocess: 16
       threads_per_process: 1
       nodes: 2

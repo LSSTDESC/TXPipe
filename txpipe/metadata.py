@@ -65,6 +65,9 @@ class TXTracerMetadata(PipelineStage):
             elif shear_catalog_type == "metadetect":
                 copy(shear_tomo_file, "response", "tracers", "R", meta_file, metadata)
                 copy(shear_tomo_file, "response", "tracers", "R_2d", meta_file, metadata)
+            elif shear_catalog_type == "scalar_metadetect":
+                copy(shear_tomo_file, "response", "tracers", "R", meta_file, metadata)
+                copy(shear_tomo_file, "response", "tracers", "R_2d", meta_file, metadata)
             elif shear_catalog_type == "lensfit":
                 copy(shear_tomo_file, "response", "tracers", "K", meta_file, metadata)
                 copy(shear_tomo_file, "response", "tracers", "C_N", meta_file, metadata)
@@ -163,7 +166,13 @@ class TXTracerMetadata(PipelineStage):
             m = f.read_map("mask")
             pixel_scheme = choose_pixelization(**f.read_map_info("mask"))
 
-        num_hit = np.sum(m[m.valid_pixels])  # Assuming fracdet mask
+        # Iterate through the mask to avoid generating
+        # large non-bit-packed arrays.
+        # Assuming fracdet mask.
+        num_hit = 0.0
+        for valid_pixels in m.iter_valid_pixels_by_covpix():
+            num_hit += m[valid_pixels].sum()
+        
         area_sq_deg = pixel_scheme.pixel_area(degrees=True) * num_hit
         f_sky = float(area_sq_deg) / 41252.96125
         print(f"Area = {area_sq_deg:.2f} deg^2")

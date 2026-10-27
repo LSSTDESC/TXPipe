@@ -1,10 +1,10 @@
-
 # Stages to run
 stages:
 
-    - name: TXSourceSelectorLensfit # select and split objects into source bins
+    - name: TXComputeShearCalibrationLensfit # select and split objects into source bins
+    - name: TXLensfitSelection
+    - name: TXSimpleRedshiftSourceTomography
     - name: TXShearCalibration   # Calibrate and split the source sample tomographically
-    
     #- name: TXPhotozPlots
     #- name: TXPhotozSourceStack 
     #- name: TXStarCatalogSplitter  # Split the star catalog into separate bins (psf/non-psf)    
@@ -13,7 +13,8 @@ stages:
       #threads_per_process: 1
       #nodes: 1
     #- name: TXLensMaps
-    #- name: TXAuxiliarySourceMaps  # make PSF and flag maps
+    #- name: TXPSFMaps
+    #- name: TXFlagMaps
     #- name: TXAuxiliaryLensMaps    # make depth and bright object maps
     #- name: TXSourceNoiseMaps    # noise maps for sources using random rotations
     # stage below is not working because TXAuxiliaryLensMaps is broken

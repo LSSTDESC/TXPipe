@@ -14,9 +14,11 @@ python_paths:
 stages:
   - name: TXRandomCat
     nprocess: 12
-  - name: TXSourceSelectorMetadetect
+  - name: TXComputeShearCalibrationMetadetect
     nprocess: 12
-  - name: TXSourceTomography
+  - name: TXMetaDetectSelection
+  - name: TXApplyRandomForestSourceTomography
+  - name: TXTrainRandomForestTomography
     threads_per_process: 4
   - name: TXLSSWeightsUnit
   - name: TXRandomForestLensSelector
@@ -60,9 +62,12 @@ stages:
     nprocess: 8
   - name: TXLensMaps
     nprocess: 8
-  - name: TXAuxiliarySourceMaps
+  - name: TXPSFMaps
+  - name: TXFlagMaps
     nprocess: 8
-  - name: TXAuxiliaryLensMaps
+  - name: TXDepthMaps
+    nprocess: 8
+  - name: TXBrightObjectMaps
     nprocess: 8
   - name: TXDensityMaps
   - name: TXSourceNoiseMaps

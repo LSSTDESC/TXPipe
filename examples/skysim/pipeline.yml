@@ -13,10 +13,12 @@ python_paths:
 
 stages:
   - name: TXRandomCat
-  - name: TXSourceSelectorMetacal
+  - name: TXComputeShearCalibrationMetacal
     nodes: 8
     nprocess: 256
-  - name: TXSourceTomography
+  - name: TXMetacalSelection
+  - name: TXApplyRandomForestSourceTomography
+  - name: TXTrainRandomForestTomography
     threads_per_process: 4
   - name: TXTruthLensSelector
     nodes: 8
@@ -63,10 +65,14 @@ stages:
   - name: TXLensMaps
     nodes: 8
     nprocess: 64
-  - name: TXAuxiliarySourceMaps
+  - name: TXPSFMaps
+  - name: TXFlagMaps
     nodes: 2
     nprocess: 16
-  - name: TXAuxiliaryLensMaps
+  - name: TXDepthMaps
+    nodes: 2
+    nprocess: 16
+  - name: TXBrightObjectMaps
     nodes: 2
     nprocess: 16
   - name: TXTwoPointTheoryReal   # compute theory using CCL to save in sacc file and plot later

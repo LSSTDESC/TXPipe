@@ -47,7 +47,7 @@ TXSourceTrueNumberDensity:
     zmax: 3.0
     chunk_rows: 100000
 
-TXSourceSelector:
+TXComputeShearCalibrationMetacal:
     input_pz: false
     bands: [r, i, z] #used for selection
     T_cut: 0.5
@@ -66,9 +66,6 @@ TXSourceSelector:
     r_i_cut: 2.0
     # may also need one for r_cpar_cut
 
-TXSourceTomography:
-    bands: [r, i, z] #used for selection
-    source_zbin_edges: [0.3, 0.5, 0.7, 0.9, 2.0]
 
 TXRandomCat:
     chunk_rows: 100000
@@ -98,11 +95,16 @@ TXLensMaps:
     sparse: true
 
 
-TXAuxiliarySourceMaps:
+TXPSFMaps:
     chunk_rows: 100000
     sparse: true
 
-TXAuxiliaryLensMaps:
+
+TXFlagMaps: {}
+TXDepthMaps:
+    chunk_rows: 100000
+    sparse: true
+TXBrightObjectMaps:
     chunk_rows: 100000
     sparse: true
     bright_obj_threshold: 22.0
@@ -153,4 +155,45 @@ TXTruthLensSelector:
     i_lo_cut: 17.5
     i_hi_cut: 21.9
     r_i_cut: 2.0
+
+TXTrainRandomForestTomography:
+    bands: [r, i, z] #used for selection
+    source_zbin_edges: [0.3, 0.5, 0.7, 0.9, 2.0]
+TXMetacalSelection:
+    input_pz: false
+    bands: [r, i, z] #used for selection
+    T_cut: 0.5
+    s2n_cut: 10.0
+    max_rows: 1000
+    delta_gamma: 0.02
+    source_zbin_edges: [0.3, 0.5, 0.7, 0.9, 2.0]
+    chunk_rows: 100000
+    # Mag cuts
+    cperp_cut: 0.2
+    r_cpar_cut: 13.5
+    r_lo_cut: 16.0
+    r_hi_cut: 19.6
+    i_lo_cut: 17.5
+    i_hi_cut: 19.9
+    r_i_cut: 2.0
+    # may also need one for r_cpar_cut
+
+TXApplyRandomForestSourceTomography:
+    input_pz: false
+    bands: [r, i, z] #used for selection
+    T_cut: 0.5
+    s2n_cut: 10.0
+    max_rows: 1000
+    delta_gamma: 0.02
+    source_zbin_edges: [0.3, 0.5, 0.7, 0.9, 2.0]
+    chunk_rows: 100000
+    # Mag cuts
+    cperp_cut: 0.2
+    r_cpar_cut: 13.5
+    r_lo_cut: 16.0
+    r_hi_cut: 19.6
+    i_lo_cut: 17.5
+    i_hi_cut: 19.9
+    r_i_cut: 2.0
+    # may also need one for r_cpar_cut
 

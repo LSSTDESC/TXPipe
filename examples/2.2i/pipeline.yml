@@ -25,9 +25,11 @@ stages:
     nprocess: 32
   - name: TXLensNoiseMaps
     nprocess: 32
-  - name: TXSourceSelector
+  - name: TXComputeShearCalibrationMetacal
     nprocess: 32
-  - name: TXSourceTomography
+  - name: TXMetacalSelection
+  - name: TXApplyRandomForestSourceTomography
+  - name: TXTrainRandomForestTomography
     threads_per_process: 4
   - name: TXShearCalibration
     nodes: 1
@@ -76,10 +78,14 @@ stages:
   - name: TXLensMaps
     nprocess: 16
     nodes: 2
-  - name: TXAuxiliarySourceMaps
+  - name: TXPSFMaps
+  - name: TXFlagMaps
     nprocess: 16
     nodes: 2
-  - name: TXAuxiliaryLensMaps
+  - name: TXDepthMaps
+    nprocess: 16
+    nodes: 2
+  - name: TXBrightObjectMaps
     nprocess: 16
     nodes: 2
   - name: TXSimpleMask

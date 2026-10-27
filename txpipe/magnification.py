@@ -4,6 +4,7 @@ from .data_types import (
     HDFFile,
     FitsFile,
     PNGFile,
+    BinnedCatalog,
 )
 from .utils import LensNumberDensityStats, Splitter, rename_iterated
 from .binning import build_tomographic_classifier, apply_classifier
@@ -24,8 +25,8 @@ class TXSSIMagnification(PipelineStage):
     parallel = False
 
     inputs = [
-        ("binned_lens_catalog_nomag", HDFFile),
-        ("binned_lens_catalog_mag", HDFFile),
+        ("binned_lens_catalog_nomag", BinnedCatalog),
+        ("binned_lens_catalog_mag", BinnedCatalog),
     ]
 
     outputs = [

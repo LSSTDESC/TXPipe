@@ -1,11 +1,12 @@
 import numpy as np
-from .calibration_calculators import MetacalCalculator, MetaDetectCalculator, LensfitCalculator, HSCCalculator
+from .calibration_calculators import MetacalCalculator, MetaDetectCalculator, LensfitCalculator, HSCCalculator, ScalarMetaDetectCalculator
 
 class MeanShearInBins:
     def __init__(
         self, x_name, limits, delta_gamma, cut_source_bin=False, shear_catalog_type="metacal", psf_unit_conv=False
     ):
         from parallel_statistics import ParallelMeanVariance, ParallelMean
+        from ..data_types import class_for_shear_catalog_type
 
         self.x_name = x_name
         self.limits = limits
@@ -16,6 +17,8 @@ class MeanShearInBins:
         self.size = len(self.limits) - 1
         # We have to work out the mean g1, g2
         self.x = ParallelMean(self.size)
+        self.cat_class = class_for_shear_catalog_type(shear_catalog_type)
+        self.bin_key = self.cat_class.get_primary_tomography_bin_column()
 
         if shear_catalog_type == "metacal":
             self.calibrators = [MetacalCalculator(self.selector, delta_gamma) for i in range(self.size)]
@@ -25,11 +28,13 @@ class MeanShearInBins:
             self.calibrators = [LensfitCalculator(self.selector, dec_cut=False) for i in range(self.size)]
         elif shear_catalog_type == "hsc":
             self.calibrators = [HSCCalculator(self.selector) for i in range(self.size)]
+        elif shear_catalog_type == "scalar_metadetect":
+            self.calibrators = [ScalarMetaDetectCalculator(self.selector, delta_gamma) for i in range(self.size)]
         else:
             raise ValueError(f"Please specify metacal, metadetect, lensfit or hsc for shear_catalog in config.")
 
     def selector(self, data, i):
-        if self.shear_catalog_type == "metadetect" and self.x_name.startswith("ns/"):
+        if self.shear_catalog_type.endswith("metadetect") and self.x_name.startswith("ns/"):
             x = data[self.x_name[3:]]
         else:
             x = data[self.x_name]
@@ -45,12 +50,7 @@ class MeanShearInBins:
         
         # Optionally cut down to the source sample only
         if self.cut_source_bin:
-            if self.shear_catalog_type == "metadetect":
-                prefix = getattr(data, 'prefix', 'ns/').rstrip('/')
-                bin_key = f"bin_{prefix if prefix else 'ns'}"
-                w &= (data[bin_key] != -1)
-            else:
-                w &= (data["bin"] != -1)
+            w &= data["bin"] != -1
         return np.where(w)[0]
 
     def add_data(self, data):
@@ -58,7 +58,7 @@ class MeanShearInBins:
             # The i argument to add_data is the argument that is passed
             # through to the "selector" method above.
             w = self.calibrators[i].add_data(data, i)
-            if self.shear_catalog_type == "metadetect":
+            if self.shear_catalog_type.endswith("metadetect"):
                 # the metadetector selector returns selections
                 # for all 5 variants. We just want the unsheared on
                 # here.

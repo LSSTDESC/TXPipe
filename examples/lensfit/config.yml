@@ -44,7 +44,7 @@ TXLensTrueNumberDensity:
     nz: 301
     zmax: 3.0
 
-TXSourceSelectorLensfit:
+TXComputeShearCalibrationLensfit:
     input_pz: true
     bands: [r, i] #used for selection
     T_cut: 0.25
@@ -54,9 +54,6 @@ TXSourceSelectorLensfit:
     source_zbin_edges: [0.1, 0.5, 1.0, 2.0]
     input_m_is_weighted: true
 
-TXSourceTomography:
-    bands: [r, i] #used for selection
-    source_zbin_edges: [0.1, 0.5, 1.0, 2.0]
 
 PZPrepareEstimatorLens:
     name: PZPrepareEstimatorLens
@@ -170,7 +167,7 @@ TXLensDiagnosticPlots:
 
 
 TXMapPlots:
-    projection: moll
+    projection: McBryde
 
 TXDiagnosticMaps:
     sparse: true  # Generate sparse maps - faster if using small areas
@@ -190,14 +187,16 @@ TXSourceMaps: {}
 
 TXLensMaps: {}
 
-TXAuxiliarySourceMaps:
-    flag_exponent_max: 1
+TXPSFMaps: {}
 
-TXAuxiliaryLensMaps:
-    bright_obj_threshold: 22.0 # The magnitude threshold for a object to be counted as bright
+TXFlagMaps:
+    flag_exponent_max: 1
+TXDepthMaps:
     depth_band: i
     snr_threshold: 10.0  # The S/N value to generate maps for (e.g. 5 for 5-sigma depth)
     snr_delta: 1.0  # The range threshold +/- delta is used for finding objects at the boundary
+TXBrightObjectMaps:
+    bright_obj_threshold: 22.0 # The magnitude threshold for a object to be counted as bright
 
 
 TXRealGaussianCovariance:
@@ -269,3 +268,27 @@ PZEstimatorLens:
 TXGammaTStars: {}
 
 TXGammaTRandoms: {}
+TXTrainRandomForestTomography:
+    bands: [r, i] #used for selection
+    source_zbin_edges: [0.1, 0.5, 1.0, 2.0]
+TXLensfitSelection:
+    input_pz: true
+    bands: [r, i] #used for selection
+    T_cut: 0.25
+    s2n_cut: 5.0
+    max_rows: 1000
+    delta_gamma: 0.02
+    source_zbin_edges: [0.1, 0.5, 1.0, 2.0]
+    input_m_is_weighted: true
+
+TXSimpleRedshiftSourceTomography:
+    input_pz: true
+    bands: [r, i] #used for selection
+    max_rows: 1000
+    delta_gamma: 0.02
+    source_zbin_edges: [0.1, 0.5, 1.0, 2.0]
+    input_m_is_weighted: true
+
+    T_min: 0.25
+    s2n_min: 5.0
+    redshift_col: mean_z

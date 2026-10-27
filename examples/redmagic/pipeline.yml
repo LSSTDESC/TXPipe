@@ -1,7 +1,8 @@
 # Stages to run
 stages:
-  - name: TXSourceSelectorMetacal
-  - name: TXSourceTomography
+  - name: TXComputeShearCalibrationMetacal
+  - name: TXMetacalSelection
+  - name: TXSimpleRedshiftSourceTomography
   - name: TXShearCalibration
   - name: TXExternalLensCatalogSplitter
   - name: TXStarCatalogSplitter
@@ -15,9 +16,11 @@ stages:
   - name: TXIngestRedmagic
   - name: TXTracerMetadata
   - name: TXSourceMaps
-  - name: TXExternalLensMaps
-  - name: TXAuxiliarySourceMaps
-  - name: TXAuxiliaryLensMaps
+  - name: TXLensMaps
+  - name: TXPSFMaps
+  - name: TXFlagMaps
+  - name: TXDepthMaps
+  - name: TXBrightObjectMaps
   - name: TXSimpleMask
   - name: TXLSSWeightsUnit
   - name: TXDensityMaps
