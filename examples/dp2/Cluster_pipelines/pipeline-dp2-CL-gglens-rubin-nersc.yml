@@ -1,0 +1,121 @@
+# DP2 cluster gg-lensing pipeline for the RUBIN METADETECT shear catalog: TreeCorr
+# gamma_t (TXTwoPoint, shear-position only) with the clusters as lenses.
+#   cluster catalog: CSV -> TXPipe cluster file -> redshift/richness bins
+#                    -> binned lens catalog + lens n(z) (CLClusterLensCatalog)
+#   shear catalog:   registry mask -> cut catalog -> source selection + calibration
+#                    -> BPZ photo-z per source -> source n(z)
+#   measurement:     TXTwoPoint gamma_t / gamma_x per (source bin, cluster bin), no randoms.
+#                    The sacc tracers are named lens_k; the lens_k -> (zbin, richbin) mapping is in the
+#                    zbin/richbin attrs of lens/bin_k in binned_lens_catalog.hdf5.
+#                    All selected sources are used (no source-behind-cluster cut), so gamma_t is diluted
+#                    relative to the CLMM g_t profiles: compare shapes, not amplitudes.
+# From the TXPipe directory, submit with
+#     sbatch examples/dp2/Cluster_pipelines/dp2-gglens-rubin-nersc.sub
+# Settings live in config-dp2-CL-gglens.yml. The shared stages use the same settings as
+# pipeline-dp2-CL-rubin-nersc.yml and the same output_dir, so resume: true reuses their outputs.
+
+#this step depends on where you run
+#for NERSC
+site:
+    name: nersc-interactive
+
+#all the following steps should not depend on where you run
+launcher:
+    name: mini
+    interval: 3.0
+
+modules: >
+    txpipe
+    txpipe.extensions.cluster_counts.bin_cluster
+    txpipe.extensions.cluster_counts.cluster_lens_catalog
+    rail.estimation.algos.bpz_lite
+    txpipe.extensions.cluster_counts.ingest_csv
+
+python_paths: []
+
+stages:
+  # ---- cluster catalog
+  - name: CLIngestClusterCSV       # cluster CSV -> TXPipe cluster_catalog
+  - name: CLClusterBinningRedshiftRichness
+    nprocess: 1
+  - name: CLClusterLensCatalog     # cluster bins -> binned_lens_catalog + lens_photoz_stack
+    nprocess: 1
+
+  # ---- shear catalog
+  - name: TXIngestHealsparseMask   # registry .hsp mask -> TXPipe mask file (format conversion only)
+  - name: TXCutShearCatalog        # keep the objects inside the mask
+    nprocess: 64
+    aliases:
+      shear_catalog: full_shear_catalog
+      cut_shear_catalog: shear_catalog
+  - name: TXSourceTomography
+    threads_per_process: 8
+  - name: TXSourceSelectorMetadetectDP2    # DP2 cuts; 2x2 response from 1p/1m/2p/2m
+    nprocess: 64
+  - name: TXShearCalibration
+    nprocess: 64
+  - name: TXJackknifeCentersSource # own patch file (npatch: 50), so the CL run's patch_centers.txt is kept
+    aliases:
+      patch_centers: gglens_patch_centers
+      jk: gglens_jk
+
+  # ---- source photo-z
+  - name: BPZliteInformer          # output_hdfn defaults to true, so this just uses the HDFN prior
+    nprocess: 1
+    aliases:
+      input: spectroscopic_catalog
+      model: source_photoz_model
+  - name: BPZliteEstimator         # per-object p(z) for the cut shear catalogue
+    nprocess: 64
+    aliases:
+      model: source_photoz_model
+      input: shear_catalog
+      output: source_photoz_pdfs
+  - name: TXPhotozStack            # source n(z) from the BPZ PDFs (only stored in the sacc file)
+    nprocess: 1
+    aliases:
+      photoz_pdfs: source_photoz_pdfs
+      tomography_catalog: shear_tomography_catalog
+      weights_catalog: shear_catalog
+      photoz_stack: shear_photoz_stack
+
+  # ---- gamma_t around clusters
+  - name: TXTracerMetadata
+  # To rerun TXTwoPoint (e.g. after changing flip_g2 or the binning), first delete
+  # twopoint_data_real_raw.sacc, twopoint_gamma_x.sacc and the twopoint_data_real_raw*.checkpoint-*.pkl
+  # files in output_dir: resume: true skips the stage otherwise, and TXTwoPoint reloads old checkpoints.
+  - name: TXTwoPoint
+    threads_per_process: 128      # needs a full node (qos=regular in the .sub)
+    nprocess: 1
+    aliases:
+      patch_centers: gglens_patch_centers
+
+# User-specific paths: change output_dir, log_dir, pipeline_log and the non-registry inputs to your own.
+# Same output_dir as pipeline-dp2-CL-rubin-nersc.yml, so its finished stages are reused.
+output_dir: /pscratch/sd/y/yyzhang/dp2/outputs/rubin
+config: ./examples/dp2/Cluster_pipelines/config-dp2-CL-gglens.yml
+
+inputs:
+    # clusters: external catalogs (DES Y3 redMaPPer, ...) cross-matched to DP2 objects
+    cluster_catalog_csv: /pscratch/sd/y/yyzhang/desc/TXPipe/dp2_cluster_overlap_jul23.csv
+    # shear catalog, from the DESC data registry:
+    # txpipe_dp2_shear_catalog_Rubin_metaDetect 0.3.0 (J. Zuntz), uncut
+    full_shear_catalog:
+        id: 137
+    # rubin_dp2_wide_metadetect_mask 0.2.0 (S. Mau): riz coverage, bright-star (metadetect v2)
+    # and bright-galaxy masks, b < -25
+    shear_mask:
+        id: 151
+    spectroscopic_catalog: /global/cfs/cdirs/m1727/kabelo/TXPipe/data/example/outputs_metadetect/spectroscopic_catalog.hdf5
+    fiducial_cosmology: data/fiducial_cosmology.yml
+    # no lens tomography catalog and no randoms (TXTwoPoint use_randoms: false)
+    lens_tomography_catalog: none
+    binned_random_catalog: none
+    binned_random_catalog_sub: none
+
+# needed for the `id:` lookups above; {} uses your default dataregistry config
+registry: {}
+
+resume: true
+log_dir: /pscratch/sd/y/yyzhang/dp2/outputs/rubin/logs
+pipeline_log: /pscratch/sd/y/yyzhang/dp2/outputs/rubin/log_CL_gglens_pipeline.txt

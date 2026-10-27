@@ -1,0 +1,18 @@
+#!/bin/bash
+#SBATCH -A m1727
+#SBATCH -C cpu
+#SBATCH --qos=regular
+#SBATCH --time=01:30:00
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=64
+#SBATCH --cpus-per-task=2
+# DP2 cluster gg-lensing (TreeCorr gamma_t) pipeline for the rubin shear catalog. From the TXPipe directory:
+#     sbatch examples/dp2/Cluster_pipelines/dp2-gglens-rubin-nersc.sub
+# Shares output_dir with pipeline-dp2-CL-rubin-nersc.yml; resume: true skips stages that already finished there.
+# qos=regular gives a full node: ceci only recognises full-node core counts, and on a shared
+# allocation it assumes 32 cores, so TXTwoPoint (128 threads) would be refused.
+# To rerun TXTwoPoint, delete its .sacc outputs and *.checkpoint-*.pkl files in output_dir first.
+
+module load python
+conda activate ./conda
+ceci examples/dp2/Cluster_pipelines/pipeline-dp2-CL-gglens-rubin-nersc.yml

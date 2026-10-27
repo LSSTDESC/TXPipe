@@ -1,0 +1,106 @@
+# Config for the DP2 cluster gg-lensing pipeline (pipeline-dp2-CL-gglens-rubin-nersc.yml).
+# The sections for the shared stages are copied from config-dp2-CL.yml without changes,
+# so the outputs already in output_dir stay valid; keep them in sync with that file.
+# The sections under "gg-lensing around clusters" are new.
+
+CLIngestClusterCSV: {}   # CSV -> clusters HDF5 group; the column-name defaults match external_0723_x_dp2.csv
+
+global:
+    nside: 64
+    chunk_rows: 1000000
+
+TXIngestHealsparseMask: {}   # no options: reads the registry .hsp and rewrites it as a TXPipe mask file
+
+TXSourceTomography:
+    bands: [r, i, z] #used for selection
+    source_zbin_edges: [0.1, 3.0] # this can be big, not doing cosmic shear
+
+TXSourceSelectorMetadetectDP2:
+    input_pz: false
+    bands: [g, r, i, z] # the selector takes the bands from the catalog file
+    T_cut: 0.5
+    s2n_cut: 10.0
+    delta_gamma: 0.02
+    source_zbin_edges: [0.1, 3.0]
+    true_z: false
+    do_tomography: false
+    # DP2 cuts, copied from examples/dp2/config.yml (mag/colour cuts are placeholders)
+    mag_g_cut: 30.0
+    mag_r_cut: 30.0
+    mag_i_cut: 30.0
+    mag_z_cut: 30.0
+    gr_cut: 5.0
+    ri_cut: 5.0
+    iz_cut: 5.0
+    mfrac_cut: 0.1
+    T_max: 20.0                     # gauss_T < T_max (older TXPipe versions called this gauss_T_cut)
+
+BPZliteInformer:
+    zmin: 0.0
+    zmax: 3.0
+    nzbins: 61
+    bpz_ref_data_path: /global/cfs/cdirs/m1727/kabelo/TXPipe/data/example/rail-bpz-inputs
+    spectra_file: CWWSB4.list
+    ref_band: i
+    bands: [r, i, z]
+    hdf5_groupname: photometry
+    # output_hdfn defaults to True, which reproduces the old "prior_file: hdfn_gen" behavior
+
+BPZliteEstimator:
+    zmin: 0.0
+    zmax: 3.0
+    # Coarse grid to keep the per-object PDF file small (~85 GB for the full
+    # catalogue instead of ~390 GB at dz=0.01).
+    dz: 0.05
+    nzbins: 61
+    bpz_ref_data_path: /global/cfs/cdirs/m1727/kabelo/TXPipe/data/example/rail-bpz-inputs
+    bands: [mag_r, mag_i, mag_z]
+    err_bands: [mag_err_r, mag_err_i, mag_err_z]
+    filter_list: [DC2LSST_r, DC2LSST_i, DC2LSST_z]
+    hdf5_groupname: shear/ns
+    nondetect_val: .inf
+    spectra_file: CWWSB4.list
+    ref_band: mag_i
+    p_min: 0.005
+    gauss_kernel: 0.0
+    zp_errors: [0.01, 0.01, 0.01]
+    mag_err_min: 0.005
+    madau_flag: "no"
+    mag_limits:
+        mag_r: 29.06
+        mag_i: 28.62
+        mag_z: 27.98
+
+CLClusterBinningRedshiftRichness:
+    zedge: [0.2, 0.4, 0.6, 0.8]
+    richedge: [5., 10., 100.]
+
+# ---------------- gg-lensing around clusters ----------------
+
+CLClusterLensCatalog: {}            # empty cluster bins are left out (richness 5-10 is empty for the DP2 overlap catalog)
+
+TXPhotozStack:
+    weight_col: shear/ns/weight
+
+# New for this pipeline (not in config-dp2-CL.yml); writes gglens_patch_centers.txt.
+# 50 patches so the jackknife covariance of the 3 x 6 gamma_t points is not singular.
+TXJackknifeCentersSource:
+    npatch: 50
+
+TXTwoPoint:
+    do_shear_shear: false
+    do_shear_pos: true              # gamma_t around clusters
+    do_pos_pos: false
+    use_randoms: false
+    use_subsampled_randoms: false
+    # As in examples/dp2/config.yml. DP2 g2 has the image-frame sign (see config-dp2-CL.yml);
+    # check that gamma_t > 0 and gamma_x ~ 0 on the first run.
+    flip_g2: true
+    sep_units: arcmin
+    min_sep: 1.0                    # same range as CLClusterEnsembleProfilesGt in config-dp2-CL.yml
+    max_sep: 20.0
+    nbins: 6
+    bin_slop: 0.01
+    var_method: jackknife
+    verbose: 1
+    patch_dir: /pscratch/sd/y/yyzhang/dp2/outputs/rubin/cache/patches   # GBs of shear patches; keep out of the repo
