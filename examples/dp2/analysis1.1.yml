@@ -166,7 +166,8 @@ inputs:
       id: 148
     shear_catalog:
         id: 147
-    input_spec_data: data/pz_dp2_ingest/mdet_redshift_for_sompz.hdf5
+    input_spec_data:
+      id:  333
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted

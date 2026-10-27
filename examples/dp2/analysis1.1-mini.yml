@@ -165,7 +165,7 @@ inputs:
     lens_photoz_stack: none
     mask: /global/cfs/cdirs/lsst/utilities/data-registry/lsst_desc_working/user/zuntz/.gen_paths/txpipe_dp2_shear_catalog_desc_metaDetect_mask_1deg2_0.3.0/mini_mask.hdf5
     shear_catalog: /global/cfs/cdirs/lsst/utilities/data-registry/lsst_desc_working/user/zuntz/.gen_paths/txpipe_dp2_shear_catalog_desc_metaDetect_1deg2_0.3.0/mini_desc_dp2_shear_catalog.hdf5
-    input_spec_data: data/pz_dp2_ingest/mdet_redshift_for_sompz.hdf5
+    input_spec_data: /global/cfs/cdirs/lsst/utilities/data-registry/lsst_desc_working/user/zuntz/.gen_paths/mdet_redshift_for_sompz_0.3.0/mdet_redshift_for_sompz.hdf5
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted
