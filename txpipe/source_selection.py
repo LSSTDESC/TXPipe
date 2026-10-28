@@ -186,61 +186,71 @@ class TXHSCSelection(TXSimpleSelection):
 class TXDP2RubinMetadetectSelection(TXMetaDetectSelection):
     name = "TXDP2RubinMetadetectSelection"
 
-    config_options = {
-        "chunk_rows": StageParameter(int, 10_000, msg="Number of rows to process at once"),
-        "s2n_min": StageParameter(float, 10.0, msg="Minimum s/n for selection"),
-        "T_min": StageParameter(float, 0.5, msg="Minimum T/Tpsf for selection"),
-        "verbose": StageParameter(bool, False, msg="Whether to print out lots of information"),
+    columns = [
+        "ra", "is_primary", "mfrac", "gauss_snr", "gauss_T", "gauss_psfReconvolved_T",
+    ] + band_variants("griz", "mag", shear_catalog_type="simple")
+
+    config_options = TXMetaDetectSelection.config_options | {
+        "mfrac_max": StageParameter(float, default=0.1, msg="Maximum mask fraction for object selection"),
+        "s2n_min": StageParameter(float, default=10.0, msg="Minimum gauss_snr for object selection"),
+        "T_max": StageParameter(float, default=20.0, msg="Maximum gauss_T for object selection"),
+        "Tratio_min": StageParameter(float, default=0.5, msg="Minimum gauss_T / gauss_psfReconvolved_T for object selection"),
+        "i_min": StageParameter(float, default=18.2, msg="Minimum i-band magnitude"),
+        "i_max": StageParameter(float, default=23.5, msg="Maximum i-band magnitude"),
+        "r_min": StageParameter(float, default=15.2, msg="Minimum r-band magnitude"),
+        "g_min": StageParameter(float, default=15.2, msg="Minimum g-band magnitude"),
+        "rmi_min": StageParameter(float, default=-1.5, msg="Minimum r-i color for object selection"),
+        "rmi_max": StageParameter(float, default=4.0, msg="Maximum r-i color for object selection"),
+        "imz_min": StageParameter(float, default=-1.5, msg="Minimum i-z color for object selection"),
+        "imz_max": StageParameter(float, default=4.0, msg="Maximum i-z color for object selection"),
     }
 
-    # Add more if needed
-    columns = ["T", "s2n", "psf_T_mean", "flags", "mag_g", "mag_r", "mag_i", "mag_z", "gauss_T", "mfrac", "g1", "g2", "weight", "is_primary"]
-
     def compute_selection(self, start, end, data):
+        # shortcut if no data
+        if data["gauss_T"].size == 0:
+            return np.zeros(0, dtype=bool)
 
-        # These are the same cuts as the base class but repeated here
-        # for clarity.
-        s2n_cut = self.config["s2n_min"]
-        T_cut = self.config["T_min"]
-        verbose = self.config["verbose"]
-        n = data["s2n"].size
-        cutter = Cutter(n, verbose=verbose)
+        config = self.config
 
-        cutter.keep(data["flags"] == 0, "Flag")
-        cutter.keep(data["s2n"] > s2n_cut, "S/N")
-        cutter.keep(data["T"] / data["psf_T_mean"] > T_cut, "T/Tpsf")
+        mfrac_max = config["mfrac_max"]
+        s2n_min = config["s2n_min"]
+        T_max = config["T_max"]
+        Tratio_min = config["Tratio_min"]
+        i_min = config["i_min"]
+        i_max = config["i_max"]
+        r_min = config["r_min"]
+        g_min = config["g_min"]
+        rmi_min = config["rmi_min"]
+        rmi_max = config["rmi_max"]
+        imz_min = config["imz_min"]
+        imz_max = config["imz_max"]
 
+        T_ratio = data["gauss_T"] / data["gauss_psfReconvolved_T"]
+        rmi = data["mag_r"] - data["mag_i"]
+        imz = data["mag_i"] - data["mag_z"]
 
-        # --- metadetect-specific cuts go here ---
-        mag_g_cut = config["mag_g_cut"]
-        mag_r_cut = config["mag_r_cut"]
-        mag_i_cut = config["mag_i_cut"]
-        mag_z_cut = config["mag_z_cut"]
-        gmr_cut = config["gr_cut"]
-        rmi_cut = config["ri_cut"]
-        imz_cut = config["iz_cut"]
-        T_max = config['T_max']
-        mfrac_cut = config['mfrac_cut']
-        bands = config['bands']
+        cutter = Cutter(data["ra"].size, verbose=config["verbose"])
 
-        cutter.keep(data["mag_g"] < config["mag_g_cut"], "mag_g")
-        cutter.keep(data["mag_r"] < config["mag_r_cut"], "mag_r")
-        cutter.keep(data["mag_i"] < config["mag_i_cut"], "mag_i")
-        cutter.keep(data["mag_z"] < config["mag_z_cut"], "mag_z")
-
-        if "g" in bands and "r" in bands:
-            cutter.keep(np.abs(data["mag_g"] - data["mag_r"]) < gmr_cut, "g - r")
-        if "r" in bands and "i" in bands:
-            cutter.keep(np.abs(data["mag_r"] - data["mag_i"]) < r-i_cut, "r - i")
-        if "i" in bands and "z" in bands:
-            cutter.keep(np.abs(data["mag_i"] - data["mag_z"]) < imz_cut, "i - z")
-        # We should also have some crazy color cuts and magnitude cuts which should come from PZ group
-        cutter.keep((data["gauss_T"] < T_max), "gauss_T" )
-        cutter.keep((data['mfrac'] < mfrac_cut), "mfrac" )
+        # Basic cuts
+        cutter.keep(data["is_primary"] == True, "is_primary")
+        cutter.keep(data["mfrac"] < mfrac_max, f"mfrac < {mfrac_max}")
         cutter.keep(np.isfinite(data["g1"]), "g1 finite" )
         cutter.keep(np.isfinite(data["g2"]), "g2 finite" )
         cutter.keep(np.isfinite(data["weight"]), "weight finite" )
-        cutter.keep(data["is_primary"], "is_primary" )
+        
+        # Galaxy cuts
+        cutter.keep(data["gauss_snr"] > s2n_min, f"S/N > {s2n_min}")
+        cutter.keep(data["gauss_T"] < T_max, f"T < {T_max}")
+        cutter.keep(T_ratio > Tratio_min, f"T / T psf > {Tratio_min}")
+
+        # Magnitude cuts
+        cutter.keep((data["mag_i"] > i_min) & (data["mag_i"] < i_max), f"i in [{i_min}, {i_max}]")
+        cutter.keep(data["mag_r"] > r_min, f"r > {r_min}")
+        cutter.keep(data["mag_g"] > g_min, f"g > {g_min}")
+
+        # Sanity cuts on color
+        cutter.keep((rmi > rmi_min) & (rmi < rmi_max), f"r-i color in [{rmi_min}, {rmi_max}]")
+        cutter.keep((imz > imz_min) & (imz < imz_max), f"i-z color in [{imz_min}, {imz_max}]")
 
         return cutter.sel
 
@@ -309,10 +319,10 @@ class TXDP2DESCSelection(TXScalarMetaDetectSelection):
         cutter.keep(data["s2n"] < s2n_max, f"S/N < {s2n_max}")
 
         # Magnitude cuts
-        cutter.keep[data["mag_i"] > i_min, f"i > {i_min}"]
-        cutter.keep[data["mag_r"] > r_min, f"r > {r_min}"]
-        cutter.keep[data["mag_i"] > i_max, f"i < {i_max}"]
-        cutter.keep[data["mag_r"] < r_max, f"r < {r_max}"]
+        cutter.keep(data["mag_i"] > i_min, f"i > {i_min}")
+        cutter.keep(data["mag_r"] > r_min, f"r > {r_min}")
+        cutter.keep(data["mag_i"] < i_max, f"i < {i_max}")
+        cutter.keep(data["mag_r"] < r_max, f"r < {r_max}")
 
 
         # Good ellipticities
