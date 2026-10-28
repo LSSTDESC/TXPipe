@@ -45,7 +45,7 @@ class CLClusterShearCatalogs(PipelineStage):
     metadetect_z_names = {
         "ztrue": "redshift_true",
         "zmode": "redshift",
-        "zmean": "zmean",
+        "zmean": "redshift",
     }
 
     # TODO: add validation for one type of input only
