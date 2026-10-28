@@ -569,22 +569,24 @@ class CLClusterShearCatalogs(PipelineStage):
             # zmean or zmode to "redshift"
             for old, new in rename.items():
                 data[new] = data.pop(old)
-            # Apply the shear calibration to this sample.
-            # Optionally subtract the mean (of the whole WL sample,
-            # not the local mean)
-            #_, shear_cal = Calibrator.load(self.get_input("shear_tomography_catalog"), null=use_true_shear)
-            """
-            data["g1"], data["g2"] = shear_cal.apply(data["g1"],
-                                                     data["g2"],
-                                                     subtract_mean=subtract_mean
-            )
-            """
 
             # If we are in PDF mode then we need this extra info
             if want_pdf:
                 data["pdf_z"] = pdf_z
                 # also rename this for clarity
                 data["pdf_pz"] = data.pop("yvals")
+
+            ##################################
+            # This is Eduardo's problem now ;)
+            ##################################
+            # Apply the shear calibration to this sample.
+            # Optionally subtract the mean (of the whole WL sample, not the local mean)
+            #_, shear_cal = Calibrator.load(self.get_input("shear_tomography_catalog"), null=use_true_shear)
+            #data["g1"], data["g2"] = shear_cal.apply(data["g1"],
+            #                                         data["g2"],
+            #                                         subtract_mean=subtract_mean
+            #)
+
 
             # Give this chunk of data to the main run function
             yield s, e, data
