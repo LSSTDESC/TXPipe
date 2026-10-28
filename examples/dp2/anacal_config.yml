@@ -129,11 +129,6 @@ TXShearCalibration:
     chunk_rows: 100000
 
 
-
-TXSourceTomography: 
-    bands: [r, i, z]
-    source_zbin_edges: [0.1, 0.4, 0.6, 0.8, 3.0]
-
 # nside is inherited from global settings
 TXSourceMaps: {}
 
