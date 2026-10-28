@@ -187,7 +187,7 @@ class TXDP2RubinMetadetectSelection(TXMetaDetectSelection):
     name = "TXDP2RubinMetadetectSelection"
 
     columns = [
-        "ra", "is_primary", "mfrac", "gauss_snr", "gauss_T", "gauss_psfReconvolved_T",
+        "ra", "is_primary", "mfrac", "gauss_snr", "gauss_T", "gauss_psfReconvolved_T", "g1", "g2", "weight",
     ] + band_variants("griz", "mag", shear_catalog_type="simple")
 
     config_options = TXMetaDetectSelection.config_options | {
