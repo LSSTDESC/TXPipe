@@ -3,7 +3,7 @@ import gc
 import numpy as np
 from ...base_stage import PipelineStage
 from ...data_types import ShearCatalog, HDFFile, PhotozPDFFile, FiducialCosmology, TomographyCatalog, ShearCatalog
-from ...calibration_utils import Calibrator
+#from ...shear_calibration import Calibrator
 from collections import defaultdict
 import yaml
 import ceci
@@ -11,7 +11,7 @@ import warnings
 
 class CLClusterShearCatalogs(PipelineStage):
     """
-    
+
     """
     name = "CLClusterShearCatalogs"
     inputs = [
@@ -30,8 +30,8 @@ class CLClusterShearCatalogs(PipelineStage):
         "chunk_rows": 100_000,  # rows to read at once from source cat
         "max_radius": 10.0,  # Mpc
         "delta_z": 0.1,
-        "redshift_cut_criterion": "zmode",  # pdf / mean / true / median
-        "redshift_weight_criterion": "zmode",  # pdf or point
+        "redshift_cut_criterion": "zmode",  # pdf / mean / true / median / tomo_bins
+        "redshift_weight_criterion": "zmode",  # pdf / mean / true / None
         "redshift_cut_criterion_pdf_fraction": 0.9,  # pdf / mean / true / median
         "subtract_mean_shear": False, # Not clear if this is useful for clusters
         "coordinate_system": "celestial",
@@ -40,8 +40,23 @@ class CLClusterShearCatalogs(PipelineStage):
         "use_shape_noise": False,
         "use_radius": True,
         "max_angle": 30, # arcmin
-        
+        "use_all_metadetect_columns": True,
     }
+    metadetect_z_names = {
+        "ztrue": "redshift_true",
+        "zmode": "redshift",
+        "zmean": "redshift",
+    }
+
+    # TODO: add validation for one type of input only
+    """
+    def __init__(self, *args, **kwargs):
+        with self.open_input("shear_catalog", wrapper=True) as f:
+        PipelineStage.__init__(self, *args, **kwargs)
+        with self.open_input("fiducial_cosmology", wrapper=True) as f:
+        ("shear_tomography_catalog", TomographyCatalog),
+        ("source_photoz_pdfs", PhotozPDFFile),
+    """
 
     def run(self):
         import sklearn.neighbors
@@ -82,19 +97,16 @@ class CLClusterShearCatalogs(PipelineStage):
             clmm_cosmo = clmm.cosmology.ccl.CCLCosmology()
             clmm_cosmo.set_be_cosmo(ccl_cosmo)
 
-        # Buffer in redshift behind each object        
+        # Buffer in redshift behind each object
         delta_z = self.config["delta_z"]
 
         # Loop through the source catalog.
         for s, e, data in self.iterate_source_catalog():
             print(f"Process {self.rank} processing chunk {s:,} - {e:,}")
-                
+
             nearby_gals, nearby_gal_dists = self.find_galaxies_near_each_cluster(data, clusters, tree, max_theta_max)
 
 
-            redshift_cut_criterion = self.config["redshift_cut_criterion"]
-            redshift_cut_criterion_pdf_fraction = self.config["redshift_cut_criterion_pdf_fraction"]
-            
             # Now we have all the galaxies near each cluster
             # We need to cut down to a specific radius for this
             # cluster
@@ -118,22 +130,9 @@ class CLClusterShearCatalogs(PipelineStage):
                 cluster_z = clusters[cluster_index]["redshift"]
                 cluster_ra = clusters[cluster_index]["ra"]
                 cluster_dec = clusters[cluster_index]["dec"]
-                z_info = self.get_z_gal_good(redshift_cut_criterion, data, gal_index)
                 # # Cut down to clusters that are in front of this galaxy
-                if redshift_cut_criterion == "pdf":
-                    # If we cut based on the PDF then we need the probability
-                    # that the galaxy z is behind the cluster to be greater
-                    # than a cut criterion.
-                    pdf_z = z_info[1]
-                    pdf = z_info[0]
-                    pdf_frac = pdf[:, pdf_z > cluster_z + delta_z].sum(axis=1) / pdf.sum(axis=1)
-                    z_good = pdf_frac > redshift_cut_criterion_pdf_fraction
-                elif redshift_cut_criterion in ["ztrue", "zmode", "zmean"]:
-                    zgal = z_info[0]
-                    z_good = zgal > cluster_z + delta_z
-                else:
-                    raise NotImplementedError("Not implemented other z cuts")
-                
+                z_good = self.select_on_redshift(data, gal_index, cluster_z, delta_z)
+
                 gal_index = gal_index[z_good]
                 distance = distance[z_good]
 
@@ -164,7 +163,7 @@ class CLClusterShearCatalogs(PipelineStage):
             total_count = my_total_count
         else:
             total_count = int(self.comm.allreduce(my_total_count))
-        
+
         # The root process saves all the data. First it setps up the output
         # file here.
         if self.rank == 0:
@@ -250,7 +249,7 @@ class CLClusterShearCatalogs(PipelineStage):
                 distances = distances[srt]
                 g1 = g1[srt]
                 g2 = g2[srt]
-            
+
             # And finally write out all the data from the root process.
             n = indices.size
             # First we write out the information about the clusters,
@@ -391,11 +390,10 @@ class CLClusterShearCatalogs(PipelineStage):
         sigma_c = None
         # Depending on whether we are using the PDF or not, choose
         # some keywords to give to compute_galaxy_weights
-        z_info = self.get_z_gal_good(criterion, data, index)
         if criterion == "pdf":
             # We need the z and PDF(z) arrays in this case
-            pdf_pz = z_info[0]
-            pdf_z = z_info[1]
+            pdf_z = data["pdf_z"]
+            pdf_pz = data["pdf_pz"][index]
             # suppress user warnings containing string "nSome source redshifts are lower than the cluster redshift"
             if is_deltasigma:
                 with warnings.catch_warnings():
@@ -407,12 +405,14 @@ class CLClusterShearCatalogs(PipelineStage):
                         pzpdf=pdf_pz,
                         )
         elif criterion in ["zmode", "ztrue", "zmean"]:
-            z_source = z_info[0]
             if is_deltasigma:
+                z_source = data[self.metadetect_z_names[criterion]][index]
                 sigma_c = clmm_cosmo.eval_sigma_crit(z_cluster, z_source)
+        elif criterion is None:
+            pass
         else:
             raise NotImplementedError(f"Not implemented {criterion} weighting")
-            
+
         g1 = data["g1"][index]
         g2 = data["g2"][index]
         weight = clmm.dataops.compute_galaxy_weights(
@@ -435,7 +435,7 @@ class CLClusterShearCatalogs(PipelineStage):
             sigma_c=sigma_c,
             validate_input=True,
         )
-        
+
         return weight, tangential_comp, cross_comp, g1, g2
 
 
@@ -445,20 +445,20 @@ class CLClusterShearCatalogs(PipelineStage):
         with self.open_input("cluster_catalog") as f:
             g = f["clusters/"]
             cl_list = self.load_cluster_list(group=g)
-            
+
         return cl_list
-    
-    
+
+
     def load_cluster_list(self, group=None):
         from astropy.table import Table
         ra = group["ra"][:]
         dec = group["dec"][:]
         redshift = group["redshift"][:]
         rich = group["richness"][:]
-        ids = group["cluster_id"][:]        
-        
+        ids = group["cluster_id"][:]
+
         return Table({"ra": ra, "dec": dec, "redshift": redshift, "richness": rich, "id": ids})
-          
+
 
     def iterate_source_catalog(self):
         """
@@ -468,10 +468,23 @@ class CLClusterShearCatalogs(PipelineStage):
         rows = self.config["chunk_rows"]
         use_true_shear = self.config["use_true_shear"]
 
+        # to be used only when is_metadetect and use_all_metadetect_columns
+        _all_metadetect_groups = ("2m", "1m", "ns", "1p", "2p")
+
         # where and what to read from the shear catalog
+        shear_group = "shear"
         with self.open_input("shear_catalog", wrapper=True) as f:
-            shear_group = "shear"
             shear_cols, rename = f.get_primary_catalog_names(true_shear=use_true_shear)
+            is_metadetect = f.catalog_type == "metadetect"
+            #is_metadetect = f.catalog_type == "scalar_metadetect"
+            if is_metadetect and self.config["use_all_metadetect_columns"]:
+                # overwrites setup to get all columns
+                shear_cols = [
+                    f"{grp}/{col}"
+                    for grp in _all_metadetect_groups
+                    for col in ("g1", "g2", "ra", "dec", "weight")
+                ]
+                rename = {}
 
         # load the shear calibration information
         # for the moment, load the average overall shear calibrator,
@@ -482,62 +495,77 @@ class CLClusterShearCatalogs(PipelineStage):
         # The same calibration should be used later for the actual shears.
         if self.rank == 0:
             print("Using single 2D shear calibration!")
-        _, shear_cal = Calibrator.load(self.get_input("shear_tomography_catalog"), null=use_true_shear)
         subtract_mean = self.config["subtract_mean_shear"]
 
+
+        ##########################
+        # redshift cols management
+        ##########################
 
         # where and what to read rom the PZ catalog. This is in a QP
         # format where the mode and mean are stored in a file called
         # "ancil". The columns are called zmode and zmean.
         redshift_cut_criterion = self.config["redshift_cut_criterion"]
-        redshift_weight_criterion = self.config["redshift_cut_criterion"]
+        redshift_weight_criterion = self.config["redshift_weight_criterion"]
         want_pdf = (redshift_cut_criterion == "pdf") or (redshift_weight_criterion == "pdf")
 
+        # to aggregate groups of redshift data to be read not in shear_catalog
+        z_info = []
+        additional_data_info = {}
+
+        if redshift_cut_criterion == "tomo_bins":
+            # where and what to read from the tomography catalog.
+            # We just want the values from the source bin. We will use
+            # any selected object, so we just ask for bin >= 0.
+            # (bin = -1 means non-selected)
+            #tomo_groups = ("ns", )
+            #if is_metadetect:
+            #    tomo_groups = ("2m", "1m", "ns", "1p", "2p")
+            #tomo_iter = [
+            #    item
+            #    for tomo_set in (
+            #        ("shear_bin_assignments", tomo_grp, tomo_cols) for tomo_grp in tomo_groups
+            #    )
+            #    for item in tomo_set
+            #]
+            z_info += ["shear_tomography_catalog", "tomography", ["bin"]]
+
+            with self.open_input("shear_tomography_catalog") as f:
+                tomo_attrs = f["tomography"].attrs
+                additional_data_info["tomo_bin_edges"] = np.array(
+                    [(tomo_attrs[f"zmin_{i}"], tomo_attrs[f"zmax_{i}"]) for i in range(tomo_attrs["nbin"])]
+                )
         # The truth redshifts are keps in the shear catalog not
         # the p(z) catalog. If we ask for that column we need to load it
         # here.
-        if redshift_cut_criterion == "ztrue" or redshift_weight_criterion == "ztrue":
-            with self.open_input("shear_catalog", wrapper=True) as f:
-                col = f.get_true_redshift_column()
-                shear_cols.append(col)
-                rename[col] = "redshift_true"
 
-        point_pz_group = "ancil"
-        # TODO: We may extend this to use other options for the point redshift
-        # in the cuts / weighting
-        point_pz_cols = ["zmode"]
-
-        if redshift_cut_criterion == "zmean" or redshift_weight_criterion == "zmean":
-            point_pz_cols.append("zmean")
-
-        rename["zmode"] = "redshift"
-
-        # if the PDF is available, load it
-        # use keyword to decide what to cut on 
-        # use keyword to decide what to weight on
-
-        if want_pdf:
-            # This is not actually a single column but an array
-            pdf_file = "source_photoz_pdfs"
-            pdf_group = "data"
-            pdf_cols = ["yvals"]
-            pdf_keywords = [pdf_file, pdf_group, pdf_cols]
-
-            # we will also need the z axis values in this case
-            with self.open_input("source_photoz_pdfs") as f:
-                # this data seems to be 1D in my QP file.
-                # but that's the kind of thing they might change.
-                pdf_z = np.squeeze(f["/meta/xvals"][0])
         else:
-            pdf_keywords = []
+            if "ztrue" in (redshift_cut_criterion, redshift_weight_criterion):
+                with self.open_input("shear_catalog", wrapper=True) as f:
+                    col = f.get_true_redshift_column()
+                    shear_cols.append(col)
+                    rename[col] = "redshift_true"
 
+            # check which point source estimate is added
+            z_cols = []
+            for z_type in ("zmode", "zmean", "zmedian"):
+                if z_type in (redshift_cut_criterion, redshift_weight_criterion):
+                    z_cols.append(z_type)
+                if z_type == redshift_cut_criterion:
+                    rename[z_type] = "redshift"
+            if z_cols:
+                # catalog, group, cols
+                z_info += ["source_photoz_pdfs", "ancil", z_cols]
 
-        # where and what to read from the tomography catalog.
-        # We just want the values from the source bin. We will use
-        # any selected object, so we just ask for bin >= 0.
-        # (bin = -1 means non-selected)
-        tomo_group = "tomography"
-        tomo_cols = ["bin"]
+            # for PDF
+            if want_pdf:
+                z_info += ["source_photoz_pdfs", "data", ["yvals"]]
+
+                # we will also need the z axis values in this case
+                with self.open_input("source_photoz_pdfs") as f:
+                    # this data seems to be 1D in my QP file.
+                    # but that's the kind of thing they might change.
+                    additional_data_info["pdf_z"] = np.squeeze(f["/meta/xvals"][0])
 
         # Loop through all these input files simultaneously.
         for s, e, data in self.combined_iterators(
@@ -545,68 +573,90 @@ class CLClusterShearCatalogs(PipelineStage):
                 "shear_catalog",
                 shear_group,
                 shear_cols,
-                "source_photoz_pdfs",
-                point_pz_group,
-                point_pz_cols,
-                "shear_tomography_catalog",
-                tomo_group,
-                tomo_cols,
-                *pdf_keywords,
+                *z_info,
                 parallel=True
         ):
             # For each chunk of data we also want to store the original
             # index.  This comes in useful later because we will cut
             # down here to just objects in the WL sample.
             data["original_index"] = np.arange(s, e, dtype=int)
-            # cut down to objects in the WL sample
-#            wl_sample = data["source_bin"] >= 0
-            wl_sample = data["bin"] >= 0
-            data = {name: col[wl_sample] for name, col in data.items()}
             # give the shear columns a unified name, whether
             # they are metacal, metadetect, etc., also rename
             # zmean or zmode to "redshift"
             for old, new in rename.items():
                 data[new] = data.pop(old)
-            # Apply the shear calibration to this sample.
-            # Optionally subtract the mean (of the whole WL sample,
-            # not the local mean)
-            data["g1"], data["g2"] = shear_cal.apply(data["g1"],
-                                                     data["g2"],
-                                                     subtract_mean=subtract_mean
-            )
 
             # If we are in PDF mode then we need this extra info
             if want_pdf:
-                data["pdf_z"] = pdf_z
                 # also rename this for clarity
                 data["pdf_pz"] = data.pop("yvals")
+
+            # add extra info that does not depend on the rows
+            data.update(additional_data_info)
+
+            ##################################
+            # This is Eduardo's problem now ;)
+            ##################################
+            # Apply the shear calibration to this sample.
+            # Optionally subtract the mean (of the whole WL sample, not the local mean)
+            #_, shear_cal = Calibrator.load(self.get_input("shear_tomography_catalog"), null=use_true_shear)
+            #data["g1"], data["g2"] = shear_cal.apply(data["g1"],
+            #                                         data["g2"],
+            #                                         subtract_mean=subtract_mean
+            #)
+
 
             # Give this chunk of data to the main run function
             yield s, e, data
 
 
 
-    def get_z_gal_good(self, criterion, data, gal_index):
-        zgal = None
-        pdf_z = None
-        if criterion == "pdf":
+    def select_on_redshift(self, data, gal_index, cluster_z, delta_z):
+        """Selects which galaxies pass the redshift selection and return info used
+
+        Returns
+        -------
+        z_good : np.ndarray
+            Booloeans to filter gal_index for sources that pass the cut
+        """
+        redshift_cut_criterion = self.config["redshift_cut_criterion"]
+        if redshift_cut_criterion == "pdf":
+
             pdf_z = data["pdf_z"]
-            zgal = data["pdf_pz"][gal_index]
-        elif criterion == "ztrue":
-            zgal = data["redshift_true"][gal_index]
-        elif criterion == "zmode":
-            zgal = data["redshift"][gal_index]
-        elif criterion == "zmean":
-            zgal = data["zmean"][gal_index]
+            pdf = data["pdf_pz"][gal_index]
+            # If we cut based on the PDF then we need the probability
+            # that the galaxy z is behind the cluster to be greater
+            # than a cut criterion.
+            pdf_frac = pdf[:, pdf_z > cluster_z + delta_z].sum(axis=1) / pdf.sum(axis=1)
+            z_good = pdf_frac > self.config["redshift_cut_criterion_pdf_fraction"]
+
+        elif redshift_cut_criterion in ["ztrue", "zmode", "zmean"]:
+
+            zgal = data[self.metadetect_z_names[redshift_cut_criterion]][gal_index]
+            z_good = zgal > cluster_z + delta_z
+
+        elif redshift_cut_criterion == "tomo_bins":
+
+            tomo_edges = data["tomo_bin_edges"]
+            source_tomo_inds = data["bin"][gal_index]
+
+            # find minimum index of the tomo bins to be used
+            min_tomo_ind = (tomo_edges[:,0] <= cluster_z + delta_z).sum() - 1
+            # if cluster in last bin, change min_tomo_ind to include last bin
+            if tomo_edges[-1, 0] < cluster_z + delta_z < tomo_edges[-1, 1]:
+                min_tomo_ind -= 1
+            z_good = (source_tomo_inds>min_tomo_ind)*(source_tomo_inds>=0)
+
         else:
             raise NotImplementedError("Not implemented other z cuts")
-        return (zgal, pdf_z)
+        return z_good
+
 #def get_cluster_shear_catalogs_index_from_cluster_id(cluster_file, cluster_id):
 #    outfile = HDFFile(cluster_file, "r").file
 #    cond = outfile['catalog/cluster_id'][:] == cluster_id
 #    return np.where(cond)[0][0]
-    
-            
+
+
 class CombinedClusterCatalog:
     """
     The CCC class collects together:
@@ -615,7 +665,7 @@ class CombinedClusterCatalog:
     - a cluster catalog
     - a per-cluster shear catalog, which holds the delta-sigma information
       for galaxies around a given cluster.
-    
+
     It lets us pull together all the information from disparate sources
     associated with a cluster.
     """
@@ -623,14 +673,13 @@ class CombinedClusterCatalog:
         """
         Initialise the CCC object by opening all the files.
         """
-        _, self.calibrator = Calibrator.load(shear_tomography_catalog)
         self.shear_cat = ShearCatalog(shear_catalog, "r")
         self.pz_cat = PhotozPDFFile(source_photoz_pdfs,"r").file
         self.cluster_catalog = HDFFile(cluster_catalog, "r").file
         self.cluster_shear_catalogs = HDFFile(cluster_shear_catalogs, "r").file
         self.cluster_cat_cols = list(self.cluster_catalog['clusters'].keys())
         self.ncluster = self.cluster_shear_catalogs['catalog/cluster_id'].size
-        self.coordinate_systems = self.cluster_shear_catalogs['provenance'].attrs['config/coordinate_system'] 
+        self.coordinate_systems = self.cluster_shear_catalogs['provenance'].attrs['config/coordinate_system']
         #self.pz_criterion = "z" + self.cluster_shear_catalogs['provenance'].attrs['config/ redshift_criterion'] ### TO UPDATE
         #self.pz_col = self.pz_cat[f'ancil/{self.pz_criterion}']
 
@@ -647,7 +696,7 @@ class CombinedClusterCatalog:
             Path to the pipeline file
         run_dir : str
             Path to the directory where the pipeline was run (option, default='.')
-        
+
         Returns
         -------
         CombinedClusterCatalog
@@ -714,7 +763,7 @@ class CombinedClusterCatalog:
         for col in index_group.keys():
             cat[col] = index_group[col][start:end]
 
-        
+
         # This is the index into the shear catalog that tells
         # us where the galaxies behind this cluster are in that
         # catalog. It is also the index to the shear photo-z PDF
@@ -724,7 +773,7 @@ class CombinedClusterCatalog:
         # Different types of shear catalog file store the main shear
         # information in different bits of the HDF file. This is because
         # the metadetect catalogs has a bunch of variant catalogs, so
-        # we need to select the main one, which is called "shear/00". 
+        # we need to select the main one, which is called "shear/00".
         # In other catalog formats this will just be called "shear"
         group_name = self.shear_cat.get_primary_catalog_group()
         group = self.shear_cat.file[group_name]
@@ -736,4 +785,4 @@ class CombinedClusterCatalog:
         #gcdata.update_coordinate_system(self.coordinate_systems)
 
         return gcdata
-    
+
