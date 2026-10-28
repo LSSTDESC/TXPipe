@@ -174,7 +174,7 @@ TXPhotozPlotSource:
 
 TXDiagnosticQuantiles:
     name: TXDiagnosticQuantiles
-    use_psf_originals: true
+    use_psf_originals: false
 
 
 TXSourceDiagnosticPlots:
