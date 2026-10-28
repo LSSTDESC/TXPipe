@@ -1,0 +1,17 @@
+#!/bin/bash
+#SBATCH -A m1727
+#SBATCH -C cpu
+#SBATCH --qos=regular
+#SBATCH --time=01:30:00
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=64
+#SBATCH --cpus-per-task=2
+# DP2 cluster Delta Sigma (dsigma) pipeline for the rubin shear catalog. From the TXPipe directory:
+#     sbatch examples/dp2/Cluster_pipelines/dp2-deltasigma-rubin-nersc.sub
+# Shares output_dir with pipeline-dp2-CL-gglens-rubin-nersc.yml; resume: true skips stages that already finished there.
+# qos=regular gives a full node: ceci only recognises full-node core counts, and on a shared
+# allocation it assumes 32 cores, so TXDeltaSigma (3 x 32 threads) would be refused.
+
+module load python
+conda activate ./conda
+ceci examples/dp2/Cluster_pipelines/pipeline-dp2-CL-deltasigma-rubin-nersc.yml
