@@ -32,9 +32,6 @@ CLClusterEnsembleProfiles:
     r_min: 0.5  # Mpc
     r_max: 5.  # Mpc
     nbins: 5
-    delta_sigma_profile: true
-    shear_profile: false
-    magnification_profile: false
     # The example covers about 1 deg2, so all the clusters of a bin fall in
     # the same jackknife pixel: use the sample covariance instead
     cov_type: sample_covariance
