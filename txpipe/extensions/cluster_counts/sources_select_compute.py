@@ -30,8 +30,8 @@ class CLClusterShearCatalogs(PipelineStage):
         "chunk_rows": 100_000,  # rows to read at once from source cat
         "max_radius": 10.0,  # Mpc
         "delta_z": 0.1,
-        "redshift_cut_criterion": "zmode",  # pdf / mean / true / median
-        "redshift_weight_criterion": "zmode",  # pdf or point
+        "redshift_cut_criterion": "zmode",  # pdf / mean / true / median / tomo_bins
+        "redshift_weight_criterion": "zmode",  # pdf / mean / true / None
         "redshift_cut_criterion_pdf_fraction": 0.9,  # pdf / mean / true / median
         "subtract_mean_shear": False, # Not clear if this is useful for clusters
         "coordinate_system": "celestial",
@@ -41,6 +41,11 @@ class CLClusterShearCatalogs(PipelineStage):
         "use_radius": True,
         "max_angle": 30, # arcmin
         
+    }
+    metadetect_z_names = {
+        "ztrue": "redshift_true",
+        "zmode": "redshift",
+        "zmean": "zmean",
     }
 
     def run(self):
@@ -92,9 +97,6 @@ class CLClusterShearCatalogs(PipelineStage):
             nearby_gals, nearby_gal_dists = self.find_galaxies_near_each_cluster(data, clusters, tree, max_theta_max)
 
 
-            redshift_cut_criterion = self.config["redshift_cut_criterion"]
-            redshift_cut_criterion_pdf_fraction = self.config["redshift_cut_criterion_pdf_fraction"]
-            
             # Now we have all the galaxies near each cluster
             # We need to cut down to a specific radius for this
             # cluster
@@ -118,21 +120,8 @@ class CLClusterShearCatalogs(PipelineStage):
                 cluster_z = clusters[cluster_index]["redshift"]
                 cluster_ra = clusters[cluster_index]["ra"]
                 cluster_dec = clusters[cluster_index]["dec"]
-                z_info = self.get_z_gal_good(redshift_cut_criterion, data, gal_index)
                 # # Cut down to clusters that are in front of this galaxy
-                if redshift_cut_criterion == "pdf":
-                    # If we cut based on the PDF then we need the probability
-                    # that the galaxy z is behind the cluster to be greater
-                    # than a cut criterion.
-                    pdf_z = z_info[1]
-                    pdf = z_info[0]
-                    pdf_frac = pdf[:, pdf_z > cluster_z + delta_z].sum(axis=1) / pdf.sum(axis=1)
-                    z_good = pdf_frac > redshift_cut_criterion_pdf_fraction
-                elif redshift_cut_criterion in ["ztrue", "zmode", "zmean"]:
-                    zgal = z_info[0]
-                    z_good = zgal > cluster_z + delta_z
-                else:
-                    raise NotImplementedError("Not implemented other z cuts")
+                z_good = self.select_on_redshift(self.config["redshift_cut_criterion"], data, gal_index, cluster_z, delta_z)
                 
                 gal_index = gal_index[z_good]
                 distance = distance[z_good]
@@ -391,11 +380,10 @@ class CLClusterShearCatalogs(PipelineStage):
         sigma_c = None
         # Depending on whether we are using the PDF or not, choose
         # some keywords to give to compute_galaxy_weights
-        z_info = self.get_z_gal_good(criterion, data, index)
         if criterion == "pdf":
             # We need the z and PDF(z) arrays in this case
-            pdf_pz = z_info[0]
-            pdf_z = z_info[1]
+            pdf_z = data["pdf_z"]
+            pdf_pz = data["pdf_pz"][index]
             # suppress user warnings containing string "nSome source redshifts are lower than the cluster redshift"
             if is_deltasigma:
                 with warnings.catch_warnings():
@@ -407,9 +395,11 @@ class CLClusterShearCatalogs(PipelineStage):
                         pzpdf=pdf_pz,
                         )
         elif criterion in ["zmode", "ztrue", "zmean"]:
-            z_source = z_info[0]
             if is_deltasigma:
+                z_source = data[self.metadetect_z_names[criterion]][index]
                 sigma_c = clmm_cosmo.eval_sigma_crit(z_cluster, z_source)
+        elif criterion is None:
+            pass
         else:
             raise NotImplementedError(f"Not implemented {criterion} weighting")
             
@@ -490,7 +480,7 @@ class CLClusterShearCatalogs(PipelineStage):
         # format where the mode and mean are stored in a file called
         # "ancil". The columns are called zmode and zmean.
         redshift_cut_criterion = self.config["redshift_cut_criterion"]
-        redshift_weight_criterion = self.config["redshift_cut_criterion"]
+        redshift_weight_criterion = self.config["redshift_weight_criterion"]
         want_pdf = (redshift_cut_criterion == "pdf") or (redshift_weight_criterion == "pdf")
 
         # The truth redshifts are keps in the shear catalog not
@@ -586,21 +576,49 @@ class CLClusterShearCatalogs(PipelineStage):
 
 
 
-    def get_z_gal_good(self, criterion, data, gal_index):
-        zgal = None
-        pdf_z = None
-        if criterion == "pdf":
+    def select_on_redshift(self, redshift_cut_criterion, data, gal_index, cluster_z, delta_z):
+        """Selects which galaxies pass the redshift selection and return info used
+
+        Returns
+        -------
+        z_good : np.ndarray
+            Booloeans to filter gal_index for sources that pass the cut
+        """
+        if redshift_cut_criterion == "pdf":
+
             pdf_z = data["pdf_z"]
-            zgal = data["pdf_pz"][gal_index]
-        elif criterion == "ztrue":
-            zgal = data["redshift_true"][gal_index]
-        elif criterion == "zmode":
-            zgal = data["redshift"][gal_index]
-        elif criterion == "zmean":
-            zgal = data["zmean"][gal_index]
+            pdf = data["pdf_pz"][gal_index]
+            # If we cut based on the PDF then we need the probability
+            # that the galaxy z is behind the cluster to be greater
+            # than a cut criterion.
+            pdf_frac = pdf[:, pdf_z > cluster_z + delta_z].sum(axis=1) / pdf.sum(axis=1)
+            z_good = pdf_frac > self.config["redshift_cut_criterion_pdf_fraction"]
+
+        elif redshift_cut_criterion in ["ztrue", "zmode", "zmean"]:
+
+            zgal = data[self.metadetect_z_names[redshift_cut_criterion]][gal_index]
+            z_good = zgal > cluster_z + delta_z
+
+        elif redshift_cut_criterion == "tomo_bins":
+
+            tomo = data["tomography"][gal_index]
+            n_tomo_bins = tomo.attrs["nbin"]
+            tomo_edges = np.array(
+                [(tomo.attrs[f"zmin_{i}"], tomo.attrs[f"zmax_{i}"]) for i in range(nbin_source)]
+            )
+            source_tomo_inds = tomo["bin_00"][:]
+
+            # find minimum index of the tomo bins to be used
+            min_tomo_ind = (tomo_edges[:,0] <= cluster_z + delta_z).sum() - 1
+            # if cluster in last bin, change min_tomo_ind to include last bin
+            if tomo_edges[-1, 0] < cluster_z + delta_z < tomo_edges[-1, 1]:
+                min_tomo_ind -= 1
+            z_good = (source_tomo_inds>min_tomo_ind)*(source_tomo_inds>=0)
+
         else:
             raise NotImplementedError("Not implemented other z cuts")
-        return (zgal, pdf_z)
+        return z_good
+
 #def get_cluster_shear_catalogs_index_from_cluster_id(cluster_file, cluster_id):
 #    outfile = HDFFile(cluster_file, "r").file
 #    cond = outfile['catalog/cluster_id'][:] == cluster_id
