@@ -1,5 +1,5 @@
 from .base import TXComputeShearCalibrationBase
-from ..calibration_utils import metacal_variants, MetacalCalculator, band_variants
+from ..calibration_utils import metacal_variants, AnaCalCalculator
 from ..data_types import HDFFile
 import numpy as np
 from ceci.config import StageParameter
