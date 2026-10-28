@@ -2,7 +2,7 @@ import os
 import gc
 import numpy as np
 from ...base_stage import PipelineStage
-from ...data_types import ShearCatalog, HDFFile, PhotozPDFFile, FiducialCosmology, TomographyCatalog, ShearCatalog
+from ...data_types import ShearCatalog, HDFFile, PhotozPDFFile, FiducialCosmology, BinAssignments, ShearCatalog
 from ...calibration_utils import Calibrator
 from collections import defaultdict
 import yaml
@@ -18,7 +18,7 @@ class CLClusterShearCatalogs(PipelineStage):
         ("cluster_catalog", HDFFile),
         ("shear_catalog", ShearCatalog),
         ("fiducial_cosmology", FiducialCosmology),
-        ("shear_tomography_catalog", TomographyCatalog),
+        ("shear_bin_assignments", BinAssignments),
         ("source_photoz_pdfs", PhotozPDFFile),
     ]
 
@@ -459,9 +459,10 @@ class CLClusterShearCatalogs(PipelineStage):
         use_true_shear = self.config["use_true_shear"]
 
         # where and what to read from the shear catalog
+        shear_group = "shear"
         with self.open_input("shear_catalog", wrapper=True) as f:
-            shear_group = "shear"
             shear_cols, rename = f.get_primary_catalog_names(true_shear=use_true_shear)
+            is_metadetect = f.catalog_type == "metadetect"
 
         # load the shear calibration information
         # for the moment, load the average overall shear calibrator,
@@ -472,7 +473,6 @@ class CLClusterShearCatalogs(PipelineStage):
         # The same calibration should be used later for the actual shears.
         if self.rank == 0:
             print("Using single 2D shear calibration!")
-        _, shear_cal = Calibrator.load(self.get_input("shear_tomography_catalog"), null=use_true_shear)
         subtract_mean = self.config["subtract_mean_shear"]
 
 
@@ -526,8 +526,19 @@ class CLClusterShearCatalogs(PipelineStage):
         # We just want the values from the source bin. We will use
         # any selected object, so we just ask for bin >= 0.
         # (bin = -1 means non-selected)
-        tomo_group = "tomography"
+        tomo_groups = ("ns", )
         tomo_cols = ["bin"]
+
+        #if is_metadetect:
+        #    tomo_groups = ("2m", "1m", "ns", "1p", "2p")
+
+        tomo_iter = [
+            item
+            for tomo_set in (
+                ("shear_bin_assignments", tomo_grp, tomo_cols) for tomo_grp in tomo_groups
+            )
+            for item in tomo_set
+        ]
 
         # Loop through all these input files simultaneously.
         for s, e, data in self.combined_iterators(
@@ -538,12 +549,11 @@ class CLClusterShearCatalogs(PipelineStage):
                 "source_photoz_pdfs",
                 point_pz_group,
                 point_pz_cols,
-                "shear_tomography_catalog",
-                tomo_group,
-                tomo_cols,
-                *pdf_keywords,
+                *tomo_iter,
+                #"shear_bin_assignments", "ns", ['bin'],
                 parallel=True
         ):
+            print(data.keys())
             # For each chunk of data we also want to store the original
             # index.  This comes in useful later because we will cut
             # down here to just objects in the WL sample.
@@ -557,13 +567,17 @@ class CLClusterShearCatalogs(PipelineStage):
             # zmean or zmode to "redshift"
             for old, new in rename.items():
                 data[new] = data.pop(old)
+            # Calibration removed for now. It will be Eduardo's problem
+            """
             # Apply the shear calibration to this sample.
             # Optionally subtract the mean (of the whole WL sample,
             # not the local mean)
+            _, shear_cal = Calibrator.load(self.get_input("shear_tomography_catalog"), null=use_true_shear)
             data["g1"], data["g2"] = shear_cal.apply(data["g1"],
                                                      data["g2"],
                                                      subtract_mean=subtract_mean
             )
+            """
 
             # If we are in PDF mode then we need this extra info
             if want_pdf:
