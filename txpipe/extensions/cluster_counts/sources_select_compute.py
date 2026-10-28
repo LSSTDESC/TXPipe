@@ -18,7 +18,7 @@ class CLClusterShearCatalogs(PipelineStage):
         ("cluster_catalog", HDFFile),
         ("shear_catalog", ShearCatalog),
         ("fiducial_cosmology", FiducialCosmology),
-        ("shear_bin_assignments", BinAssignments),
+        ("shear_tomography_catalog", TomographyCatalog),
         ("source_photoz_pdfs", PhotozPDFFile),
     ]
 
@@ -529,6 +529,18 @@ class CLClusterShearCatalogs(PipelineStage):
         tomo_group = "tomography"
         tomo_cols = ["bin"]
 
+        #tomo_groups = ("ns", )
+        #if is_metadetect:
+        #    tomo_groups = ("2m", "1m", "ns", "1p", "2p")
+        #tomo_iter = [
+        #    item
+        #    for tomo_set in (
+        #        ("shear_bin_assignments", tomo_grp, tomo_cols) for tomo_grp in tomo_groups
+        #    )
+        #    for item in tomo_set
+        #]
+
+
         # Loop through all these input files simultaneously.
         for s, e, data in self.combined_iterators(
                 rows,
@@ -561,10 +573,12 @@ class CLClusterShearCatalogs(PipelineStage):
             # Optionally subtract the mean (of the whole WL sample,
             # not the local mean)
             #_, shear_cal = Calibrator.load(self.get_input("shear_tomography_catalog"), null=use_true_shear)
+            """
             data["g1"], data["g2"] = shear_cal.apply(data["g1"],
                                                      data["g2"],
                                                      subtract_mean=subtract_mean
             )
+            """
 
             # If we are in PDF mode then we need this extra info
             if want_pdf:
@@ -642,7 +656,6 @@ class CombinedClusterCatalog:
         """
         Initialise the CCC object by opening all the files.
         """
-        _, self.calibrator = Calibrator.load(shear_tomography_catalog)
         self.shear_cat = ShearCatalog(shear_catalog, "r")
         self.pz_cat = PhotozPDFFile(source_photoz_pdfs,"r").file
         self.cluster_catalog = HDFFile(cluster_catalog, "r").file
