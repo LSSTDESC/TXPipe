@@ -40,7 +40,7 @@ class CLClusterShearCatalogs(PipelineStage):
         "use_shape_noise": False,
         "use_radius": True,
         "max_angle": 30, # arcmin
-        
+        "use_all_metadetect_columns": True,
     }
     metadetect_z_names = {
         "ztrue": "redshift_true",
@@ -458,11 +458,36 @@ class CLClusterShearCatalogs(PipelineStage):
         rows = self.config["chunk_rows"]
         use_true_shear = self.config["use_true_shear"]
 
+        # to be used only when is_metadetect and use_all_metadetect_columns
+        _all_metadetect_groups = ("2m", "1m", "ns", "1p", "2p")
+
         # where and what to read from the shear catalog
         shear_group = "shear"
         with self.open_input("shear_catalog", wrapper=True) as f:
             shear_cols, rename = f.get_primary_catalog_names(true_shear=use_true_shear)
             is_metadetect = f.catalog_type == "metadetect"
+            #is_metadetect = f.catalog_type == "scalar_metadetect"
+            if is_metadetect and use_all_metadetect_columns:
+                # overwrites setup to get all columns
+                shear_cols = [
+                    f"{grp}/{col}"
+                    for grp in _all_metadetect_groups
+                    for col in ("true_g1", "true_g2", "ra", "dec", "weight")
+                ]
+                rename = {}
+
+        #tomo_groups = ("ns", )
+        #if is_metadetect:
+        #    tomo_groups = ("2m", "1m", "ns", "1p", "2p")
+        #tomo_iter = [
+        #    item
+        #    for tomo_set in (
+        #        ("shear_bin_assignments", tomo_grp, tomo_cols) for tomo_grp in tomo_groups
+        #    )
+        #    for item in tomo_set
+        #]
+
+
 
         # load the shear calibration information
         # for the moment, load the average overall shear calibrator,
@@ -528,18 +553,6 @@ class CLClusterShearCatalogs(PipelineStage):
         # (bin = -1 means non-selected)
         tomo_group = "tomography"
         tomo_cols = ["bin"]
-
-        #tomo_groups = ("ns", )
-        #if is_metadetect:
-        #    tomo_groups = ("2m", "1m", "ns", "1p", "2p")
-        #tomo_iter = [
-        #    item
-        #    for tomo_set in (
-        #        ("shear_bin_assignments", tomo_grp, tomo_cols) for tomo_grp in tomo_groups
-        #    )
-        #    for item in tomo_set
-        #]
-
 
         # Loop through all these input files simultaneously.
         for s, e, data in self.combined_iterators(
