@@ -1227,9 +1227,21 @@ class TXResponseInBins(PipelineStage):
         
     def data_iterator(self):
         with self.open_input("shear_catalog", wrapper=True) as f:
-            cols = f.get_column_name_variants("g1", "g2", "weight", "s2n", "T", "psf_T_mean")
             cat_type = f.catalog_type
+            if cat_type == "anacal":
+                # AnaCal shapes are e1/e2, plus the per-object columns that
+                # AnaCalCalculator needs for R_shape and R_detect. The shifted
+                # s2n variants let the S/N binning contribute to R_sel.
+                cols = [
+                    "e1", "e2", "weight", "T", "psf_T_mean",
+                    "e1_raw", "e2_raw", "wsel",
+                    "weight_dg1", "weight_dg2", "de1_dg1", "de2_dg2",
+                    "s2n", "s2n_1p", "s2n_1m", "s2n_2p", "s2n_2m",
+                ]
+            else:
+                cols = f.get_column_name_variants("g1", "g2", "weight", "s2n", "T", "psf_T_mean")
             tomo_cols = f.get_tomography_bin_columns()
+
 
         chunk_rows = self.config['chunk_rows']
         
