@@ -47,7 +47,6 @@ class TXBlinding(PipelineStage):
          - Optionally deletete unblinded data
         """
         import pyccl
-        import firecrown
         import sacc
 
         unblinded_fname = self.get_input("twopoint_data_real_raw")
