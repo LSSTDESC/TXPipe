@@ -18,22 +18,6 @@ def class_for_shear_catalog_type(shear_catalog_type):
         return MetaDetectShearCatalog
     elif shear_catalog_type == "scalar_metadetect":
         return ScalarMetaDetectCatalog
-    elif shear_catalog_type == "lensfit":
-        return LensfitShearCatalog
-    elif shear_catalog_type == "hsc":
-        return HSCShearCatalog
-    raise ValueError(f"Unknown catalog type: {shear_catalog_type}")
-
-
-def class_for_shear_catalog_type(shear_catalog_type):
-    if shear_catalog_type == "metacal":
-        return MetacalShearCatalog
-    elif shear_catalog_type == "simple":
-        return SimpleShearCatalog
-    elif shear_catalog_type == "metadetect":
-        return MetaDetectShearCatalog
-    elif shear_catalog_type == "scalar_metadetect":
-        return ScalarMetaDetectCatalog
     elif shear_catalog_type == "anacal":
         return AnacalShearCatalog
     elif shear_catalog_type == "lensfit":
@@ -405,6 +389,19 @@ class AnacalShearCatalog(ShearCatalog):
             "T",
             "weight"
         ] + [f"mag_{b}" for b in bands]
+
+    @staticmethod
+    def get_classifier_prefixes():
+        return [""] * 5
+
+    @staticmethod
+    def get_classifier_suffixes():
+        return ["", "_1p", "_1m", "_2p", "_2m"]
+
+    @staticmethod
+    def get_classifier_output_columns():
+        return ["bin", "bin_1p", "bin_1m", "bin_2p", "bin_2m"]
+
 
 class LensfitShearCatalog(ShearCatalog):
     def get_primary_catalog_names(self, true_shear=False):
