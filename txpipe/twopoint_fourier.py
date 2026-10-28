@@ -10,6 +10,7 @@ from .data_types import (
     ClusteringNoiseMaps,
     PNGFile,
     QPNOfZFile,
+    BinnedCatalog,
 )
 from ceci.config import StageParameter
 import numpy as np
@@ -880,9 +881,9 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
 
     name = "TXTwoPointFourierCatalog"
     inputs = [
-        ("binned_shear_catalog", HDFFile),
-        ("binned_lens_catalog", HDFFile),
-        ("binned_random_catalog", HDFFile),
+        ("binned_shear_catalog", BinnedCatalog),
+        ("binned_lens_catalog", BinnedCatalog),
+        ("binned_random_catalog", BinnedCatalog),
         ("tracer_metadata", HDFFile),
         ("shear_photoz_stack", QPNOfZFile),  # Photoz stack
         ("lens_photoz_stack", QPNOfZFile),  # Photoz stack

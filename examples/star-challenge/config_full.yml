@@ -82,10 +82,12 @@ TXLensNoiseMaps:
     chunk_rows:  100000
     pixelization: healpix
 
-TXAuxiliarySourceMaps:
+TXPSFMaps:
     chunk_rows:  100000
     sparse:  True
 
+
+TXFlagMaps: {}
 TXALensMaps:
     chunk_rows:  100000
     sparse:  True
