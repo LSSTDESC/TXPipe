@@ -121,6 +121,10 @@ class TXComputeSourceTomography(PipelineStage):
                 }
                 zbin = self.compute_tomography(data, info)
                 out_col[s:e] = zbin
+        f_in.close()
+        f_out.close()
+
+            
 
     def prepare_tomography(self):
         return {}
