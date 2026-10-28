@@ -135,9 +135,9 @@ inputs:
     #   mask: data/anacal_dp2_ingest/mask.hdf5
     #   full_shear_catalog: data/anacal_dp2_ingest/shear_catalog.hdf5
     mask:
-        id: 138
+        id: 324
     full_shear_catalog:
-        id: 143
+        id: 315
         
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted

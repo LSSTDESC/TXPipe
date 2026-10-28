@@ -92,6 +92,6 @@ inputs:
     shear_mask_ecdfs: /global/cfs/cdirs/lsst/utilities/data-registry/lsst_desc_working/user/smau/rubin_dp2_ecdfs_anacal_mask_0.2.0.hsp
     shear_mask_elais_s1: /global/cfs/cdirs/lsst/utilities/data-registry/lsst_desc_working/user/smau/rubin_dp2_elais_s1_anacal_mask_0.2.0.hsp
 
-resume: true
+resume: false
 log_dir: data/anacal_dp2_ingest/logs
 pipeline_log: data/anacal_dp2_ingest/ingest_log.txt
