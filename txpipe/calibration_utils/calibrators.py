@@ -742,7 +742,7 @@ class AnaCalibrator(MetaCalibrator):
         else:
             self.mu = np.array(mu, dtype=float) / R
     
-    def apply(self, g1, g2, weights=1.0, subtract_mean=True):
+    def apply(self, g1, g2, subtract_mean=True):
         """
         Calibrate a set of shears using the response matrix and 
         mean shear substraction
@@ -758,11 +758,11 @@ class AnaCalibrator(MetaCalibrator):
             whether to subtract mean shear (default True)
         """
         if not subtract_mean:
-            g1, g2 =  weights * [g1, g2] / self.R
+            g1, g2 =   [g1, g2] / self.R
         elif np.isscalar(g1):
-            g1, g2 = weights * [g1, g2] / self.R - self.mu
+            g1, g2 =  [g1, g2] / self.R - self.mu
         else:
-            g1, g2 =  weights * [g1, g2] / self.R - self.mu[:, np.newaxis]
+            g1, g2 =  [g1, g2] / self.R - self.mu[:, np.newaxis]
         return g1, g2
     
     def calibrate_variance_to_sigma_e(self, var_e):
