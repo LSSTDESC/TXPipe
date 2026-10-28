@@ -312,8 +312,9 @@ class TXFourierNamasterCovariance(PipelineStage):
             s3 = spins[2]
             s4 = spins[3]
 
-            cw = nmt.NmtCovarianceWorkspace()
-            cw.compute_coupling_coefficients(
+            # from_fields works in both namaster 2.x and 3.x (the empty
+            # constructor + compute_coupling_coefficients was removed in 3.0)
+            cw = nmt.NmtCovarianceWorkspace.from_fields(
                 getattr(self, f"f{s1}"),
                 getattr(self, f"f{s2}"),
                 getattr(self, f"f{s3}"),
@@ -325,23 +326,17 @@ class TXFourierNamasterCovariance(PipelineStage):
         import pymaster as nmt
 
         # These are accessed via getattr in compute_covariance_block
-        self.cw0000 = nmt.NmtCovarianceWorkspace()
-        self.cw0000.read_from(f"{self.scratch_dir}/cw0000.fits")
+        self.cw0000 = nmt.NmtCovarianceWorkspace.from_file(f"{self.scratch_dir}/cw0000.fits")
 
-        self.cw0020 = nmt.NmtCovarianceWorkspace()
-        self.cw0020.read_from(f"{self.scratch_dir}/cw0020.fits")
+        self.cw0020 = nmt.NmtCovarianceWorkspace.from_file(f"{self.scratch_dir}/cw0020.fits")
 
-        self.cw0022 = nmt.NmtCovarianceWorkspace()
-        self.cw0022.read_from(f"{self.scratch_dir}/cw0022.fits")
+        self.cw0022 = nmt.NmtCovarianceWorkspace.from_file(f"{self.scratch_dir}/cw0022.fits")
 
-        self.cw2020 = nmt.NmtCovarianceWorkspace()
-        self.cw2020.read_from(f"{self.scratch_dir}/cw2020.fits")
+        self.cw2020 = nmt.NmtCovarianceWorkspace.from_file(f"{self.scratch_dir}/cw2020.fits")
 
-        self.cw2022 = nmt.NmtCovarianceWorkspace()
-        self.cw2022.read_from(f"{self.scratch_dir}/cw2022.fits")
+        self.cw2022 = nmt.NmtCovarianceWorkspace.from_file(f"{self.scratch_dir}/cw2022.fits")
 
-        self.cw2222 = nmt.NmtCovarianceWorkspace()
-        self.cw2222.read_from(f"{self.scratch_dir}/cw2222.fits")
+        self.cw2222 = nmt.NmtCovarianceWorkspace.from_file(f"{self.scratch_dir}/cw2222.fits")
 
     def get_tracer_info(self, cosmo, meta, two_point_data):
         # Generates CCL tracers from n(z) information in the data file

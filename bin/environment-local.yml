@@ -20,7 +20,7 @@ dependencies:
   - mockmpi=0.8.*
   - mpi4py=4.1.*
   - mpich=4.3.*
-  - namaster=2.5.*
+  - namaster=3.0.*
   - numpy=2.3.*
   - pandas=2.3.*
   - photerr=1.5.*
