@@ -5,7 +5,7 @@ stages:
     aliases:
       shear_catalog: full_shear_catalog
       cut_shear_catalog: shear_catalog
-  - name: TXSourceSelectorAnaCal    # select and split objects into source bins
+  - name: TXAnacalSelection    # select and split objects into source bins
     nprocess: 64
   - name: TXSourceTomography
     threads_per_process: 8

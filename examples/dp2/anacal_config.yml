@@ -73,7 +73,7 @@ TXMockGaussianPhotozStack:
     sigmas: [0.2]
 
 
-TXSourceSelectorAnaCal:
+TXAnacalSelection:
     # AnaCal shear-response step size for selection bias correction — must
     # match the δγ used to build the on-disk photo-z distortions
     # (zmode_{1p,1m,2p,2m}) in xlens' photoZPipe (currently ±0.01 in
@@ -85,11 +85,11 @@ TXSourceSelectorAnaCal:
     mask_threshold: 0.04
 
     # AnaCal S/N cut (flux / flux_err).  Default in code is 5.0.
-    s2n_cut: 10.0
+    s2n_min: 10.0
 
     # Band-combined size cut (m00 + m20) / m00 > T_cut on fpfs1 moments.
     # Default 0.1.
-    T_cut: 0.15
+    T_min: 0.15
 
     # Band-combined shape magnitude cut |e| < emax (selector applies
     # esq < emax**2 on the ``esq`` column).
