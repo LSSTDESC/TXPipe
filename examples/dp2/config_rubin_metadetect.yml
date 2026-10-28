@@ -38,12 +38,6 @@ TXIngestRubinMetaDetect:
                 ]
     all_columns: True
 
-TXIngestDESCMetaDetectV1_1:
-        base_dir: "/pscratch/sd/e/esheldon/lsst-mdet-runs/run-dp2-v01.1"
-        exclusion_flag: true
-        all_columns: true
-        pre_response_shape_noise: 0.22
-
 
 TXGenerateTractList:
     dec_min: -40.0
@@ -88,11 +82,12 @@ TXComputeShearCalibrationMetadetectDP2:
     mfrac_cut: 0.1
     T_max: 20.0
 
-TXComputeShearCalibrationScalarMetadetectDP2:
+
+TXComputeShearCalibrationMetadetectDP2:
     input_pz: false
     true_z: false
     delta_gamma: 0.02
-    bands: [r, i, z]
+    bands: [g, r, i, z]
 
 TXDP2DESCSelection:
     max_psf_g: 0.05
@@ -238,6 +233,7 @@ PZAssignSpectroGalaxiesToCells:
     thresh_val: 1.0e-05
     name: PZAssignSpectroGalaxiesToCells
     thresh_val_err: 1.0e-05
+    wiggle: woo
 
 PZRedshiftsForCells:
     output_mode: default
@@ -277,7 +273,8 @@ PZSOMInformer:
     name: PZSOMInformer
 
 
-TXComputeShearCalibrationScalarMetadetect:
+
+TXComputeShearCalibrationMetadetect:
     delta_gamma: 0.02
 
 
