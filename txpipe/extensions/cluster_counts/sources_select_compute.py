@@ -2,8 +2,8 @@ import os
 import gc
 import numpy as np
 from ...base_stage import PipelineStage
-from ...data_types import ShearCatalog, HDFFile, PhotozPDFFile, FiducialCosmology, BinAssignments, ShearCatalog
-from ...calibration_utils import Calibrator
+from ...data_types import ShearCatalog, HDFFile, PhotozPDFFile, FiducialCosmology, TomographyCatalog, ShearCatalog
+#from ...shear_calibration import Calibrator
 from collections import defaultdict
 import yaml
 import ceci
@@ -526,19 +526,8 @@ class CLClusterShearCatalogs(PipelineStage):
         # We just want the values from the source bin. We will use
         # any selected object, so we just ask for bin >= 0.
         # (bin = -1 means non-selected)
-        tomo_groups = ("ns", )
+        tomo_group = "tomography"
         tomo_cols = ["bin"]
-
-        #if is_metadetect:
-        #    tomo_groups = ("2m", "1m", "ns", "1p", "2p")
-
-        tomo_iter = [
-            item
-            for tomo_set in (
-                ("shear_bin_assignments", tomo_grp, tomo_cols) for tomo_grp in tomo_groups
-            )
-            for item in tomo_set
-        ]
 
         # Loop through all these input files simultaneously.
         for s, e, data in self.combined_iterators(
@@ -549,11 +538,12 @@ class CLClusterShearCatalogs(PipelineStage):
                 "source_photoz_pdfs",
                 point_pz_group,
                 point_pz_cols,
-                *tomo_iter,
-                #"shear_bin_assignments", "ns", ['bin'],
+                "shear_tomography_catalog",
+                tomo_group,
+                tomo_cols,
+                *pdf_keywords,
                 parallel=True
         ):
-            print(data.keys())
             # For each chunk of data we also want to store the original
             # index.  This comes in useful later because we will cut
             # down here to just objects in the WL sample.
@@ -567,17 +557,14 @@ class CLClusterShearCatalogs(PipelineStage):
             # zmean or zmode to "redshift"
             for old, new in rename.items():
                 data[new] = data.pop(old)
-            # Calibration removed for now. It will be Eduardo's problem
-            """
             # Apply the shear calibration to this sample.
             # Optionally subtract the mean (of the whole WL sample,
             # not the local mean)
-            _, shear_cal = Calibrator.load(self.get_input("shear_tomography_catalog"), null=use_true_shear)
+            #_, shear_cal = Calibrator.load(self.get_input("shear_tomography_catalog"), null=use_true_shear)
             data["g1"], data["g2"] = shear_cal.apply(data["g1"],
                                                      data["g2"],
                                                      subtract_mean=subtract_mean
             )
-            """
 
             # If we are in PDF mode then we need this extra info
             if want_pdf:
