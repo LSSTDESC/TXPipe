@@ -385,10 +385,17 @@ class AnacalShearCatalog(ShearCatalog):
             "e2",
             "de1_dg1",
             "de2_dg2",
+            # needed by AnaCalCalculator for R_shape and R_detect
+            "e1_raw",
+            "e2_raw",
+            "wsel",
+            "weight_dg1",
+            "weight_dg2",
             "s2n",
             "T",
             "weight"
         ] + [f"mag_{b}" for b in bands]
+
 
     @staticmethod
     def get_classifier_prefixes():
