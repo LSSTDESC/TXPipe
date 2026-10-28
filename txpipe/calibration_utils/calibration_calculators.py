@@ -378,6 +378,16 @@ class MetaDetectCalculator(CalibrationCalculator):
         selections = []
         prefixes = [m + "/" for m in META_VARIANTS]
         for i, p in enumerate(prefixes):
+            # With metadetect, unlike the other catalog approaches,
+            # we might want to iterate through the variants in an outer
+            # loop and so all the data that we add in a chunk might be
+            # from one variant. So it's possible that this data chunk might
+            # not have anything from this variant in. Skip if so.
+            if p + "g1" not in data:
+                sel = np.zeros(0, dtype=int)
+                selections.append(sel)
+                continue
+
             data_p = _DataWrapper(data, prefix=p)
             sel = self.selector(data_p, *args, **kwargs)
             selections.append(sel)
@@ -506,6 +516,10 @@ class ScalarMetaDetectCalculator(CalibrationCalculator):
         selections = []
         prefixes = [m + "/" for m in SCALAR_META_VARIANTS]
         for i, p in enumerate(prefixes):
+            if p + "g1" not in data:
+                sel = np.zeros(0, dtype=bool)
+                selections.append(sel)
+                continue
             data_p = _DataWrapper(data, prefix=p)
             sel = self.selector(data_p, *args, **kwargs)
             selections.append(sel)
@@ -571,15 +585,18 @@ class ScalarMetaDetectCalculator(CalibrationCalculator):
         # 0: g1
         # 1: g2
         # 2: g1_1p
-        # 3: g2_1p
+        # 3: g2_1p - not used for calibration
         # 4: g1_1m
-        # 5: g2_1m
+        # 5: g2_1m - not used for calibration
+        # The two g2_ outputs are by-products of the fact that
+        # we do want to calculate the mean shear of the catalog,
+        # so have to process g2. But the response of g2 to 1-shear
+        # is assumed to be zero, and its respons to 2-shear is assumed
+        # to be the same as g1's response to 1-shear.
 
         # Compute the mean R components
         # (g1_1p - g1_1m) /  dg
         R = (mean_e[2] - mean_e[4]) / self.delta_gamma  
-
-        # 3 and 5 are not actually referenced.
 
         Neff = sum_weights[0] ** 2 / sum_sq_weights[0]
 
@@ -588,8 +605,6 @@ class ScalarMetaDetectCalculator(CalibrationCalculator):
         sigma_e = calibrator.calibrate_variance_to_sigma_e(var_e[0:2])
         sigma = calibrator.calibrate_sigma(np.sqrt(var_e[:2]))
         bin_stats = BinStats(counts[0], Neff, mu, sigma_e, sigma, calibrator)
-
-        # we just want the count of the 00 base catalog
         return bin_stats
 
 

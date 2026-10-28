@@ -1,7 +1,7 @@
 from .base_stage import PipelineStage
 from .data_types import ShearCatalog, TomographyCatalog, FiducialCosmology
 from .utils import read_shear_catalog_type, Splitter, rename_iterated
-from .shear_calibration import Calibrator
+from .calibration_utils import Calibrator
 from ceci.config import StageParameter
 import numpy as np
 
@@ -104,7 +104,7 @@ class TXShearCalibration(PipelineStage):
                     raise ValueError(f"To add fiducial distances the shear catalog needs a redshift")
             output_cols = [renames.get(col, col) for col in cat_cols]
             output_cols += extra_cols + mag_cols_out
-            extra_cal_cols = f.get_extra_calibration_columns()
+            extra_cal_cols = f.get_extra_calibration_columns(mode="apply")
         
 
         if add_fiducial_distance:

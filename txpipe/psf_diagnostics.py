@@ -6,7 +6,7 @@ import sys
 import os
 from .utils import read_shear_catalog_type
 from .plotting import manual_step_histogram
-from .shear_calibration import Calibrator
+from .calibration_utils import Calibrator
 
 
 STAR_PSF_USED = 0
@@ -1107,16 +1107,16 @@ class TXGalaxyStarShear(PipelineStage):
 
         with self.open_input("shear_catalog", wrapper=True) as f:
             primary_group = f.get_primary_catalog_group()
-            primary_bin = f.get_primary_tomography_bin_column()
-            extra_cal_cols = f.get_extra_calibration_columns()
+            extra_cal_cols = f.get_extra_calibration_columns(mode="apply")
+            tomo_col = f.get_tomography_bin_columns()[0]
 
         with self.open_input("shear_tomography_catalog", wrapper=True) as f:
-            source_bin = f.file[f"tomography/{primary_bin}"][:]
+            source_bin = f.file[f"tomography/{tomo_col}"][:]
             mask = source_bin != -1  # Only use the sources that pass the fiducial cuts
 
         with self.open_input("shear_catalog", wrapper=True) as f:
             g = f.file[primary_group]
-            extra_cal_cols = f.get_extra_calibration_columns()
+            extra_cal_cols = f.get_extra_calibration_columns(mode="apply")
 
             ra = g["ra"][:][mask]
             dec = g["dec"][:][mask]
@@ -1340,9 +1340,7 @@ class TXGalaxyStarDensity(PipelineStage):
             mask = source_bin != -1  # Only use the sources that pass the fiducial cuts
 
         with self.open_input("shear_catalog", wrapper=True) as f:
-            g = f.file["shear"]
-            if f.catalog_type == "metadetect":
-                g = g["ns"]
+            g = f.file[f.get_primary_catalog_group()]
             ra = g["ra"][:][mask]
             dec = g["dec"][:][mask]
 

@@ -22,7 +22,9 @@ stages:
     aliases:
         input: specz_catalog_pq
         output: spectroscopic_catalog
-  - name: TXSourceSelectorHSC       # select and split objects into source bins
+  - name: TXComputeShearCalibrationHSC       # select and split objects into source bins
+  - name: TXHSCSelection
+  - name: TXSimpleRedshiftSourceTomography
   - name: TXShearCalibration
   - name: TXTruthLensSelector
   - name: PZPrepareEstimatorLens
@@ -66,7 +68,7 @@ stages:
     #  classname: PZRailSummarize  
     #- name: PZRailSummarizeSource  # Run the DIR method on the lens sample to find n(z)
     #  classname: PZRailSummarize
-    #- name: TXSourceSelectorMetacal  # select and split objects into source bins
+    #- name: TXComputeShearCalibrationMetacal  # select and split objects into source bins
     #- name: Inform_NZDirSource     # Prepare the DIR method inputs for the source sample
     #  classname: Inform_NZDir
     #- name: TXLensCatalogSplitter 

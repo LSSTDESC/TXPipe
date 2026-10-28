@@ -342,7 +342,7 @@ def make_ratio_plot(corr, obs_data, obs_theory, fig=None):
         raise ValueError(f"Unknown correlation type {corr}")
 
     auto_only, half_only = corr_plot_flags[corr]
-    name = corr_names[corr] + "\ \mathrm{ ratios}"
+    name = corr_names[corr] + r"\ \mathrm{ ratios}"
 
     plt.rcParams["font.size"] = 14
     f = fig if fig is not None else plt.figure(figsize=(nx * 3.5, ny * 3))

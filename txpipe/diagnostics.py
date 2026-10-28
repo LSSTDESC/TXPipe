@@ -1,6 +1,6 @@
 from .base_stage import PipelineStage
 from .data_types import Directory, ShearCatalog, HDFFile, PNGFile, TomographyCatalog, TextFile
-from .shear_calibration import (
+from .calibration_utils import (
     Calibrator,
     MeanShearInBins,
     metadetect_variants,
@@ -193,7 +193,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
             self.config["shear_prefix"] = f.get_primary_catalog_prefix()
             self.config["bin_type"] = f.get_primary_tomography_bin_column()
             self.config["shear_tomo_cols"] = shear_tomo_cols
-            self.config["extra_calibration_columns"] = f.get_extra_calibration_columns()
+            self.config["extra_calibration_columns"] = f.get_extra_calibration_columns(mode="apply")
 
         # Collect together all the methods on this class called self.plot_*
         # They are all expected to be python coroutines - generators that
@@ -1230,7 +1230,6 @@ class TXResponseInBins(PipelineStage):
             cols = f.get_column_name_variants("g1", "g2", "weight", "s2n", "T", "psf_T_mean")
             cat_type = f.catalog_type
             tomo_cols = f.get_tomography_bin_columns()
-            rename = f.get_tomography_bin_column_rename_dict()
 
         chunk_rows = self.config['chunk_rows']
         
@@ -1244,7 +1243,7 @@ class TXResponseInBins(PipelineStage):
             tomo_cols,
             longest=True,
         )
-        return rename_iterated(it, rename)
+        return it
 
 
 

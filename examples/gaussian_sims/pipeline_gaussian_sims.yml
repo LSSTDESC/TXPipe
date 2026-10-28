@@ -19,10 +19,12 @@ stages:
       nodes: 6
       nprocess: 64
     - name: TXUniformDepthMap
-    - name: TXSourceSelectorMetadetect
+    - name: TXComputeShearCalibrationMetadetect
       nprocess: 64
       nodes: 2
-    - name: TXSourceTomography
+    - name: TXMetaDetectSelection
+    - name: TXSimpleRedshiftSourceTomography
+    - name: TXTrainRandomForestTomography
       threads_per_process: 4
     - name: TXShearCalibration
       nprocess: 7

@@ -1,7 +1,7 @@
 from ..utils import nanojansky_err_to_mag_ab, nanojansky_to_mag_ab, moments_to_shear, mag_ab_to_nanojansky
 import numpy as np
 import h5py
-from ..shear_calibration.names import META_VARIANTS
+from ..calibration_utils.names import META_VARIANTS
 from .dp_info import TXPIPE_COLUMNS
 
 def process_photometry_data(data):
