@@ -45,7 +45,7 @@ class CLClusterShearCatalogs(PipelineStage):
     metadetect_z_names = {
         "ztrue": "redshift_true",
         "zmode": "redshift",
-        "zmean": "zmean",
+        "zmean": "redshift",
     }
 
     def run(self):
@@ -121,7 +121,7 @@ class CLClusterShearCatalogs(PipelineStage):
                 cluster_ra = clusters[cluster_index]["ra"]
                 cluster_dec = clusters[cluster_index]["dec"]
                 # # Cut down to clusters that are in front of this galaxy
-                z_good = self.select_on_redshift(self.config["redshift_cut_criterion"], data, gal_index, cluster_z, delta_z)
+                z_good = self.select_on_redshift(data, gal_index, cluster_z, delta_z)
                 
                 gal_index = gal_index[z_good]
                 distance = distance[z_good]
@@ -476,6 +476,10 @@ class CLClusterShearCatalogs(PipelineStage):
         subtract_mean = self.config["subtract_mean_shear"]
 
 
+        ##########################
+        # redshift cols management
+        ##########################
+
         # where and what to read rom the PZ catalog. This is in a QP
         # format where the mode and mean are stored in a file called
         # "ancil". The columns are called zmode and zmean.
@@ -483,51 +487,63 @@ class CLClusterShearCatalogs(PipelineStage):
         redshift_weight_criterion = self.config["redshift_weight_criterion"]
         want_pdf = (redshift_cut_criterion == "pdf") or (redshift_weight_criterion == "pdf")
 
+        # to aggregate groups of redshift data to be read not in shear_catalog
+        z_info = []
+        additional_data_info = {}
+
+        if redshift_cut_criterion == "tomo_bins":
+            # where and what to read from the tomography catalog.
+            # We just want the values from the source bin. We will use
+            # any selected object, so we just ask for bin >= 0.
+            # (bin = -1 means non-selected)
+            #tomo_groups = ("ns", )
+            #if is_metadetect:
+            #    tomo_groups = ("2m", "1m", "ns", "1p", "2p")
+            #tomo_iter = [
+            #    item
+            #    for tomo_set in (
+            #        ("shear_bin_assignments", tomo_grp, tomo_cols) for tomo_grp in tomo_groups
+            #    )
+            #    for item in tomo_set
+            #]
+            z_info += ["shear_tomography_catalog", "tomography", ["bin"]]
+
+            with self.open_input("shear_tomography_catalog") as f:
+                tomo_attrs = f["tomography"].attrs
+                additional_data_info["tomo_bin_edges"] = np.array(
+                    [(tomo_attrs[f"zmin_{i}"], tomo_attrs[f"zmax_{i}"]) for i in range(tomo_attrs["nbin"])]
+                )
         # The truth redshifts are keps in the shear catalog not
         # the p(z) catalog. If we ask for that column we need to load it
         # here.
-        if redshift_cut_criterion == "ztrue" or redshift_weight_criterion == "ztrue":
-            with self.open_input("shear_catalog", wrapper=True) as f:
-                col = f.get_true_redshift_column()
-                shear_cols.append(col)
-                rename[col] = "redshift_true"
 
-        point_pz_group = "ancil"
-        # TODO: We may extend this to use other options for the point redshift
-        # in the cuts / weighting
-        point_pz_cols = ["zmode"]
-
-        if redshift_cut_criterion == "zmean" or redshift_weight_criterion == "zmean":
-            point_pz_cols.append("zmean")
-
-        rename["zmode"] = "redshift"
-
-        # if the PDF is available, load it
-        # use keyword to decide what to cut on 
-        # use keyword to decide what to weight on
-
-        if want_pdf:
-            # This is not actually a single column but an array
-            pdf_file = "source_photoz_pdfs"
-            pdf_group = "data"
-            pdf_cols = ["yvals"]
-            pdf_keywords = [pdf_file, pdf_group, pdf_cols]
-
-            # we will also need the z axis values in this case
-            with self.open_input("source_photoz_pdfs") as f:
-                # this data seems to be 1D in my QP file.
-                # but that's the kind of thing they might change.
-                pdf_z = np.squeeze(f["/meta/xvals"][0])
         else:
-            pdf_keywords = []
+            if "ztrue" in (redshift_cut_criterion, redshift_weight_criterion):
+                with self.open_input("shear_catalog", wrapper=True) as f:
+                    col = f.get_true_redshift_column()
+                    shear_cols.append(col)
+                    rename[col] = "redshift_true"
 
+            # check which point source estimate is added
+            z_cols = []
+            for z_type in ("zmode", "zmean", "zmedian"):
+                if z_type in (redshift_cut_criterion, redshift_weight_criterion):
+                    z_cols.append(z_type)
+                if z_type == redshift_cut_criterion:
+                    rename[z_type] = "redshift"
+            if z_cols:
+                # catalog, group, cols
+                z_info += ["source_photoz_pdfs", "ancil", z_cols]
 
-        # where and what to read from the tomography catalog.
-        # We just want the values from the source bin. We will use
-        # any selected object, so we just ask for bin >= 0.
-        # (bin = -1 means non-selected)
-        tomo_group = "tomography"
-        tomo_cols = ["bin"]
+            # for PDF
+            if want_pdf:
+                z_info += ["source_photoz_pdfs", "data", ["yvals"]]
+
+                # we will also need the z axis values in this case
+                with self.open_input("source_photoz_pdfs") as f:
+                    # this data seems to be 1D in my QP file.
+                    # but that's the kind of thing they might change.
+                    additional_data_info["pdf_z"] = np.squeeze(f["/meta/xvals"][0])
 
         # Loop through all these input files simultaneously.
         for s, e, data in self.combined_iterators(
@@ -535,48 +551,45 @@ class CLClusterShearCatalogs(PipelineStage):
                 "shear_catalog",
                 shear_group,
                 shear_cols,
-                "source_photoz_pdfs",
-                point_pz_group,
-                point_pz_cols,
-                "shear_tomography_catalog",
-                tomo_group,
-                tomo_cols,
-                *pdf_keywords,
+                *z_info,
                 parallel=True
         ):
             # For each chunk of data we also want to store the original
             # index.  This comes in useful later because we will cut
             # down here to just objects in the WL sample.
             data["original_index"] = np.arange(s, e, dtype=int)
-            # cut down to objects in the WL sample
-#            wl_sample = data["source_bin"] >= 0
-            wl_sample = data["bin"] >= 0
-            data = {name: col[wl_sample] for name, col in data.items()}
             # give the shear columns a unified name, whether
             # they are metacal, metadetect, etc., also rename
             # zmean or zmode to "redshift"
             for old, new in rename.items():
                 data[new] = data.pop(old)
-            # Apply the shear calibration to this sample.
-            # Optionally subtract the mean (of the whole WL sample,
-            # not the local mean)
-            data["g1"], data["g2"] = shear_cal.apply(data["g1"],
-                                                     data["g2"],
-                                                     subtract_mean=subtract_mean
-            )
 
             # If we are in PDF mode then we need this extra info
             if want_pdf:
-                data["pdf_z"] = pdf_z
                 # also rename this for clarity
                 data["pdf_pz"] = data.pop("yvals")
+
+            # add extra info that does not depend on the rows
+            data.update(additional_data_info)
+
+            ##################################
+            # This is Eduardo's problem now ;)
+            ##################################
+            # Apply the shear calibration to this sample.
+            # Optionally subtract the mean (of the whole WL sample, not the local mean)
+            #_, shear_cal = Calibrator.load(self.get_input("shear_tomography_catalog"), null=use_true_shear)
+            #data["g1"], data["g2"] = shear_cal.apply(data["g1"],
+            #                                         data["g2"],
+            #                                         subtract_mean=subtract_mean
+            #)
+
 
             # Give this chunk of data to the main run function
             yield s, e, data
 
 
 
-    def select_on_redshift(self, redshift_cut_criterion, data, gal_index, cluster_z, delta_z):
+    def select_on_redshift(self, data, gal_index, cluster_z, delta_z):
         """Selects which galaxies pass the redshift selection and return info used
 
         Returns
@@ -584,6 +597,7 @@ class CLClusterShearCatalogs(PipelineStage):
         z_good : np.ndarray
             Booloeans to filter gal_index for sources that pass the cut
         """
+        redshift_cut_criterion = self.config["redshift_cut_criterion"]
         if redshift_cut_criterion == "pdf":
 
             pdf_z = data["pdf_z"]
@@ -601,12 +615,8 @@ class CLClusterShearCatalogs(PipelineStage):
 
         elif redshift_cut_criterion == "tomo_bins":
 
-            tomo = data["tomography"][gal_index]
-            n_tomo_bins = tomo.attrs["nbin"]
-            tomo_edges = np.array(
-                [(tomo.attrs[f"zmin_{i}"], tomo.attrs[f"zmax_{i}"]) for i in range(nbin_source)]
-            )
-            source_tomo_inds = tomo["bin_00"][:]
+            tomo_edges = data["tomo_bin_edges"]
+            source_tomo_inds = data["bin"][gal_index]
 
             # find minimum index of the tomo bins to be used
             min_tomo_ind = (tomo_edges[:,0] <= cluster_z + delta_z).sum() - 1
