@@ -31,6 +31,8 @@ def class_for_shear_catalog_type(shear_catalog_type):
         return MetaDetectShearCatalog
     elif shear_catalog_type == "scalar_metadetect":
         return ScalarMetaDetectCatalog
+    elif shear_catalog_type == "anacal":
+        return AnacalShearCatalog
     elif shear_catalog_type == "lensfit":
         return LensfitShearCatalog
     elif shear_catalog_type == "hsc":
@@ -350,6 +352,34 @@ class ScalarMetaDetectCatalog(MetaDetectShearCatalog):
     def get_tomography_bin_column_rename_dict(self):
         return {f"bin_{v}":f"{v}/bin" for v in SCALAR_META_VARIANTS}
 
+
+class AnacalShearCatalog(ShearCatalog):
+    def get_primary_catalog_names(self, true_shear=False):
+        if true_shear:
+            shear_cols = ["true_g1", "true_g2", "ra", "dec", "weight"]
+            rename = {"true_g1": "g1", "true_g2":"g2"}
+        else:
+            shear_cols = ["e1", "e2", "ra", "dec", "weight"]
+            rename = {"e1":"g1", "e2":"g2"}
+        return shear_cols, rename
+
+    def get_diagnostic_shear_columns(self, bands=None, use_psf_originals=False):
+        if bands is None:
+            bands = self.get_bands()
+        return [
+            "dec",
+            "ra",
+            "psf_g1",
+            "psf_g2",
+            "psf_T_mean",
+            "e1",
+            "e2",
+            "de1_dg1",
+            "de2_dg2",
+            "s2n",
+            "T",
+            "weight"
+        ] + [f"mag_{b}" for b in bands]
 
 class LensfitShearCatalog(ShearCatalog):
     def get_primary_catalog_names(self, true_shear=False):

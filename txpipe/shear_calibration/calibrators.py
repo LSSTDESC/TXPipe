@@ -742,7 +742,7 @@ class AnaCalibrator(MetaCalibrator):
         else:
             self.mu = np.array(mu, dtype=float) / R
     
-    def apply(self, g1, g2, weights, subtract_mean=True):
+    def apply(self, g1, g2, weights=1.0, subtract_mean=True):
         """
         Calibrate a set of shears using the response matrix and 
         mean shear substraction
