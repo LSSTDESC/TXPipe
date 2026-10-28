@@ -43,6 +43,7 @@ class CLClusterRandoms(PipelineStage):
             clusters = {col: g[col][:] for col in g.keys()}
         n_clusters = clusters["ra"].size
 
+        # use rubin_dp2_shear_footprint
         footprint = healsparse.HealSparseMap.read(self.get_input("cluster_footprint"))
         print(f"Read {n_clusters} clusters and a footprint with nside {footprint.nside_sparse}")
 
