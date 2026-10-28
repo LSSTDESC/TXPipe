@@ -167,20 +167,20 @@ TXReponseInBins:
 
 
 
-{% for variant in ["ns", "1p", "1m"] %}
+{% for variant in ["ns", "1p", "1m", "2p", "2m"] %}
 PZAssignGalaxiesToCells_{{ variant }}:
     output_mode: default
     hdf5_groupname: 'shear/{{ variant }}'
     calculated_point_estimates:  []
     recompute_point_estimates: false
     inputs:
-    - flux_r
-    - flux_i
-    - flux_z
+    - r_pgaussFlux
+    - i_pgaussFlux
+    - z_pgaussFlux
     input_errs:
-    - flux_err_r
-    - flux_err_i
-    - flux_err_z
+    - r_pgaussFluxErr
+    - i_pgaussFluxErr
+    - z_pgaussFluxErr
     zero_points:
     - 31.4
     - 31.4
@@ -214,13 +214,13 @@ PZAssignSpectroGalaxiesToCells:
     calculated_point_estimates: []
     recompute_point_estimates: false
     inputs:
-    - flux_r
-    - flux_i
-    - flux_z
+    - r_pgaussFlux
+    - i_pgaussFlux
+    - z_pgaussFlux
     input_errs:
-    - flux_err_r
-    - flux_err_i
-    - flux_err_z
+    - r_pgaussFluxErr
+    - i_pgaussFluxErr
+    - z_pgaussFluxErr
     zero_points:
     - 31.4
     - 31.4
@@ -232,8 +232,6 @@ PZAssignSpectroGalaxiesToCells:
     set_threshold: true
     thresh_val: 1.0e-05
     name: PZAssignSpectroGalaxiesToCells
-    thresh_val_err: 1.0e-05
-    wiggle: woo
 
 PZRedshiftsForCells:
     output_mode: default
@@ -245,28 +243,23 @@ PZRedshiftsForCells:
     name: PZRedshiftsForCells
 
 
-
 PZSOMInformer:
     output_mode: default
     redshift_col: z
     hdf5_groupname: ''
     inputs:
-    - flux_r
-    - flux_i
-    - flux_z
+    - r_pgaussFlux
+    - i_pgaussFlux
+    - z_pgaussFlux
     input_errs:
-    - flux_err_r
-    - flux_err_i
-    - flux_err_z
+    - r_pgaussFluxErr
+    - i_pgaussFluxErr
+    - z_pgaussFluxErr
     zero_points:
     - 31.4
     - 31.4
     - 31.4
-    som_shape: [32, 32]
     som_minerror: 0.001
-    som_wrap: false
-    som_take_log: true
-    convert_to_flux: false
     set_threshold: true
     thresh_val: 1.0e-05
     thresh_val_err: 1.0e-05
