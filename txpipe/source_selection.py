@@ -193,6 +193,7 @@ class TXDP2RubinMetadetectSelection(TXMetaDetectSelection):
         "verbose": StageParameter(bool, False, msg="Whether to print out lots of information"),
     }
 
+    # Add more if needed
     columns = ["T", "s2n", "psf_T_mean", "flags", "mag_g", "mag_r", "mag_i", "mag_z", "gauss_T", "mfrac", "g1", "g2", "weight", "is_primary"]
 
     def compute_selection(self, start, end, data):
