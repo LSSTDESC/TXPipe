@@ -10,7 +10,7 @@ dependencies:
   - firecrown=1.7.*
   - fitsio=1.3.*
   - h5py=3.15.*=mpi_mpich_*
-  - healpy=1.18.*
+  - healpy=1.20.*
   - healsparse=1.15.*
   - jax=0.7.*
   - jaxlib=0.7.*
