@@ -51,7 +51,7 @@ class HOSFSB(HOSStage):
     }
 
     def run(self):
-        import fsb_2fields
+        import fsb
         import healpy
 
         # Read configuration information. Available values for this
@@ -64,7 +64,7 @@ class HOSFSB(HOSStage):
         density_maps, nbin_lens = self.load_overdensity_maps(set_bad_pixels_to_zero=True)
 
         # Build the array of filters to be applied
-        filters = fsb_2fields.get_filters(nfilters, pixel_scheme.nside)
+        filters = fsb.get_filters(nfilters, pixel_scheme.nside)
 
         # TODO: Parallelize this loop
         # TODO: Add tomo bin cross-correlations
@@ -94,14 +94,14 @@ class HOSFSB(HOSStage):
         filters : list
             The list of filters to be applied to the density map.
         """
-        import fsb_2fields
+        import fsb
 
         # Read more configuration information
         ells_per_bin = self.config["ells_per_bin"]
         include_n32 = self.config["include_n32"]
 
         # Initialize the main calculator object
-        calculator = fsb_2fields.FSB(density_map, mask, filters, ells_per_bin=ells_per_bin)
+        calculator = fsb.FSB(density_map, mask, filters, ells_per_bin=ells_per_bin)
 
         # get the ell values for the spectrum
         ells = calculator.bb.get_effective_ells()
@@ -115,7 +115,7 @@ class HOSFSB(HOSStage):
         # could generate it by passing the pairs of maps to
         # the calculator above and calling get_full_cov on that.
         # This would also give use the cross-FSB
-        cov = calculator.get_full_cov(n32=include_n32)
+        cov = calculator.get_cov_auto(n222=True, n32=include_n32, insquares=False)
 
         # store the set of measurements           
         measurement = (

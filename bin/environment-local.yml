@@ -10,7 +10,7 @@ dependencies:
   - firecrown=1.7.*
   - fitsio=1.3.*
   - h5py=3.15.*=mpi_mpich_*
-  - healpy=1.18.*
+  - healpy=1.20.*
   - healsparse=1.15.*
   - jax=0.7.*
   - jaxlib=0.7.*
@@ -20,7 +20,7 @@ dependencies:
   - mockmpi=0.8.*
   - mpi4py=4.1.*
   - mpich=4.3.*
-  - namaster=2.5.*
+  - namaster=3.0.*
   - numpy=2.3.*
   - pandas=2.3.*
   - photerr=1.5.*
