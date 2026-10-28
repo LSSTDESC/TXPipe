@@ -183,8 +183,8 @@ class TXHSCSelection(TXSimpleSelection):
         return cutter.sel
 
 
-class TXDP2Selection(TXMetaDetectSelection):
-    name = "TXDP2Selection"
+class TXDP2RubinMetadetectSelection(TXMetaDetectSelection):
+    name = "TXDP2RubinMetadetectSelection"
 
     config_options = {
         "chunk_rows": StageParameter(int, 10_000, msg="Number of rows to process at once"),
@@ -260,6 +260,10 @@ class TXDP2DESCSelection(TXScalarMetaDetectSelection):
         "s2n_min": StageParameter(float, default=10.0, msg="Minimum signal-to-noise ratio for object selection"),
         "s2n_max": StageParameter(float, default=100.0, msg="Maximum signal-to-noise ratio for object selection"),
         "mfrac_max": StageParameter(float, default=0.1, msg="Maximum mask fraction for object selection"),
+        "i_min":StageParameter(float, default=18.2, msg="Minimum i-band magnitude"),
+        "i_max":StageParameter(float, default=23.5, msg="Maximum i-band magnitude"),
+        "r_min":StageParameter(float, default=15.2, msg="Minimum g-band magnitude"),
+        "r_max":StageParameter(float, default=30., msg="Maximum g-band magnitude"),
     }
     def compute_selection(self, start, end, data):
         # shortcut if no data
@@ -279,32 +283,43 @@ class TXDP2DESCSelection(TXScalarMetaDetectSelection):
         s2n_min = config["s2n_min"]
         s2n_max = config["s2n_max"]
         mfrac_max = config["mfrac_max"]
+        i_min = config["i_min"]
+        i_max = config["i_max"]
+        r_min = config["r_min"]
+        r_max = config["r_max"]
 
         T_ratio = data["T"] / data["psf_T_mean"]
 
         cutter = Cutter(data["ra"].size, verbose=config["verbose"])
         cutter.keep(data["is_primary"] == True, "is_primary")
         # Basic cuts
-        cutter.keep(data["flags"] == 0, "flags")
-        cutter.keep(data["mfrac"] < mfrac_max, "mfrac")
-
+        cutter.keep(data["flags"] == 0, "flags == 0")
+        cutter.keep(data["mfrac"] < mfrac_max, f"mfrac < {mfrac_max}")
+        
         # Image quality cuts
         psfrec_gmax = np.maximum(data['psfrec_g1'], data['psfrec_g2'])
-        cutter.keep(np.abs(psfrec_gmax) < max_psf_g, "psf ellipticity")
+        cutter.keep(np.abs(psfrec_gmax) < max_psf_g, f"psf |ellipticity| max < {max_psf_g}")
 
         # Sanity cuts on color and size; somewhat arbitrary at this stage
-        cutter.keep((data["rmi"] > rmi_min) & (data["rmi"] < rmi_max), "r-i color")
-        cutter.keep((data["imz"] > imz_min) & (data["imz"] < imz_max), "i-z color")
-        cutter.keep(data["T"] < T_max, "T maximum")
-        cutter.keep(T_ratio < Tratio_max, "T ratio maximum")
-        cutter.keep(data["s2n"] < s2n_max, "S/N maximum")
+        cutter.keep((data["rmi"] > rmi_min) & (data["rmi"] < rmi_max), f"r-i color in [{rmi_min}, {rmi_max}]")
+        cutter.keep((data["imz"] > imz_min) & (data["imz"] < imz_max), f"i-z color in [{imz_min}, {imz_max}]")
+        cutter.keep(data["T"] < T_max, f"T < {T_max}")
+        cutter.keep(T_ratio < Tratio_max, f"T / T psf < {Tratio_max}")
+        cutter.keep(data["s2n"] < s2n_max, f"S/N < {s2n_max}")
+
+        # Magnitude cuts
+        cutter.keep[data["mag_i"] > i_min, f"i > {i_min}"]
+        cutter.keep[data["mag_r"] > r_min, f"r > {r_min}"]
+        cutter.keep[data["mag_i"] > i_max, f"i < {i_max}"]
+        cutter.keep[data["mag_r"] < r_max, f"r < {r_max}"]
+
 
         # Good ellipticities
-        cutter.keep(data["g_flags"] == 0, "ellipticity flags")
+        cutter.keep(data["g_flags"] == 0, "ellipticity flags = 0")
 
         # Galaxy cuts
-        cutter.keep(T_ratio > Tratio_min, "T ratio minimum")
-        cutter.keep(data["s2n"] > s2n_min, "S/N minimum")
+        cutter.keep(T_ratio > Tratio_min, f"T / T psf > {Tratio_min}")
+        cutter.keep(data["s2n"] > s2n_min, f"S/N > {s2n_min}")
 
         return cutter.sel
 
