@@ -5,11 +5,13 @@ stages:
     aliases:
       shear_catalog: full_shear_catalog
       cut_shear_catalog: shear_catalog
-  - name: TXAnacalSelection    # select and split objects into source bins
+  - name: TXAnacalSelection                  # non-redshift cuts, baseline + ±γ variants
     nprocess: 64
-  - name: TXSourceTomography
-    threads_per_process: 8
-  - name: TXShearCalibration       # Calibrate and split the source sample tomographically
+  - name: TXSimpleRedshiftSourceTomography   # bins from mean_z and mean_z_{1p,1m,2p,2m}
+    nprocess: 64
+  - name: TXComputeShearCalibrationAnacal    # per-bin AnaCal response
+    nprocess: 64
+  - name: TXShearCalibration                 # Calibrate and split the source sample tomographically
     nprocess: 64
   - name: TXSourceMaps             # make source g1 and g2 maps
     nprocess: 1
