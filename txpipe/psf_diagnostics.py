@@ -6,7 +6,7 @@ import sys
 import os
 from .utils import read_shear_catalog_type
 from .plotting import manual_step_histogram
-from .shear_calibration import Calibrator
+from .calibration_utils import Calibrator
 
 
 STAR_PSF_USED = 0

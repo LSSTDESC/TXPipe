@@ -1,6 +1,6 @@
 from .base import TXSourceSelectorBase
 from .base import select_weak_lensing_sample, select_tomographic_weak_lensing_sample
-from ..shear_calibration import LensfitCalculator, band_variants
+from ..calibration_utils import LensfitCalculator, band_variants
 import numpy as np
 from ceci.config import StageParameter
 

@@ -1,6 +1,6 @@
 from .base import TXSourceSelectorBase
 from .base import select_weak_lensing_sample, select_tomographic_weak_lensing_sample
-from ..shear_calibration import (
+from ..calibration_utils import (
     scalar_metadetect_variants,
     ScalarMetaDetectCalculator,
     band_variants,
