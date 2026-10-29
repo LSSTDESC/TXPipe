@@ -4,7 +4,7 @@ camb
 cosmosis
 dask
 dm-tree
-firecrown>=1.4.0
+firecrown>=1.15
 fitsio
 h5py=*=mpi_mpich_*
 healpix
