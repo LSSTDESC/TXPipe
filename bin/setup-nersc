@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+
+# Inherited from cosmosis - checks if the script has been executed
+# insteadf of sourced, under ZSH, KSH, and BASH
+([[ -n $ZSH_EVAL_CONTEXT && $ZSH_EVAL_CONTEXT =~ :file$ ]] || 
+[[ -n $KSH_VERSION && $(cd "$(dirname -- "$0")" &&
+printf '%s' "${PWD%/}/")$(basename -- "$0") != "${.sh.file}" ]] || 
+[[ -n $BASH_VERSION ]] && (return 0 2>/dev/null)) && sourced=1 || sourced=0
+
+
+
+# This script should only be sourced
+if [[ "${sourced}" == "0" ]]
+then
+    echo "You must source this script to use it, not execute it:"
+    echo "source ${BASH_SOURCE[0]}"
+    exit
+fi
+
+
+# switch these on when finished testing:
+# export DESCPYTHONUSERBASE=$(realpath $(dirname "${BASH_SOURCE[0]}")/..)/local
+# source /global/common/software/lsst/common/miniconda/setup_current_python.sh
+# unset PYTHONNOUSERSITE
+
+echo "Using the central DESC conda environment."
+echo "Install extra packages into ${DESCPYTHONUSERBASE} using:"
+echo "    pip install --user <packages>"
