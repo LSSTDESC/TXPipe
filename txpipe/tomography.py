@@ -6,7 +6,7 @@ from .calibration_utils import band_variants
 import numpy as np
 
 class TXTrainRandomForestTomography(PipelineStage):
-    """Train a random forest classifier to assign source galaxies to tomographic bins based on their photometry.
+    """Train a random forest to assign source galaxies to tomographic bins based on photometry.
 
     The trained classified is saved as a pickle file to be used by the selector stage(s).
     This was originally merged in with the selector stage, but it can become slow in situations where the spectroscopic 
