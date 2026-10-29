@@ -1,7 +1,15 @@
 #!/usr/bin/env bash
 
+# This line must stay first, and be valid in both bash/zsh and csh/tcsh. csh parses
+# a script line by line, so it reaches this line before it hits any bash syntax.
+# In csh "$?shell" is 1 (the variable "shell" is set); in bash/zsh it is "<status>shell",
+# so the test is false.  In csh the "goto" to a non-existent label aborts the script
+# without exiting (and so killing) the user's interactive shell; the label name is
+# what shows up in the resulting error message.
+test "$?shell" = 1 && echo "ERROR: setup-nersc does not work in csh or tcsh. Switch to bash or zsh and run: source bin/setup-nersc" && goto ERROR_this_script_requires_bash_or_zsh
+
 # Inherited from cosmosis - checks if the script has been executed
-# insteadf of sourced, under ZSH, KSH, and BASH
+# instead of sourced, under ZSH, KSH, and BASH
 ([[ -n $ZSH_EVAL_CONTEXT && $ZSH_EVAL_CONTEXT =~ :file$ ]] || 
 [[ -n $KSH_VERSION && $(cd "$(dirname -- "$0")" &&
 printf '%s' "${PWD%/}/")$(basename -- "$0") != "${.sh.file}" ]] || 
@@ -17,12 +25,10 @@ then
     exit
 fi
 
-
-# switch these on when finished testing:
-# export DESCPYTHONUSERBASE=$(realpath $(dirname "${BASH_SOURCE[0]}")/..)/local
-# source /global/common/software/lsst/common/miniconda/setup_current_python.sh
-# unset PYTHONNOUSERSITE
+export DESCPYTHONUSERBASE=$(realpath $(dirname "${BASH_SOURCE[0]}")/..)/local
+source /global/common/software/lsst/common/miniconda/setup_current_python.sh
+unset PYTHONNOUSERSITE
 
 echo "Using the central DESC conda environment."
-echo "Install extra packages into ${DESCPYTHONUSERBASE} using:"
+echo "Install any extra packages into ${DESCPYTHONUSERBASE} using:"
 echo "    pip install --user <packages>"
