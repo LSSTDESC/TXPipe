@@ -49,7 +49,9 @@ class TXDiagnosticQuantiles(PipelineStage):
     }
 
     def run(self):
-        _, da = import_dask()
+        # Dask's percentile algorithm is not very accurate in
+        # the tails, so we fall back to numpy for now.
+        _, da = import_dask(actually_numpy=True)
 
         # Configuration parameters
         chunk_rows = self.config["chunk_rows"]
@@ -65,11 +67,7 @@ class TXDiagnosticQuantiles(PipelineStage):
                 "s2n": f"{group}/s2n",
                 "T": f"{group}/T",
             }
-            psf_suffix = (
-                "_original"
-                if self.config["use_psf_originals"] and f.catalog_type.endswith("metadetect")
-                else ""
-            )
+            psf_suffix = "_original" if self.config["use_psf_originals"] else ""
             col_names["psf_g1"] = f"{group}/psf_g1{psf_suffix}"
 
         for band in self.config["bands"]:
@@ -236,7 +234,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         # Now loop through each chunk of input data, one at a time.
         # Each time we get a new segment of data, which goes to all the plotters
         for start, end, data in it:
-            print(f"Read data {start} - {end}")
+            print(f"Process {self.rank} read data {start:,} - {end:,}")
             # This causes each data = yield statement in each plotter to
             # be given this data chunk as the variable data.
 
@@ -482,6 +480,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.xlabel("SNR")
         plt.ylabel("Mean g")
         plt.legend()
+        plt.xscale("log")
         plt.tight_layout()
         fig.close()
 
@@ -734,7 +733,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 )
                 plt.bar(
                     mids,
-                    weight,
+                    weight * (count.sum()/weight.sum()),
                     width=width,
                     align="center",
                     color="none",
@@ -743,7 +742,6 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 )
                 plt.xlabel(f"g{i}")
                 plt.ylabel("Count")
-                plt.ylim(0, 1.1 * max(count1))
                 plt.legend()
 
     def plot_snr_histogram(self):
