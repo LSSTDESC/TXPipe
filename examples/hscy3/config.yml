@@ -384,8 +384,8 @@ TXHSCSelection:
     input_pz: true
     true_z: false
     bands: [i]    #used for selection
-    T_cut: 0.0
-    s2n_cut: 10.0
+    T_min: 0.0
+    s2n_min: 10.0
     max_rows: 10000000000
     source_zbin_edges: [0.5, 1.5, 2.5, 3.5, 4.5]
     shear_catalog_type: hsc

@@ -182,8 +182,8 @@ TXTrainRandomForestTomography:
 TXMetaDetectSelection:
     input_pz: false
     bands: [r, i, z] #used for selection
-    T_cut: 0.
-    s2n_cut: 0.0
+    T_min: 0.
+    s2n_min: 0.0
     max_rows: 1000
     delta_gamma: 0.02
     source_zbin_edges: [0.19285902, 0.40831394, 0.65503818, 0.94499109, 

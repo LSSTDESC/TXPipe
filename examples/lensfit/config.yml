@@ -274,8 +274,8 @@ TXTrainRandomForestTomography:
 TXLensfitSelection:
     input_pz: true
     bands: [r, i] #used for selection
-    T_cut: 0.25
-    s2n_cut: 5.0
+    T_min: 0.25
+    s2n_min: 5.0
     max_rows: 1000
     delta_gamma: 0.02
     source_zbin_edges: [0.1, 0.5, 1.0, 2.0]
