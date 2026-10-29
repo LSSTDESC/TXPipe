@@ -1,9 +1,9 @@
 Lensfit catalogs
 ================
 
-Lensfit is the shear measurement method used in KiDS and CFHTLenS. In TXPipe it is used in re-analysis of KiDS data. TXPipe reads these catalogs with the LensfitShearCatalog class.
+Lensfit is the shear measurement method used in KiDS and CFHTLenS. In TXPipe it is used in re-analysis of KiDS data. TXPipe reads these catalogs with the ``LensfitShearCatalog`` class.
 
-Lensfit has a simpler calibration scheme than metacal or metadetect and does not involve variant catalogs: calibration uses the per-object multiplicative bias m, and additive terms c1 and c2, which are averaged over each tomographic bin. The additive terms are different in the north and south of the survey, so the declination is also needed (this is what :py:meth:`~txpipe.data_types.ShearCatalog.get_extra_calibration_columns` returns).
+Lensfit has a simpler calibration scheme than metacal or metadetect and does not involve variant catalogs: calibration uses the per-object multiplicative bias ``m``, and additive terms ``c1`` and ``c2``, which are averaged over each tomographic bin. The additive terms are different in the north and south of the survey, so the declination is also needed (this is what :py:meth:`~txpipe.data_types.ShearCatalog.get_extra_calibration_columns` returns).
 
 The selection stage is :py:class:`~txpipe.source_selection.TXLensfitSelection` and the calibration stage is :py:class:`~txpipe.shear_calibration.lensfit.TXComputeShearCalibrationLensfit`.
 

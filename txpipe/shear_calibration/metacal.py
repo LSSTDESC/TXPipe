@@ -98,7 +98,7 @@ class TXComputeShearCalibrationDESY3(TXComputeShearCalibrationMetacal):
     """
     Source selection and tomography for DESY3 catalogs
 
-        DES Source selection follows the metacal selection, except
+    DES Source selection follows the metacal selection, except
     that we do not attempt to re-create the SOM-based tomographic
     bin assignment as the underlying data for this does not seem to be public.
 

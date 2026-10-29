@@ -822,9 +822,11 @@ class TXDESISelector(PipelineStage):
     Select lens galaxies from a DESI spectroscopic FITS catalog.
 
     Reads a raw DESI FITS catalog and applies:
-    TODO: ADJUST NECESSARY CUTS FOR REAL DATA
-      - Redshift range cut
-      - Optional survey mask
+
+    - Redshift range cut
+    - Optional survey mask
+
+    TODO: adjust the cuts as needed for real data.
 
     Outputs a standardized FITS file consumed by TXIngestDESI.
     """

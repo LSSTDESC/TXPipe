@@ -1,9 +1,9 @@
 Scalar metadetect catalogs
 ==========================
 
-Scalar metadetect catalogs are a simplified version of :ref:`Metadetect catalogs` used for the DESC DP2 metadetection catalogs, in which the response to shear is assumed to be a scalar multiple of the identity matrix, so that it is only necessary to apply shear in one direction. They are read with the ScalarMetaDetectCatalog class.
+Scalar metadetect catalogs are a simplified version of :ref:`Metadetect catalogs` used for the DESC DP2 metadetection catalogs, in which the response to shear is assumed to be a scalar multiple of the identity matrix, so that it is only necessary to apply shear in one direction. They are read with the ``ScalarMetaDetectCatalog`` class.
 
-Only three variants are stored, because the shear response is the same in both directions: "ns" (no shear), "1p" and "1m". As for the full metadetect catalogs, each variant is a separate sub-group of the "shear" group containing a complete catalog with its own number of objects. The group has the attribute catalog_type = "scalar_metadetect"; if it is missing the type is identified by the presence of a "1p" sub-group without a "2p" one.
+Only three variants are stored, because the shear response is the same in both directions: "ns" (no shear), "1p" and "1m". As for the full metadetect catalogs, each variant is a separate sub-group of the "shear" group containing a complete catalog with its own number of objects. The group has the attribute ``catalog_type = "scalar_metadetect"``; if it is missing the type is identified by the presence of a "1p" sub-group without a "2p" one.
 
 The selection stages are :py:class:`~txpipe.source_selection.TXScalarMetaDetectSelection` and :py:class:`~txpipe.source_selection.TXDP2DESCSelection`, and the calibration stage is :py:class:`~txpipe.shear_calibration.scalar_metadetect.TXComputeShearCalibrationScalarMetadetect`.
 

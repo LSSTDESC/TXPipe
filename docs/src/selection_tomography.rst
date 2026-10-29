@@ -57,8 +57,8 @@ The selection and calibration stages you need depend on the type of shear catalo
 The base class ``TXComputeShearCalibration`` cannot be used directly; use one of the subclasses.
 
 
-Selection
----------
+Step 1: selection
+-----------------
 
 :py:class:`~txpipe.source_selection.TXSimpleSelection` applies a flag cut, a minimum signal-to-noise cut ``s2n_min`` and a minimum size cut ``T_min`` on the ratio of the object size to the PSF size. The subclasses for each catalog type use the same cuts, applied to each variant of the catalog (see below).
 
@@ -82,8 +82,8 @@ Writing your own selection
 To make a new selection, subclass one of the selection stages and override ``compute_selection``, which is given a chunk of data (a dictionary of arrays) and returns a boolean array. Use the helper class ``Cutter`` to keep a running record of how many objects each cut removes. Set the class attribute ``columns`` to list the catalog columns that the cuts need. :py:class:`~txpipe.source_selection.TXDP2DESCSelection` is a good example to follow.
 
 
-Tomography
-----------
+Step 2: tomography
+------------------
 
 There are three ways to get tomographic bins.
 
@@ -98,8 +98,8 @@ For metacal and metadetect catalogs, bins have to be assigned to every sheared v
 Whatever the method, the result is a :ref:`bin assignments file<Tomographic bin assignments>`, ``shear_bin_assignments``, which includes the number of bins and the bin edges.
 
 
-Calibration
------------
+Step 3: calibration
+-------------------
 
 The ``TXComputeShearCalibration*`` stages read the shear catalog, the selection and the bin assignments, work out for each tomographic bin which objects are both selected and in that bin, and compute the calibration quantities (see :ref:`Shear calibration guide`). They write the :ref:`shear tomography catalog<Shear tomography catalogs>`. The configuration options differ between catalog types:
 
@@ -109,8 +109,8 @@ The ``TXComputeShearCalibration*`` stages read the shear catalog, the selection 
 The calibration stages combine the cuts, so that the sample used for calibration is exactly the one used for science; if you change the selection or the tomography you must re-run the calibration stage.
 
 
-Example pipelines
------------------
+Examples of the stage chain
+---------------------------
 
 A metadetect pipeline with random-forest tomography (``examples/metadetect/pipeline.yml``):
 

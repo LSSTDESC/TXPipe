@@ -65,13 +65,13 @@ def choose_ell_bins(**config):
     choosing an ell binning scheme.
 
     These three methods are attempted, in this order:
+
     1. If 'ell_edges' is provided, use those edges directly.
     2. If 'ell_min', 'ell_max', and 'n_ell' are provided, use those to
        create evenly spaced bins, in log-space by default, or linear
        space if 'ell_spacing' is set to 'linear' or 'lin'.
-
     3. If 'bandpower_width' and 'nside' are provided, use those to
-         create bins of the given width, using nmt.NmtBin.from_nside_linear.
+       create bins of the given width, using nmt.NmtBin.from_nside_linear.
 
     Parameters
     ----------

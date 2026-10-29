@@ -3,8 +3,8 @@ Rubin DP2 data
 
 TXPipe can analyse the metadetect shear catalogs from Rubin Data Preview 2 (DP2), both as released by Rubin and as re-processed by DESC. The example pipelines are in ``examples/dp2``. The workflow has two parts: ingestion, which reads the Rubin/DESC data products and makes TXPipe-format files, and analysis.
 
-Ingestion
----------
+DP2 ingestion
+-------------
 
 Ingestion converts the DP2 products into the TXPipe formats described in :ref:`File Types`. It reads butler or parquet files, so it normally has to be run in an environment with the LSST science pipelines, such as the Rubin Science Platform (see :ref:`Stages requiring the LSST environment`). The stages are:
 
