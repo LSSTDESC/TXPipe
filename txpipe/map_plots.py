@@ -68,7 +68,7 @@ class TXMapPlots(PipelineStage):
         nbin_source = psf_maps.file["maps"].attrs["nbin_source"]
         projection = self.config['projection']
         with self.open_output("psf_map_plot", wrapper=True, figsize=(5 * nbin_source, 10)) as fig:
-            _, axes = plt.subplots(2, nbin_source, squeeze=False, num=fig.file.number)
+            axes = fig.file.subplots(2, nbin_source, squeeze=False)
             for i in range(nbin_source):
                 psf_maps.plot(f"psf/g1_{i}", ax=axes[0, i], view=projection)
                 psf_maps.plot(f"psf/g2_{i}", ax=axes[1, i], view=projection)
@@ -121,7 +121,7 @@ class TXMapPlots(PipelineStage):
         nbin_source = m.file["maps"].attrs["nbin_source"]
         with self.open_output("shear_map_plot", wrapper=True, figsize=(5 * nbin_source, 10)) as fig:
             # Plot 2 x nbin, g1 and g2
-            _, axes = plt.subplots(2, nbin_source, squeeze=False, num=fig.file.number)
+            axes = fig.file.subplots(2, nbin_source, squeeze=False)
 
             for i in range(nbin_source):
                 m.plot(f"g1_{i}", ax=axes[0, i], view=projection)
@@ -148,7 +148,7 @@ class TXMapPlots(PipelineStage):
 
         # Plot both density and ngal as 2 x n
         fig = self.open_output("lens_map_plot", wrapper=True, figsize=(5 * nbin_lens, 5))
-        _, axes = plt.subplots(2, nbin_lens, squeeze=False, num=fig.file.number)
+        axes = fig.file.subplots(2, nbin_lens, squeeze=False)
 
         for i in range(nbin_lens):
             m.plot(

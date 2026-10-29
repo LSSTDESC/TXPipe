@@ -99,6 +99,7 @@ PZEstimatorLens:
     dz: 0.01
     nzbins: 301
     data_path: ./data/example/rail-bpz-inputs
+    bpz_ref_data_path: ./data/example/rail-bpz-inputs
     band_names: [mag_u, mag_g, mag_r, mag_i, mag_z, mag_y]
     bands: [mag_u, mag_g, mag_r, mag_i, mag_z, mag_y]
     band_err_names: [mag_err_u, mag_err_g, mag_err_r, mag_err_i, mag_err_z, mag_err_y]
