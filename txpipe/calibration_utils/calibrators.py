@@ -60,6 +60,8 @@ class Calibrator:
             subcls = LensfitCalibrator
         elif cat_type == "hsc":
             subcls = HSCCalibrator
+        elif cat_type == "anacal":
+            subcls = AnaCalibrator
         else:
             raise ValueError(f"Unknown catalog type {cat_type} in tomo file")
 
@@ -729,4 +731,87 @@ class HSCCalibrator(Calibrator):
             The calibrated standard deviation of the ellipticities in the sample.
         """
         return np.array(sigma) / (2 * self.R) / (1 + self.K)
+
+
+class AnaCalibrator(MetaCalibrator):
+    """Stores information needed to calibrate an AnaCal shear method."""
+    def __init__(self, R, mu, mu_is_weighted=True):
+        self.R = float(np.squeeze(R))
+        if mu_is_weighted:
+            self.mu = np.array(mu, dtype=float)
+        else:
+            self.mu = np.array(mu, dtype=float) / R
+    
+    def apply(self, g1, g2, subtract_mean=True):
+        """
+        Calibrate a set of shears using the response and
+        mean shear subtraction
+
+        Parameters
+        ----------
+        g1: array or float
+            Shear 1 component
+
+        g2: array or float
+            Shear 2 component
+
+        subtract_mean: bool
+            whether to subtract mean shear (default True)
+        """
+        g1 = g1 / self.R
+        g2 = g2 / self.R
+        if subtract_mean:
+            g1 = g1 - self.mu[0]
+            g2 = g2 - self.mu[1]
+        return g1, g2
+
+    
+    def calibrate_variance_to_sigma_e(self, var_e):
+        return np.sqrt(0.5 *np.sum(var_e)) / self.R
+    
+    def calibrate_sigma(self, sigma):
+        return np.array(sigma) / self.R
+    
+    @classmethod
+    def load(cls, tomo_file):
+        """ 
+        Make a set of AnaCal calibrators using the info in a tomography file.
+
+        You can use the parent Calibrator.load to automatically
+        load the correct subclass.
+
+        Parameters
+        ----------
+        tomo_file: str
+            A tomography file name the cal factors are read from
+
+        Returns
+        -------
+        cals: list
+            A set of AnaCalibrators, one per bin
+        """
+        import h5py
+
+        with h5py.File(tomo_file, "r") as f:
+            mu1 = f["counts/mean_e1"][:]
+            mu2 = f["counts/mean_e2"][:]
+            n = len(mu1)
+            R = f["response/R"][:n]
+            R_2d = f["response/R_2d"][0]
+            mu1_2d = f["counts/mean_e1_2d"][0]
+            mu2_2d = f["counts/mean_e2_2d"][0]
+
+        calibrators = [cls(R[i], [mu1[i], mu2[i]]) for i in range(n)]
+        calibrator2d = cls(R_2d, [mu1_2d, mu2_2d])
+        return calibrators, calibrator2d
+    
+    def save(self, outfile, i):
+        if i == "2d":
+            outfile["response/R_2d"][0] = self.R
+            outfile["counts/mean_e1_2d"][0] = self.mu[0]
+            outfile["counts/mean_e2_2d"][0] = self.mu[1]
+        else:
+            outfile["response/R"][i] = self.R
+            outfile["counts/mean_e1"][i] = self.mu[0]
+            outfile["counts/mean_e2"][i] = self.mu[1]
 
