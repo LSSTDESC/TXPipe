@@ -1,0 +1,40 @@
+# From the TXPipe directory, submit with
+#     sbatch examples/dp2/Cluster_pipelines/dp2-rubin-nersc.sub
+# Settings live in config-dp2-CL.yml (shared by all shear catalogs).
+
+# this step depends on where you run
+# for NERSC: "local" on login node for small catalogs, "interactive" for 
+# compute node
+site:
+    name: local
+
+#all the following steps should not depend on where you run
+launcher:
+    name: mini
+    interval: 3.0
+
+modules: >
+    txpipe
+    txpipe.extensions.cluster_counts.randoms
+
+python_paths:
+    - /global/cfs/cdirs/m1727/kabelo/TXPipe
+
+stages:
+  - name: CLClusterRandoms
+
+output_dir: /pscratch/sd/k/kabelo/dp2/outputs/rubin
+config: /global/homes/k/kabelo/txp/dp2/randoms_config.yml
+
+inputs:
+    # clusters: external catalogs (DES Y3 redMaPPer, ...) cross-matched to DP2 objects
+    cluster_catalog: /pscratch/sd/k/kabelo/dp2/external_0723_x_dp2.hdf5
+    cluster_footprint:
+        id: 151
+
+# needed for the `id:` lookups above; {} uses your default dataregistry config
+registry: {}
+
+resume: true
+log_dir: /pscratch/sd/k/kabelo/dp2/outputs/rubin/logs
+pipeline_log: /pscratch/sd/k/kabelo/dp2/outputs/rubin/log_randoms_pipelihe.txt

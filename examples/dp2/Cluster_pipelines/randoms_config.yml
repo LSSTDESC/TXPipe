@@ -1,0 +1,7 @@
+global:
+    nside: 64
+    chunk_rows: 1000000
+
+CLClusterRandoms:
+    name: CLClusterRandoms
+    randoms_per_cluster: 100
