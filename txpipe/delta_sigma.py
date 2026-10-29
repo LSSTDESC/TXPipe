@@ -441,7 +441,7 @@ class TXDeltaSigma(PipelineStage):
 
 
 class TXDeltaSigmaTheory(PipelineStage):
-    """Compute theory predictions for the excess surface density Delta Sigma.
+    """Compute theory predictions for the excess surface density Delta Sigma with dsf.
 
     Uses the fiducial cosmology and the lens n(z) to predict Delta Sigma(r), on the radial
     range set in the configuration.

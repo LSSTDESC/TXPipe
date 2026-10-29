@@ -963,8 +963,7 @@ class TXResponseInBins(PipelineStage):
     Divides the sample into a grid of bins in log10(S/N) and T/T_psf (with the edges
     chosen from the quantiles in shear_catalog_quantiles), computes the response in each
     using the calibration calculators, and makes plots of each component of the response
-    and of the effective number of objects in each cell. This is a test of whether the
-    response varies strongly across the sample.
+    and of the effective number of objects in each cell.
     """
     name = "TXResponseInBins"
     inputs = [

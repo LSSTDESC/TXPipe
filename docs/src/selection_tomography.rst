@@ -85,13 +85,15 @@ To make a new selection, subclass one of the selection stages and override ``com
 Step 2: tomography
 ------------------
 
-There are three ways to get tomographic bins.
+There are currently four ways to get tomographic bins.
 
 **Random forest.** A random-forest classifier is trained to predict redshift bins from magnitudes and colours using a spectroscopic or other training catalog (:py:class:`~txpipe.tomography.TXTrainRandomForestTomography`), and applied to the shear catalog (:py:class:`~txpipe.tomography.TXApplyRandomForestSourceTomography`). Training is a separate stage because it can be slow with a large training sample. This is what the ``examples/metadetect``, ``examples/metacal`` and ``examples/cosmodc2`` pipelines do. The training stage needs the bin edges ``source_zbin_edges`` and the bands to use in its configuration.
 
 **Simple redshift cuts.** If the catalog contains true (or other estimated) redshifts, :py:class:`~txpipe.tomography.TXSimpleRedshiftSourceTomography` bins on the column ``redshift_col``. This is used for tests and for mocks, for example in ``examples/desy1`` and ``examples/kids-1000``.
 
-**RAIL and other external tools.** A RAIL tomography algorithm such as a SOM can be run on each variant of the catalog, and the results gathered into a single bin-assignments file by :py:class:`~txpipe.rail.summarize.PZCollateRailAssignmentsMetadetect` (or ``PZCollateRailAssignmentsScalarMetadetect`` for scalar metadetect catalogs). See ``examples/dp2/analysis_rubin_metadetect.yml`` for a complete pipeline, and :py:class:`~txpipe.rail.summarize.PZGenerateSOMInformerSubsample` for making a training sample from the selected objects.
+**RAIL** A RAIL tomography algorithm such as a SOM can be run on each variant of the catalog, and the results gathered into a single bin-assignments file by :py:class:`~txpipe.rail.summarize.PZCollateRailAssignmentsMetadetect` (or ``PZCollateRailAssignmentsScalarMetadetect`` for scalar metadetect catalogs). See ``examples/dp2/analysis_rubin_metadetect.yml`` for a complete pipeline, and :py:class:`~txpipe.rail.summarize.PZGenerateSOMInformerSubsample` for making a training sample from the selected objects.
+
+**External** You could simply ingest an existing tomography file, for example from an external tool. There are no examples of this yet but it should be straightforward.
 
 For metacal and metadetect catalogs, bins have to be assigned to every sheared variant so that the selection response can be computed. For a classifier that is done automatically; with an external tool you must run it on each variant.
 
@@ -123,19 +125,7 @@ A metadetect pipeline with random-forest tomography (``examples/metadetect/pipel
       - name: TXComputeShearCalibrationMetadetect
       - name: TXShearCalibration
 
-A Rubin DP2 pipeline with RAIL tomography (``examples/dp2/analysis_rubin_metadetect.yml``):
 
-.. code-block:: yaml
-
-    stages:
-      - name: TXDP2RubinMetadetectSelection
-      - name: PZCollateRailAssignmentsMetadetect
-      - name: TXComputeShearCalibrationMetadetect
-      - name: TXShearCalibration
-
-(The RAIL stages that make the individual variant assignments, ``bhat_for_wide_data_ns`` and so on, are omitted here; the full pipeline file includes them.)
-
-ceci works out the order stages run in from their inputs and outputs, so the order of stages in the pipeline file does not matter.
 
 
 Converting old pipelines

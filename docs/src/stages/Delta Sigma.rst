@@ -5,7 +5,7 @@ These stages measure and predict the excess surface density
 
 * :py:class:`~txpipe.delta_sigma.TXDeltaSigma` - Compute Delta-Sigma, the excess surface density around lenses.
 
-* :py:class:`~txpipe.delta_sigma.TXDeltaSigmaTheory` - Compute theory predictions for the excess surface density Delta Sigma.
+* :py:class:`~txpipe.delta_sigma.TXDeltaSigmaTheory` - Compute theory predictions for the excess surface density Delta Sigma with dsf.
 
 * :py:class:`~txpipe.delta_sigma.TXDeltaSigmaPlots` - Make plots of Delta Sigma results.
 
