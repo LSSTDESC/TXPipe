@@ -101,7 +101,13 @@ Two options control what happens to the unblinded file:
 - ``encrypt_unblinded``: save an encrypted copy of the unblinded file (``<name>.encrpt``) and its key (``<name>.key``) in ``encryption_dir``, or next to the unblinded file if that is empty. Move the key somewhere safe, away from the data.
 - ``delete_unblinded``: replace the unblinded file with an empty one after blinding, so that the analysis cannot use it by mistake. Running the stage again on the empty file gives an error.
 
-When the analysis is ready to be unblinded, recover the data with Smokescreen:
+When the analysis is ready to be unblinded, recover the data with the Smokescreen command-line tool, which is installed with Smokescreen:
+
+.. code-block:: bash
+
+    smokescreen decrypt --path_to_sacc twopoint_data_real_raw.encrpt --path_to_key twopoint_data_real_raw.key
+
+or from Python:
 
 .. code-block:: python
 
@@ -109,4 +115,4 @@ When the analysis is ready to be unblinded, recover the data with Smokescreen:
 
     decrypt_file("twopoint_data_real_raw.encrpt", "twopoint_data_real_raw.key", save_file=True)
 
-With ``save_file=True`` the decrypted file is written next to the encrypted one, under its original name; the function also returns its contents as bytes.
+Both write the decrypted file next to the encrypted one, named without an extension (here ``twopoint_data_real_raw``); rename it to ``twopoint_data_real_raw.sacc`` to use it. The Python function also returns the file contents as bytes, so with ``save_file=False`` you can decrypt without writing anything to disk.
