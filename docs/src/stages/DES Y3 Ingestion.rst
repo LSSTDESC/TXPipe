@@ -3,7 +3,7 @@ DES Y3 Ingestion
 
 These stages ingest Dark Energy Survey Year 3 data products.
 
-* :py:class:`~txpipe.ingest.stage3.desy3.TXIngestDESY3Gold` - Ingest the DES Y3 Gold photometry catalog from hdf5 format
+* :py:class:`~txpipe.ingest.stage3.desy3.TXIngestDESY3Gold` - Ingest the DES Y3 Gold from hdf5 format
 
 * :py:class:`~txpipe.ingest.stage3.desy3.TXIngestDESY3Footprint` - Ingest the DES Y3 Footprint maps (incl. badregions, foregrounds etc) from healsparse format
 

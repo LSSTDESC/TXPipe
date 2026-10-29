@@ -12,7 +12,7 @@ tomographic bins.
 
 * :py:class:`~txpipe.lens_selector.TXModeLensSelector` - Select lens objects based on best-fit redshifts and BOSS criteria
 
-* :py:class:`~txpipe.lens_selector.TXCustomLensSelector` - Select lens objects based on best-fit redshifts and BOSS criteria
+* :py:class:`~txpipe.lens_selector.TXCustomLensSelector` - Select lens objects based on pre-computed redshifts.
 
 * :py:class:`~txpipe.lens_selector.TXRandomForestLensSelector` - Select lens objects and assign them to bins using a random forest classifier.
 
