@@ -31,6 +31,8 @@ It is designed to take catalogs of objects (as produced by the LSST Project), an
 
    running
    data_sources
+   examples
+   dp2
    adding
    parallel
    nersc
