@@ -65,7 +65,7 @@ These stages measure and predict the excess surface density
 
     - delta_sigma_theory: SACCFile
     
-    Parallel: Yes - MPI
+    Parallel: No - Serial
 
 
     .. collapse:: Configuration
@@ -100,7 +100,7 @@ These stages measure and predict the excess surface density
 
     - delta_sigma_plot: PNGFile
     
-    Parallel: Yes - MPI
+    Parallel: No - Serial
 
 
     .. collapse:: Configuration
