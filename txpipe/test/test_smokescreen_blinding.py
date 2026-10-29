@@ -152,6 +152,31 @@ def test_blinding_shift_is_theory_difference(tmp_path):
     np.testing.assert_allclose(delta, expected, rtol=1e-10)
 
 
+def test_blinding_encrypt_unblinded(tmp_path):
+    from smokescreen.encryption import decrypt_file
+
+    encryption_dir = tmp_path / "encrypted"
+    encryption_dir.mkdir()
+    raw, _ = run_stage(tmp_path, make_data("real"), encrypt_unblinded=True, encryption_dir=str(encryption_dir))
+
+    # The original is kept, and the encrypted copy decrypts back to it
+    encrypted = encryption_dir / "raw.encrpt"
+    key = encryption_dir / "raw.key"
+    assert encrypted.exists() and key.exists()
+    with open(raw, "rb") as f:
+        assert decrypt_file(str(encrypted), str(key)) == f.read()
+
+
+def test_blinding_delete_unblinded(tmp_path):
+    raw, _ = run_stage(tmp_path, make_data("real"), delete_unblinded=True)
+    with open(raw) as f:
+        assert f.read() == ""
+
+    # Running again on the emptied file should say what went wrong
+    with pytest.raises(ValueError, match="zero size"):
+        run_stage(tmp_path, None, name="again")
+
+
 def test_blinding_harmonic_space_b_modes(tmp_path):
     # The theory model cannot predict B-modes, so they should be left as they are
     raw, blinded = run_stage(tmp_path, make_data("fourier"))
