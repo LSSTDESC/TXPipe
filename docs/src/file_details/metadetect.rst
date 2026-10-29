@@ -1,17 +1,17 @@
 Metadetect catalogs
 ===================
 
-Metadetect catalogs are used for Rubin/LSST data (including DP1 and DP2 products) and for simulations of them. TXPipe reads them with the MetaDetectShearCatalog class.
+Metadetect catalogs are used for Rubin/LSST data (including DP1 and DP2 products) and for simulations of them. TXPipe reads them with the ``MetaDetectShearCatalog`` class.
 
 Metadetect runs the whole detection and measurement process on the image five times: once on the original image (the "ns", for "no shear", version) and once for each of four versions of the image to which a small artificial shear has been applied: "1p", "1m", "2p" and "2m". Because detection is repeated, **each variant is a complete catalog in its own right, and the variants generally have different numbers of objects**. The sheared variants are used to calculate calibration factors that account for shear measurement and *selection* biases.
 
-Each variant is stored in its own sub-group of the "shear" group, named for the variant. The "shear" group has a bands attribute listing the photometric bands, and optionally catalog_type = "metadetect". If the attribute is missing TXPipe identifies the catalog type from the presence of a "2p" sub-group.
+Each variant is stored in its own sub-group of the "shear" group, named for the variant. The "shear" group has a ``bands`` attribute listing the photometric bands, and optionally ``catalog_type = "metadetect"``. If the attribute is missing TXPipe identifies the catalog type from the presence of a "2p" sub-group.
 
 Because the variants have different lengths, every stage that works with metadetect catalogs reads one variant at a time. The source selection, tomographic bin assignments, and the "bin" columns of the shear tomography catalog all follow the same layout, with one dataset per variant: see :ref:`Catalog selections`, :ref:`Tomographic bin assignments` and :ref:`Shear tomography catalogs`.
 
 The selection stages for metadetect catalogs are :py:class:`~txpipe.source_selection.TXMetaDetectSelection` and the Rubin/DESC-specific versions :py:class:`~txpipe.source_selection.TXDP2RubinMetadetectSelection` and :py:class:`~txpipe.source_selection.TXDP2DESCSelection`. The calibration stage is :py:class:`~txpipe.shear_calibration.metadetect.TXComputeShearCalibrationMetadetect`.
 
-The columns in each variant of the example metadetect catalog are shown below. Real Rubin catalogs have additional columns such as mfrac (the masked fraction of the object), is_primary, and per-fit flags; the ingestion stages in :ref:`Ingestion` list what they write.
+The columns in each variant of the example metadetect catalog are shown below. Real Rubin catalogs have additional columns such as ``mfrac`` (the masked fraction of the object), ``is_primary``, and per-fit flags; the ingestion stages in :ref:`Rubin DP2 Ingestion` list what they write.
 
 ===============  =============  ==========  ==================================================
 Group            Name           Kind        Meaning

@@ -26,7 +26,8 @@ A 20 square degree data set for slightly more interesting tests is available on 
 You can access them directly in: `/global/cfs/cdirs/lsst/utilities/data-registry/lsst_desc_working/user/zuntz` or see how to access them using the registry by looking in the file `examples/cosmodc2/pipeline-20deg2-nersc.yml`. In that file the registry is searched by name for a dataset using this syntax:
 
 
-.. code-block:: yml
+.. code-block:: yaml
+
     shear_catalog:
         name: txpipe_cosmodc2_20deg2_shear_catalog.hdf5
 

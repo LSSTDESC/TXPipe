@@ -1,11 +1,11 @@
 Metacal catalogs
 ================
 
-Metacalibration catalogs are used in TXPipe for Dark Energy Survey Y1 and Y3 data and for DC2-based simulations. TXPipe reads them with the MetacalShearCatalog class (see :ref:`Data Type Classes`).
+Metacalibration catalogs are used in TXPipe for Dark Energy Survey Y1 and Y3 data and for DC2-based simulations. TXPipe reads them with the ``MetacalShearCatalog`` class (see :ref:`Data Type Classes`).
 
-Each quantity is measured under 5 different conditions: the nominal measurement, and four variants that are used to calculate calibration factors that account for shear measurement and selection biases. The variants are labelled "1m", "1p", "2m", "2p", and are given as a suffix on the column name (for example g1_1p). Quantities that are not re-measured under shear, such as ra, dec and the PSF values, have only the one version.
+Each quantity is measured under 5 different conditions: the nominal measurement, and four variants that are used to calculate calibration factors that account for shear measurement and selection biases. The variants are labelled "1m", "1p", "2m", "2p", and are given as a suffix on the column name (for example ``g1_1p``). Quantities that are not re-measured under shear, such as ``ra``, ``dec`` and the PSF values, have only the one version.
 
-Everything is stored in a single group called "shear". The group has an attribute bands listing the photometric bands, and (optionally) catalog_type = "metacal". If the attribute is missing TXPipe identifies the catalog type from the presence of a g1_1p column.
+Everything is stored in a single group called "shear". The group has an attribute ``bands`` listing the photometric bands, and (optionally) ``catalog_type = "metacal"``. If the attribute is missing TXPipe identifies the catalog type from the presence of a ``g1_1p`` column.
 
 The source selection stage is :py:class:`~txpipe.source_selection.TXMetacalSelection`, and the calibration stage is :py:class:`~txpipe.shear_calibration.metacal.TXComputeShearCalibrationMetacal`. See :ref:`Shear calibration guide`.
 
