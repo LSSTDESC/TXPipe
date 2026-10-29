@@ -13,7 +13,11 @@ def mag_ab_to_nanojansky(mag):
 
 
 def nanojansky_err_to_mag_ab(flux, flux_err):
-    return 2.5 / np.log(10) * (flux_err / flux)
+    return np.divide(2.5 / np.log(10) * flux_err,
+                     flux,
+                     out=np.full_like(flux, np.nan, dtype=np.float64),
+                     where=flux > 0,
+                     )
 
 
 def moments_to_shear(Ixx, Iyy, Ixy):
