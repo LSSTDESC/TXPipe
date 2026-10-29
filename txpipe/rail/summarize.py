@@ -237,6 +237,11 @@ class PZRailPZSummarize(PZRailSummarizeBase):
 
 
 class PZRealizationsPlot(PipelineStage):
+    """Plot realizations of the tomographic n(z) distributions.
+
+    Reads the ensemble of n(z) realizations made by a RAIL summarization stage and, for
+    each tomographic bin, plots the mean n(z) and the range spanned by the realizations.
+    """
     name = "PZRealizationsPlot"
     parallel = False
 
@@ -285,6 +290,13 @@ class PZRealizationsPlot(PipelineStage):
 
 
 class PZCollateRailAssignmentsMetadetect(PipelineStage):
+    """Collect RAIL tomographic bin assignments for the metadetect variants into one file.
+
+    Each of the five variants (ns, 1p, 1m, 2p, 2m) has been run through a RAIL
+    classifier separately, giving one file per variant. This stage copies them into
+    a single bin assignments file in the layout that the
+    TXComputeShearCalibration stages expect, and records the number of bins and bin edges.
+    """
     name = "PZCollateRailAssignmentsMetadetect"
     inputs = [
         ("bhat_for_wide_data_ns", HDFFile),
@@ -312,6 +324,10 @@ class PZCollateRailAssignmentsMetadetect(PipelineStage):
             f_out.attrs["bin_edges"] = np.array(self.config["source_zbin_edges"])
 
 class PZCollateRailAssignmentsScalarMetadetect(PZCollateRailAssignmentsMetadetect):
+    """Collect RAIL tomographic bin assignments for the scalar metadetect variants into one file.
+
+    As PZCollateRailAssignmentsMetadetect but for the three variants ns, 1p, 1m.
+    """
     name = "PZCollateRailAssignmentsScalarMetadetect"
     inputs = [
         ("bhat_for_wide_data_ns", HDFFile),
@@ -328,6 +344,13 @@ class PZCollateRailAssignmentsScalarMetadetect(PZCollateRailAssignmentsMetadetec
 
 
 class PZGenerateSOMInformerSubsample(PipelineStage):
+    """Make a random subsample of the selected shear catalog objects, to train a SOM.
+
+    Reads the catalog selection and keeps each selected object with the probability needed
+    to leave approximately size objects, using a seed chosen so that the result does not
+    depend on the number of processes. All the columns of the shear catalog are copied for
+    the kept objects.
+    """
     parallel = True
     name = "PZGenerateSOMInformerSubsample"
     inputs = [

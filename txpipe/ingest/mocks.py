@@ -1211,6 +1211,10 @@ class TXSimpleMock(PipelineStage):
 
 
 class TXMockTruthPZ(PipelineStage):
+    """Make mock photo-z PDFs from the true redshifts in a shear catalog.
+
+    Each PDF is a narrow Gaussian, with width mock_sigma_z, centred on the true redshift.
+    """
     name = "TXMockTruthPZ"
     parallel = False
     inputs = [("shear_catalog", ShearCatalog)]

@@ -229,6 +229,11 @@ if __name__ == "__main__":
 
 
 class TXTwoPointPlotsTheory(TXTwoPointPlots):
+    """Plot real-space two-point measurements together with a theory prediction.
+
+    Makes the same plots as TXTwoPointPlots, with the theory curves, and also plots of
+    the ratio between the measurements and the theory.
+    """
     name = "TXTwoPointPlotsTheory"
     parallel = False
     inputs = [

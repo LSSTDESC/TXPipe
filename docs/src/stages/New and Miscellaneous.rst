@@ -58,7 +58,7 @@ assigned to one.
         .. raw:: html
 
             <UL>
-            <LI><strong>hdf_group</strong>: (str) Default=/. </LI>
+            <LI><strong>hdf_group</strong>: (str) Default=/. HDF group path to write data to.</LI>
             </UL>
 
 

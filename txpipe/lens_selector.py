@@ -499,6 +499,11 @@ class TXCustomLensSelector(TXBaseLensSelector):
 
 
 class TXRandomForestLensSelector(TXBaseLensSelector):
+    """Select lens objects and assign them to bins using a random forest classifier.
+
+    The classifier is trained on a spectroscopic catalog, using the magnitudes and colours
+    in the chosen bands, to predict the lens redshift bins.
+    """
     name = "TXRandomForestLensSelector"
     inputs = [
         ("photometry_catalog", PhotometryCatalog),

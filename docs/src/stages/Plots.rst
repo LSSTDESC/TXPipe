@@ -9,13 +9,13 @@ These stages make plots out TXPipe output data
 
 * :py:class:`~txpipe.convergence.TXConvergenceMapPlots` - Make plots convergence maps
 
-* :py:class:`~txpipe.rail.summarize.PZRealizationsPlot` - Stage PZRealizationsPlot
+* :py:class:`~txpipe.rail.summarize.PZRealizationsPlot` - Plot realizations of the tomographic n(z) distributions.
 
 * :py:class:`~txpipe.twopoint_plots.TXTwoPointPlots` - Make plots of the correlation functions and their ratios to theory
 
 * :py:class:`~txpipe.twopoint_plots.TXTwoPointPlotsFourier` - Make plots of the C_ell and their ratios to theory
 
-* :py:class:`~txpipe.twopoint_plots.TXTwoPointPlotsTheory` - Stage TXTwoPointPlotsTheory
+* :py:class:`~txpipe.twopoint_plots.TXTwoPointPlotsTheory` - Plot real-space two-point measurements together with a theory prediction.
 
 
 
@@ -39,8 +39,8 @@ These stages make plots out TXPipe output data
         .. raw:: html
 
             <UL>
-            <LI><strong>label</strong>: (str) Default=. </LI>
-            <LI><strong>zmax</strong>: (float) Default=3.0. </LI>
+            <LI><strong>label</strong>: (str) Default=. Label for the n(z) plot.</LI>
+            <LI><strong>zmax</strong>: (float) Default=3.0. Maximum redshift for plotting.</LI>
             </UL>
 
 
@@ -55,18 +55,18 @@ These stages make plots out TXPipe output data
     - lens_maps: MapsFile
     - density_maps: MapsFile
     - mask: MapsFile
-    - aux_source_maps: MapsFile
-    - aux_lens_maps: MapsFile
+    - psf_maps: MapsFile
+    - depth_map: MapsFile
+    - bright_object_map: MapsFile
 
     Outputs: 
 
-    - depth_map: PNGFile
-    - lens_map: PNGFile
-    - shear_map: PNGFile
-    - flag_map: PNGFile
-    - psf_map: PNGFile
-    - mask_map: PNGFile
-    - bright_object_map: PNGFile
+    - depth_map_plot: PNGFile
+    - lens_map_plot: PNGFile
+    - shear_map_plot: PNGFile
+    - psf_map_plot: PNGFile
+    - mask_map_plot: PNGFile
+    - bright_object_map_plot: PNGFile
     
     Parallel: No - Serial
 
@@ -76,9 +76,7 @@ These stages make plots out TXPipe output data
         .. raw:: html
 
             <UL>
-            <LI><strong>projection</strong>: (str) Default=cart. </LI>
-            <LI><strong>rot180</strong>: (bool) Default=False. </LI>
-            <LI><strong>debug</strong>: (bool) Default=False. </LI>
+            <LI><strong>projection</strong>: (str) Default=McBryde. Skyproj projection type for map plots (e.g., McBryde, Mollweide)</LI>
             </UL>
 
 
@@ -103,7 +101,7 @@ These stages make plots out TXPipe output data
         .. raw:: html
 
             <UL>
-            <LI><strong>projection</strong>: (str) Default=cart. </LI>
+            <LI><strong>projection</strong>: (str) Default=McBryde. Skyproj projection type for convergence map plots (e.g., McBryde).</LI>
             </UL>
 
 
@@ -128,8 +126,8 @@ These stages make plots out TXPipe output data
         .. raw:: html
 
             <UL>
-            <LI><strong>zmax</strong>: (float) Default=3.0. </LI>
-            <LI><strong>nz</strong>: (int) Default=301. </LI>
+            <LI><strong>zmax</strong>: (float) Default=3.0. Maximum redshift for plotting.</LI>
+            <LI><strong>nz</strong>: (int) Default=301. Number of redshift bins for plotting.</LI>
             </UL>
 
 
@@ -159,8 +157,8 @@ These stages make plots out TXPipe output data
         .. raw:: html
 
             <UL>
-            <LI><strong>wspace</strong>: (float) Default=0.05. </LI>
-            <LI><strong>hspace</strong>: (float) Default=0.05. </LI>
+            <LI><strong>wspace</strong>: (float) Default=0.05. Width space between subplots.</LI>
+            <LI><strong>hspace</strong>: (float) Default=0.05. Height space between subplots.</LI>
             </UL>
 
 
@@ -189,8 +187,8 @@ These stages make plots out TXPipe output data
         .. raw:: html
 
             <UL>
-            <LI><strong>wspace</strong>: (float) Default=0.05. </LI>
-            <LI><strong>hspace</strong>: (float) Default=0.05. </LI>
+            <LI><strong>wspace</strong>: (float) Default=0.05. Width space between subplots.</LI>
+            <LI><strong>hspace</strong>: (float) Default=0.05. Height space between subplots.</LI>
             </UL>
 
 
@@ -225,8 +223,8 @@ These stages make plots out TXPipe output data
         .. raw:: html
 
             <UL>
-            <LI><strong>wspace</strong>: (float) Default=0.05. </LI>
-            <LI><strong>hspace</strong>: (float) Default=0.05. </LI>
+            <LI><strong>wspace</strong>: (float) Default=0.05. Width space between subplots.</LI>
+            <LI><strong>hspace</strong>: (float) Default=0.05. Height space between subplots.</LI>
             </UL>
 
 

@@ -102,16 +102,35 @@ class TXSimpleSelection(PipelineStage):
 
 
 class TXMetaDetectSelection(TXSimpleSelection):
+    """Compute source-sample cuts for metadetect catalogs.
+
+    Applies the same flag, signal-to-noise and size cuts as TXSimpleSelection, separately
+    to each of the five metadetect variants (ns, 1p, 1m, 2p, 2m). The variants are
+    catalogs of different lengths, so the selection for each is saved in its own group of the
+    output file.
+    """
     name = "TXMetaDetectSelection"
     groups = ["shear/" + v for v in META_VARIANTS]
 
 
 class TXScalarMetaDetectSelection(TXSimpleSelection):
+    """Compute source-sample cuts for scalar metadetect catalogs.
+
+    As TXMetaDetectSelection, but for the three variants (ns, 1p, 1m) that scalar metadetect
+    catalogs contain.
+    """
     name = "TXScalarMetaDetectSelection"
     groups = ["shear/" + v for v in SCALAR_META_VARIANTS]
 
 
 class TXMetacalSelection(TXSimpleSelection):
+    """Compute source-sample cuts for metacal catalogs.
+
+    Applies the same flag, signal-to-noise and size cuts as TXSimpleSelection to the
+    unsheared catalog and to each of the four sheared variants (1p, 1m, 2p, 2m), which
+    is needed to find the selection response. The result is saved as the datasets
+    "selection", "selection_1p", and so on.
+    """
     name = "TXMetacalSelection"
 
     def run(self):
@@ -158,10 +177,19 @@ class TXMetacalSelection(TXSimpleSelection):
 
 
 class TXLensfitSelection(TXSimpleSelection):
+    """Compute source-sample cuts for lensfit catalogs.
+
+    Lensfit catalogs have no shear variants, so this uses the cuts of TXSimpleSelection unchanged.
+    """
     name = "TXLensfitSelection"
 
 
 class TXHSCSelection(TXSimpleSelection):
+    """Compute source-sample cuts for HSC catalogs.
+
+    Applies the cuts of TXSimpleSelection and, optionally, a cut on the maximum shear
+    magnitude, set with max_shear_cut.
+    """
     name = "TXHSCSelection"
     config_options = TXSimpleSelection.config_options | {
         "max_shear_cut": StageParameter(float, 0.0, msg="Maximum shear value for object selection")
@@ -184,6 +212,13 @@ class TXHSCSelection(TXSimpleSelection):
 
 
 class TXDP2RubinMetadetectSelection(TXMetaDetectSelection):
+    """Compute source-sample cuts for the Rubin DP2 metadetect catalogs.
+
+    As well as signal-to-noise and size cuts this selects primary objects with a low
+    masked fraction and finite shear and weight values, applies magnitude cuts in the
+    g, r and i bands and sanity cuts on the r-i and i-z colours. The thresholds
+    are all configurable.
+    """
     name = "TXDP2RubinMetadetectSelection"
 
     columns = [
@@ -256,6 +291,12 @@ class TXDP2RubinMetadetectSelection(TXMetaDetectSelection):
 
 
 class TXDP2DESCSelection(TXScalarMetaDetectSelection):
+    """Compute source-sample cuts for the DESC-processed DP2 scalar metadetect catalogs.
+
+    Selects primary objects with zero flags and a low masked fraction, applies cuts on
+    the PSF ellipticity, signal-to-noise, size and size ratio, magnitude cuts in the r and
+    i bands, and sanity cuts on the r-i and i-z colours. The thresholds are all configurable.
+    """
     name = "TXDP2DESCSelection"
     columns = ["T", "s2n", "g1", "g2", "ra", "dec", "weight", "psf_T_mean", "flags",  "is_primary", "mfrac", "psfrec_g1", "psfrec_g2", "rmi", "imz", "g_flags"] + band_variants("riz", "mag", shear_catalog_type="simple")
 
