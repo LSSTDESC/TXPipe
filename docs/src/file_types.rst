@@ -15,6 +15,7 @@ The catalog inputs are all in HDF5 format, and are:
 - Shear Catalogs: galaxy shape/shear catalogs. TXPipe supports several different types:
 
    - :ref:`Metadetect catalogs`: from the method of `Sheldon et al <https://arxiv.org/abs/2303.03947>`_.
+   - :ref:`Scalar metadetect catalogs`: a simplified version of metadetect with only the ns, 1p and 1m variants.
    - :ref:`Metacal catalogs`: from the method of `Sheldon & Huff <https://arxiv.org/abs/1702.02601>`_.
    - :ref:`Lensfit catalogs`: a catalog of galaxy shapes measured by Lensfit.
    - :ref:`HSC catalogs`: a catalog of galaxy shapes measured by ngmix.
@@ -35,6 +36,8 @@ Various stages in TXPipe generate intermediate catalogs, which are used as input
 Those associated with photo-z are described in the next section. 
 
 
+- :ref:`Catalog selections`: which objects of a shear catalog pass the source-sample cuts, before binning.
+- :ref:`Tomographic bin assignments`: the tomographic bin that tomography stages assign to each shear catalog object, before cuts.
 - :ref:`Tomography catalogs`: contain the tomographic bin index for each galaxy.
 
     - :ref:`Lens tomography catalogs`: additionally contains lens weights.
@@ -80,6 +83,7 @@ Collected File details
     :caption: Collected details on all file types
 
     file_details/binned
+    file_details/bin_assignments
     file_details/clusters
     file_details/exposures
     file_details/generic_shear
@@ -92,5 +96,7 @@ Collected File details
     file_details/photometry
     file_details/photoz
     file_details/randoms
+    file_details/scalar_metadetect
+    file_details/selection
     file_details/stars
     file_details/tomography
