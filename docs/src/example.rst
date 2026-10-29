@@ -45,7 +45,7 @@ You can make charts like this using:
 
 .. code-block:: bash
 
-    python bin/flow_chart.py examples/metadetect/pipeline.yml metadetect.png
+    ceci --flow-chart metadetect.png examples/metadetect/pipeline.yml
 
 
 Results
