@@ -69,7 +69,7 @@ TXTrueNumberDensity:
     nz: 301
     zmax: 3.0
 
-TXSourceSelectorMetacal:
+TXComputeShearCalibrationMetacal:
     input_pz: false
     true_z: true
     bands: [r, i, z] #used for selection
@@ -77,10 +77,6 @@ TXSourceSelectorMetacal:
     s2n_cut: 10.0
     max_rows: 1000
     delta_gamma: 0.02
-    source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
-
-TXSourceTomography:
-    bands: [r, i, z] #used for selection
     source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
 
 TXTruthLensSelector:
@@ -234,3 +230,25 @@ TXTruePhotozStackSource:
     redshift_group: metacal
     zmax: 2.0
     nz: 201
+TXTrainRandomForestTomography:
+    bands: [r, i, z] #used for selection
+    source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
+TXMetacalSelection:
+    input_pz: false
+    true_z: true
+    bands: [r, i, z] #used for selection
+    T_cut: 0.5
+    s2n_cut: 10.0
+    max_rows: 1000
+    delta_gamma: 0.02
+    source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
+TXSimpleRedshiftSourceTomography:
+    input_pz: false
+    true_z: true
+    bands: [r, i, z] #used for selection
+    max_rows: 1000
+    delta_gamma: 0.02
+    source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
+    T_min: 0.5
+    s2n_min: 10.0
+    redshift_col: redshift_true

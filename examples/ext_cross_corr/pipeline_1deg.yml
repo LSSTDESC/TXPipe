@@ -19,8 +19,10 @@ stages:
       classname: PZRailSummarize  
     - name: PZRailSummarizeSource  # Run the DIR method on the lens sample to find n(z)
       classname: PZRailSummarize
-    - name: TXSourceSelectorMetadetect  # select and split objects into source bins
-    - name: TXSourceTomography
+    - name: TXComputeShearCalibrationMetadetect  # select and split objects into source bins
+    - name: TXMetaDetectSelection
+    - name: TXSimpleRedshiftSourceTomography
+    - name: TXTrainRandomForestTomography
     - name: NZDirInformerSource     # Prepare the DIR method inputs for the source sample
       classname: NZDirInformer
     - name: TXShearCalibration     # Calibrate and split the source sample tomographically

@@ -1,5 +1,6 @@
 from ..base_stage import PipelineStage
-from ..data_types import HDFFile, PickleFile, PNGFile, QPMultiFile, QPNOfZFile, BinnedCatalog, TomographyCatalog
+from ..data_types import HDFFile, PickleFile, PNGFile, QPMultiFile, QPNOfZFile, BinnedCatalog, TomographyCatalog, BinAssignments
+from ..calibration_utils import META_VARIANTS, SCALAR_META_VARIANTS
 import numpy as np
 import os
 from ceci.config import StageParameter
@@ -279,3 +280,47 @@ class PZRealizationsPlot(PipelineStage):
 
                 ax.set_xlabel("z")
                 ax.set_ylabel(f"{tomo_bin} n(z)")
+
+
+
+class PZCollateRailAssignmentsMetadetect(PipelineStage):
+    name = "PZCollateRailAssignmentsMetadetect"
+    inputs = [
+        ("bhat_for_wide_data_ns", HDFFile),
+        ("bhat_for_wide_data_1p", HDFFile),
+        ("bhat_for_wide_data_1m", HDFFile),
+        ("bhat_for_wide_data_2p", HDFFile),
+        ("bhat_for_wide_data_2m", HDFFile),
+    ]
+    outputs = [
+        ("shear_bin_assignments", BinAssignments)
+    ]
+    config_options = {
+        "source_zbin_edges": StageParameter(list, required=True, msg="Redshift bin edges for source tomography"),
+    }
+    variants = META_VARIANTS
+    def run(self):
+        with self.open_output("shear_bin_assignments") as f_out:
+            for i, v in enumerate(self.variants):
+                with self.open_input(f"bhat_for_wide_data_{v}") as f_in:
+                    g_out = f_out.create_group(v)
+                    f_in.copy("/bhat_for_wide_data", g_out, name="bin")
+                    if i == 0:
+                        bin_max = f_in["bhat_for_wide_data"][:].max()
+            f_out.attrs["nbin_source"] = bin_max + 1
+            f_out.attrs["bin_edges"] = np.array(self.config["source_zbin_edges"])
+
+class PZCollateRailAssignmentsScalarMetadetect(PZCollateRailAssignmentsMetadetect):
+    name = "PZCollateRailAssignmentsScalarMetadetect"
+    inputs = [
+        ("bhat_for_wide_data_ns", HDFFile),
+        ("bhat_for_wide_data_1p", HDFFile),
+        ("bhat_for_wide_data_1m", HDFFile),
+    ]
+    outputs = [
+        ("shear_bin_assignments", BinAssignments)
+    ]
+    config_options = {
+        "source_zbin_edges": StageParameter(list, required=True, msg="Redshift bin edges for source tomography"),
+    }
+    variants = SCALAR_META_VARIANTS

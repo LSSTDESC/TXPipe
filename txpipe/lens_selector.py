@@ -549,9 +549,8 @@ class TXRandomForestLensSelector(TXBaseLensSelector):
 
     def apply_redshift_cut(self, phot_data, selector):
         classifier, features = selector
-        shear_catalog_type = "not applicable"
         bands = self.config["bands"]
-        pz_data = apply_classifier(classifier, features, bands, shear_catalog_type, phot_data)
+        pz_data = apply_classifier(classifier, features, bands, phot_data)
         return pz_data
 
 
