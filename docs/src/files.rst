@@ -90,21 +90,9 @@ TXPipe catalog files are almost all stored in HDF5 format. They are described in
     * - star_catalog
       - :ref:`Star catalogs`
       - Catalog of star locations and magnitudes for systematics tests
-    * - bhat_for_wide_data_1m
+    * - bhat_for_wide_data_VARIANT
       - :ref:`HDF File<Reading HDF5 Files>`
-      - RAIL SOM bin assignments, 1m variant
-    * - bhat_for_wide_data_1p
-      - :ref:`HDF File<Reading HDF5 Files>`
-      - RAIL SOM bin assignments, 1p variant
-    * - bhat_for_wide_data_2m
-      - :ref:`HDF File<Reading HDF5 Files>`
-      - RAIL SOM bin assignments, 2m variant
-    * - bhat_for_wide_data_2p
-      - :ref:`HDF File<Reading HDF5 Files>`
-      - RAIL SOM bin assignments, 2p variant
-    * - bhat_for_wide_data_ns
-      - :ref:`HDF File<Reading HDF5 Files>`
-      - RAIL SOM tomographic bin assignments for the unsheared variant of a metadetect catalog
+      - RAIL SOM bin assignments, for different values of VARIANT: ns, 1p, 1m, 2p, 2m
     * - binned_catalog
       - :ref:`Binned catalogs`
       - Binned catalog input to PZRailSummarize, normally aliased to a specific sample

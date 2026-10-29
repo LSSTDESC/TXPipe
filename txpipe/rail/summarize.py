@@ -9,8 +9,7 @@ from ceci.config import StageParameter
 
 class PZRailSummarizeBase(PipelineStage):
     """
-    Base class to build the n(z) from some tomographic bins and
-    collate the results from all the bins into a single file
+    Base class to build the n(z) from some tomographic bins and collate the results from all the bins into a single file
 
     "CatSummarizer" expects a catalog input (e.g. magnitudes)
     "PZSummarizer" expects a photo-z input (e.g. point estimates or pdfs)
@@ -132,8 +131,7 @@ class PZRailSummarizeBase(PipelineStage):
 
 class PZRailSummarize(PZRailSummarizeBase):
     """
-    Runs a specified RAIL "CatSummarizer" on each tomographic bin and
-    collate the results from all the bins into a single file
+    Runs a specified RAIL "CatSummarizer" on each tomographic bin and collate the results from all the bins into a single file
 
     "CatSummarizer" expects a catalog input, rather than a PZ input
     """
@@ -175,8 +173,7 @@ class PZRailSummarize(PZRailSummarizeBase):
 
 class PZRailPZSummarize(PZRailSummarizeBase):
     """
-    Runs a specified RAIL *masked* "PZSummarizer" on each tomographic bin and
-    collate the results from all the bins into a single file
+    Runs a specified RAIL *masked* "PZSummarizer" on each tomographic bin and collate the results from all the bins into a single file
 
     "PZSummarizer" expects a photoz pdf input, rather than a catalog
     """
@@ -449,6 +446,7 @@ class PZAddNonTomographicNZ(PipelineStage):
     outputs = [
         ("output_photoz_stack", QPNOfZFile),
     ]
+    parallel = False
 
     def run(self):
         import qp

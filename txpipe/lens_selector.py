@@ -465,7 +465,7 @@ class TXModeLensSelector(TXBaseLensSelector):
 
 class TXCustomLensSelector(TXBaseLensSelector):
     """
-    Select lens objects based on best-fit redshifts and BOSS criteria
+    Select lens objects based on pre-computed redshifts.
 
     This requires PDFs to have been estimated earlier.
     """
