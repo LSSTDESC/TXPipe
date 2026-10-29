@@ -1,8 +1,9 @@
 from ..base_stage import PipelineStage
-from ..data_types import HDFFile, PickleFile, PNGFile, QPMultiFile, QPNOfZFile, BinnedCatalog, TomographyCatalog, BinAssignments
+from ..data_types import HDFFile, PickleFile, PNGFile, QPMultiFile, QPNOfZFile, BinnedCatalog, TomographyCatalog, BinAssignments, CatalogSelection, ShearCatalog
 from ..calibration_utils import META_VARIANTS, SCALAR_META_VARIANTS
 import numpy as np
 import os
+import h5py
 from ceci.config import StageParameter
 
 
@@ -324,3 +325,119 @@ class PZCollateRailAssignmentsScalarMetadetect(PZCollateRailAssignmentsMetadetec
         "source_zbin_edges": StageParameter(list, required=True, msg="Redshift bin edges for source tomography"),
     }
     variants = SCALAR_META_VARIANTS
+
+
+class PZGenerateSOMInformerSubsample(PipelineStage):
+    parallel = True
+    name = "PZGenerateSOMInformerSubsample"
+    inputs = [
+        ("shear_selection", CatalogSelection),
+        ("shear_catalog", ShearCatalog),
+    ]
+    outputs = [
+        ("sub_selected_shear_data", HDFFile),
+    ]
+    config_options = {
+        "size": StageParameter(int, 5_000_000, msg="Approximate of selected objects to include."),
+        "seed": StageParameter(int, 7953, msg="Random seed for sub-selection."),
+        "chunk_rows": StageParameter(int, 100_000, msg="Number of rows to process at once"),
+    }
+
+    def run(self):
+        with self.open_input("shear_catalog", wrapper=True) as f:
+            group = f.get_primary_catalog_group()
+            cols = [col for col in f.file[group].keys() if isinstance(f.file[group][col], h5py.Dataset)]
+            dtypes = {col: f.file[group][col].dtype for col in cols}
+
+        with self.open_input("shear_selection") as f:
+            # the number selected in the primary group.
+            n_sel = int(f[group].attrs["n_selected"])
+
+        target_size = self.config["size"]
+        chunk_rows = self.config["chunk_rows"]
+        seed = self.config["seed"]
+
+        # Each selected object is kept with this probability, so the final
+        # size is approximately target_size.
+        selection_fraction = min(target_size / n_sel, 1.0) if n_sel > 0 else 1.0
+        if target_size >= n_sel:
+            print("Warning: requested size >= number selected. Just copying everything selected")
+
+        # Each process keeps its sub-selected chunks in memory. We cannot do any
+        # collective MPI calls inside this loop, because different processes
+        # may have different numbers of chunks.
+        kept = {col: [] for col in cols}
+        for (s, e, data) in self.combined_iterators(
+            chunk_rows,
+            "shear_catalog",
+            group,
+            cols,
+            "shear_selection",
+            group,
+            ["selection"],
+        ):
+            # seeded by chunk start so results do not depend on the number of processes
+            rng = np.random.default_rng(seed=[seed, s])
+            selected = data["selection"].astype(bool)
+            n_sel_chunk = selected.sum()
+            sub_selected = rng.uniform(0, 1, size=n_sel_chunk) < selection_fraction
+            n_subsel_chunk = sub_selected.sum()
+            print(f"Rank {self.rank} processing rows {s:,} - {e:,} and sub-selected {n_subsel_chunk} from {n_sel_chunk} selected objects")
+            for col in cols:
+                kept[col].append(data[col][selected][sub_selected])
+
+        # This is a small dataset, by design, so it's not a problem
+        # to store it all in memory. It's split up across the processes.
+        sub_catalog = {
+            col: np.concatenate(chunks) if chunks else np.empty(0, dtype=dtypes[col])
+            for col, chunks in kept.items()
+        }
+        n_my_sub_catalog = sub_catalog[cols[0]].size
+
+        # Single collective call, made by every process exactly once.
+        if self.comm is not None:
+            all_sizes = np.array(self.comm.allgather(n_my_sub_catalog), dtype=int)
+        else:
+            all_sizes = np.array([n_my_sub_catalog], dtype=int)
+
+        my_start = all_sizes[: self.rank].sum()
+        my_end = my_start + n_my_sub_catalog
+        total = all_sizes.sum()
+
+        if self.rank == 0:
+            print(f"Sub-selected {total:,} of {n_sel:,} selected objects")
+
+        # Actually output the reduced catalog
+        with self.open_output("sub_selected_shear_data", parallel=True) as f:
+            for col in cols:
+                f.create_dataset(col, dtype=dtypes[col], shape=(total,))
+            for col in cols:
+                if n_my_sub_catalog > 0:
+                    f[col][my_start:my_end] = sub_catalog[col]
+
+class PZAddNonTomographicNZ(PipelineStage):
+    """Sum up tomographic n(z)s in a file and append the non-tomographic one.
+    """
+    name = "PZAddNonTomographicNZ"
+    inputs = [
+        ("input_photoz_stack", QPNOfZFile),
+    ]
+
+    outputs = [
+        ("output_photoz_stack", QPNOfZFile),
+    ]
+
+    def run(self):
+        import qp
+        with self.open_input("input_photoz_stack", wrapper=True) as f:
+            ens = f.read_ensemble()
+        # TODO: Max this work for the histogram form too. Will crash here currently:
+        pdf_in = ens.dist.yvals
+        nbin, nz = pdf_in.shape
+        pdf_out = np.zeros((nbin + 1, nz))
+        pdf_out[:-1, :] = pdf_in
+        pdf_out[-1] = pdf_in.sum(axis=0)
+
+        q = qp.Ensemble(qp.interp, data={"xvals": ens.dist.xvals, "yvals": pdf_out})
+        with self.open_output("output_photoz_stack", wrapper=True) as f:
+            f.write_ensemble(q)
