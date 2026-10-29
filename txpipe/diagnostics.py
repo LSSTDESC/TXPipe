@@ -237,6 +237,9 @@ class TXSourceDiagnosticPlots(PipelineStage):
             print(f"Process {self.rank} read data {start:,} - {end:,}")
             # This causes each data = yield statement in each plotter to
             # be given this data chunk as the variable data.
+            if cat_type == "anacal":
+                data["g1"] = data["e1"]
+                data["g2"] = data["e2"]
 
             for plotter in plotters:
                 plotter.send(data)
@@ -858,6 +861,16 @@ class TXSourceDiagnosticPlots(PipelineStage):
                         counts[b] += 1
                         if s:
                             counts_s[b] += 1
+            elif cat_type == "anacal":
+                # Per-object shape response; R_detect and R_sel are
+                # ensemble-only, so they can't be histogrammed per object.
+                R = 0.5 * (data["de1_dg1"] + data["de2_dg2"])
+                B = np.digitize(R, edges) - 1
+                for s, b in zip(in_shear_sample, B):
+                    if (b >= 0) and (b < size):
+                        counts[b] += 1
+                        if s:
+                            counts_s[b] += 1
             else:
                 B = np.digitize(data["R"], edges) - 1
                 # loop through this chunk of data.
@@ -1078,7 +1091,11 @@ class TXResponseInBins(PipelineStage):
             if j == nbin - 1:
                 T[nbin] = t1
 
-            R[i, j] = bin_stats.calibrator.get_total_response()
+            cal = bin_stats.calibrator
+            if hasattr(cal, "get_total_response"):
+                R[i, j] = cal.get_total_response()
+            else:
+                R[i, j] = cal.R * np.eye(2)
             count[i, j] = bin_stats.source_count
             neff[i, j] = bin_stats.N_eff
         
@@ -1143,7 +1160,6 @@ class TXResponseInBins(PipelineStage):
 
     def select(self, data, bin_definition):
         #bin_definition is a list of triples (name, min_val, max_val)
-        n = data["g1"].size
 
         # first select down to the main sample.
         # Not tomographic for now.
@@ -1211,9 +1227,21 @@ class TXResponseInBins(PipelineStage):
         
     def data_iterator(self):
         with self.open_input("shear_catalog", wrapper=True) as f:
-            cols = f.get_column_name_variants("g1", "g2", "weight", "s2n", "T", "psf_T_mean")
             cat_type = f.catalog_type
+            if cat_type == "anacal":
+                # AnaCal shapes are e1/e2, plus the per-object columns that
+                # AnaCalCalculator needs for R_shape and R_detect. The shifted
+                # s2n variants let the S/N binning contribute to R_sel.
+                cols = [
+                    "e1", "e2", "weight", "T", "psf_T_mean",
+                    "e1_raw", "e2_raw", "wsel",
+                    "weight_dg1", "weight_dg2", "de1_dg1", "de2_dg2",
+                    "s2n", "s2n_1p", "s2n_1m", "s2n_2p", "s2n_2m",
+                ]
+            else:
+                cols = f.get_column_name_variants("g1", "g2", "weight", "s2n", "T", "psf_T_mean")
             tomo_cols = f.get_tomography_bin_columns()
+
 
         chunk_rows = self.config['chunk_rows']
         

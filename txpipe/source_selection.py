@@ -155,7 +155,113 @@ class TXMetacalSelection(TXSimpleSelection):
         fin.close()
         fout.close()
 
+class TXAnacalSelection(TXSimpleSelection):
+    """Compute non-redshift shear catalog cuts for AnaCal catalogs.
 
+    The cuts are evaluated on the baseline catalog and on each of the four
+    ±γ shifted variants (columns with suffix _1p, _1m, _2p, _2m precomputed
+    by TXIngestAnacal), so that the calibration stage can compute the
+    selection response. Cuts on shear-independent quantities (mask fraction,
+    PSF, flux error) have no variants, and _DataWrapper falls back to the
+    baseline column for them.
+    """
+    name = "TXAnacalSelection"
+    config_options = TXSimpleSelection.config_options | {
+        "bands": StageParameter(list, ["r", "i", "z"], msg="Bands to apply magnitude, colour, PSF and flux-error cuts in"),
+        "s2n_min": StageParameter(float, 5.0, msg="Minimum S/N (i-band flux / flux_err)"),
+        "T_min": StageParameter(float, 0.1, msg="Minimum band-combined size (m00 + m20) / m00 on the fpfs1 moments"),
+        "mask_threshold": StageParameter(float, 0.04, msg="Keep objects with n_mask_base < mask_threshold (values >= 1 apply no cut)"),
+        "emax": StageParameter(float, 0.5, msg="Band-combined shape cut |e| < emax, applied as esq < emax**2"),
+        "g_hi_cut": StageParameter(float, 50.0, msg="Upper g-mag cut"),
+        "r_hi_cut": StageParameter(float, 50.0, msg="Upper r-mag cut"),
+        "i_hi_cut": StageParameter(float, 50.0, msg="Upper i-mag cut"),
+        "z_hi_cut": StageParameter(float, 50.0, msg="Upper z-mag cut"),
+        "gr_cut": StageParameter(float, 50.0, msg="|g - r| colour cut"),
+        "ri_cut": StageParameter(float, 50.0, msg="|r - i| colour cut"),
+        "iz_cut": StageParameter(float, 50.0, msg="|i - z| colour cut"),
+        "psf_g_cut": StageParameter(float, 1.0, msg="Per-band PSF ellipticity cut |psf_g1|,|psf_g2| < psf_g_cut (1 = no cut)"),
+        "flux_err_column": StageParameter(str, "lsst_{band}_flux_gauss2_err", msg="Per-band flux-error column used by {b}_flux_err_cut"),
+        "g_flux_err_cut": StageParameter(float, 1e30, msg="Upper g flux-error cut [nJy]"),
+        "r_flux_err_cut": StageParameter(float, 1e30, msg="Upper r flux-error cut [nJy]"),
+        "i_flux_err_cut": StageParameter(float, 1e30, msg="Upper i flux-error cut [nJy]"),
+        "z_flux_err_cut": StageParameter(float, 1e30, msg="Upper z flux-error cut [nJy]"),
+    }
+
+    def run(self):
+        # Shadow the class variable TXSimpleSelection.columns with one
+        # specific to this instance, since it depends on the configuration
+        bands = self.config["bands"]
+        self.columns = metacal_variants("s2n", "m00", "m20", "esq", *[f"mag_{b}" for b in bands])
+        self.columns += ["n_mask_base"]
+        # PSF and flux-error columns are only read when their cuts are
+        # switched on, so catalogs without them still run with the defaults
+        for b in bands:
+            if self.config["psf_g_cut"] < 1.0:
+                self.columns += [f"psf_g1_{b}", f"psf_g2_{b}"]
+            if self.config[f"{b}_flux_err_cut"] < 1e30:
+                self.columns.append(self.config["flux_err_column"].format(band=b))
+
+        fin = self.open_input("shear_catalog")
+        n = fin["shear/ra"].size
+        fin.close()
+
+        fout = self.open_output("shear_selection", parallel=True)
+        g_out = fout.create_group("shear")
+
+        # "selection" is the baseline; the others are the ±γ variants
+        suffixes = ["", "_1p", "_1m", "_2p", "_2m"]
+        for suffix in suffixes:
+            g_out.create_dataset(f"selection{suffix}", shape=(n,), dtype=bool)
+        n_sel = np.zeros(len(suffixes), dtype=np.int64)
+
+        for (s, e, data) in self.data_iterator("shear"):
+            print(f"Rank {self.rank} processing rows {s:,} - {e:,}")
+            for i, suffix in enumerate(suffixes):
+                sel = self.compute_selection(s, e, _DataWrapper(data, suffix=suffix))
+                g_out[f"selection{suffix}"][s:e] = sel
+                n_sel[i] += sel.sum()
+
+        if self.comm is not None:
+            n_sel = self.comm.allreduce(n_sel)
+        for suffix, count in zip(suffixes, n_sel):
+            g_out.attrs[f"n_selected{suffix}"] = count
+
+        fout.close()
+
+    def compute_selection(self, start, end, data):
+        config = self.config
+        bands = config["bands"]
+        cutter = Cutter(data["s2n"].size, verbose=config["verbose"])
+
+        cutter.keep(data["n_mask_base"] < config["mask_threshold"], "mask fraction")
+        cutter.keep(data["s2n"] > config["s2n_min"], "S/N")
+
+        # Band-combined size cut on fpfs1 moments
+        m00 = data["m00"]
+        cutter.keep((m00 + data["m20"]) / m00 > config["T_min"], "size")
+        cutter.keep(data["esq"] < config["emax"] ** 2, "|e|")
+
+        for b in bands:
+            cutter.keep(data[f"mag_{b}"] < config[f"{b}_hi_cut"], f"mag_{b}")
+
+        for b1, b2 in (("g", "r"), ("r", "i"), ("i", "z")):
+            if b1 in bands and b2 in bands:
+                colour = np.abs(data[f"mag_{b1}"] - data[f"mag_{b2}"])
+                cutter.keep(colour < config[f"{b1}{b2}_cut"], f"{b1} - {b2}")
+
+        psf_g_cut = config["psf_g_cut"]
+        if psf_g_cut < 1.0:
+            for b in bands:
+                # NaN PSF (failed HSM fit) compares False, i.e. is rejected
+                psf_ok = (np.abs(data[f"psf_g1_{b}"]) < psf_g_cut) & (np.abs(data[f"psf_g2_{b}"]) < psf_g_cut)
+                cutter.keep(psf_ok, f"PSF g {b}")
+
+        for b in bands:
+            cut = config[f"{b}_flux_err_cut"]
+            if cut < 1e30:
+                cutter.keep(data[config["flux_err_column"].format(band=b)] < cut, f"flux err {b}")
+
+        return cutter.sel
 
 class TXLensfitSelection(TXSimpleSelection):
     name = "TXLensfitSelection"
