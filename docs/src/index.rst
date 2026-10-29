@@ -29,6 +29,7 @@ It is designed to take catalogs of objects (as produced by the LSST Project), an
    :caption: Using & Contributing:
 
    running
+   blinding
    data_sources
    adding
    parallel
