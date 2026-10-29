@@ -5,6 +5,7 @@ from ...base_stage import PipelineStage
 from .sources_select_compute import CLClusterShearCatalogs, CombinedClusterCatalog
 from ...data_types import ShearCatalog, HDFFile, PhotozPDFFile, FiducialCosmology, TomographyCatalog, PickleFile
 from ...shear_calibration import Calibrator
+from . import iterate_source_catalog
 from collections import defaultdict
 import yaml
 import ceci
@@ -14,9 +15,10 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
     name = "CLClusterEnsembleProfiles"
     inputs = [
         #("cluster_catalog", HDFFile),
+        ("shear_catalog", ShearCatalog),
         ("cluster_catalog_tomography", HDFFile), # TO TEST
         ("fiducial_cosmology", FiducialCosmology),
-        ("cluster_shear_catalogs", HDFFile),
+        ("cluster_shear_selection", HDFFile),
     ]
 
     outputs = [
@@ -36,6 +38,9 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         "bootstrap_nboot": 100,
         #coordinate_system for shear
         #"coordinate_system" : 'euclidean' #Must be either 'celestial' or 'euclidean'
+        "use_shape_noise": False,
+        "use_true_shear": False,
+        "redshift_weight_criterion": "zmode",  # pdf / mean / true / None
     }
 
     def run(self):
@@ -60,11 +65,8 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             self.clmm_cosmo = clmm.cosmology.ccl.CCLCosmology()
             self.clmm_cosmo.set_be_cosmo(ccl_cosmo)
                  
-        # load cluster catalog as an astropy table
-        #clusters = self.load_cluster_catalog()
-        
-
-        cluster_stack_dict = self.load_cluster_catalog_tomography_group() 
+        clusters_in_bins = self.load_cluster_catalog_tomography_group() 
+        cluster_stack_dict = self.make_ensenble(clusters_in_bins) 
         pickle.dump(cluster_stack_dict, open(self.get_output("cluster_profiles"), 'wb'))
 
                     
@@ -111,6 +113,320 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
                       "weight_clmm": weight, "distance_arcmin": distance_arcmin})
                   
         return tab, meta_coord_sys, profile_type
+
+    def load_cluster_shear_selection(self) :
+
+        out = {}
+        with self.open_input("cluster_shear_selection") as f:
+                g_idx = f["index/"]
+                profile_type = g_idx.attrs.get("profile_type")
+                g = f["catalog/"]
+                cluster_id = g['cluster_id'][:]
+                cluster_sample_start = g['cluster_sample_start'][:]
+                cluster_sample_count = g['cluster_sample_count'][:]
+                cluster_theta_max_arcmin = g['cluster_theta_max_arcmin'][:]
+            tab = Table({"cluster_id": cluster_id,
+                         "cluster_sample_count": cluster_sample_count, "cluster_sample_start": cluster_sample_start,
+                         "cluster_theta_max_arcmin": cluster_theta_max_arcmin})
+
+            return tab, meta_coord_sys, profile_type
+
+        # Read index group data corresponding to a specific cluster_id
+        #     indices are defined base on parameter stored in catalog/cluster_sample_start and _count for the given cluster id
+        with self.open_input("cluster_shear_catalogs") as f:
+            ifirst,icount = indices
+            ilast = ifirst+icount
+            meta_coord_sys = f['provenance'].attrs['config/coordinate_system']
+            g = f["index/"]
+            profile_type = g.attrs["profile_type"]
+            cluster_index = g['cluster_index'][ifirst:ilast]
+            cluster_id = g['cluster_id'][ifirst:ilast]
+            tangential_comp = g['tangential_comp'][ifirst:ilast]
+            cross_comp = g['cross_comp'][ifirst:ilast]
+            source_index = g['source_index'][ifirst:ilast]
+            weight = g['weight'][ifirst:ilast]
+            distance_arcmin = g['distance_arcmin'][ifirst:ilast]
+
+
+        tab = Table({"cluster_index": cluster_index, "cluster_id" : cluster_id, "tangential_comp_clmm": tangential_comp,
+                      "cross_comp_clmm": cross_comp, "source_index": source_index,
+                      "weight_clmm": weight, "distance_arcmin": distance_arcmin})
+                  
+        return tab, meta_coord_sys, profile_type
+
+    def prep_source_data(self):
+
+        #########################################################
+        # Compute source quantities
+        #weights = self.compute_weights(clmm_cosmo, data, gal_index, cluster_z)
+        weights, tangential_comp, cross_comp, g1, g2 = self.compute_sources_quantities(clmm_cosmo, data, gal_index, cluster_z, cluster_ra, cluster_dec)
+        # we want to save the index into the overall shear catalog,
+        # not just into this chunk of data
+                
+        profile_group_name = "reduced_shear"
+        if self.config['delta_sigma'] == True:
+            profile_group_name = "delta_sigma"
+        index_group.attrs["profile_type"] = profile_group_name
+        #########################################################
+
+
+        import sklearn.neighbors
+        import astropy
+        import h5py
+        import clmm
+        import clmm.cosmology.ccl
+
+        # load cluster catalog as an astropy table
+        clusters = self.load_cluster_catalog()
+        ncluster = len(clusters)
+
+        # Store the neighbours for each cluster
+        per_cluster_data = [list() for i in range(ncluster)]
+
+        with self.open_input("fiducial_cosmology", wrapper=True) as f:
+            ccl_cosmo = f.to_ccl()
+            clmm_cosmo = clmm.cosmology.ccl.CCLCosmology()
+            clmm_cosmo.set_be_cosmo(ccl_cosmo)
+
+        # Buffer in redshift behind each object
+        delta_z = self.config["delta_z"]
+
+        # cluster catalog
+        clusters_in_bins = self.load_cluster_catalog_tomography_group() 
+
+        # get cluster-galaxy pairs
+        with self.open_input("cluster_shear_selection") as f:
+            #catalog_group = outfile.create_group("catalog")
+            #catalog_group.create_dataset("cluster_id", shape=(ncluster,), dtype=np.int64)
+            #catalog_group.create_dataset("cluster_theta_max_arcmin", shape=(ncluster,), dtype=np.float64)
+            cluster_source_index = {}
+            cluster_source_dist = {}
+            # sort gal_index just to be sure:
+            for i in np.argsort(f["index/source_index"]):
+                _cl_id = f["index/cluster_id"][i]
+                cluster_source_index[_cl_id] = cluster_source_index.get(_cl_id, []) + [f["index/source_index"][i]]
+                source_cluster_dist[_cl_id] = source_cluster_dist.get(_cl_id, []) + [f["index/distance_arcmin"][i]]
+
+        cluster_source_index = {key: np.array(val, dtype=int) for key, value in cluster_source_index.items()}
+        source_cluster_dist = {key: np.array(val) for key, value in source_cluster_dist.items()}
+
+        # add list to fill with sources
+        for cluster_list in clusters_in_bins.values():
+            for cluster in cluster_list:
+                cluster.list_of_source_lists = []
+
+        # Loop through the source catalog.
+        for s, e, data in self.iterate_source_catalog(self, self.config["redshift_weight_criterion"]):
+            print(f"Process {self.rank} processing chunk {s:,} - {e:,}")
+
+            gal_indexes = np.arange(s, e)
+            for cluster_list in clusters_in_bins.values():
+                for cluster in cluster_list:
+
+                    sources_in_cluster = cluster_source_index[cluster["id"]]
+                    if sources_selected_in_cluster[0]<e or sources_selected_in_cluster[-1]>s:
+                        continue
+
+                     _in_cluster = np.isin(gal_indexes, sources_in_cluster)
+                     if not _in_cluster.any():
+                         continue
+
+                    distance = source_cluster_dist[cluster["id"]][gal_indexes[_in_cluster]]
+                    
+                    cluster_z = clusters[cluster_index]["redshift"]
+                    cluster_ra = clusters[cluster_index]["ra"]
+                    cluster_dec = clusters[cluster_index]["dec"]
+
+                    # Compute source quantities
+                    weights, tangential_comp, cross_comp, g1, g2 = self.compute_sources_quantities(
+                        clmm_cosmo, data, _in_cluster, cluster_z, cluster_ra, cluster_dec
+                    )
+
+                per_cluster_data[cluster_index].append((distance, weights, tangential_comp, cross_comp, g1, g2))
+
+            gc.collect()
+
+        print(f"Process {self.rank} done reading")
+
+        # Now we loop through each cluster and collect all the galaxies
+        # behind it from all the different processes. Each different
+        # process received a different chunk of the shear catalog,
+        # so we need to pull together all the shears relevant to each
+        # cluster
+        start = 0
+        for i, c in enumerate(clusters):
+
+            if (self.rank == 0) and (i%100 == 0):
+                print(f"Collecting data for cluster {i}")
+
+            if len(per_cluster_data[i]) == 0:
+                # If there is no background data for this cluster
+                # for this particular processor then we just send
+                # an empty array
+                weights = np.zeros(0)
+                tangential_comps = np.zeros(0)
+                cross_comps = np.zeros(0)
+                g1 = np.zeros(0)
+                g2 = np.zeros(0)
+                distances = np.zeros(0)
+            else:
+                # Each process flattens the list of all the galaxies for this cluster
+                distances = np.concatenate([d[1] for d in per_cluster_data[i]])
+                if self.config['delta_sigma']:
+                    weights = np.concatenate([d[2] for d in per_cluster_data[i]])
+                else:
+                    #If we are using gamma, the weights do not deppend on each galaxy, so the function returns a float
+                    weights = np.full(len(indices), per_cluster_data[i][0][2])
+                tangential_comps = np.concatenate([d[3] for d in per_cluster_data[i]])
+                cross_comps = np.concatenate([d[4] for d in per_cluster_data[i]])
+                g1 = np.concatenate([d[5] for d in per_cluster_data[i]])
+                g2 = np.concatenate([d[6] for d in per_cluster_data[i]])
+
+
+            # If we are running in parallel then collect together the values from
+            # all the processes
+            if self.comm is not None:
+                weights, tangential_comps, cross_comps, g1, g2, distances = self.collect(weights, tangential_comps, cross_comps, g1, g2, distances)
+
+            ##########################################
+            # DO SOMETHING TO ADD SOURCES INFO HERE!!!
+            ##########################################
+
+    def find_galaxies_near_each_cluster(self, galaxy_data, cluster_data, tree, max_theta_max):
+        # Get the location of the galaxies in this chunk of data,
+        # in the form that the tree requires
+        X = np.radians([galaxy_data["dec"], galaxy_data["ra"]]).T
+
+
+        # First we will get all the objects that
+        # are near each cluster using the maximum search radius for any cluster.
+        # Then in a moment we will cut down to the ones that are
+        # within the radius for each specific cluster.
+        nearby_clusters, cluster_distances1 = tree.query_radius(X, max_theta_max, return_distance=True)
+        nearby_galaxies = defaultdict(list)
+        nearby_galaxy_distances = defaultdict(list)
+
+        # Now we invert our tree information. We currently have the list of
+        # all the clusters near each galaxy. Now we invert it to get the list
+        # of galaxies near this cluster. This strange pattern is because then
+        # we only have to make the tree object (which does fast searches for
+        # nearby objects once, for the cluster information.
+        for gal_i, (cluster_indices, cluster_distances) in enumerate(zip(nearby_clusters, cluster_distances1)):
+            for (cluster_i, cluster_distance) in zip(cluster_indices, cluster_distances):
+                nearby_galaxies[cluster_i].append(gal_i)
+                nearby_galaxy_distances[cluster_i].append(cluster_distance)
+
+        return nearby_galaxies, nearby_galaxy_distances
+
+
+    def collect(self, indices, weights, tangential_comps, cross_comps, g1, g2, distances):
+        # total number of background objects for t
+
+        counts = np.array(self.comm.allgather(indices.size))
+        total = counts.sum()
+
+        # Early exit if nothing here
+        if total == 0:
+            indices = np.zeros(0, dtype=int)
+            weights = np.zeros(0)
+            tangential_comps = np.zeros(0)
+            cross_comps = np.zeros(0)
+            distances = np.zeros(0)
+            g1 = np.zeros(0)
+            g2 = np.zeros(0)
+            return indices, weights, distances, g1, g2
+
+        # This collects together all the results from different processes for this cluster
+        if self.rank == 0:
+            all_indices = np.empty(total, dtype=indices.dtype)
+            all_weights = np.empty(total, dtype=weights.dtype)
+            all_tangential_comps = np.empty(total, dtype=tangential_comps.dtype)
+            all_cross_comps = np.empty(total, dtype=cross_comps.dtype)
+            all_g1 = np.empty(total, dtype=tangential_comps.dtype)
+            all_g2 = np.empty(total, dtype=cross_comps.dtype)
+            all_distances = np.empty(total, dtype=distances.dtype)
+            self.comm.Gatherv(sendbuf=distances, recvbuf=(all_distances, counts))
+            self.comm.Gatherv(sendbuf=cross_comps, recvbuf=(all_cross_comps, counts))
+            self.comm.Gatherv(sendbuf=tangential_comps, recvbuf=(all_tangential_comps, counts))
+            self.comm.Gatherv(sendbuf=g1, recvbuf=(all_g1, counts))
+            self.comm.Gatherv(sendbuf=g2, recvbuf=(all_g2, counts))
+            self.comm.Gatherv(sendbuf=weights, recvbuf=(all_weights, counts))
+            self.comm.Gatherv(sendbuf=indices, recvbuf=(all_indices, counts))
+            indices = all_indices
+            weights = all_weights
+            tangential_comps = all_tangential_comps
+            cross_comps = all_cross_comps
+            distances = all_distances
+            g1 = all_g1
+            g2 = all_g2
+        else:
+            self.comm.Gatherv(sendbuf=distances, recvbuf=(None, counts))
+            self.comm.Gatherv(sendbuf=cross_comps, recvbuf=(None, counts))
+            self.comm.Gatherv(sendbuf=tangential_comps, recvbuf=(None, counts))
+            self.comm.Gatherv(sendbuf=g1, recvbuf=(None, counts))
+            self.comm.Gatherv(sendbuf=g2, recvbuf=(None, counts))
+            self.comm.Gatherv(sendbuf=weights, recvbuf=(None, counts))
+            self.comm.Gatherv(sendbuf=indices, recvbuf=(None, counts))
+
+        return indices, weights, tangential_comps, cross_comps, g1, g2, distances
+
+    def compute_sources_quantities(self, clmm_cosmo, data, index, z_cluster, ra_cluster, dec_cluster):
+        import clmm
+        z_cluster = float(z_cluster)
+        is_deltasigma = self.config["delta_sigma"]
+        criterion = self.config["redshift_weight_criterion"]
+        coordinate_system = self.config["coordinate_system"]
+        use_shape_noise = self.config["use_shape_noise"]
+        sigma_c = None
+        # Depending on whether we are using the PDF or not, choose
+        # some keywords to give to compute_galaxy_weights
+        if criterion == "pdf":
+            # We need the z and PDF(z) arrays in this case
+            pdf_z = data["pdf_z"]
+            pdf_pz = data["pdf_pz"][index]
+            # suppress user warnings containing string "nSome source redshifts are lower than the cluster redshift"
+            if is_deltasigma:
+                with warnings.catch_warnings():
+                    warnings.filterwarnings("ignore")
+                    sigma_c = clmm.theory.compute_critical_surface_density_eff(
+                        cosmo=clmm_cosmo,
+                        z_cluster=z_cluster,
+                        pzbins=pdf_z,
+                        pzpdf=pdf_pz,
+                        )
+        elif criterion in ["zmode", "ztrue", "zmean"]:
+            if is_deltasigma:
+                z_source = data[self.metadetect_z_names[criterion]][index]
+                sigma_c = clmm_cosmo.eval_sigma_crit(z_cluster, z_source)
+        elif criterion is None:
+            pass
+        else:
+            raise NotImplementedError(f"Not implemented {criterion} weighting")
+            
+        g1 = data["g1"][index]
+        g2 = data["g2"][index]
+        weight = clmm.dataops.compute_galaxy_weights(
+            sigma_c = sigma_c,
+            is_deltasigma=is_deltasigma,
+            use_shape_noise=use_shape_noise,
+            shape_component1=np.array(g1),
+            shape_component2=np.array(g2),
+        )
+        _, tangential_comp, cross_comp = clmm.compute_tangential_and_cross_components(
+            ra_cluster,
+            dec_cluster,
+            data['ra'][index],
+            data['dec'][index],
+            g1,
+            g2,
+            coordinate_system=coordinate_system,
+            geometry="curve",
+            is_deltasigma=is_deltasigma,
+            sigma_c=sigma_c,
+            validate_input=True,
+        )
+        
+        return weight, tangential_comp, cross_comp, g1, g2
 
 
 
@@ -210,26 +526,28 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         return cluster_ensemble
    
     
-    def load_cluster_catalog_tomography_group(self): # NEED TO CHNAGE FUNCTION NAME
+    def load_cluster_catalog_tomography_group(self):
         from astropy.table import Table
-        binned_cluster_stack = {}
         
         with self.open_input("cluster_catalog_tomography") as f:
-            k = f["cluster_bin"].keys()
+            clusters_in_bins = {
+                key: self.load_cluster_list(group=group)
+                for key, group in f["cluster_bin"].items()
+            }
 
-            for key in k :
-                group = f["cluster_bin"][key]
-                clusters = self.load_cluster_list(group=group) #elf.get_cluster_indice( DOES THIS FUNCTION COMES FROM ?
-                print(clusters)
-                if  len(clusters)>1:
-                    cluster_stack = self.create_cluster_ensemble(clusters, cluster_ensemble_id=key)
-                else :
-                    cluster_stack = None
-                print('cl_ensemble_created')
-                
-                #dict(dset_out[i].attrs), dset_out[i]['redshift'][:].size) 
-                
-                binned_cluster_stack[key]={'cluster_bin_edges':dict(group.attrs), 'n_cl':len(clusters), 'clmm_cluster_ensemble':cluster_stack, 'profile_type': self.profile_type}
-                
             
-        return binned_cluster_stack
+        return clusters_in_bins
+
+    def make_ensemble(self, clusters_in_bins):
+        binned_cluster_stack = {}
+        for key, clusters for clusters_in_bins.items():
+            print(clusters)
+            if  len(clusters)>1:
+                cluster_stack = self.create_cluster_ensemble(clusters, cluster_ensemble_id=key)
+            else :
+                cluster_stack = None
+            print('cl_ensemble_created')
+            
+            #dict(dset_out[i].attrs), dset_out[i]['redshift'][:].size) 
+            
+            binned_cluster_stack[key]={'cluster_bin_edges':dict(group.attrs), 'n_cl':len(clusters), 'clmm_cluster_ensemble':cluster_stack, 'profile_type': self.profile_type}

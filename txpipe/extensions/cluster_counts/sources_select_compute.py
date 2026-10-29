@@ -4,6 +4,7 @@ import numpy as np
 from ...base_stage import PipelineStage
 from ...data_types import ShearCatalog, HDFFile, PhotozPDFFile, FiducialCosmology, TomographyCatalog, ShearCatalog
 from ...shear_calibration import Calibrator
+from . import iterate_source_catalog
 from collections import defaultdict
 import yaml
 import ceci
@@ -23,7 +24,7 @@ class CLClusterShearCatalogs(PipelineStage):
     ]
 
     outputs = [
-        ("cluster_shear_catalogs", HDFFile),
+        ("cluster_shear_selection", HDFFile),
     ]
 
     config_options = {
@@ -31,13 +32,10 @@ class CLClusterShearCatalogs(PipelineStage):
         "max_radius": 10.0,  # Mpc
         "delta_z": 0.1,
         "redshift_cut_criterion": "zmode",  # pdf / mean / true / median / tomo_bins
-        "redshift_weight_criterion": "zmode",  # pdf / mean / true / None
         "redshift_cut_criterion_pdf_fraction": 0.9,  # pdf / mean / true / median
         "subtract_mean_shear": False, # Not clear if this is useful for clusters
         "coordinate_system": "celestial",
-        "use_true_shear": False,
         "delta_sigma": True, # If True then we compute delta-sigma, otherwise we compute gamma
-        "use_shape_noise": False,
         "use_radius": True,
         "max_angle": 30, # arcmin
         
@@ -52,8 +50,6 @@ class CLClusterShearCatalogs(PipelineStage):
         import sklearn.neighbors
         import astropy
         import h5py
-        import clmm
-        import clmm.cosmology.ccl
 
         # load cluster catalog as an astropy table
         clusters = self.load_cluster_catalog()
@@ -82,16 +78,11 @@ class CLClusterShearCatalogs(PipelineStage):
         # Store the neighbours for each cluster
         per_cluster_data = [list() for i in range(ncluster)]
 
-        with self.open_input("fiducial_cosmology", wrapper=True) as f:
-            ccl_cosmo = f.to_ccl()
-            clmm_cosmo = clmm.cosmology.ccl.CCLCosmology()
-            clmm_cosmo.set_be_cosmo(ccl_cosmo)
-
         # Buffer in redshift behind each object        
         delta_z = self.config["delta_z"]
 
         # Loop through the source catalog.
-        for s, e, data in self.iterate_source_catalog():
+        for s, e, data in self.iterate_source_catalog(self, self.config["redshift_cut_criterion"]):
             print(f"Process {self.rank} processing chunk {s:,} - {e:,}")
                 
             nearby_gals, nearby_gal_dists = self.find_galaxies_near_each_cluster(data, clusters, tree, max_theta_max)
@@ -118,8 +109,6 @@ class CLClusterShearCatalogs(PipelineStage):
                     continue
 
                 cluster_z = clusters[cluster_index]["redshift"]
-                cluster_ra = clusters[cluster_index]["ra"]
-                cluster_dec = clusters[cluster_index]["dec"]
                 # # Cut down to clusters that are in front of this galaxy
                 z_good = self.select_on_redshift(data, gal_index, cluster_z, delta_z)
                 
@@ -129,13 +118,7 @@ class CLClusterShearCatalogs(PipelineStage):
                 if gal_index.size == 0:
                     continue
 
-                # Compute source quantities
-                #weights = self.compute_weights(clmm_cosmo, data, gal_index, cluster_z)
-                weights, tangential_comp, cross_comp, g1, g2 = self.compute_sources_quantities(clmm_cosmo, data, gal_index, cluster_z, cluster_ra, cluster_dec)
-                # we want to save the index into the overall shear catalog,
-                # not just into this chunk of data
-                global_index = data["original_index"][gal_index]
-                per_cluster_data[cluster_index].append((global_index, distance, weights, tangential_comp, cross_comp, g1, g2))
+                per_cluster_data[cluster_index].append((data["original_index"][gal_index], distance))
 
             gc.collect()
 
@@ -161,8 +144,6 @@ class CLClusterShearCatalogs(PipelineStage):
             outfile = self.open_output("cluster_shear_catalogs")
             # Create space for the catalog
             catalog_group = outfile.create_group("catalog")
-            catalog_group.create_dataset("cluster_sample_start", shape=(ncluster,), dtype=np.int32)
-            catalog_group.create_dataset("cluster_sample_count", shape=(ncluster,), dtype=np.int32)
             catalog_group.create_dataset("cluster_id", shape=(ncluster,), dtype=np.int64)
             catalog_group.create_dataset("cluster_theta_max_arcmin", shape=(ncluster,), dtype=np.float64)
             # and for the index into that catalog
@@ -170,16 +151,7 @@ class CLClusterShearCatalogs(PipelineStage):
             index_group.create_dataset("cluster_index", shape=(total_count,), dtype=np.int64)
             index_group.create_dataset("source_index", shape=(total_count,), dtype=np.int64)
             index_group.create_dataset("cluster_id", shape=(total_count,), dtype=np.int64)
-            index_group.create_dataset("weight", shape=(total_count,), dtype=np.float64)
-            index_group.create_dataset("tangential_comp", shape=(total_count,), dtype=np.float64)
-            index_group.create_dataset("cross_comp", shape=(total_count,), dtype=np.float64)
-            index_group.create_dataset("g1", shape=(total_count,), dtype=np.float64)
-            index_group.create_dataset("g2", shape=(total_count,), dtype=np.float64)
             index_group.create_dataset("distance_arcmin", shape=(total_count,), dtype=np.float64)
-            profile_group_name = "reduced_shear"
-            if self.config['delta_sigma'] == True:
-                profile_group_name = "delta_sigma"
-            index_group.attrs["profile_type"] = profile_group_name
 
 
         # Now we loop through each cluster and collect all the galaxies
@@ -198,31 +170,17 @@ class CLClusterShearCatalogs(PipelineStage):
                 # for this particular processor then we just send
                 # an empty array
                 indices = np.zeros(0, dtype=int)
-                weights = np.zeros(0)
-                tangential_comps = np.zeros(0)
-                cross_comps = np.zeros(0)
-                g1 = np.zeros(0)
-                g2 = np.zeros(0)
                 distances = np.zeros(0)
             else:
                 # Each process flattens the list of all the galaxies for this cluster
                 indices = np.concatenate([d[0] for d in per_cluster_data[i]])
                 distances = np.concatenate([d[1] for d in per_cluster_data[i]])
-                if self.config['delta_sigma']:
-                    weights = np.concatenate([d[2] for d in per_cluster_data[i]])
-                else:
-                    #If we are using gamma, the weights do not deppend on each galaxy, so the function returns a float
-                    weights = np.full(len(indices), per_cluster_data[i][0][2])
-                tangential_comps = np.concatenate([d[3] for d in per_cluster_data[i]])
-                cross_comps = np.concatenate([d[4] for d in per_cluster_data[i]])
-                g1 = np.concatenate([d[5] for d in per_cluster_data[i]])
-                g2 = np.concatenate([d[6] for d in per_cluster_data[i]])
 
 
             # If we are running in parallel then collect together the values from
             # all the processes
             if self.comm is not None:
-                indices, weights, tangential_comps, cross_comps, g1, g2, distances = self.collect(indices, weights, tangential_comps, cross_comps, g1, g2, distances)
+                indices, distances = self.collect(indices, distances)
 
             # Only the root process does the writing, so the others just
             # go to the next set of clusters.
@@ -233,12 +191,7 @@ class CLClusterShearCatalogs(PipelineStage):
             if indices.size != 0:
                 srt = indices.argsort()
                 indices = indices[srt]
-                weights = weights[srt]
-                tangential_comps = tangential_comps[srt]
-                cross_comps = cross_comps[srt]
                 distances = distances[srt]
-                g1 = g1[srt]
-                g2 = g2[srt]
             
             # And finally write out all the data from the root process.
             n = indices.size
@@ -254,11 +207,6 @@ class CLClusterShearCatalogs(PipelineStage):
             index_group["cluster_index"][start:start + n] = i
             index_group["source_index"][start:start + n] = indices
             index_group["cluster_id"][start:start + n] = catalog_group["cluster_id"][i]
-            index_group["weight"][start:start + n] = weights
-            index_group["tangential_comp"][start:start + n] = tangential_comps
-            index_group["cross_comp"][start:start + n] = cross_comps
-            index_group["g1"][start:start + n] = g1
-            index_group["g2"][start:start + n] = g2
             index_group["distance_arcmin"][start:start + n] = np.degrees(distances) * 60
 
             start += n
@@ -292,7 +240,7 @@ class CLClusterShearCatalogs(PipelineStage):
         return nearby_galaxies, nearby_galaxy_distances
 
 
-    def collect(self, indices, weights, tangential_comps, cross_comps, g1, g2, distances):
+    def collect(self, indices, distances):
         # total number of background objects for t
 
         counts = np.array(self.comm.allgather(indices.size))
@@ -301,47 +249,23 @@ class CLClusterShearCatalogs(PipelineStage):
         # Early exit if nothing here
         if total == 0:
             indices = np.zeros(0, dtype=int)
-            weights = np.zeros(0)
-            tangential_comps = np.zeros(0)
-            cross_comps = np.zeros(0)
             distances = np.zeros(0)
-            g1 = np.zeros(0)
-            g2 = np.zeros(0)
             return indices, weights, distances, g1, g2
 
         # This collects together all the results from different processes for this cluster
         if self.rank == 0:
             all_indices = np.empty(total, dtype=indices.dtype)
-            all_weights = np.empty(total, dtype=weights.dtype)
-            all_tangential_comps = np.empty(total, dtype=tangential_comps.dtype)
-            all_cross_comps = np.empty(total, dtype=cross_comps.dtype)
-            all_g1 = np.empty(total, dtype=tangential_comps.dtype)
-            all_g2 = np.empty(total, dtype=cross_comps.dtype)
             all_distances = np.empty(total, dtype=distances.dtype)
             self.comm.Gatherv(sendbuf=distances, recvbuf=(all_distances, counts))
-            self.comm.Gatherv(sendbuf=cross_comps, recvbuf=(all_cross_comps, counts))
-            self.comm.Gatherv(sendbuf=tangential_comps, recvbuf=(all_tangential_comps, counts))
-            self.comm.Gatherv(sendbuf=g1, recvbuf=(all_g1, counts))
-            self.comm.Gatherv(sendbuf=g2, recvbuf=(all_g2, counts))
-            self.comm.Gatherv(sendbuf=weights, recvbuf=(all_weights, counts))
             self.comm.Gatherv(sendbuf=indices, recvbuf=(all_indices, counts))
             indices = all_indices
-            weights = all_weights
-            tangential_comps = all_tangential_comps
             cross_comps = all_cross_comps
             distances = all_distances
-            g1 = all_g1
-            g2 = all_g2
         else:
             self.comm.Gatherv(sendbuf=distances, recvbuf=(None, counts))
-            self.comm.Gatherv(sendbuf=cross_comps, recvbuf=(None, counts))
-            self.comm.Gatherv(sendbuf=tangential_comps, recvbuf=(None, counts))
-            self.comm.Gatherv(sendbuf=g1, recvbuf=(None, counts))
-            self.comm.Gatherv(sendbuf=g2, recvbuf=(None, counts))
-            self.comm.Gatherv(sendbuf=weights, recvbuf=(None, counts))
             self.comm.Gatherv(sendbuf=indices, recvbuf=(None, counts))
 
-        return indices, weights, tangential_comps, cross_comps, g1, g2, distances
+        return indices, distances
 
 
     def compute_theta_max(self, z):
@@ -370,66 +294,6 @@ class CLClusterShearCatalogs(PipelineStage):
         return theta_max
 
 
-    def compute_sources_quantities(self, clmm_cosmo, data, index, z_cluster, ra_cluster, dec_cluster):
-        import clmm
-        z_cluster = float(z_cluster)
-        is_deltasigma = self.config["delta_sigma"]
-        criterion = self.config["redshift_weight_criterion"]
-        coordinate_system = self.config["coordinate_system"]
-        use_shape_noise = self.config["use_shape_noise"]
-        sigma_c = None
-        # Depending on whether we are using the PDF or not, choose
-        # some keywords to give to compute_galaxy_weights
-        if criterion == "pdf":
-            # We need the z and PDF(z) arrays in this case
-            pdf_z = data["pdf_z"]
-            pdf_pz = data["pdf_pz"][index]
-            # suppress user warnings containing string "nSome source redshifts are lower than the cluster redshift"
-            if is_deltasigma:
-                with warnings.catch_warnings():
-                    warnings.filterwarnings("ignore")
-                    sigma_c = clmm.theory.compute_critical_surface_density_eff(
-                        cosmo=clmm_cosmo,
-                        z_cluster=z_cluster,
-                        pzbins=pdf_z,
-                        pzpdf=pdf_pz,
-                        )
-        elif criterion in ["zmode", "ztrue", "zmean"]:
-            if is_deltasigma:
-                z_source = data[self.metadetect_z_names[criterion]][index]
-                sigma_c = clmm_cosmo.eval_sigma_crit(z_cluster, z_source)
-        elif criterion is None:
-            pass
-        else:
-            raise NotImplementedError(f"Not implemented {criterion} weighting")
-            
-        g1 = data["g1"][index]
-        g2 = data["g2"][index]
-        weight = clmm.dataops.compute_galaxy_weights(
-            sigma_c = sigma_c,
-            is_deltasigma=is_deltasigma,
-            use_shape_noise=use_shape_noise,
-            shape_component1=np.array(g1),
-            shape_component2=np.array(g2),
-        )
-        _, tangential_comp, cross_comp = clmm.compute_tangential_and_cross_components(
-            ra_cluster,
-            dec_cluster,
-            data['ra'][index],
-            data['dec'][index],
-            g1,
-            g2,
-            coordinate_system=coordinate_system,
-            geometry="curve",
-            is_deltasigma=is_deltasigma,
-            sigma_c=sigma_c,
-            validate_input=True,
-        )
-        
-        return weight, tangential_comp, cross_comp, g1, g2
-
-
-
     def load_cluster_catalog(self):   # TO TEST
         from astropy.table import Table
         with self.open_input("cluster_catalog") as f:
@@ -450,142 +314,6 @@ class CLClusterShearCatalogs(PipelineStage):
         return Table({"ra": ra, "dec": dec, "redshift": redshift, "richness": rich, "id": ids})
           
 
-    def iterate_source_catalog(self):
-        """
-        Iterate through the shear catalog, loading the locations
-        of them and whether they are assigned to any tomographic bin.
-        """
-        rows = self.config["chunk_rows"]
-        use_true_shear = self.config["use_true_shear"]
-
-        # where and what to read from the shear catalog
-        with self.open_input("shear_catalog", wrapper=True) as f:
-            shear_group = "shear"
-            shear_cols, rename = f.get_primary_catalog_names(true_shear=use_true_shear)
-
-        # load the shear calibration information
-        # for the moment, load the average overall shear calibrator,
-        # that applies to the collective 2D bin. This won't be high
-        # accuracy, but I'm not clear right now exactly what the right
-        # model is yet. Here this calibrator is just used for the
-        # weight information calculation, which needs g1 and g2 estimates.
-        # The same calibration should be used later for the actual shears.
-        if self.rank == 0:
-            print("Using single 2D shear calibration!")
-        _, shear_cal = Calibrator.load(self.get_input("shear_tomography_catalog"), null=use_true_shear)
-        subtract_mean = self.config["subtract_mean_shear"]
-
-
-        ##########################
-        # redshift cols management
-        ##########################
-
-        # where and what to read rom the PZ catalog. This is in a QP
-        # format where the mode and mean are stored in a file called
-        # "ancil". The columns are called zmode and zmean.
-        redshift_cut_criterion = self.config["redshift_cut_criterion"]
-        redshift_weight_criterion = self.config["redshift_weight_criterion"]
-        want_pdf = (redshift_cut_criterion == "pdf") or (redshift_weight_criterion == "pdf")
-
-        # to aggregate groups of redshift data to be read not in shear_catalog
-        z_info = []
-        additional_data_info = {}
-
-        if redshift_cut_criterion == "tomo_bins":
-            # where and what to read from the tomography catalog.
-            # We just want the values from the source bin. We will use
-            # any selected object, so we just ask for bin >= 0.
-            # (bin = -1 means non-selected)
-            #tomo_groups = ("ns", )
-            #if is_metadetect:
-            #    tomo_groups = ("2m", "1m", "ns", "1p", "2p")
-            #tomo_iter = [
-            #    item
-            #    for tomo_set in (
-            #        ("shear_bin_assignments", tomo_grp, tomo_cols) for tomo_grp in tomo_groups
-            #    )
-            #    for item in tomo_set
-            #]
-            z_info += ["shear_tomography_catalog", "tomography", ["bin"]]
-
-            with self.open_input("shear_tomography_catalog") as f:
-                tomo_attrs = f["tomography"].attrs
-                additional_data_info["tomo_bin_edges"] = np.array(
-                    [(tomo_attrs[f"zmin_{i}"], tomo_attrs[f"zmax_{i}"]) for i in range(tomo_attrs["nbin"])]
-                )
-        # The truth redshifts are keps in the shear catalog not
-        # the p(z) catalog. If we ask for that column we need to load it
-        # here.
-
-        else:
-            if "ztrue" in (redshift_cut_criterion, redshift_weight_criterion):
-                with self.open_input("shear_catalog", wrapper=True) as f:
-                    col = f.get_true_redshift_column()
-                    shear_cols.append(col)
-                    rename[col] = "redshift_true"
-
-            # check which point source estimate is added
-            z_cols = []
-            for z_type in ("zmode", "zmean", "zmedian"):
-                if z_type in (redshift_cut_criterion, redshift_weight_criterion):
-                    z_cols.append(z_type)
-                if z_type == redshift_cut_criterion:
-                    rename[z_type] = "redshift"
-            if z_cols:
-                # catalog, group, cols
-                z_info += ["source_photoz_pdfs", "ancil", z_cols]
-
-            # for PDF
-            if want_pdf:
-                z_info += ["source_photoz_pdfs", "data", ["yvals"]]
-
-                # we will also need the z axis values in this case
-                with self.open_input("source_photoz_pdfs") as f:
-                    # this data seems to be 1D in my QP file.
-                    # but that's the kind of thing they might change.
-                    additional_data_info["pdf_z"] = np.squeeze(f["/meta/xvals"][0])
-
-        # Loop through all these input files simultaneously.
-        for s, e, data in self.combined_iterators(
-                rows,
-                "shear_catalog",
-                shear_group,
-                shear_cols,
-                *z_info,
-                parallel=True
-        ):
-            # For each chunk of data we also want to store the original
-            # index.  This comes in useful later because we will cut
-            # down here to just objects in the WL sample.
-            data["original_index"] = np.arange(s, e, dtype=int)
-            # give the shear columns a unified name, whether
-            # they are metacal, metadetect, etc., also rename
-            # zmean or zmode to "redshift"
-            for old, new in rename.items():
-                data[new] = data.pop(old)
-
-            # If we are in PDF mode then we need this extra info
-            if want_pdf:
-                # also rename this for clarity
-                data["pdf_pz"] = data.pop("yvals")
-
-            # add extra info that does not depend on the rows
-            data.update(additional_data_info)
-
-            ##################################
-            # This is Eduardo's problem now ;)
-            ##################################
-            # Apply the shear calibration to this sample.
-            # Optionally subtract the mean (of the whole WL sample, not the local mean)
-            #_, shear_cal = Calibrator.load(self.get_input("shear_tomography_catalog"), null=use_true_shear)
-            #data["g1"], data["g2"] = shear_cal.apply(data["g1"],
-            #                                         data["g2"],
-            #                                         subtract_mean=subtract_mean
-            #)
-
-
-            # Give this chunk of data to the main run function
-            yield s, e, data
 
 
 
