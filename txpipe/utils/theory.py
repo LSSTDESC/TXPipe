@@ -146,8 +146,8 @@ def theory_3x2pt(
         A copy of the input sacc_data but with values
         replaced with theory predictions.
     """
-    from firecrown.likelihood.likelihood import load_likelihood_from_script
-    from firecrown.parameters import ParamsMap
+    from firecrown.likelihood import load_likelihood, NamedParameters
+    from firecrown.updatable import ParamsMap, get_default_params
     import sacc
     import pathlib
 
@@ -175,18 +175,26 @@ def theory_3x2pt(
 
     # Use the FireCrown machinery to compute the likelihood and as
     # a by-product the theory
-    build_parameters = {
-        "sacc_data": sacc_data,
-    }
+    build_parameters = NamedParameters(
+        {
+            "sacc_data": sacc_data,
+        }
+    )
 
     # These stages are a copy of what is done inside the FireCrown connectors
-    likelihood, tools = load_likelihood_from_script(theory_model, build_parameters)
+    likelihood, tools = load_likelihood(theory_model, build_parameters)
 
-    systematic_params = {**make_bias_parameters(bias, sacc_data, cosmo)}
+    # The tools require the cosmological parameters too, though we
+    # supply the cosmology object directly below so their values are
+    # not used. We just fill them in with the firecrown defaults.
+    params = get_default_params(likelihood, tools)
+    params.update(make_bias_parameters(bias, sacc_data, cosmo))
+
     # Apply the systematics parameters
-    likelihood.update(ParamsMap(systematic_params))
-    tools.update(ParamsMap(systematic_params))
-    tools.prepare(cosmo)
+    params = ParamsMap(params)
+    likelihood.update(params)
+    tools.update(params)
+    tools.prepare_with_cosmology(cosmo)
 
     # Ask the likelihood for a theory vector. We don't want
     # to print the actual likelihood because for many applications
@@ -279,7 +287,7 @@ def make_bias_parameters(bias_option, sacc_data, cosmo):
 
     # Form 2: a dictionary of tracer name -> bias value
     elif isinstance(bias_option, dict):
-        bias_dict = {name + "_bias": value for name, value in bias_option.items()}
+        bias_dict = {name + "_bias": float(value) for name, value in bias_option.items()}
 
     # Form 3: None (unit bias)
     elif bias_option is None:
@@ -290,7 +298,7 @@ def make_bias_parameters(bias_option, sacc_data, cosmo):
         bias_dict = {}
         for name in lens_tracers.keys():
             i = int(name.split("_")[1])
-            bias_dict[name + "_bias"] = bias_option[i]
+            bias_dict[name + "_bias"] = float(bias_option[i])
 
     # Form 5: float
     else:

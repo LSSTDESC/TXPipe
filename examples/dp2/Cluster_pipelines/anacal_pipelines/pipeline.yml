@@ -1,0 +1,68 @@
+# DP2 cluster weak lensing with the AnaCal shear catalogue: shear selection and
+# calibration, BPZ photo-z, cluster binning, cluster-source pairs and the shear
+# response of each stack and radial bin (CLClusterShearCalibrator).
+# Same structure as Kabelo's pipeline-dp2-CL-rubin-nersc.yml for metadetect.
+# From the TXPipe directory:
+#     sbatch examples/dp2/Cluster_pipelines/anacal_pipelines/pipeline.sub
+
+site:
+    name: nersc-interactive
+
+launcher:
+    name: mini
+    interval: 3.0
+
+modules: >
+    txpipe
+    txpipe.extensions
+    rail.estimation.algos.bpz_lite
+
+python_paths: []
+
+stages:
+  - name: TXCutShearCatalog        # keep the objects inside the mask
+    nprocess: 64
+    aliases:
+      shear_catalog: full_shear_catalog
+      cut_shear_catalog: shear_catalog
+  - name: TXAnacalSelection        # non-redshift cuts, baseline and +-gamma variants
+    nprocess: 64
+  - name: TXSimpleRedshiftSourceTomography   # source bin from mean_z and its variants
+    nprocess: 64
+  - name: TXComputeShearCalibrationAnacal    # AnaCal response of the source sample
+    nprocess: 64
+  - name: BPZliteInformer          # uses the HDFN prior
+    nprocess: 1
+    aliases:
+      input: spectroscopic_catalog
+      model: source_photoz_model
+  - name: BPZliteEstimator         # per-object p(z), zmode for the background cut
+    nprocess: 64
+    aliases:
+      model: source_photoz_model
+      input: shear_catalog
+      output: source_photoz_pdfs
+  - name: CLClusterBinningRedshiftRichness
+    nprocess: 1
+  - name: CLClusterShearCatalogs
+    nprocess: 1
+  - name: CLClusterShearCalibrator # R and R_T of each stack and radial bin
+    nprocess: 1
+
+output_dir: /pscratch/sd/e/edujb/dp2/outputs/anacal
+config: ./examples/dp2/Cluster_pipelines/anacal_pipelines/config.yml
+
+inputs:
+    full_shear_catalog:
+        id: 315                    # txpipe_dp2_shear_catalog_anacal_full 0.2.0
+    mask:
+        id: 324                    # txpipe_dp2_anacal_mask_wide 0.1.0, already a TXPipe mask
+    cluster_catalog:
+        id: 327                    # external_0723_x_dp2_clusters 0.1.0
+    spectroscopic_catalog: /global/cfs/cdirs/m1727/kabelo/TXPipe/data/example/outputs_metadetect/spectroscopic_catalog.hdf5
+    fiducial_cosmology: ./data/fiducial_cosmology.yml
+
+registry: {}
+resume: true
+log_dir: /pscratch/sd/e/edujb/dp2/outputs/anacal/logs
+pipeline_log: /pscratch/sd/e/edujb/dp2/outputs/anacal/log_CL_pipeline.txt
