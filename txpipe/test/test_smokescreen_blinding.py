@@ -150,3 +150,78 @@ def test_blinding_shift_is_theory_difference(tmp_path):
     expected = theory_3x2pt(shifted, sacc_data, bias=LENS_BIAS).mean - theory_3x2pt(reference, sacc_data, bias=LENS_BIAS).mean
 
     np.testing.assert_allclose(delta, expected, rtol=1e-10)
+
+
+def test_blinding_harmonic_space_b_modes(tmp_path):
+    # The theory model cannot predict B-modes, so they should be left as they are
+    raw, blinded = run_stage(tmp_path, make_data("fourier"))
+    raw = sacc.Sacc.load_fits(raw)
+    blinded = sacc.Sacc.load_fits(blinded)
+
+    b_modes = raw.indices("galaxy_shear_cl_bb")
+    modelled = np.setdiff1d(np.arange(len(raw)), b_modes)
+    assert len(b_modes) > 0
+    np.testing.assert_array_equal(blinded.mean[b_modes], raw.mean[b_modes])
+    assert np.all(blinded.mean[modelled] != raw.mean[modelled])
+
+
+# A minimal firecrown likelihood for xi_- only. It is used to test custom
+# likelihoods, and if REMOVE is set it removes the xi_+ points from the
+# sacc data instead of just not using them.
+SHEAR_LIKELIHOOD = """
+import firecrown.likelihood.weak_lensing as wl
+from firecrown.likelihood import TwoPoint, ConstGaussian, NamedParameters
+from firecrown.modeling_tools import ModelingTools
+
+REMOVE = {remove}
+
+def build_likelihood(build_parameters):
+    sacc_data = build_parameters.data["sacc_data"]
+    if REMOVE:
+        sacc_data.remove_selection(data_type="galaxy_shear_xi_plus")
+    data_type = "galaxy_shear_xi_minus"
+    sources = {{t: wl.WeakLensing(sacc_tracer=t) for t in sacc_data.tracers if t.startswith("source")}}
+    statistics = [
+        TwoPoint(source0=sources[t1], source1=sources[t2], sacc_data_type=data_type)
+        for t1, t2 in sacc_data.get_tracer_combinations(data_type)
+    ]
+    likelihood = ConstGaussian(statistics=statistics)
+    likelihood.read(sacc_data)
+    return likelihood, ModelingTools()
+"""
+
+
+def write_likelihood(tmp_path, remove=False):
+    path = tmp_path / "shear_likelihood.py"
+    path.write_text(SHEAR_LIKELIHOOD.format(remove=remove))
+    return str(path)
+
+
+def test_blinding_custom_likelihood(tmp_path):
+    likelihood_path = write_likelihood(tmp_path)
+    raw, blinded = run_stage(tmp_path, make_data("real"), likelihood_path=likelihood_path, systematics={})
+    raw = sacc.Sacc.load_fits(raw)
+    blinded = sacc.Sacc.load_fits(blinded)
+
+    # Only the points the likelihood models are blinded
+    xim = raw.indices("galaxy_shear_xi_minus")
+    others = np.setdiff1d(np.arange(len(raw)), xim)
+    assert np.all(blinded.mean[xim] != raw.mean[xim])
+    np.testing.assert_array_equal(blinded.mean[others], raw.mean[others])
+    assert blinded.metadata["blinding_likelihood"] == "shear_likelihood.py"
+
+
+def test_blinding_likelihood_removing_points(tmp_path):
+    likelihood_path = write_likelihood(tmp_path, remove=True)
+    with pytest.raises(ValueError, match="does not match the input data"):
+        run_stage(tmp_path, make_data("real"), likelihood_path=likelihood_path, systematics={})
+
+
+def test_blinding_missing_likelihood(tmp_path):
+    with pytest.raises(FileNotFoundError):
+        run_stage(tmp_path, make_data("real"), likelihood_path=str(tmp_path / "missing.py"))
+
+
+def test_blinding_no_shifts(tmp_path):
+    with pytest.raises(ValueError, match="No shifts_dict"):
+        run_stage(tmp_path, make_data("real"), shifts_dict={})
