@@ -9,11 +9,11 @@ These stages compute ensemble redshift histograms n(z) for bins
 
 * :py:class:`~txpipe.photoz_stack.TXMockGaussianPhotozStack` - Makes a mock Gaussian n(z) as a placeholder. Do not use for science!
 
-* :py:class:`~txpipe.rail.summarize.PZRailSummarizeBase` - Base class to build the n(z) from some tomographic bins and
+* :py:class:`~txpipe.rail.summarize.PZRailSummarizeBase` - Base class to build the n(z) from some tomographic bins and collate the results from all the bin ...
 
-* :py:class:`~txpipe.rail.summarize.PZRailSummarize` - Runs a specified RAIL "CatSummarizer" on each tomographic bin and
+* :py:class:`~txpipe.rail.summarize.PZRailSummarize` - Runs a specified RAIL "CatSummarizer" on each tomographic bin and collate the results from all t ...
 
-* :py:class:`~txpipe.rail.summarize.PZRailPZSummarize` - Runs a specified RAIL *masked* "PZSummarizer" on each tomographic bin and
+* :py:class:`~txpipe.rail.summarize.PZRailPZSummarize` - Runs a specified RAIL *masked* "PZSummarizer" on each tomographic bin and collate the results fr ...
 
 * :py:class:`~txpipe.rail.summarize.PZAddNonTomographicNZ` - Sum up tomographic n(z)s in a file and append the non-tomographic one.
 
@@ -208,7 +208,7 @@ These stages compute ensemble redshift histograms n(z) for bins
 
     - output_photoz_stack: QPNOfZFile
     
-    Parallel: Yes - MPI
+    Parallel: No - Serial
 
 
     .. collapse:: Configuration

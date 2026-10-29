@@ -11,7 +11,7 @@ See :ref:`Source selection and tomography`.
 
 * :py:class:`~txpipe.rail.summarize.PZGenerateSOMInformerSubsample` - Make a random subsample of the selected shear catalog objects, to train a SOM.
 
-* :py:class:`~txpipe.tomography.TXTrainRandomForestTomography` - Train a random forest classifier to assign source galaxies to tomographic bins based on their ph ...
+* :py:class:`~txpipe.tomography.TXTrainRandomForestTomography` - Train a random forest to assign source galaxies to tomographic bins based on photometry.
 
 * :py:class:`~txpipe.tomography.TXComputeSourceTomography` - Base class for tomography.
 
