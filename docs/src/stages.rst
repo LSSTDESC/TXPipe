@@ -9,13 +9,19 @@ TXPipe Stage Listing
 
    stages/base
    stages/Ingestion
-   stages/Photo-z
+   stages/Rubin DP2 Ingestion
+   stages/DES Y3 Ingestion
+   stages/Mock Catalogs
    stages/Selection
+   stages/Tomography
+   stages/Lens Selection
    stages/Calibration and Splitting
    stages/Weights
+   stages/Masks and Cuts
    stages/Maps
    stages/Ensemble Photo-z
    stages/Two-Point
+   stages/Delta Sigma
    stages/Covariance
    stages/Blinding
    stages/Plots

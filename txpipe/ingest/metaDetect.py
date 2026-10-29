@@ -281,6 +281,7 @@ def plot_tract(skymap, tract_id):
 
 
 class TXIngestHealsparseMask(PipelineStage):
+    """Convert a healsparse mask file into a TXPipe maps file."""
     name = "TXIngestHealsparseMask"
     inputs = [
         ("shear_mask", DataFile)
@@ -304,6 +305,12 @@ class TXIngestHealsparseMask(PipelineStage):
             f.write_map("mask", mask, metadata)
 
 class TXIngestDP2Photometry(TXDP2Ingestion):
+    """Ingest DP2 photometry for the tracts in a tract list.
+
+    Reads the object table for each tract, keeps the extended objects with good
+    coordinate and band flags, converts fluxes to magnitudes, and saves the result as a
+    TXPipe photometry catalog.
+    """
     name = "TXIngestDP2Photometry"
 
     inputs = [

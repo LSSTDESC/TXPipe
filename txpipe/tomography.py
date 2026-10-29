@@ -133,6 +133,11 @@ class TXComputeSourceTomography(PipelineStage):
 
 
 class TXApplyRandomForestSourceTomography(TXComputeSourceTomography):
+    """Assign source galaxies to tomographic bins using a trained random forest.
+
+    Applies the classifier made by TXTrainRandomForestTomography to the magnitudes of each
+    object, for every variant of the shear catalog, and saves the bin assignments.
+    """
     name = "TXApplyRandomForestSourceTomography"
     inputs = [
         ("shear_catalog", ShearCatalog),
@@ -178,6 +183,12 @@ class TXApplyRandomForestSourceTomography(TXComputeSourceTomography):
 
 
 class TXSimpleRedshiftSourceTomography(TXComputeSourceTomography):
+    """Assign source galaxies to tomographic bins by cutting on a redshift column.
+
+    This is mostly useful for simulations, where it can be used with the true redshift,
+    or for any catalog with a single-valued redshift estimate. The column used is set
+    with redshift_col, and the bin edges with source_zbin_edges.
+    """
     name = "TXSimpleRedshiftSourceTomography"
     inputs = [
         ("shear_catalog", ShearCatalog),
