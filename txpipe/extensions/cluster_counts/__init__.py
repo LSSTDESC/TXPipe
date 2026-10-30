@@ -9,3 +9,4 @@ from .convert_to_sacc import CLClusterSACC
 from .ingest_csv import CLIngestClusterCSV
 from .cluster_lens_catalog import CLClusterLensCatalog
 from .randoms import CLClusterRandoms
+from .cluster_random_catalog import CLClusterRandomsBinned
