@@ -1,6 +1,6 @@
 from .base_stage import PipelineStage
 from .data_types import Directory, ShearCatalog, HDFFile, PNGFile, TomographyCatalog, TextFile
-from .shear_calibration import (
+from .calibration_utils import (
     Calibrator,
     MeanShearInBins,
     metadetect_variants,
