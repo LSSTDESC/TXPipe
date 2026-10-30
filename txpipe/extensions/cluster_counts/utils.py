@@ -29,7 +29,7 @@ def iterate_source_catalog(self, redshift_type):
     # weight information calculation, which needs g1 and g2 estimates.
     # The same calibration should be used later for the actual shears.
     if self.rank == 0:
-        print("Using single 2D shear calibration!")
+        print("        Using single 2D shear calibration!")
 
 
     ##########################
@@ -78,17 +78,11 @@ def iterate_source_catalog(self, redshift_type):
             # but that's the kind of thing they might change.
             additional_data_info["pdf_z"] = np.squeeze(f["/meta/xvals"][0])
 
+    elif redshift_type in ("zmode", "zmean", "zmedian"):
+        z_info += ["source_photoz_pdfs", "ancil", [redshift_type]]
+        rename[redshift_type] = "redshift"
     else:
-        redshift_type_ok = False
-        # check which point source estimate is added
-        for z_type in ("zmode", "zmean", "zmedian"):
-            if z_type == redshift_type:
-                z_info += ["source_photoz_pdfs", "ancil", [z_type]]
-                rename[z_type] = "redshift"
-                redshift_type_ok = True
-                break
-        if not redshift_type_ok:
-            raise ValueError(f"redshift_type={redshift_type} not valid!")
+        raise ValueError(f"redshift_type={redshift_type} not valid!")
 
 
     # Loop through all these input files simultaneously.
