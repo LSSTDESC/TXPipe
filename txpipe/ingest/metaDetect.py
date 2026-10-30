@@ -69,14 +69,14 @@ class TXDP2Ingestion(PipelineStage):
         filtered_refs = [ref for ref in refs if ref.dataId["tract"] in tracts]
         return filtered_refs
 
-    def get_maximum_catalog_size(self, butler, refs):
+    def get_maximum_catalog_size(self, butler, refs, dataset_type):
         from pyarrow.parquet import ParquetFile
         n = 0
         nref = len(refs)
         print("Calculating maximum possible catalog size")
         for i, ref in enumerate(refs):
             print(f"Getting file size {i+1} / {nref}")
-            uri = butler.getURI('object_shear_all', dataId=ref.dataId)
+            uri = butler.getURI(dataset_type, dataId=ref.dataId)
             p = ParquetFile(uri.ospath)
             n += p.metadata.num_rows         
         return n
@@ -127,7 +127,7 @@ class TXIngestRubinMetaDetect(TXDP2Ingestion):
         # In theory one could be a little larger so we give it
         # some wiggle room. This is often not needed as we are
         # usually cutting down by flags anyway but doesn't hurt.
-        max_size = int(self.get_maximum_catalog_size(butler, used_tract_refs) / 5) * 1.05
+        max_size = int(self.get_maximum_catalog_size(butler, used_tract_refs, "object_shear_all") / 5 * 1.05)
         created_files = False
         for i, ref in enumerate(used_tract_refs):
             print(f"Processing tract {i + 1} / {n_used_tracts}")
@@ -364,7 +364,7 @@ class TXIngestDP2Photometry(TXDP2Ingestion):
         ]
         data_set_refs = butler.query_datasets("object")
         data_set_refs = self.filter_refs_by_tract(data_set_refs)
-        max_cat_size = self.get_maximum_catalog_size(butler, data_set_refs)
+        max_cat_size = self.get_maximum_catalog_size(butler, data_set_refs, "object")
         n_chunks = len(data_set_refs)
 
 
