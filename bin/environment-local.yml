@@ -15,7 +15,7 @@ dependencies:
   - jax=0.7.*
   - jaxlib=0.7.*
   - jupyter=1.1.*
-  - lsstdesc-ceci=2.4.*
+  - lsstdesc-ceci=2.6.*
   - lsstdesc-crow=1.0.*
   - matplotlib=3.10.*
   - mockmpi=0.8.*
@@ -51,8 +51,8 @@ dependencies:
     - glass==2023.7
     - git+https://github.com/beckermr/hybrideb@a3198ea5bc8175542b058e5c1289d910f05fd99d
     - pz-rail[algos] @ git+https://github.com/LSSTDESC/RAIL@v1.1.2
-    # RAIL is not yet updated for PZFLOW 4 and dependencies
-    # are not yet corrected either so we do it here.
+    - git+https://github.com/LSSTDESC/rail_base@u/jzuntz/fix-mpi-warning
+    - git+https://github.com/LSSTDESC/rail_sompz@u/jzuntz/iterate-tomobin-nz-onesom
     - pzflow>=4
     # Numpy has to be here to make sure that pypi doesn't
     # try to install a different version
