@@ -16,7 +16,8 @@ from .photoz_stack import TXPhotozStack, TXPhotozPlot, TXTruePhotozStack
 from .random_cats import TXRandomCat
 from .twopoint_fourier import TXTwoPointFourier
 from .twopoint import TXTwoPoint
-from .blinding import TXBlinding
+from .blinding import TXNullBlinding
+from .smokescreen_blinding import TXSmokescreenBlinding
 from .covariance import TXFourierGaussianCovariance, TXRealGaussianCovariance
 from .diagnostics import TXSourceDiagnosticPlots, TXLensDiagnosticPlots
 from .exposure_info import TXExposureInfo

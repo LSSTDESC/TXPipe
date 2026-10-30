@@ -1,0 +1,65 @@
+TXSmokescreenBlinding:
+    likelihood_path: examples/desy3_smokescreen/des_y3_3x2pt_likelihood.py
+
+    # DES Y3 fiducial cosmology. Omega_c is chosen so that Omega_m = 0.3,
+    # including the massive neutrinos.
+    reference_cosmology:
+        Omega_c: 0.25065
+        Omega_b: 0.048
+        h: 0.69
+        n_s: 0.97
+        sigma8: 0.8
+        m_nu: 0.06
+
+    # Blind in sigma8 and w0. Each value is drawn from U(a, b), using the seed.
+    shifts_dict:
+        sigma8: [0.70, 0.90]
+        w0: [-1.4, -0.6]
+    shift_distribution: flat
+    shift_type: add
+    seed: "Boitata was here"
+
+    # Nuisance parameters, fixed at the centres of the DES Y3 MagLim priors
+    # (CosmoSIS standard library examples/des-y3-values.ini and
+    # des-y3-maglim-values.ini). They must all be set: some firecrown
+    # defaults (e.g. mult_bias = 1) are not appropriate here.
+    systematics:
+        # NLA intrinsic alignments
+        ia_bias: 0.7
+        alphaz: -1.7
+        z_piv: 0.62
+        # Multiplicative shear bias
+        source_0_mult_bias: 0.0
+        source_1_mult_bias: 0.0
+        source_2_mult_bias: 0.0
+        source_3_mult_bias: 0.0
+        # Source photo-z shifts
+        source_0_delta_z: 0.0
+        source_1_delta_z: 0.0
+        source_2_delta_z: 0.0
+        source_3_delta_z: 0.0
+        # Linear galaxy bias
+        lens_0_bias: 1.5
+        lens_1_bias: 1.8
+        lens_2_bias: 1.8
+        lens_3_bias: 1.9
+        # Lens photo-z shift and stretch
+        lens_0_delta_z: 0.0
+        lens_1_delta_z: 0.0
+        lens_2_delta_z: 0.0
+        lens_3_delta_z: 0.0
+        lens_0_sigma_z: 1.0
+        lens_1_sigma_z: 1.0
+        lens_2_sigma_z: 1.0
+        lens_3_sigma_z: 1.0
+        # Magnification bias s, from the DES Y3 alpha via s = 2 alpha / 5
+        lens_0_mag_bias: 0.484
+        lens_1_mag_bias: 0.46
+        lens_2_mag_bias: 0.752
+        lens_3_mag_bias: 0.788
+
+    # Save an encrypted copy of the unblinded data and its key next to it.
+    # In a real analysis, also set delete_unblinded: true and move the key away.
+    # We keep the unblinded file here so the example can be re-run.
+    encrypt_unblinded: true
+    delete_unblinded: false
