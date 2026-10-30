@@ -1,6 +1,6 @@
 # Stages to run
 stages:
-  # - name: TXSourceSelectorHSC     # select and split objects into source bins
+  # - name: TXComputeShearCalibrationHSC     # select and split objects into source bins
   #  - name: TXShearCalibration
   #  - name: TXSourceDiagnosticPlots
     - name: TXRoweStatistics  

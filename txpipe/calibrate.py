@@ -104,7 +104,7 @@ class TXShearCalibration(PipelineStage):
                     raise ValueError(f"To add fiducial distances the shear catalog needs a redshift")
             output_cols = [renames.get(col, col) for col in cat_cols]
             output_cols += extra_cols + mag_cols_out
-            extra_cal_cols = f.get_extra_calibration_columns()
+            extra_cal_cols = f.get_extra_calibration_columns(mode="apply")
         
 
         if add_fiducial_distance:

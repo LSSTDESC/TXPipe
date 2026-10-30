@@ -88,35 +88,26 @@ def build_tomographic_classifier(bands, training_data_table, bin_edges, random_s
     return classifier, features
 
 
-def apply_classifier(classifier, features, bands, shear_catalog_type, shear_data):
+def apply_classifier(classifier, features, bands, shear_data):
     """Apply the classifier to the measured magnitudes"""
+    data = []
+    for f in features:
+        # may be a single band
+        if len(f) == 1:
+            col = shear_data[f"mag_{f}"]
+        # or a colour
+        else:
+            b1, b2 = f.split("-")
+            col = shear_data[f"mag_{b1}"] - shear_data[f"mag_{b2}"]
+        if np.all(~np.isfinite(col)):
+            # entire column is NaN.  Hopefully this will get deselected elsewhere
+            col[:] = 30.0
+        else:
+            ok = np.isfinite(col)
+            col[~ok] = col[ok].max()
+        data.append(col)
+    data = np.array(data).T
 
-    prefixes, suffixes = _get_classifier_prefixes_and_suffixes(shear_catalog_type)
-    pz_data = {}
-
-    for prefix, suffix in zip(prefixes, suffixes):
-        # Pull out the columns that we have trained this bin selection
-        # model on.
-        data = []
-        for f in features:
-            # may be a single band
-            if len(f) == 1:
-                col = shear_data[f"{prefix}mag_{f}{suffix}"]
-            # or a colour
-            else:
-                b1, b2 = f.split("-")
-                col = shear_data[f"{prefix}mag_{b1}{suffix}"] - shear_data[f"{prefix}mag_{b2}{suffix}"]
-            if np.all(~np.isfinite(col)):
-                # entire column is NaN.  Hopefully this will get deselected elsewhere
-                col[:] = 30.0
-            else:
-                ok = np.isfinite(col)
-                col[~ok] = col[ok].max()
-            data.append(col)
-        data = np.array(data).T
-
-        # Run the random forest on this data chunk
-        pz_data[f"{prefix}zbin{suffix}"] = classifier.predict(data)
-        if shear_catalog_type == "metacal":
-            pz_data[f"zbin{suffix}"] = pz_data[f"{prefix}zbin{suffix}"]
-    return pz_data
+    # Run the random forest on this data chunk
+    zbin = classifier.predict(data)
+    return zbin

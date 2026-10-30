@@ -4,22 +4,9 @@ generic types in ceci.
 """
 from ceci.file_types import HDFFile, DataFile, YamlFile, TextFile, FitsFile, Directory, FileCollection, PickleFile, ParquetFile, PNGFile, FileValidationError
 from .mapping import degrade_healsparse
-from .calibration_utils.names import META_VARIANTS, SCALAR_META_VARIANTS
+from .calibration_utils.names import META_VARIANTS, SCALAR_META_VARIANTS, metacal_variants, metadetect_variants, scalar_metadetect_variants, band_variants
 import yaml
 import numpy as np
-
-
-def metacalibration_names(names):
-    """
-    Generate the metacalibrated variants of the inputs names,
-    that is, variants with _1p, _1m, _2p, and _2m on the end
-    of each name.
-    """
-    suffices = ["1p", "1m", "2p", "2m"]
-    out = []
-    for name in names:
-        out += [name + "_" + s for s in suffices]
-    return out
 
 
 def class_for_shear_catalog_type(shear_catalog_type):
@@ -120,9 +107,22 @@ class ShearCatalog(HDFFile):
     def get_tomography_bin_columns():
         return [ShearCatalog.get_primary_tomography_bin_column()]
 
-    @staticmethod
-    def get_tomography_bin_column_rename_dict():
-        return {}
+    @classmethod
+    def get_classifier_output_columns(cls):
+        """
+        Dataset names, in the shear_bin_assignments file, for the per-variant
+        tomographic bin assigned by each of this catalog's classifier
+        variants (see get_classifier_prefixes/get_classifier_suffixes).
+
+        For most catalog types this is the same set of names as end up in
+        the final calibrated shear_tomography_catalog, so it defaults to
+        get_tomography_bin_columns(). Metacal is the exception: it needs a
+        bin assignment for every sheared variant to compute its selection
+        response, but only the unsheared ("bin") assignment is carried
+        through to the final tomography catalog, so it overrides this
+        separately.
+        """
+        return cls.get_tomography_bin_columns()
 
     @staticmethod
     def get_true_redshift_column():
@@ -140,7 +140,20 @@ class ShearCatalog(HDFFile):
     def get_classifier_suffixes():
         return [""]
 
-    def get_extra_calibration_columns(self):
+    def get_extra_calibration_columns(self, mode):
+        """
+        Extra shear-catalog columns (beyond g1/g2/weight) needed for calibration.
+
+        mode: str
+            Either "compute" - building up the calibration factors from the
+            raw catalog, as done in TXComputeShearCalibration* - or "apply" -
+            applying an already-computed calibration to catalog data, as done
+            when splitting the binned shear catalog or making diagnostic
+            plots. For most catalog types the same columns are needed in
+            both cases, but for some (e.g. lensfit) they differ.
+        """
+        if mode not in ("compute", "apply"):
+            raise ValueError(f"mode must be 'compute' or 'apply', not {mode!r}")
         return []
 
     def get_diagnostic_shear_columns(self, bands=None, use_psf_originals=False):
@@ -193,12 +206,20 @@ class MetacalShearCatalog(ShearCatalog):
 
     @staticmethod
     def get_classifier_suffixes():
-        return ["", "_1p", "_2p", "_1m", "_2m"]
+        return ["", "_1p", "_1m", "_2p", "_2m"]
 
     @staticmethod
     def get_column_name_variants(*columns):
-        from .calibration_utils.names import metacal_variants
         return metacal_variants(*columns)
+
+    @staticmethod
+    def get_classifier_output_columns():
+        # Metacal needs a tomographic bin assignment for each sheared
+        # variant, to compute its selection response - but only the
+        # unsheared ("bin") assignment ends up in the final calibrated
+        # tomography catalog, via the inherited get_tomography_bin_columns().
+        return ["bin", "bin_1p", "bin_1m", "bin_2p", "bin_2m"]
+
 
     def get_diagnostic_shear_columns(self, bands=None, use_psf_originals=False):
         if bands is None:
@@ -245,7 +266,7 @@ class MetaDetectShearCatalog(ShearCatalog):
 
     @staticmethod
     def get_classifier_prefixes():
-        return ["ns/", "1p/", "2p/", "1m/", "2m/"]
+        return ["ns/", "1p/", "1m/", "2p/", "2m/"]
 
     @staticmethod
     def get_classifier_suffixes():
@@ -261,15 +282,11 @@ class MetaDetectShearCatalog(ShearCatalog):
 
     @staticmethod
     def get_primary_tomography_bin_column():
-        return "bin_ns"
+        return "ns/bin"
 
     @staticmethod
     def get_tomography_bin_columns():
-        return ["bin_ns", "bin_1p", "bin_1m", "bin_2p", "bin_2m"]
-
-    @staticmethod
-    def get_tomography_bin_column_rename_dict():
-        return {f"bin_{v}":f"{v}/bin" for v in META_VARIANTS}
+        return ["ns/bin", "1p/bin", "1m/bin", "2p/bin", "2m/bin"]
 
     @staticmethod
     def get_true_redshift_column():
@@ -277,11 +294,9 @@ class MetaDetectShearCatalog(ShearCatalog):
 
     @staticmethod
     def get_column_name_variants(*columns):
-        from .calibration_utils.names import metadetect_variants
         return metadetect_variants(*columns)
 
     def get_diagnostic_shear_columns(self, bands=None, use_psf_originals=False):
-        from .calibration_utils.names import metadetect_variants, band_variants
         if bands is None:
             bands = self.get_bands()
         psf_suffix = "_original" if use_psf_originals else ""
@@ -321,15 +336,13 @@ class ScalarMetaDetectCatalog(MetaDetectShearCatalog):
 
     @staticmethod
     def get_tomography_bin_columns():
-        return ["bin_ns", "bin_1p", "bin_1m"]
+        return ["ns/bin", "1p/bin", "1m/bin"]
 
     @staticmethod
     def get_column_name_variants(*columns):
-        from .calibration_utils.names import scalar_metadetect_variants
         return scalar_metadetect_variants(*columns)
 
     def get_diagnostic_shear_columns(self, bands=None, use_psf_originals=False):
-        from .calibration_utils.names import scalar_metadetect_variants, band_variants
         if bands is None:
             bands = self.get_bands()
         psf_suffix = "_original" if use_psf_originals else ""
@@ -346,10 +359,6 @@ class ScalarMetaDetectCatalog(MetaDetectShearCatalog):
         shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="scalar_metadetect")
         return shear_cols
 
-    @staticmethod
-    def get_tomography_bin_column_rename_dict():
-        return {f"bin_{v}": f"{v}/bin" for v in SCALAR_META_VARIANTS}
-
 
 class LensfitShearCatalog(ShearCatalog):
     def get_primary_catalog_names(self, true_shear=False):
@@ -357,8 +366,18 @@ class LensfitShearCatalog(ShearCatalog):
         rename = {}
         return shear_cols, rename
 
-    def get_extra_calibration_columns(self):
-        return ["dec"]
+    def get_extra_calibration_columns(self, mode):
+        if mode == "compute":
+            # Computing the calibration (K, the mean m) needs the per-object
+            # m value as well as dec, used for the north/south c-term split.
+            return ["dec", "m"]
+        elif mode == "apply":
+            # Applying the already-computed calibration only needs dec, to
+            # choose between the precomputed north/south c-terms; m is
+            # already baked into the calibrator itself.
+            return ["dec"]
+        else:
+            raise ValueError(f"mode must be 'compute' or 'apply', not {mode!r}")
 
 class HSCShearCatalog(ShearCatalog):
     def get_primary_catalog_names(self, true_shear=False):
@@ -368,7 +387,11 @@ class HSCShearCatalog(ShearCatalog):
         rename = {}
         return shear_cols, rename
 
-    def get_extra_calibration_columns(self):
+    def get_extra_calibration_columns(self, mode):
+        if mode not in ("compute", "apply"):
+            raise ValueError(f"mode must be 'compute' or 'apply', not {mode!r}")
+        # TODO: check whether compute and apply should need different
+        # columns here too, as they do for lensfit.
         if "aselepsf1" in self.file['shear'].keys():
             return ["c1", "c2", "aselepsf1", "aselepsf2", "msel"]
         else:
@@ -1122,3 +1145,16 @@ class QPMultiFile(HDFFile):
             subgroup = group.create_group(subgroup_name)
             for key, val in subtables.items():
                 subgroup.create_dataset(key, dtype=val.dtype, data=val.data)
+
+class CatalogSelection(HDFFile):
+    """
+    Contains a boolean selection for whether rows in a catalog
+    are selected for use or not.
+
+    For simple catalogs this will just be a single column. For meta* shear
+    catalogs it can have multiple columns.
+    """
+    pass
+
+class BinAssignments(HDFFile):
+    pass

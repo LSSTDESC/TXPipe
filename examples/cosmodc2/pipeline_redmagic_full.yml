@@ -19,10 +19,12 @@ stages:
     nodes: 4
     nprocess: 64
   - name: TXIngestRedmagic
-  - name: TXSourceSelectorMetadetect
+  - name: TXComputeShearCalibrationMetadetect
     nprocess: 64
     nodes: 2
-  - name: TXSourceTomography
+  - name: TXMetaDetectSelection
+  - name: TXApplyRandomForestSourceTomography
+  - name: TXTrainRandomForestTomography
     threads_per_process: 4
   - name: TXShearCalibration
     nprocess: 7
