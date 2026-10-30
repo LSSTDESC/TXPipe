@@ -64,7 +64,7 @@ A configuration section for one of the stages above looks like this:
         shift_distribution: flat
         shift_type: add
         b0: 0.95
-        seed: "1972"
+        seed: "Boitata was here"
         delete_unblinded: true
 
 The main options are:

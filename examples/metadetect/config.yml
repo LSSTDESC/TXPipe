@@ -237,7 +237,7 @@ TXSmokescreenBlindingReal:
     shift_distribution: flat
     shift_type: add
     b0: 0.95  ## TXPipe theory model lens bias b0/growth
-    seed: "1972"
+    seed: "Boitata was here"
     delete_unblinded: true
 
 TXSmokescreenBlindingFourier:
@@ -255,7 +255,7 @@ TXSmokescreenBlindingFourier:
     shift_distribution: flat
     shift_type: add
     b0: 0.95
-    seed: "1972"
+    seed: "Boitata was here"
     delete_unblinded: true
 
 TXDiagnosticQuantiles:

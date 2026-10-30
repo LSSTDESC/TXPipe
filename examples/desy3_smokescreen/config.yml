@@ -17,7 +17,7 @@ TXSmokescreenBlinding:
         w0: [-1.4, -0.6]
     shift_distribution: flat
     shift_type: add
-    seed: "2026"
+    seed: "Curupira walks backwards"
 
     # Nuisance parameters, fixed at the centres of the DES Y3 MagLim priors
     # (CosmoSIS standard library examples/des-y3-values.ini and

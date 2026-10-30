@@ -126,9 +126,9 @@ def test_blinding_real_space(tmp_path):
 
 def test_blinding_seed(tmp_path):
     sacc_data = make_data("real")
-    _, first = run_stage(tmp_path, sacc_data, name="first", seed="1234")
-    _, second = run_stage(tmp_path, sacc_data, name="second", seed="1234")
-    _, other = run_stage(tmp_path, sacc_data, name="other", seed="4321")
+    _, first = run_stage(tmp_path, sacc_data, name="first", seed="Saci lost his pipe")
+    _, second = run_stage(tmp_path, sacc_data, name="second", seed="Saci lost his pipe")
+    _, other = run_stage(tmp_path, sacc_data, name="other", seed="Iara sings at night")
 
     first = sacc.Sacc.load_fits(first).mean
     second = sacc.Sacc.load_fits(second).mean

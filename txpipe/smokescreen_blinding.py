@@ -57,7 +57,7 @@ class TXSmokescreenBlinding(PipelineStage):
             0.0,
             msg="TXPipe theory model only, if systematics is empty: lens bias b0/growth. Zero means unset.",
         ),
-        "seed": StageParameter(str, "2112", msg="Seed that uniquely specifies the shifts."),
+        "seed": StageParameter(str, "Boitata was here", msg="Seed that uniquely specifies the shifts."),
         "encrypt_unblinded": StageParameter(
             bool, False, msg="Whether to save an encrypted copy of the unblinded data, and its key."
         ),
