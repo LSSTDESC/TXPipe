@@ -161,7 +161,7 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         # cluster
         j = 0
         for cluster_list in clusters_list_of_source_lists.values():
-            for src_list_in_cluster in enumerate(cluster_list):
+            for src_list_in_cluster in cluster_list:
 
                 if (self.rank == 0) and (j%100 == 0):
                     print(f"Collecting data for cluster {j}")
@@ -178,24 +178,18 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
                     distances = np.zeros(0)
                 else:
                     # Each process flattens the list of all the galaxies for this cluster
-                    print("    * dist")
-                    print(src_list_in_cluster)
-                    print(src_list_in_cluster[0])
                     distances = np.concatenate([d[1] for d in src_list_in_cluster])
-                    print("    * weight")
                     if self.config['delta_sigma']:
                         weights = np.concatenate([d[2] for d in src_list_in_cluster])
                     else:
                         #If we are using gamma, the weights do not deppend on each galaxy, so the function returns a float
                         weights = np.full(len(distances), src_list_in_cluster[0][1])
-                    print("    * gt")
                     tangential_comps = np.concatenate([d[3] for d in src_list_in_cluster])
-                    print("    * gc")
                     cross_comps = np.concatenate([d[4] for d in src_list_in_cluster])
-                    print("    * g1")
                     g1 = np.concatenate([d[5] for d in src_list_in_cluster])
-                    print("    * g2")
+                    print("g2")
                     g2 = np.concatenate([d[6] for d in src_list_in_cluster])
+                    print("done concatenating!")
 
 
                 # If we are running in parallel then collect together the values from
