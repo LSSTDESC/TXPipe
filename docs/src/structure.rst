@@ -34,6 +34,8 @@ Each TXPipe stage class has:
 
 * A "run" method doing the actual work of the class. This method can use the methods of the base class to load and save inputs and outputs.
 
+The input and output types you will see most often in the shear part of the pipeline are the :ref:`shear catalog<File Types>` (several subclasses, one for each way of measuring shear), the :ref:`catalog selection<Catalog selections>` and :ref:`bin assignments<Tomographic bin assignments>` files, and the :ref:`shear tomography catalog<Shear tomography catalogs>`. See :ref:`Source selection and tomography` for how these fit together.
+
 You launch individual stages like this:
 
 .. code-block:: bash

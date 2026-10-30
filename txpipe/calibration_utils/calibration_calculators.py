@@ -45,6 +45,7 @@ class CalibrationCalculator:
     Or for any other sub-selection, like bins in magnitude or size for null tests.
 
     The life-cycle of a CalibrationCalculator is as follows:
+
     - Create a CalibrationCalculator for each object using a function that selects your WL
       sample from input dictionaries (or similar) of data.
     - Add chunks of data to each calculator using the add_data method, which applies the

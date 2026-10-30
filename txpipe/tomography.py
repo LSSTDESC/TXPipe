@@ -6,7 +6,7 @@ from .calibration_utils import band_variants
 import numpy as np
 
 class TXTrainRandomForestTomography(PipelineStage):
-    """Train a random forest classifier to assign source galaxies to tomographic bins based on their photometry.
+    """Train a random forest to assign source galaxies to tomographic bins based on photometry.
 
     The trained classified is saved as a pickle file to be used by the selector stage(s).
     This was originally merged in with the selector stage, but it can become slow in situations where the spectroscopic 
@@ -133,6 +133,11 @@ class TXComputeSourceTomography(PipelineStage):
 
 
 class TXApplyRandomForestSourceTomography(TXComputeSourceTomography):
+    """Assign source galaxies to tomographic bins using a trained random forest.
+
+    Applies the classifier made by TXTrainRandomForestTomography to the magnitudes of each
+    object, for every variant of the shear catalog, and saves the bin assignments.
+    """
     name = "TXApplyRandomForestSourceTomography"
     inputs = [
         ("shear_catalog", ShearCatalog),
@@ -178,6 +183,12 @@ class TXApplyRandomForestSourceTomography(TXComputeSourceTomography):
 
 
 class TXSimpleRedshiftSourceTomography(TXComputeSourceTomography):
+    """Assign source galaxies to tomographic bins by cutting on a redshift column.
+
+    This is mostly useful for simulations, where it can be used with the true redshift,
+    or for any catalog with a single-valued redshift estimate. The column used is set
+    with redshift_col, and the bin edges with source_zbin_edges.
+    """
     name = "TXSimpleRedshiftSourceTomography"
     inputs = [
         ("shear_catalog", ShearCatalog),

@@ -958,6 +958,13 @@ class TXSourceDiagnosticPlots(PipelineStage):
 
 
 class TXResponseInBins(PipelineStage):
+    """Compute the shear response in bins of signal-to-noise and size.
+
+    Divides the sample into a grid of bins in log10(S/N) and T/T_psf (with the edges
+    chosen from the quantiles in shear_catalog_quantiles), computes the response in each
+    using the calibration calculators, and makes plots of each component of the response
+    and of the effective number of objects in each cell.
+    """
     name = "TXResponseInBins"
     inputs = [
         ("shear_catalog", ShearCatalog),

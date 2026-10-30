@@ -4,6 +4,7 @@ from ...data_types import PickleFile, SACCFile
 import pickle as pkl
 
 class CLClusterSACC(PipelineStage):
+    """Convert cluster ensemble profiles into a SACC file."""
     name = "CLClusterSACC"
     inputs = [
         ("cluster_profiles",  PickleFile),

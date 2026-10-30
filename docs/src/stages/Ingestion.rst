@@ -1,22 +1,12 @@
 Ingestion
 =========
 
-These stages import data into TXPipe input formats, or generate mock data from
-simpler input catalogs.
+These stages import data into TXPipe input formats from general-purpose
+or survey-independent sources.
 
 * :py:class:`~txpipe.exposure_info.TXExposureInfo` - Ingest exposure information from an OpSim database
 
 * :py:class:`~txpipe.ingest.dp02.TXIngestDataPreview02` - Ingest galaxy catalogs from DP0.2
-
-* :py:class:`~txpipe.ingest.mocks.TXCosmoDC2Mock` - Simulate mock shear and photometry measurements from CosmoDC2 (or similar)
-
-* :py:class:`~txpipe.ingest.mocks.TXBuzzardMock` - Simulate mock photometry from Buzzard.
-
-* :py:class:`~txpipe.ingest.mocks.TXGaussianSimsMock` - Simulate mock photometry from gaussian simulations
-
-* :py:class:`~txpipe.ingest.mocks.TXSimpleMock` - Load an ascii astropy table and put it in shear catalog format.
-
-* :py:class:`~txpipe.ingest.mocks.TXMockTruthPZ` - Stage TXMockTruthPZ
 
 * :py:class:`~txpipe.ingest.gcr.TXMetacalGCRInput` - Ingest metacal catalogs from GCRCatalogs
 
@@ -24,7 +14,23 @@ simpler input catalogs.
 
 * :py:class:`~txpipe.ingest.redmagic.TXIngestRedmagic` - Ingest a redmagic catalog
 
-* :py:class:`~txpipe.simulation.TXLogNormalGlass` - Uses GLASS to generate a simulated catalog from lognormal fields
+* :py:class:`~txpipe.ingest.desi.TXIngestDESIRandoms` - Ingest a DESI random catalog from FITS and write random_cats,
+
+* :py:class:`~txpipe.ingest.desi.TXIngestDESI` - Ingest a DESI catalog (mock or real)
+
+* :py:class:`~txpipe.ingest.base.TXIngestCatalogBase` - Base-Class for ingesting catalogs from external sources and saving to a format
+
+* :py:class:`~txpipe.ingest.base.TXIngestCatalogFits` - Class for ingesting catalogs from FITS format and saving to a format
+
+* :py:class:`~txpipe.ingest.base.TXIngestCatalogH5` - Class for ingesting catalogs from HDF5 files and saving to a format
+
+* :py:class:`~txpipe.ingest.base.TXIngestMapsBase` - Base-Class for ingesting maps from external sources and saving to a format
+
+* :py:class:`~txpipe.ingest.base.TXIngestMapsHsp` - Class for ingesting maps from external healsparse files and saving to a format
+
+* :py:class:`~txpipe.ingest.dp1.TXIngestDataPreview1` - Ingest galaxy catalogs from DP1
+
+* :py:class:`~txpipe.ingest.star_catalog.TXIngestStarCatalog` - Ingest the star catalog from the DP2 object table
 
 
 
@@ -46,9 +52,9 @@ simpler input catalogs.
         .. raw:: html
 
             <UL>
-            <LI><strong>dc2_name</strong>: (str) Default=1.2p. </LI>
-            <LI><strong>opsim_db</strong>: (str) Default=/global/projecta/projectdirs/lsst/groups/SSim/DC2/minion_1016_desc_dithered_v4.db. </LI>
-            <LI><strong>propId</strong>: (int) Default=54. </LI>
+            <LI><strong>dc2_name</strong>: (str) Default=1.2p. Name of the DC2 run to use.</LI>
+            <LI><strong>opsim_db</strong>: (str) Default=/global/projecta/projectdirs/lsst/groups/SSim/DC2/minion_1016_desc_dithered_v4.db. Path to the opsim database file.</LI>
+            <LI><strong>propId</strong>: (int) Default=54. ID to filter visits.</LI>
             </UL>
 
 
@@ -62,141 +68,6 @@ simpler input catalogs.
     Outputs: 
 
     - photometry_catalog: HDFFile
-    - shear_catalog: HDFFile
-    
-    Parallel: No - Serial
-
-
-    .. collapse:: Configuration
-
-        .. raw:: html
-
-            <UL>
-            <LI><strong>pq_path</strong>: (str) Default=/global/cfs/cdirs/lsst/shared/rubin/DP0.2/objectTable/. </LI>
-            <LI><strong>tracts</strong>: (str) Default=. </LI>
-            </UL>
-
-
-
-.. autotxclass:: txpipe.ingest.mocks.TXCosmoDC2Mock
-    :members:
-    :exclude-members: run
-
-    Inputs: 
-
-    - response_model: HDFFile
-
-    Outputs: 
-
-    - shear_catalog: ShearCatalog
-    - photometry_catalog: HDFFile
-    
-    Parallel: No - Serial
-
-
-    .. collapse:: Configuration
-
-        .. raw:: html
-
-            <UL>
-            <LI><strong>cat_name</strong>: (str) Default=cosmoDC2. </LI>
-            <LI><strong>visits_per_band</strong>: (int) Default=165. </LI>
-            <LI><strong>snr_limit</strong>: (float) Default=4.0. </LI>
-            <LI><strong>max_size</strong>: (int) Default=99999999999999. </LI>
-            <LI><strong>extra_cols</strong>: (str) Default=. </LI>
-            <LI><strong>max_npix</strong>: (int) Default=99999999999999. </LI>
-            <LI><strong>unit_response</strong>: (bool) Default=False. </LI>
-            <LI><strong>cat_size</strong>: (int) Default=0. </LI>
-            <LI><strong>flip_g2</strong>: (bool) Default=True. </LI>
-            <LI><strong>apply_mag_cut</strong>: (bool) Default=False. </LI>
-            <LI><strong>Mag_r_limit</strong>: (int) Default=-19. </LI>
-            <LI><strong>metadetect</strong>: (bool) Default=True. </LI>
-            <LI><strong>add_shape_noise</strong>: (bool) Default=True. </LI>
-            <LI><strong>healpixels</strong>: (list) Default=[-1]. </LI>
-            </UL>
-
-
-
-.. autotxclass:: txpipe.ingest.mocks.TXBuzzardMock
-    :members:
-    :exclude-members: run
-
-    Inputs: 
-
-    - response_model: HDFFile
-
-    Outputs: 
-
-    - shear_catalog: ShearCatalog
-    - photometry_catalog: HDFFile
-    
-    Parallel: No - Serial
-
-
-    .. collapse:: Configuration
-
-        .. raw:: html
-
-            <UL>
-            <LI><strong>cat_name</strong>: (str) Default=buzzard. </LI>
-            <LI><strong>visits_per_band</strong>: (int) Default=165. </LI>
-            <LI><strong>snr_limit</strong>: (float) Default=4.0. </LI>
-            <LI><strong>max_size</strong>: (int) Default=99999999999999. </LI>
-            <LI><strong>extra_cols</strong>: (str) Default=. </LI>
-            <LI><strong>max_npix</strong>: (int) Default=99999999999999. </LI>
-            <LI><strong>unit_response</strong>: (bool) Default=False. </LI>
-            <LI><strong>flip_g2</strong>: (bool) Default=True. </LI>
-            </UL>
-
-
-
-.. autotxclass:: txpipe.ingest.mocks.TXGaussianSimsMock
-    :members:
-    :exclude-members: run
-
-    Inputs: 
-
-    - response_model: HDFFile
-
-    Outputs: 
-
-    - shear_catalog: ShearCatalog
-    - photometry_catalog: HDFFile
-    
-    Parallel: No - Serial
-
-
-    .. collapse:: Configuration
-
-        .. raw:: html
-
-            <UL>
-            <LI><strong>cat_name</strong>: (str) Default=GaussianSims. </LI>
-            <LI><strong>visits_per_band</strong>: (int) Default=165. </LI>
-            <LI><strong>snr_limit</strong>: (float) Default=0.0. </LI>
-            <LI><strong>max_size</strong>: (int) Default=99999999999999. </LI>
-            <LI><strong>extra_cols</strong>: (str) Default=. </LI>
-            <LI><strong>max_npix</strong>: (int) Default=99999999999999. </LI>
-            <LI><strong>unit_response</strong>: (bool) Default=True. </LI>
-            <LI><strong>cat_size</strong>: (int) Default=0. </LI>
-            <LI><strong>flip_g2</strong>: (bool) Default=False. </LI>
-            <LI><strong>apply_mag_cut</strong>: (bool) Default=False. </LI>
-            <LI><strong>metadetect</strong>: (bool) Default=True. </LI>
-            <LI><strong>add_shape_noise</strong>: (bool) Default=False. </LI>
-            </UL>
-
-
-
-.. autotxclass:: txpipe.ingest.mocks.TXSimpleMock
-    :members:
-    :exclude-members: run
-
-    Inputs: 
-
-    - mock_shear_catalog: TextFile
-
-    Outputs: 
-
     - shear_catalog: ShearCatalog
     
     Parallel: No - Serial
@@ -207,32 +78,8 @@ simpler input catalogs.
         .. raw:: html
 
             <UL>
-            <LI><strong>mock_size_snr</strong>: (bool) Default=False. </LI>
-            </UL>
-
-
-
-.. autotxclass:: txpipe.ingest.mocks.TXMockTruthPZ
-    :members:
-    :exclude-members: run
-
-    Inputs: 
-
-    - shear_catalog: ShearCatalog
-
-    Outputs: 
-
-    - photoz_pdfs: QPPDFFile
-    
-    Parallel: No - Serial
-
-
-    .. collapse:: Configuration
-
-        .. raw:: html
-
-            <UL>
-            <LI><strong>mock_sigma_z</strong>: (float) Default=0.001. </LI>
+            <LI><strong>pq_path</strong>: (str) Default=/global/cfs/cdirs/lsst/shared/rubin/DP0.2/objectTable/. Path to Parquet objectTable files.</LI>
+            <LI><strong>tracts</strong>: (str) Default=. Comma-separated list of tracts to use (empty for all).</LI>
             </UL>
 
 
@@ -256,11 +103,11 @@ simpler input catalogs.
         .. raw:: html
 
             <UL>
-            <LI><strong>cat_name</strong>: (str) Required. </LI>
-            <LI><strong>single_tract</strong>: (str) Default=. </LI>
-            <LI><strong>length</strong>: (int) Default=0. </LI>
-            <LI><strong>table_dir</strong>: (str) Default=. </LI>
-            <LI><strong>data_release</strong>: (str) Default=. </LI>
+            <LI><strong>cat_name</strong>: (str) Default=. Name of the GCR catalog to load.</LI>
+            <LI><strong>single_tract</strong>: (str) Default=. Single tract to use (optional).</LI>
+            <LI><strong>length</strong>: (int) Default=0. Pre-known length, if the catalog has been checked at previously.</LI>
+            <LI><strong>table_dir</strong>: (str) Default=. Directory for table files (optional).</LI>
+            <LI><strong>data_release</strong>: (str) Default=. Data release identifier (optional).</LI>
             </UL>
 
 
@@ -283,9 +130,9 @@ simpler input catalogs.
         .. raw:: html
 
             <UL>
-            <LI><strong>single_tract</strong>: (str) Default=. </LI>
-            <LI><strong>cat_name</strong>: (str) Required. </LI>
-            <LI><strong>length</strong>: (int) Default=0. </LI>
+            <LI><strong>single_tract</strong>: (str) Default=. Single tract to use (optional).</LI>
+            <LI><strong>cat_name</strong>: (str) Default=. Name of the GCR catalog to load.</LI>
+            <LI><strong>length</strong>: (int) Default=0. Pre-known length, if the catalog has been checked at previously.</LI>
             </UL>
 
 
@@ -312,34 +159,30 @@ simpler input catalogs.
         .. raw:: html
 
             <UL>
-            <LI><strong>lens_zbin_edges</strong>: (list) Default=[<class 'float'>]. </LI>
-            <LI><strong>chunk_rows</strong>: (int) Default=100000. </LI>
-            <LI><strong>zmin</strong>: (float) Default=0.0. </LI>
-            <LI><strong>zmax</strong>: (float) Default=3.0. </LI>
-            <LI><strong>dz</strong>: (float) Default=0.01. </LI>
-            <LI><strong>bands</strong>: (str) Default=grizy. </LI>
+            <LI><strong>lens_zbin_edges</strong>: (list) Default=[&lt;class &#x27;float&#x27;&gt;]. Edges of lens redshift bins.</LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=100000. Number of rows to process in each chunk.</LI>
+            <LI><strong>zmin</strong>: (float) Default=0.0. Minimum redshift for binning.</LI>
+            <LI><strong>zmax</strong>: (float) Default=3.0. Maximum redshift for binning.</LI>
+            <LI><strong>dz</strong>: (float) Default=0.01. Redshift bin width.</LI>
+            <LI><strong>bands</strong>: (list) Default=[&#x27;g&#x27;, &#x27;r&#x27;, &#x27;i&#x27;, &#x27;z&#x27;, &#x27;y&#x27;]. Bands to use for redmagic selection.</LI>
             </UL>
 
 
 
-.. autotxclass:: txpipe.simulation.TXLogNormalGlass
+.. autotxclass:: txpipe.ingest.desi.TXIngestDESIRandoms
     :members:
     :exclude-members: run
 
     Inputs: 
 
-    - mask: MapsFile
-    - lens_photoz_stack: QPNOfZFile
+    - desi_random_catalog: FitsFile
     - fiducial_cosmology: FiducialCosmology
-    - input_lss_weight_maps: MapsFile
 
     Outputs: 
 
-    - photometry_catalog: HDFFile
-    - lens_tomography_catalog_unweighted: TomographyCatalog
-    - glass_cl_shells: HDFFile
-    - glass_cl_binned: HDFFile
-    - density_shells: HDFFile
+    - random_cats: RandomsCatalog
+    - binned_random_catalog: RandomsCatalog
+    - binned_random_catalog_sub: RandomsCatalog
     
     Parallel: No - Serial
 
@@ -349,21 +192,204 @@ simpler input catalogs.
         .. raw:: html
 
             <UL>
-            <LI><strong>num_dens</strong>: (NoneType) Default=None. </LI>
-            <LI><strong>zmin</strong>: (float) Default=0.0. </LI>
-            <LI><strong>zmax</strong>: (float) Default=2.0. </LI>
-            <LI><strong>dx</strong>: (int) Default=100. </LI>
-            <LI><strong>bias0</strong>: (float) Default=2.0. </LI>
-            <LI><strong>alpha_bz</strong>: (float) Default=0.0. </LI>
-            <LI><strong>zpivot</strong>: (float) Default=0.6. </LI>
-            <LI><strong>shift</strong>: (float) Default=1.0. </LI>
-            <LI><strong>contaminate</strong>: (bool) Default=False. </LI>
-            <LI><strong>random_seed</strong>: (int) Default=0. </LI>
-            <LI><strong>cl_optional_file</strong>: (str) Default=none. </LI>
-            <LI><strong>ell_binned_min</strong>: (float) Default=0.1. </LI>
-            <LI><strong>ell_binned_max</strong>: (float) Default=500000.0. </LI>
-            <LI><strong>ell_binned_nbins</strong>: (int) Default=100. </LI>
-            <LI><strong>output_density_shell_maps</strong>: (bool) Default=False. </LI>
+            <LI><strong>lens_zbin_edges</strong>: (list) Default=[&lt;class &#x27;float&#x27;&gt;]. Edges of lens redshift bins.</LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=100000. Number of rows to process in each chunk.</LI>
+            <LI><strong>sample_rate</strong>: (float) Default=0.5. Fraction of randoms retained in the sub-catalog.</LI>
+            <LI><strong>z_col</strong>: (str) Default=z. Redshift column name in the FITS random catalog.</LI>
+            <LI><strong>ra_col</strong>: (str) Default=ra. Right ascension column name in the FITS random catalog.</LI>
+            <LI><strong>dec_col</strong>: (str) Default=dec. Declination column name in the FITS random catalog.</LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.ingest.desi.TXIngestDESI
+    :members:
+    :exclude-members: run
+
+    Inputs: 
+
+    - desi_catalog_selected: FitsFile
+
+    Outputs: 
+
+    - lens_catalog: HDFFile
+    - binned_lens_catalog: BinnedCatalog
+    - lens_tomography_catalog_unweighted: HDFFile
+    - lens_tomography_catalog: HDFFile
+    - lens_photoz_stack: QPNOfZFile
+    
+    Parallel: No - Serial
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>lens_zbin_edges</strong>: (list) Default=[&lt;class &#x27;float&#x27;&gt;]. Edges of lens redshift bins.</LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=100000. Number of rows to process in each chunk.</LI>
+            <LI><strong>zmin</strong>: (float) Default=0.0. Minimum redshift for binning.</LI>
+            <LI><strong>zmax</strong>: (float) Default=3.0. Maximum redshift for binning.</LI>
+            <LI><strong>dz</strong>: (float) Default=0.01. Redshift bin width.</LI>
+            <LI><strong>mock</strong>: (bool) Default=False. Whether to use a mock catalog.</LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.ingest.base.TXIngestCatalogBase
+    :members:
+    :exclude-members: run
+
+    Inputs: None
+
+    Outputs: None
+    
+    Parallel: Yes - MPI
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.ingest.base.TXIngestCatalogFits
+    :members:
+    :exclude-members: run
+
+    Inputs: None
+
+    Outputs: None
+    
+    Parallel: Yes - MPI
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.ingest.base.TXIngestCatalogH5
+    :members:
+    :exclude-members: run
+
+    Inputs: None
+
+    Outputs: None
+    
+    Parallel: Yes - MPI
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.ingest.base.TXIngestMapsBase
+    :members:
+    :exclude-members: run
+
+    Inputs: None
+
+    Outputs: None
+    
+    Parallel: Yes - MPI
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>input_nside</strong>: (int) Default=0. Input HEALPix nside value.</LI>
+            <LI><strong>input_nest</strong>: (bool) Default=True. Whether input maps use NESTED ordering.</LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.ingest.base.TXIngestMapsHsp
+    :members:
+    :exclude-members: run
+
+    Inputs: None
+
+    Outputs: None
+    
+    Parallel: Yes - MPI
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>input_nside</strong>: (int) Default=0. Input HEALPix nside value.</LI>
+            <LI><strong>input_nest</strong>: (bool) Default=True. Whether input maps use NESTED ordering.</LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.ingest.dp1.TXIngestDataPreview1
+    :members:
+    :exclude-members: run
+
+    Inputs: None
+
+    Outputs: 
+
+    - photometry_catalog: PhotometryCatalog
+    - shear_catalog: ShearCatalog
+    - exposures: HDFFile
+    - survey_property_maps: FileCollection
+    
+    Parallel: Yes - MPI
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>butler_config_file</strong>: (str) Default=/global/cfs/cdirs/lsst/production/gen3/rubin/DP1/repo/butler.yaml. Path to the LSST butler config file.</LI>
+            <LI><strong>cosmology_tracts_only</strong>: (bool) Default=True. Use only cosmology tracts.</LI>
+            <LI><strong>select_field</strong>: (str) Default=. Field to select (overrides cosmology_tracts_only).</LI>
+            <LI><strong>collections</strong>: (str) Default=LSSTComCam/DP1. Butler collections to use.</LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.ingest.star_catalog.TXIngestStarCatalog
+    :members:
+    :exclude-members: run
+
+    Inputs: None
+
+    Outputs: 
+
+    - dp2_star_catalog: HDFFile
+    
+    Parallel: No - Serial
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>bands</strong>: (list) Default=[&#x27;r&#x27;, &#x27;i&#x27;, &#x27;z&#x27;]. Bands to get for catalog.</LI>
+            <LI><strong>hats_path</strong>: (str) Required. </LI>
+            <LI><strong>num_lsdb_daskwokers</strong>: (int) Required. </LI>
             </UL>
 
 

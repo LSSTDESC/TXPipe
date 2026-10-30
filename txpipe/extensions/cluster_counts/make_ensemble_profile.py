@@ -11,6 +11,12 @@ import ceci
 import pickle
 
 class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
+    """Compute stacked radial shear profiles of ensembles of clusters.
+
+    For each redshift/richness bin of clusters, computes the tangential and cross shear profile
+    of each cluster, using CLMM, and stacks them. Clusters with no background sources are
+    skipped, and ensembles with fewer than two usable clusters are not stacked.
+    """
     name = "CLClusterEnsembleProfiles"
     inputs = [
         #("cluster_catalog", HDFFile),

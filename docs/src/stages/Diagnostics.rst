@@ -7,6 +7,8 @@ These stages compute and/or plot diagnostics of catalogs or other data
 
 * :py:class:`~txpipe.diagnostics.TXSourceDiagnosticPlots` - Make diagnostic plots of the shear catalog
 
+* :py:class:`~txpipe.diagnostics.TXResponseInBins` - Compute the shear response in bins of signal-to-noise and size.
+
 * :py:class:`~txpipe.diagnostics.TXLensDiagnosticPlots` - Make diagnostic plots of the lens catalog
 
 * :py:class:`~txpipe.psf_diagnostics.TXPSFDiagnostics` - Make histograms of PSF values
@@ -56,11 +58,10 @@ These stages compute and/or plot diagnostics of catalogs or other data
         .. raw:: html
 
             <UL>
-            <LI><strong>shear_prefix</strong>: (str) Default=mcal_. </LI>
-            <LI><strong>psf_prefix</strong>: (str) Default=mcal_psf_. </LI>
-            <LI><strong>nbins</strong>: (int) Default=20. </LI>
-            <LI><strong>chunk_rows</strong>: (int) Default=0. </LI>
-            <LI><strong>bands</strong>: (str) Default=riz. </LI>
+            <LI><strong>nbins</strong>: (int) Default=20. Number of quantile bins to compute.</LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=0. Number of rows to process in each chunk (0 means auto).</LI>
+            <LI><strong>bands</strong>: (list) Default=[&#x27;r&#x27;, &#x27;i&#x27;, &#x27;z&#x27;]. Bands to use for diagnostics.</LI>
+            <LI><strong>use_psf_originals</strong>: (bool) Default=False. instruct the Metadetect version to use the original psf</LI>
             </UL>
 
 
@@ -100,21 +101,53 @@ These stages compute and/or plot diagnostics of catalogs or other data
         .. raw:: html
 
             <UL>
-            <LI><strong>chunk_rows</strong>: (int) Default=100000. </LI>
-            <LI><strong>delta_gamma</strong>: (float) Default=0.02. </LI>
-            <LI><strong>shear_prefix</strong>: (str) Default=mcal_. </LI>
-            <LI><strong>psf_prefix</strong>: (str) Default=mcal_psf_. </LI>
-            <LI><strong>nbins</strong>: (int) Default=20. </LI>
-            <LI><strong>g_min</strong>: (float) Default=-0.03. </LI>
-            <LI><strong>g_max</strong>: (float) Default=0.05. </LI>
-            <LI><strong>psfT_min</strong>: (float) Default=0.04. </LI>
-            <LI><strong>psfT_max</strong>: (float) Default=0.36. </LI>
-            <LI><strong>T_min</strong>: (float) Default=0.04. </LI>
-            <LI><strong>T_max</strong>: (float) Default=4.0. </LI>
-            <LI><strong>s2n_min</strong>: (int) Default=10. </LI>
-            <LI><strong>s2n_max</strong>: (int) Default=300. </LI>
-            <LI><strong>psf_unit_conv</strong>: (bool) Default=False. </LI>
-            <LI><strong>bands</strong>: (str) Default=riz. </LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=100000. Number of rows to process in each chunk.</LI>
+            <LI><strong>delta_gamma</strong>: (float) Default=0.02. Delta gamma value for metacal response calculation.</LI>
+            <LI><strong>nbins</strong>: (int) Default=20. Number of bins for histograms.</LI>
+            <LI><strong>g_min</strong>: (float) Default=-0.03. Minimum g value for plots.</LI>
+            <LI><strong>g_max</strong>: (float) Default=0.05. Maximum g value for plots.</LI>
+            <LI><strong>psfT_min</strong>: (float) Default=0.04. Minimum PSF T value for plots.</LI>
+            <LI><strong>psfT_max</strong>: (float) Default=0.36. Maximum PSF T value for plots.</LI>
+            <LI><strong>T_min</strong>: (float) Default=0.04. Minimum T value for plots.</LI>
+            <LI><strong>T_max</strong>: (float) Default=4.0. Maximum T value for plots.</LI>
+            <LI><strong>s2n_min</strong>: (float) Default=10. Minimum S/N value for plots.</LI>
+            <LI><strong>s2n_max</strong>: (float) Default=300. Maximum S/N value for plots.</LI>
+            <LI><strong>psf_unit_conv</strong>: (bool) Default=False. Whether to convert PSF units.</LI>
+            <LI><strong>bands</strong>: (list) Default=[&#x27;r&#x27;, &#x27;i&#x27;, &#x27;z&#x27;]. Bands to use for diagnostics.</LI>
+            <LI><strong>use_psf_originals</strong>: (bool) Default=False. instruct the Metadetect version to use the original psf</LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.diagnostics.TXResponseInBins
+    :members:
+    :exclude-members: run
+
+    Inputs: 
+
+    - shear_catalog: ShearCatalog
+    - shear_tomography_catalog: TomographyCatalog
+    - shear_catalog_quantiles: HDFFile
+
+    Outputs: 
+
+    - response_in_bins: HDFFile
+    - response_in_bins_plot: PNGFile
+    
+    Parallel: Yes - MPI
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>delta_gamma</strong>: (float) Default=0.02. Delta gamma value for metacal/metadetect response calculation</LI>
+            <LI><strong>use_diagonal_response</strong>: (bool) Default=False. Whether to use only diagonal elements of the response matrix for metacal</LI>
+            <LI><strong>dec_cut</strong>: (bool) Default=True. Whether to do a declination cut for lensfit catalogs</LI>
+            <LI><strong>input_m_is_weighted</strong>: (bool) Default=True. Whether the input m values are already weighted for lensfit catalogs</LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=100000. Number of rows to load at once</LI>
+            <LI><strong>nbin</strong>: (int) Default=20. Number of bins in SNR and T</LI>
             </UL>
 
 
@@ -141,13 +174,13 @@ These stages compute and/or plot diagnostics of catalogs or other data
         .. raw:: html
 
             <UL>
-            <LI><strong>block_size</strong>: (int) Default=0. </LI>
-            <LI><strong>delta_gamma</strong>: (float) Default=0.02. </LI>
-            <LI><strong>mag_min</strong>: (int) Default=18. </LI>
-            <LI><strong>mag_max</strong>: (int) Default=28. </LI>
-            <LI><strong>snr_min</strong>: (int) Default=5. </LI>
-            <LI><strong>snr_max</strong>: (int) Default=200. </LI>
-            <LI><strong>bands</strong>: (str) Default=ugrizy. </LI>
+            <LI><strong>block_size</strong>: (int) Default=0. Block size for dask processing (0 means auto).</LI>
+            <LI><strong>delta_gamma</strong>: (float) Default=0.02. Delta gamma value for metacal response calculation.</LI>
+            <LI><strong>mag_min</strong>: (float) Default=18. Minimum magnitude for plots.</LI>
+            <LI><strong>mag_max</strong>: (float) Default=28. Maximum magnitude for plots.</LI>
+            <LI><strong>snr_min</strong>: (float) Default=5. Minimum S/N for plots.</LI>
+            <LI><strong>snr_max</strong>: (float) Default=200. Maximum S/N for plots.</LI>
+            <LI><strong>bands</strong>: (list) Default=[&#x27;u&#x27;, &#x27;g&#x27;, &#x27;r&#x27;, &#x27;i&#x27;, &#x27;z&#x27;, &#x27;y&#x27;]. Bands to use for diagnostics.</LI>
             </UL>
 
 
@@ -199,12 +232,12 @@ These stages compute and/or plot diagnostics of catalogs or other data
         .. raw:: html
 
             <UL>
-            <LI><strong>min_sep</strong>: (float) Default=0.5. </LI>
-            <LI><strong>max_sep</strong>: (float) Default=250.0. </LI>
-            <LI><strong>nbins</strong>: (int) Default=20. </LI>
-            <LI><strong>bin_slop</strong>: (float) Default=0.01. </LI>
-            <LI><strong>sep_units</strong>: (str) Default=arcmin. </LI>
-            <LI><strong>subtract_mean</strong>: (bool) Default=False. </LI>
+            <LI><strong>min_sep</strong>: (float) Default=0.5. Minimum separation in arcmin.</LI>
+            <LI><strong>max_sep</strong>: (float) Default=250.0. Maximum separation in arcmin.</LI>
+            <LI><strong>nbins</strong>: (int) Default=20. Number of bins.</LI>
+            <LI><strong>bin_slop</strong>: (float) Default=0.01. Bin slop for treecorr.</LI>
+            <LI><strong>sep_units</strong>: (str) Default=arcmin. Separation units.</LI>
+            <LI><strong>subtract_mean</strong>: (bool) Default=False. Subtract mean from data.</LI>
             </UL>
 
 
@@ -215,7 +248,7 @@ These stages compute and/or plot diagnostics of catalogs or other data
 
     Inputs: 
 
-    - binned_shear_catalog: ShearCatalog
+    - binned_shear_catalog: BinnedCatalog
     - star_catalog: HDFFile
     - rowe_stats: HDFFile
 
@@ -234,19 +267,19 @@ These stages compute and/or plot diagnostics of catalogs or other data
         .. raw:: html
 
             <UL>
-            <LI><strong>min_sep</strong>: (float) Default=0.5. </LI>
-            <LI><strong>max_sep</strong>: (float) Default=250.0. </LI>
-            <LI><strong>nbins</strong>: (int) Default=20. </LI>
-            <LI><strong>bin_slop</strong>: (float) Default=0.01. </LI>
-            <LI><strong>sep_units</strong>: (str) Default=arcmin. </LI>
-            <LI><strong>npatch</strong>: (int) Default=150. </LI>
-            <LI><strong>psf_size_units</strong>: (str) Default=sigma. </LI>
-            <LI><strong>subtract_mean</strong>: (bool) Default=False. </LI>
-            <LI><strong>dec_cut</strong>: (bool) Default=True. </LI>
-            <LI><strong>star_type</strong>: (str) Default=PSF-reserved. </LI>
-            <LI><strong>cov_method</strong>: (str) Default=bootstrap. </LI>
-            <LI><strong>flip_g2</strong>: (bool) Default=False. </LI>
-            <LI><strong>tomographic</strong>: (bool) Default=True. </LI>
+            <LI><strong>min_sep</strong>: (float) Default=0.5. Minimum separation in arcmin.</LI>
+            <LI><strong>max_sep</strong>: (float) Default=250.0. Maximum separation in arcmin.</LI>
+            <LI><strong>nbins</strong>: (int) Default=20. Number of bins.</LI>
+            <LI><strong>bin_slop</strong>: (float) Default=0.01. Bin slop for treecorr.</LI>
+            <LI><strong>sep_units</strong>: (str) Default=arcmin. Separation units.</LI>
+            <LI><strong>npatch</strong>: (int) Default=150. Number of patches for variance calculation and processing.</LI>
+            <LI><strong>psf_size_units</strong>: (str) Default=sigma. Units for PSF size.</LI>
+            <LI><strong>subtract_mean</strong>: (bool) Default=False. Subtract mean from data.</LI>
+            <LI><strong>dec_cut</strong>: (bool) Default=True. Affects KiDS-1000 only.</LI>
+            <LI><strong>star_type</strong>: (str) Default=PSF-reserved. Star type to use.</LI>
+            <LI><strong>cov_method</strong>: (str) Default=bootstrap. Covariance method.</LI>
+            <LI><strong>flip_g2</strong>: (bool) Default=False. Flip g2 sign.</LI>
+            <LI><strong>tomographic</strong>: (bool) Default=True. Use tomographic bins.</LI>
             </UL>
 
 
@@ -275,17 +308,17 @@ These stages compute and/or plot diagnostics of catalogs or other data
         .. raw:: html
 
             <UL>
-            <LI><strong>min_sep</strong>: (float) Default=0.5. </LI>
-            <LI><strong>max_sep</strong>: (float) Default=250.0. </LI>
-            <LI><strong>nbins</strong>: (int) Default=20. </LI>
-            <LI><strong>bin_slop</strong>: (float) Default=0.01. </LI>
-            <LI><strong>sep_units</strong>: (str) Default=arcmin. </LI>
-            <LI><strong>psf_size_units</strong>: (str) Default=sigma. </LI>
-            <LI><strong>definition</strong>: (str) Default=des-y1. </LI>
-            <LI><strong>subtract_mean</strong>: (bool) Default=False. </LI>
-            <LI><strong>star_type</strong>: (str) Default=PSF-reserved. </LI>
-            <LI><strong>var_method</strong>: (str) Default=bootstrap. </LI>
-            <LI><strong>flip_g2</strong>: (bool) Default=False. </LI>
+            <LI><strong>min_sep</strong>: (float) Default=0.5. Minimum separation in arcmin.</LI>
+            <LI><strong>max_sep</strong>: (float) Default=250.0. Maximum separation in arcmin.</LI>
+            <LI><strong>nbins</strong>: (int) Default=20. Number of bins.</LI>
+            <LI><strong>bin_slop</strong>: (float) Default=0.01. Bin slop for treecorr.</LI>
+            <LI><strong>sep_units</strong>: (str) Default=arcmin. Separation units.</LI>
+            <LI><strong>psf_size_units</strong>: (str) Default=sigma. Units for PSF size.</LI>
+            <LI><strong>definition</strong>: (str) Default=des-y1. Definition for Rowe statistics.</LI>
+            <LI><strong>subtract_mean</strong>: (bool) Default=False. Subtract mean from data.</LI>
+            <LI><strong>star_type</strong>: (str) Default=PSF-reserved. Star type to use.</LI>
+            <LI><strong>var_method</strong>: (str) Default=bootstrap. Variance method.</LI>
+            <LI><strong>flip_g2</strong>: (bool) Default=False. Flip g2 sign.</LI>
             </UL>
 
 
@@ -314,15 +347,15 @@ These stages compute and/or plot diagnostics of catalogs or other data
         .. raw:: html
 
             <UL>
-            <LI><strong>min_sep</strong>: (float) Default=0.5. </LI>
-            <LI><strong>max_sep</strong>: (float) Default=250.0. </LI>
-            <LI><strong>nbins</strong>: (int) Default=20. </LI>
-            <LI><strong>bin_slop</strong>: (float) Default=0.1. </LI>
-            <LI><strong>sep_units</strong>: (str) Default=arcmin. </LI>
-            <LI><strong>psf_size_units</strong>: (str) Default=sigma. </LI>
-            <LI><strong>shear_catalog_type</strong>: (str) Default=metacal. </LI>
-            <LI><strong>star_type</strong>: (str) Default=PSF-reserved. </LI>
-            <LI><strong>flip_g2</strong>: (bool) Default=False. </LI>
+            <LI><strong>min_sep</strong>: (float) Default=0.5. Minimum separation in arcmin.</LI>
+            <LI><strong>max_sep</strong>: (float) Default=250.0. Maximum separation in arcmin.</LI>
+            <LI><strong>nbins</strong>: (int) Default=20. Number of bins.</LI>
+            <LI><strong>bin_slop</strong>: (float) Default=0.1. Bin slop for treecorr.</LI>
+            <LI><strong>sep_units</strong>: (str) Default=arcmin. Separation units.</LI>
+            <LI><strong>psf_size_units</strong>: (str) Default=sigma. Units for PSF size.</LI>
+            <LI><strong>shear_catalog_type</strong>: (str) Default=metacal. Shear catalog type.</LI>
+            <LI><strong>star_type</strong>: (str) Default=PSF-reserved. Star type to use.</LI>
+            <LI><strong>flip_g2</strong>: (bool) Default=False. Flip g2 sign.</LI>
             </UL>
 
 
@@ -351,14 +384,14 @@ These stages compute and/or plot diagnostics of catalogs or other data
         .. raw:: html
 
             <UL>
-            <LI><strong>min_sep</strong>: (float) Default=0.5. </LI>
-            <LI><strong>max_sep</strong>: (float) Default=250.0. </LI>
-            <LI><strong>nbins</strong>: (int) Default=20. </LI>
-            <LI><strong>bin_slop</strong>: (float) Default=0.1. </LI>
-            <LI><strong>sep_units</strong>: (str) Default=arcmin. </LI>
-            <LI><strong>psf_size_units</strong>: (str) Default=sigma. </LI>
-            <LI><strong>star_type</strong>: (str) Default=PSF-reserved. </LI>
-            <LI><strong>flip_g2</strong>: (bool) Default=False. </LI>
+            <LI><strong>min_sep</strong>: (float) Default=0.5. Minimum separation in arcmin.</LI>
+            <LI><strong>max_sep</strong>: (float) Default=250.0. Maximum separation in arcmin.</LI>
+            <LI><strong>nbins</strong>: (int) Default=20. Number of bins.</LI>
+            <LI><strong>bin_slop</strong>: (float) Default=0.1. Bin slop for treecorr.</LI>
+            <LI><strong>sep_units</strong>: (str) Default=arcmin. Separation units.</LI>
+            <LI><strong>psf_size_units</strong>: (str) Default=sigma. Units for PSF size.</LI>
+            <LI><strong>star_type</strong>: (str) Default=PSF-reserved. Star type to use.</LI>
+            <LI><strong>flip_g2</strong>: (bool) Default=False. Flip g2 sign.</LI>
             </UL>
 
 
@@ -384,10 +417,10 @@ These stages compute and/or plot diagnostics of catalogs or other data
         .. raw:: html
 
             <UL>
-            <LI><strong>band</strong>: (str) Default=r. </LI>
-            <LI><strong>nbin</strong>: (int) Default=20. </LI>
-            <LI><strong>mmin</strong>: (float) Default=18.5. </LI>
-            <LI><strong>mmax</strong>: (float) Default=23.5. </LI>
+            <LI><strong>band</strong>: (str) Default=r. Band to use for magnitude.</LI>
+            <LI><strong>nbin</strong>: (int) Default=20. Number of magnitude bins.</LI>
+            <LI><strong>mmin</strong>: (float) Default=18.5. Minimum magnitude.</LI>
+            <LI><strong>mmax</strong>: (float) Default=23.5. Maximum magnitude.</LI>
             </UL>
 
 
@@ -398,9 +431,7 @@ These stages compute and/or plot diagnostics of catalogs or other data
 
     Inputs: 
 
-    - binned_shear_catalog: ShearCatalog
-    - shear_photoz_stack: QPNOfZFile
-    - lens_photoz_stack: QPNOfZFile
+    - binned_shear_catalog: BinnedCatalog
     - random_cats: RandomsCatalog
     - exposures: HDFFile
     - patch_centers: TextFile
@@ -419,26 +450,27 @@ These stages compute and/or plot diagnostics of catalogs or other data
         .. raw:: html
 
             <UL>
-            <LI><strong>calcs</strong>: (list) Default=[0, 1, 2]. </LI>
-            <LI><strong>min_sep</strong>: (float) Default=2.5. </LI>
-            <LI><strong>max_sep</strong>: (int) Default=250. </LI>
-            <LI><strong>nbins</strong>: (int) Default=20. </LI>
-            <LI><strong>bin_slop</strong>: (float) Default=0.1. </LI>
-            <LI><strong>sep_units</strong>: (str) Default=arcmin. </LI>
-            <LI><strong>flip_g1</strong>: (bool) Default=False. </LI>
-            <LI><strong>flip_g2</strong>: (bool) Default=True. </LI>
-            <LI><strong>verbose</strong>: (int) Default=1. </LI>
-            <LI><strong>reduce_randoms_size</strong>: (float) Default=1.0. </LI>
-            <LI><strong>var_method</strong>: (str) Default=shot. </LI>
-            <LI><strong>npatch</strong>: (int) Default=5. </LI>
-            <LI><strong>use_true_shear</strong>: (bool) Default=False. </LI>
-            <LI><strong>subtract_mean_shear</strong>: (bool) Default=False. </LI>
-            <LI><strong>use_randoms</strong>: (bool) Default=True. </LI>
-            <LI><strong>patch_dir</strong>: (str) Default=./cache/patches. </LI>
-            <LI><strong>low_mem</strong>: (bool) Default=False. </LI>
-            <LI><strong>chunk_rows</strong>: (int) Default=100000. </LI>
-            <LI><strong>share_patch_files</strong>: (bool) Default=False. </LI>
-            <LI><strong>use_subsampled_randoms</strong>: (bool) Default=False. </LI>
+            <LI><strong>min_sep</strong>: (float) Default=0.5. Minimum separation for correlation measurements</LI>
+            <LI><strong>max_sep</strong>: (float) Default=300.0. Maximum separation for correlation measurements</LI>
+            <LI><strong>nbins</strong>: (int) Default=9. Number of separation bins</LI>
+            <LI><strong>bin_slop</strong>: (float) Default=0.0. Tolerance for bin sloppiness in TreeCorr</LI>
+            <LI><strong>sep_units</strong>: (str) Default=arcmin. Units for separation (arcmin, degrees, etc.)</LI>
+            <LI><strong>flip_g1</strong>: (bool) Default=False. Whether to flip the sign of g1</LI>
+            <LI><strong>flip_g2</strong>: (bool) Default=True. Whether to flip the sign of g2</LI>
+            <LI><strong>cores_per_task</strong>: (int) Default=20. Number of CPU cores to use per task</LI>
+            <LI><strong>verbose</strong>: (int) Default=1. Verbosity level for TreeCorr output</LI>
+            <LI><strong>calcs</strong>: (list) Default=[0, 1, 2]. Which calculations to perform: 0=shear-shear, 1=shear-position, 2=position-position</LI>
+            <LI><strong>reduce_randoms_size</strong>: (float) Default=1.0. Factor to reduce the size of random catalogs.</LI>
+            <LI><strong>var_method</strong>: (str) Default=shot. Method for computing variance (shot, jackknife, etc.).</LI>
+            <LI><strong>npatch</strong>: (int) Default=5. Number of patches for null tests.</LI>
+            <LI><strong>use_true_shear</strong>: (bool) Default=False. Whether to use true shear values.</LI>
+            <LI><strong>subtract_mean_shear</strong>: (bool) Default=False. Whether to subtract mean shear.</LI>
+            <LI><strong>use_randoms</strong>: (bool) Default=True. Whether to use random catalogs.</LI>
+            <LI><strong>patch_dir</strong>: (str) Default=./cache/patches. Directory for storing patch files.</LI>
+            <LI><strong>low_mem</strong>: (bool) Default=False. Whether to use low memory mode.</LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=100000. Number of rows to process in each chunk.</LI>
+            <LI><strong>share_patch_files</strong>: (bool) Default=False. Whether to share patch files across processes.</LI>
+            <LI><strong>use_subsampled_randoms</strong>: (bool) Default=False. Use subsampled randoms file for RR calculation.</LI>
             </UL>
 
 
@@ -449,12 +481,10 @@ These stages compute and/or plot diagnostics of catalogs or other data
 
     Inputs: 
 
-    - binned_shear_catalog: ShearCatalog
+    - binned_shear_catalog: BinnedCatalog
     - shear_tomography_catalog: TomographyCatalog
-    - shear_photoz_stack: QPNOfZFile
-    - lens_photoz_stack: QPNOfZFile
     - random_cats: RandomsCatalog
-    - binned_star_catalog: HDFFile
+    - binned_star_catalog: BinnedCatalog
     - patch_centers: TextFile
     - tracer_metadata: HDFFile
     - binned_random_catalog: HDFFile
@@ -474,26 +504,27 @@ These stages compute and/or plot diagnostics of catalogs or other data
         .. raw:: html
 
             <UL>
-            <LI><strong>calcs</strong>: (list) Default=[0, 1, 2]. </LI>
-            <LI><strong>min_sep</strong>: (float) Default=2.5. </LI>
-            <LI><strong>max_sep</strong>: (int) Default=100. </LI>
-            <LI><strong>nbins</strong>: (int) Default=20. </LI>
-            <LI><strong>bin_slop</strong>: (int) Default=1. </LI>
-            <LI><strong>sep_units</strong>: (str) Default=arcmin. </LI>
-            <LI><strong>flip_g1</strong>: (bool) Default=False. </LI>
-            <LI><strong>flip_g2</strong>: (bool) Default=True. </LI>
-            <LI><strong>verbose</strong>: (int) Default=1. </LI>
-            <LI><strong>reduce_randoms_size</strong>: (float) Default=1.0. </LI>
-            <LI><strong>var_method</strong>: (str) Default=shot. </LI>
-            <LI><strong>npatch</strong>: (int) Default=5. </LI>
-            <LI><strong>use_true_shear</strong>: (bool) Default=False. </LI>
-            <LI><strong>subtract_mean_shear</strong>: (bool) Default=False. </LI>
-            <LI><strong>use_randoms</strong>: (bool) Default=True. </LI>
-            <LI><strong>patch_dir</strong>: (str) Default=./cache/patches. </LI>
-            <LI><strong>low_mem</strong>: (bool) Default=False. </LI>
-            <LI><strong>chunk_rows</strong>: (int) Default=100000. </LI>
-            <LI><strong>share_patch_files</strong>: (bool) Default=False. </LI>
-            <LI><strong>use_subsampled_randoms</strong>: (bool) Default=False. </LI>
+            <LI><strong>min_sep</strong>: (float) Default=0.5. Minimum separation for correlation measurements</LI>
+            <LI><strong>max_sep</strong>: (float) Default=300.0. Maximum separation for correlation measurements</LI>
+            <LI><strong>nbins</strong>: (int) Default=9. Number of separation bins</LI>
+            <LI><strong>bin_slop</strong>: (float) Default=0.0. Tolerance for bin sloppiness in TreeCorr</LI>
+            <LI><strong>sep_units</strong>: (str) Default=arcmin. Units for separation (arcmin, degrees, etc.)</LI>
+            <LI><strong>flip_g1</strong>: (bool) Default=False. Whether to flip the sign of g1</LI>
+            <LI><strong>flip_g2</strong>: (bool) Default=True. Whether to flip the sign of g2</LI>
+            <LI><strong>cores_per_task</strong>: (int) Default=20. Number of CPU cores to use per task</LI>
+            <LI><strong>verbose</strong>: (int) Default=1. Verbosity level for TreeCorr output</LI>
+            <LI><strong>calcs</strong>: (list) Default=[0, 1, 2]. Which calculations to perform: 0=shear-shear, 1=shear-position, 2=position-position</LI>
+            <LI><strong>reduce_randoms_size</strong>: (float) Default=1.0. Factor to reduce the size of random catalogs.</LI>
+            <LI><strong>var_method</strong>: (str) Default=shot. Method for computing variance (shot, jackknife, etc.).</LI>
+            <LI><strong>npatch</strong>: (int) Default=5. Number of patches for null tests.</LI>
+            <LI><strong>use_true_shear</strong>: (bool) Default=False. Whether to use true shear values.</LI>
+            <LI><strong>subtract_mean_shear</strong>: (bool) Default=False. Whether to subtract mean shear.</LI>
+            <LI><strong>use_randoms</strong>: (bool) Default=True. Whether to use random catalogs.</LI>
+            <LI><strong>patch_dir</strong>: (str) Default=./cache/patches. Directory for storing patch files.</LI>
+            <LI><strong>low_mem</strong>: (bool) Default=False. Whether to use low memory mode.</LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=100000. Number of rows to process in each chunk.</LI>
+            <LI><strong>share_patch_files</strong>: (bool) Default=False. Whether to share patch files across processes.</LI>
+            <LI><strong>use_subsampled_randoms</strong>: (bool) Default=False. Use subsampled randoms file for RR calculation.</LI>
             </UL>
 
 
@@ -504,8 +535,7 @@ These stages compute and/or plot diagnostics of catalogs or other data
 
     Inputs: 
 
-    - binned_shear_catalog: ShearCatalog
-    - shear_photoz_stack: QPNOfZFile
+    - binned_shear_catalog: BinnedCatalog
     - random_cats: RandomsCatalog
     - patch_centers: TextFile
     - tracer_metadata: HDFFile
@@ -523,26 +553,27 @@ These stages compute and/or plot diagnostics of catalogs or other data
         .. raw:: html
 
             <UL>
-            <LI><strong>calcs</strong>: (list) Default=[0, 1, 2]. </LI>
-            <LI><strong>min_sep</strong>: (float) Default=2.5. </LI>
-            <LI><strong>max_sep</strong>: (int) Default=100. </LI>
-            <LI><strong>nbins</strong>: (int) Default=20. </LI>
-            <LI><strong>bin_slop</strong>: (int) Default=1. </LI>
-            <LI><strong>sep_units</strong>: (str) Default=arcmin. </LI>
-            <LI><strong>flip_g1</strong>: (bool) Default=False. </LI>
-            <LI><strong>flip_g2</strong>: (bool) Default=True. </LI>
-            <LI><strong>verbose</strong>: (int) Default=1. </LI>
-            <LI><strong>reduce_randoms_size</strong>: (float) Default=1.0. </LI>
-            <LI><strong>var_method</strong>: (str) Default=shot. </LI>
-            <LI><strong>npatch</strong>: (int) Default=5. </LI>
-            <LI><strong>use_true_shear</strong>: (bool) Default=False. </LI>
-            <LI><strong>subtract_mean_shear</strong>: (bool) Default=False. </LI>
-            <LI><strong>use_randoms</strong>: (bool) Default=False. </LI>
-            <LI><strong>patch_dir</strong>: (str) Default=./cache/patches. </LI>
-            <LI><strong>low_mem</strong>: (bool) Default=False. </LI>
-            <LI><strong>chunk_rows</strong>: (int) Default=100000. </LI>
-            <LI><strong>share_patch_files</strong>: (bool) Default=False. </LI>
-            <LI><strong>use_subsampled_randoms</strong>: (bool) Default=False. </LI>
+            <LI><strong>min_sep</strong>: (float) Default=0.5. Minimum separation for correlation measurements</LI>
+            <LI><strong>max_sep</strong>: (float) Default=300.0. Maximum separation for correlation measurements</LI>
+            <LI><strong>nbins</strong>: (int) Default=9. Number of separation bins</LI>
+            <LI><strong>bin_slop</strong>: (float) Default=0.0. Tolerance for bin sloppiness in TreeCorr</LI>
+            <LI><strong>sep_units</strong>: (str) Default=arcmin. Units for separation (arcmin, degrees, etc.)</LI>
+            <LI><strong>flip_g1</strong>: (bool) Default=False. Whether to flip the sign of g1</LI>
+            <LI><strong>flip_g2</strong>: (bool) Default=True. Whether to flip the sign of g2</LI>
+            <LI><strong>cores_per_task</strong>: (int) Default=20. Number of CPU cores to use per task</LI>
+            <LI><strong>verbose</strong>: (int) Default=1. Verbosity level for TreeCorr output</LI>
+            <LI><strong>calcs</strong>: (list) Default=[0, 1, 2]. Which calculations to perform: 0=shear-shear, 1=shear-position, 2=position-position</LI>
+            <LI><strong>reduce_randoms_size</strong>: (float) Default=1.0. Factor to reduce the size of random catalogs.</LI>
+            <LI><strong>var_method</strong>: (str) Default=shot. Method for computing variance (shot, jackknife, etc.).</LI>
+            <LI><strong>npatch</strong>: (int) Default=5. Number of patches for null tests.</LI>
+            <LI><strong>use_true_shear</strong>: (bool) Default=False. Whether to use true shear values.</LI>
+            <LI><strong>subtract_mean_shear</strong>: (bool) Default=False. Whether to subtract mean shear.</LI>
+            <LI><strong>use_randoms</strong>: (bool) Default=False. Whether to use random catalogs.</LI>
+            <LI><strong>patch_dir</strong>: (str) Default=./cache/patches. Directory for storing patch files.</LI>
+            <LI><strong>low_mem</strong>: (bool) Default=False. Whether to use low memory mode.</LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=100000. Number of rows to process in each chunk.</LI>
+            <LI><strong>share_patch_files</strong>: (bool) Default=False. Whether to share patch files across processes.</LI>
+            <LI><strong>use_subsampled_randoms</strong>: (bool) Default=False. Use subsampled randoms file for RR calculation.</LI>
             </UL>
 
 
@@ -553,7 +584,7 @@ These stages compute and/or plot diagnostics of catalogs or other data
 
     Inputs: 
 
-    - binned_shear_catalog: ShearCatalog
+    - binned_shear_catalog: BinnedCatalog
     - shear_photoz_stack: QPNOfZFile
     - patch_centers: TextFile
     - tracer_metadata: HDFFile
@@ -570,26 +601,27 @@ These stages compute and/or plot diagnostics of catalogs or other data
         .. raw:: html
 
             <UL>
-            <LI><strong>calcs</strong>: (list) Default=[0, 1, 2]. </LI>
-            <LI><strong>min_sep</strong>: (float) Default=0.5. </LI>
-            <LI><strong>max_sep</strong>: (float) Default=300.0. </LI>
-            <LI><strong>nbins</strong>: (int) Default=15. </LI>
-            <LI><strong>bin_slop</strong>: (float) Default=0.02. </LI>
-            <LI><strong>sep_units</strong>: (str) Default=arcmin. </LI>
-            <LI><strong>flip_g1</strong>: (bool) Default=False. </LI>
-            <LI><strong>flip_g2</strong>: (bool) Default=True. </LI>
-            <LI><strong>verbose</strong>: (int) Default=1. </LI>
-            <LI><strong>source_bins</strong>: (list) Default=[-1]. </LI>
-            <LI><strong>lens_bins</strong>: (list) Default=[-1]. </LI>
-            <LI><strong>reduce_randoms_size</strong>: (float) Default=1.0. </LI>
-            <LI><strong>var_method</strong>: (str) Default=jackknife. </LI>
-            <LI><strong>use_true_shear</strong>: (bool) Default=False. </LI>
-            <LI><strong>subtract_mean_shear</strong>: (bool) Default=False. </LI>
-            <LI><strong>use_randoms</strong>: (bool) Default=False. </LI>
-            <LI><strong>low_mem</strong>: (bool) Default=False. </LI>
-            <LI><strong>patch_dir</strong>: (str) Default=./cache/patches. </LI>
-            <LI><strong>chunk_rows</strong>: (int) Default=100000. </LI>
-            <LI><strong>share_patch_files</strong>: (bool) Default=False. </LI>
+            <LI><strong>min_sep</strong>: (float) Default=0.5. Minimum separation for correlation measurements</LI>
+            <LI><strong>max_sep</strong>: (float) Default=300.0. Maximum separation for correlation measurements</LI>
+            <LI><strong>nbins</strong>: (int) Default=9. Number of separation bins</LI>
+            <LI><strong>bin_slop</strong>: (float) Default=0.0. Tolerance for bin sloppiness in TreeCorr</LI>
+            <LI><strong>sep_units</strong>: (str) Default=arcmin. Units for separation (arcmin, degrees, etc.)</LI>
+            <LI><strong>flip_g1</strong>: (bool) Default=False. Whether to flip the sign of g1</LI>
+            <LI><strong>flip_g2</strong>: (bool) Default=True. Whether to flip the sign of g2</LI>
+            <LI><strong>cores_per_task</strong>: (int) Default=20. Number of CPU cores to use per task</LI>
+            <LI><strong>verbose</strong>: (int) Default=1. Verbosity level for TreeCorr output</LI>
+            <LI><strong>calcs</strong>: (list) Default=[0, 1, 2]. Which calculations to perform: 0=shear-shear, 1=shear-position, 2=position-position</LI>
+            <LI><strong>source_bins</strong>: (list) Default=[-1]. List of source bins to use (-1 means all).</LI>
+            <LI><strong>lens_bins</strong>: (list) Default=[-1]. List of lens bins to use (-1 means all).</LI>
+            <LI><strong>reduce_randoms_size</strong>: (float) Default=1.0. Factor to reduce the size of random catalogs.</LI>
+            <LI><strong>var_method</strong>: (str) Default=jackknife. Method for computing variance (jackknife, sample, etc.).</LI>
+            <LI><strong>use_true_shear</strong>: (bool) Default=False. Whether to use true shear values.</LI>
+            <LI><strong>subtract_mean_shear</strong>: (bool) Default=False. Whether to subtract mean shear.</LI>
+            <LI><strong>use_randoms</strong>: (bool) Default=False. Whether to use random catalogs.</LI>
+            <LI><strong>low_mem</strong>: (bool) Default=False. Whether to use low memory mode.</LI>
+            <LI><strong>patch_dir</strong>: (str) Default=./cache/patches. Directory for storing patch files.</LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=100000. Number of rows to process in each chunk.</LI>
+            <LI><strong>share_patch_files</strong>: (bool) Default=False. Whether to share patch files across processes.</LI>
             </UL>
 
 
