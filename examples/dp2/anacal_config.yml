@@ -76,7 +76,7 @@ TXMockGaussianPhotozStack:
 TXAnacalSelection:
     # Keep n_mask_base < mask_threshold.  n_mask_base is the Gaussian-weighted
     # masked fraction in [0, 1] (xlens), so values >= 1 apply no cut.
-    mask_threshold: 0.04
+    mask_threshold: 0.035
 
     # AnaCal S/N cut (flux / flux_err).  Default in code is 5.0.
     s2n_min: 10.0

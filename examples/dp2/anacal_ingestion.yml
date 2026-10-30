@@ -66,6 +66,12 @@ stages:
       mask: mask_elais_e1 
   - name: TXCombineTractLists
   - name: TXIngestAnacal
+  - name: TXIngestAnacal_wide
+    classname: TXIngestAnacal
+    aliases:
+        tract_list: tract_list_wide
+        shear_catalog: anacal_shear_catalog_wide
+
 
 
 output_dir: data/anacal_dp2_ingest
