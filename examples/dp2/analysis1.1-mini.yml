@@ -1,19 +1,15 @@
 # Stages to run
 # Processors for PZ stages. There's a bug in rail_base logging
 # that crashes if you use too many. PR in progress.
-{% set assign_procs = 8 %}
 
 stages:
-  - name: TXSourceSelectorScalarMetadetectDP2    # select and split objects into source bins
-    nprocess: 4
-    aliases:
-      tomography_assignments_ns: bhat_for_wide_data_ns
-      tomography_assignments_1p: bhat_for_wide_data_1p
-      tomography_assignments_1m: bhat_for_wide_data_1m
-  - name: TXSourceTomography
-    threads_per_process: 8
+  - name: TXDP2DESCSelection
+    nprocess: 8
+  - name: PZCollateRailAssignmentsScalarMetadetect
+  - name: TXComputeShearCalibrationScalarMetadetect    # select and split objects into source bins
+    nprocess: 8
   - name: TXShearCalibration       # Calibrate and split the source sample tomographically
-    nprocess: 4
+    nprocess: 8
   - name: TXSourceMaps             # make source g1 and g2 maps
     nprocess: 1
   - name: TXMapPlots             # make pictures of all the maps
@@ -23,8 +19,6 @@ stages:
     threads_per_process: 8
     nprocess: 1
     nodes: 1
-    aliases:
-      shear_photoz_stack: shear_photoz_stack_ns
   - name: TXBlinding             # Blind the data following Muir et al
     threads_per_process: 4
   - name: TXTwoPointPlots        # Make plots of 2pt correlations
@@ -33,23 +27,23 @@ stages:
   - name: TXPhotozPlotSource          # Plot the bin n(z)
     classname: TXPhotozPlot
     aliases:
-        photoz_stack: shear_photoz_stack_ns
         nz_plot: nz_source
+        photoz_stack: shear_photoz_stack
   - name: TXRealGaussianCovariance
-    threads_per_process: 4
+    threads_per_process: 8
   - name: TXDiagnosticQuantiles
   - name: TXPSFMaps
   - name: TXSourceDiagnosticPlots
-    nprocess: 4
+    nprocess: 8
   - name: TXResponseInBins
-    nprocess: 4
+    nprocess: 8
   - name: PZSOMInformer
     classname: SOMPZInformer
     module_name: rail.estimation.algos.sompz
-    threads_per_process: 4
+    threads_per_process: 8
     aliases:
       model: deep_model
-      input_data: input_deep_data_inform
+      input_data: sub_selected_shear_data
   - name: PZAssignSpectroGalaxiesToCells
     classname: SOMPZEstimatorDeep
     module_name: rail.estimation.algos.sompz
@@ -65,12 +59,16 @@ stages:
       spec_data: input_spec_data
       pz_c: pz_c_som_pzc_stage
 
+  - name: PZGenerateSOMInformerSubsample
+    nprocess: 8 
 # Loop over the different variants we need to get tomographic
 # bin assignments for
 {% for variant in ["ns", "1p", "1m"] %}
   - name: PZAssignGalaxiesToCells_{{ variant }}
     classname: SOMPZEstimatorDeep
-    nprocess: {{ assign_procs }}
+    nprocess: 2
+    
+    threads_per_process: 2
     module_name: rail.estimation.algos.sompz
     aliases:
       data: shear_catalog
@@ -91,18 +89,33 @@ stages:
       nz: shear_photoz_stack_{{ variant }}
 {% endfor %}
 
+  - name: PZAddNonTomographicNZ
+    aliases:
+      input_photoz_stack: shear_photoz_stack_ns
+      output_photoz_stack: shear_photoz_stack
+
+  # - name: TXFlagMaps
+  # - name: TXSimpleMaskSource       # combine maps to make a simple mask
   # - name: TXSourceNoiseMaps      # Compute shear noise using rotations
   # - name: TXRoweStatistics       # Compute and plot Rowe statistics
   #   threads_per_process: 2
   # - name: TXGalaxyStarShear      # Compute and plot the star-galaxy shear cross-correlation
+  # - name: PZRealizationsPlotSource     # Plot n(z) realizations
+  #   classname: PZRealizationsPlot
+  #   aliases:
+  #       photoz_realizations: source_photoz_realizations
+  #       photoz_realizations_plot: source_photoz_realizations_plot
   # - name: TXConvergenceMaps      # Make convergence kappa maps from g1, g2 maps
   # - name: TXConvergenceMapPlots   # Plot the convergence map
-  # Disabling these as they takes too long for a quick test.
-  # The latter two need NaMaster
-  # - name: TXRealGaussianCovariance   # Compute covariance of real-space correlations
-  # - name: TXFourierGaussianCovariance # Compute the C_ell covariance
-  # - name: TXFourierTJPCovariance # Compute the C_ell covariance
-  #   threads_per_process: 2
+    # Disabled since not yet synchronised with new Treecorr MPI
+    # - name: TXSelfCalibrationIA   # Self-calibration intrinsic alignments of galaxies
+
+    # Disabling these as they takes too long for a quick test.
+    # The latter two need NaMaster
+    # - name: TXRealGaussianCovariance   # Compute covariance of real-space correlations
+    # - name: TXFourierGaussianCovariance # Compute the C_ell covariance
+    # - name: TXFourierTJPCovariance # Compute the C_ell covariance
+    #   threads_per_process: 2
 
 
 # modules and packages to import that have pipeline
@@ -115,7 +128,7 @@ modules: >
 python_paths: []
 
 # Where to put outputs
-output_dir: data/metadetect_desc_dp2
+output_dir: data/metadetect_desc_dp2_mini
 
 # How to run the pipeline: mini, parsl, or cwl
 launcher:
@@ -125,11 +138,10 @@ launcher:
 # Where to run the pipeline: cori-interactive, cori-batch, or local
 site:
     name: local
-    max-threads: 8
 
 
 # configuration settings
-config: examples/dp2/config.yml
+config: examples/dp2/config-mini.yml
 
 # On NERSC, set this before running:
 # export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
@@ -140,8 +152,8 @@ inputs:
     # star_catalog: data/example/inputs/star_catalog.hdf5
     # This file comes with the code
     fiducial_cosmology: data/fiducial_cosmology.yml
-    # For the self-calibration extension we are not using Random_cat_source for now
-    # So it is set to Null, so the yaml intepreter returns a None value to python. 
+    # This is a shear-only analysis (no clustering or GGL) so we use
+    # these placeholders for all the lens-related files
     lens_maps: none
     depth_map: none
     bright_object_map: none
@@ -151,18 +163,9 @@ inputs:
     binned_random_catalog: none
     binned_random_catalog_sub: none
     lens_photoz_stack: none
-    spectroscopic_catalog: data/example/inputs/mock_spectroscopic_catalog.hdf5
-    mask: data/metadetect_desc_dp2_ingest/mask.hdf5
-    shear_catalog: data/metadetect_desc_dp2_ingest/mini_desc_dp2_shear_catalog.hdf5
-    # input_deep_data: data/metadetect_desc_dp2_ingest/cut_shear_catalog.hdf5
-    # TODO: Replace this with something that takes a random subsample
-    # from the catalog.
-    input_deep_data_inform: data/pz_dp2/mdet_for_sompz.hdf5
-    input_spec_data: data/pz_dp2/mdet_redshift_for_sompz.hdf5
-    # mask:
-    #     id: 148
-    # shear_catalog:
-    #     id: 147
+    mask: /global/cfs/cdirs/lsst/utilities/data-registry/lsst_desc_working/user/zuntz/.gen_paths/txpipe_dp2_shear_catalog_desc_metaDetect_mask_1deg2_0.3.0/mini_mask.hdf5
+    shear_catalog: /global/cfs/cdirs/lsst/utilities/data-registry/lsst_desc_working/user/zuntz/.gen_paths/txpipe_dp2_shear_catalog_desc_metaDetect_1deg2_0.3.0/mini_desc_dp2_shear_catalog.hdf5
+    input_spec_data: /global/cfs/cdirs/lsst/utilities/data-registry/lsst_desc_working/user/zuntz/.gen_paths/mdet_redshift_for_sompz_0.3.0/mdet_redshift_for_sompz.hdf5
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted
@@ -171,4 +174,4 @@ resume: true
 log_dir: data/metadetect_dp2/logs
 # where to put an overall parsl pipeline log
 pipeline_log: data/metadetect_dp2/log.txt
-# registry: {}
+#registry: {}

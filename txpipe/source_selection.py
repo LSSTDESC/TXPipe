@@ -181,3 +181,157 @@ class TXHSCSelection(TXSimpleSelection):
             g = np.sqrt(data["g1"] ** 2 + data["g2"] ** 2)
             cutter.keep(g < shear_cut, "max_shear")
         return cutter.sel
+
+
+class TXDP2RubinMetadetectSelection(TXMetaDetectSelection):
+    name = "TXDP2RubinMetadetectSelection"
+
+    columns = [
+        "ra", "is_primary", "mfrac", "gauss_snr", "gauss_T", "gauss_psfReconvolved_T", "g1", "g2", "weight",
+    ] + band_variants("griz", "mag", shear_catalog_type="simple")
+
+    config_options = TXMetaDetectSelection.config_options | {
+        "mfrac_max": StageParameter(float, default=0.1, msg="Maximum mask fraction for object selection"),
+        "s2n_min": StageParameter(float, default=10.0, msg="Minimum gauss_snr for object selection"),
+        "T_max": StageParameter(float, default=20.0, msg="Maximum gauss_T for object selection"),
+        "Tratio_min": StageParameter(float, default=0.5, msg="Minimum gauss_T / gauss_psfReconvolved_T for object selection"),
+        "i_min": StageParameter(float, default=18.2, msg="Minimum i-band magnitude"),
+        "i_max": StageParameter(float, default=23.5, msg="Maximum i-band magnitude"),
+        "r_min": StageParameter(float, default=15.2, msg="Minimum r-band magnitude"),
+        "g_min": StageParameter(float, default=15.2, msg="Minimum g-band magnitude"),
+        "rmi_min": StageParameter(float, default=-1.5, msg="Minimum r-i color for object selection"),
+        "rmi_max": StageParameter(float, default=4.0, msg="Maximum r-i color for object selection"),
+        "imz_min": StageParameter(float, default=-1.5, msg="Minimum i-z color for object selection"),
+        "imz_max": StageParameter(float, default=4.0, msg="Maximum i-z color for object selection"),
+    }
+
+    def compute_selection(self, start, end, data):
+        # shortcut if no data
+        if data["gauss_T"].size == 0:
+            return np.zeros(0, dtype=bool)
+
+        config = self.config
+
+        mfrac_max = config["mfrac_max"]
+        s2n_min = config["s2n_min"]
+        T_max = config["T_max"]
+        Tratio_min = config["Tratio_min"]
+        i_min = config["i_min"]
+        i_max = config["i_max"]
+        r_min = config["r_min"]
+        g_min = config["g_min"]
+        rmi_min = config["rmi_min"]
+        rmi_max = config["rmi_max"]
+        imz_min = config["imz_min"]
+        imz_max = config["imz_max"]
+
+        T_ratio = data["gauss_T"] / data["gauss_psfReconvolved_T"]
+        rmi = data["mag_r"] - data["mag_i"]
+        imz = data["mag_i"] - data["mag_z"]
+
+        cutter = Cutter(data["ra"].size, verbose=config["verbose"])
+
+        # Basic cuts
+        cutter.keep(data["is_primary"] == True, "is_primary")
+        cutter.keep(data["mfrac"] < mfrac_max, f"mfrac < {mfrac_max}")
+        cutter.keep(np.isfinite(data["g1"]), "g1 finite" )
+        cutter.keep(np.isfinite(data["g2"]), "g2 finite" )
+        cutter.keep(np.isfinite(data["weight"]), "weight finite" )
+        
+        # Galaxy cuts
+        cutter.keep(data["gauss_snr"] > s2n_min, f"S/N > {s2n_min}")
+        cutter.keep(data["gauss_T"] < T_max, f"T < {T_max}")
+        cutter.keep(T_ratio > Tratio_min, f"T / T psf > {Tratio_min}")
+
+        # Magnitude cuts
+        cutter.keep((data["mag_i"] > i_min) & (data["mag_i"] < i_max), f"i in [{i_min}, {i_max}]")
+        cutter.keep(data["mag_r"] > r_min, f"r > {r_min}")
+        cutter.keep(data["mag_g"] > g_min, f"g > {g_min}")
+
+        # Sanity cuts on color
+        cutter.keep((rmi > rmi_min) & (rmi < rmi_max), f"r-i color in [{rmi_min}, {rmi_max}]")
+        cutter.keep((imz > imz_min) & (imz < imz_max), f"i-z color in [{imz_min}, {imz_max}]")
+
+        return cutter.sel
+
+
+class TXDP2DESCSelection(TXScalarMetaDetectSelection):
+    name = "TXDP2DESCSelection"
+    columns = ["T", "s2n", "g1", "g2", "ra", "dec", "weight", "psf_T_mean", "flags",  "is_primary", "mfrac", "psfrec_g1", "psfrec_g2", "rmi", "imz", "g_flags"] + band_variants("riz", "mag", shear_catalog_type="simple")
+
+    config_options =TXScalarMetaDetectSelection.config_options | {
+        "max_psf_g": StageParameter(float, default=0.05, msg="Maximum PSF ellipticity for object selection"),
+        "rmi_min": StageParameter(float, default=-2.0, msg="Minimum r-i color for object selection"),
+        "rmi_max": StageParameter(float, default=3.0, msg="Maximum r-i color for object selection"),
+        "imz_min": StageParameter(float, default=-2.0, msg="Minimum i-z color for object selection"),
+        "imz_max": StageParameter(float, default=3.0, msg="Maximum i-z color for object selection"),
+        "T_max": StageParameter(float, default=20.0, msg="T threshold for object selection"),
+        "Tratio_min": StageParameter(float, default=0.5, msg="Minimum T ratio for object selection"),
+        "Tratio_max": StageParameter(float, default=20.0, msg="Maximum T ratio for object selection"),
+        "s2n_min": StageParameter(float, default=10.0, msg="Minimum signal-to-noise ratio for object selection"),
+        "s2n_max": StageParameter(float, default=100.0, msg="Maximum signal-to-noise ratio for object selection"),
+        "mfrac_max": StageParameter(float, default=0.1, msg="Maximum mask fraction for object selection"),
+        "i_min":StageParameter(float, default=18.2, msg="Minimum i-band magnitude"),
+        "i_max":StageParameter(float, default=23.5, msg="Maximum i-band magnitude"),
+        "r_min":StageParameter(float, default=15.2, msg="Minimum g-band magnitude"),
+        "r_max":StageParameter(float, default=30., msg="Maximum g-band magnitude"),
+    }
+    def compute_selection(self, start, end, data):
+        # shortcut if no data
+        if data["T"].size == 0:
+            return np.zeros(0, dtype=bool)
+
+        config = self.config
+
+        max_psf_g = config["max_psf_g"]
+        rmi_min = config["rmi_min"]
+        rmi_max = config["rmi_max"]
+        imz_min = config["imz_min"]
+        imz_max = config["imz_max"]
+        T_max = config["T_max"]
+        Tratio_min = config["Tratio_min"]
+        Tratio_max = config["Tratio_max"]
+        s2n_min = config["s2n_min"]
+        s2n_max = config["s2n_max"]
+        mfrac_max = config["mfrac_max"]
+        i_min = config["i_min"]
+        i_max = config["i_max"]
+        r_min = config["r_min"]
+        r_max = config["r_max"]
+
+        T_ratio = data["T"] / data["psf_T_mean"]
+
+        cutter = Cutter(data["ra"].size, verbose=config["verbose"])
+        cutter.keep(data["is_primary"] == True, "is_primary")
+        # Basic cuts
+        cutter.keep(data["flags"] == 0, "flags == 0")
+        cutter.keep(data["mfrac"] < mfrac_max, f"mfrac < {mfrac_max}")
+        
+        # Image quality cuts
+        psfrec_gmax = np.maximum(data['psfrec_g1'], data['psfrec_g2'])
+        cutter.keep(np.abs(psfrec_gmax) < max_psf_g, f"psf |ellipticity| max < {max_psf_g}")
+
+        # Sanity cuts on color and size; somewhat arbitrary at this stage
+        cutter.keep((data["rmi"] > rmi_min) & (data["rmi"] < rmi_max), f"r-i color in [{rmi_min}, {rmi_max}]")
+        cutter.keep((data["imz"] > imz_min) & (data["imz"] < imz_max), f"i-z color in [{imz_min}, {imz_max}]")
+        cutter.keep(data["T"] < T_max, f"T < {T_max}")
+        cutter.keep(T_ratio < Tratio_max, f"T / T psf < {Tratio_max}")
+        cutter.keep(data["s2n"] < s2n_max, f"S/N < {s2n_max}")
+
+        # Magnitude cuts
+        cutter.keep(data["mag_i"] > i_min, f"i > {i_min}")
+        cutter.keep(data["mag_r"] > r_min, f"r > {r_min}")
+        cutter.keep(data["mag_i"] < i_max, f"i < {i_max}")
+        cutter.keep(data["mag_r"] < r_max, f"r < {r_max}")
+
+
+        # Good ellipticities
+        cutter.keep(data["g_flags"] == 0, "ellipticity flags = 0")
+
+        # Galaxy cuts
+        cutter.keep(T_ratio > Tratio_min, f"T / T psf > {Tratio_min}")
+        cutter.keep(data["s2n"] > s2n_min, f"S/N > {s2n_min}")
+
+        return cutter.sel
+
+
