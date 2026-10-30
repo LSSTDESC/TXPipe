@@ -4,7 +4,7 @@ import numpy as np
 from ...base_stage import PipelineStage
 from ...data_types import ShearCatalog, HDFFile, PhotozPDFFile, FiducialCosmology, TomographyCatalog, ShearCatalog
 from ...shear_calibration import Calibrator
-from . import iterate_source_catalog
+from .utils import iterate_source_catalog
 from collections import defaultdict
 import yaml
 import ceci
@@ -33,17 +33,9 @@ class CLClusterShearCatalogs(PipelineStage):
         "delta_z": 0.1,
         "redshift_cut_criterion": "zmode",  # pdf / mean / true / median / tomo_bins
         "redshift_cut_criterion_pdf_fraction": 0.9,  # pdf / mean / true / median
-        "subtract_mean_shear": False, # Not clear if this is useful for clusters
-        "coordinate_system": "celestial",
-        "delta_sigma": True, # If True then we compute delta-sigma, otherwise we compute gamma
         "use_radius": True,
         "max_angle": 30, # arcmin
-        
-    }
-    metadetect_z_names = {
-        "ztrue": "redshift_true",
-        "zmode": "redshift",
-        "zmean": "redshift",
+        "use_true_shear": False,
     }
 
     def run(self):
@@ -82,7 +74,7 @@ class CLClusterShearCatalogs(PipelineStage):
         delta_z = self.config["delta_z"]
 
         # Loop through the source catalog.
-        for s, e, data in self.iterate_source_catalog(self, self.config["redshift_cut_criterion"]):
+        for s, e, data in iterate_source_catalog(self, self.config["redshift_cut_criterion"]):
             print(f"Process {self.rank} processing chunk {s:,} - {e:,}")
                 
             nearby_gals, nearby_gal_dists = self.find_galaxies_near_each_cluster(data, clusters, tree, max_theta_max)
@@ -141,7 +133,7 @@ class CLClusterShearCatalogs(PipelineStage):
         # file here.
         if self.rank == 0:
             print("Overall pair count = ", total_count)
-            outfile = self.open_output("cluster_shear_catalogs")
+            outfile = self.open_output("cluster_shear_selection")
             # Create space for the catalog
             catalog_group = outfile.create_group("catalog")
             catalog_group.create_dataset("cluster_id", shape=(ncluster,), dtype=np.int64)
@@ -198,8 +190,6 @@ class CLClusterShearCatalogs(PipelineStage):
             # First we write out the information about the clusters,
             # and the index into the other index.
             print(f"Found {n} total galaxies in catalog for cluster {c['id']}")
-            catalog_group["cluster_sample_start"][i] = start
-            catalog_group["cluster_sample_count"][i] = n
             catalog_group["cluster_id"][i] = c["id"]
             catalog_group["cluster_theta_max_arcmin"][i] = np.degrees(cluster_theta_max[i]) * 60
 
@@ -336,9 +326,9 @@ class CLClusterShearCatalogs(PipelineStage):
             pdf_frac = pdf[:, pdf_z > cluster_z + delta_z].sum(axis=1) / pdf.sum(axis=1)
             z_good = pdf_frac > self.config["redshift_cut_criterion_pdf_fraction"]
 
-        elif redshift_cut_criterion in ["ztrue", "zmode", "zmean"]:
+        elif redshift_cut_criterion in ["ztrue", "zmode", "zmean", "zmedian"]:
 
-            zgal = data[self.metadetect_z_names[redshift_cut_criterion]][gal_index]
+            zgal = data["redshift"][gal_index]
             z_good = zgal > cluster_z + delta_z
 
         elif redshift_cut_criterion == "tomo_bins":

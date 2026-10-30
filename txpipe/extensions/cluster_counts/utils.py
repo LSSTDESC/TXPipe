@@ -65,7 +65,7 @@ def iterate_source_catalog(self, redshift_type):
         with self.open_input("shear_catalog", wrapper=True) as f:
             col = f.get_true_redshift_column()
             shear_cols.append(col)
-            rename[col] = "redshift_true"
+            rename[col] = "redshift"
 
     # for PDF
     elif redshift_type == "pdf":
@@ -84,6 +84,7 @@ def iterate_source_catalog(self, redshift_type):
         for z_type in ("zmode", "zmean", "zmedian"):
             if z_type == redshift_type:
                 z_info += ["source_photoz_pdfs", "ancil", [z_type]]
+                rename[z_type] = "redshift"
                 redshift_type_ok = True
                 break
         if not redshift_type_ok:
