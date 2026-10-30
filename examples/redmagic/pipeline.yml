@@ -28,8 +28,10 @@ stages:
   - name: TXJackknifeCenters
   - name: TXTwoPoint
     threads_per_process: 2
-  - name: TXBlinding             # Blind the data following Muir et al
-    threads_per_process: 2
+  - name: TXSmokescreenBlinding  # Blind the data with Smokescreen
+    aliases:
+        twopoint_data_raw: twopoint_data_real_raw
+        twopoint_data_blinded: twopoint_data_real
   - name: TXTwoPointTheoryReal   # compute theory using CCL to save in sacc file and plot later
   - name: TXPhotozPlotSource          # Plot the bin n(z)
     classname: TXPhotozPlot

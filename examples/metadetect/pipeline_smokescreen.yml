@@ -1,5 +1,5 @@
-# This is the metadetect example pipeline, but blinding both the real and
-# harmonic-space two-point data with Smokescreen instead of TXBlinding.
+# This is the metadetect example pipeline, but blinding the harmonic-space
+# two-point data with Smokescreen as well as the real-space data.
 # Stages to run
 stages:
   - name: FlowCreator               # Simulate a spectroscopic population

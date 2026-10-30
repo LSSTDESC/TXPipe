@@ -73,8 +73,10 @@ stages:
   - name: TXJackknifeCenters     # Split the area into jackknife regions
   - name: TXTwoPoint             # Compute real-space 2-point correlations
     threads_per_process: 2
-  - name: TXBlinding             # Blind the data following Muir et al
-    threads_per_process: 2
+  - name: TXSmokescreenBlinding  # Blind the data with Smokescreen
+    aliases:
+        twopoint_data_raw: twopoint_data_real_raw
+        twopoint_data_blinded: twopoint_data_real
   - name: TXTwoPointTheoryReal   # compute theory using CCL to save in sacc file and plot later
   - name: TXTwoPointPlotsTheory        # Make plots of 2pt correlations
   - name: TXDiagnosticQuantiles
