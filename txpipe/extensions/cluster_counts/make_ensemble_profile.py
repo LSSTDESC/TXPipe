@@ -69,14 +69,14 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             self.clmm_cosmo.set_be_cosmo(ccl_cosmo)
                  
         clusters_in_bins = self.load_cluster_catalog_tomography_group() 
-        self.add_source_data(clusters_in_bins)
-        cluster_stack_dict = self.make_ensenble(clusters_in_bins) 
+        clusters_list_of_source_lists = self.get_source_data(clusters_in_bins)
+        cluster_stack_dict = self.make_ensemble(clusters_in_bins, clusters_list_of_source_lists) 
         pickle.dump(cluster_stack_dict, open(self.get_output("cluster_profiles"), 'wb'))
 
 
         return tab, meta_coord_sys, profile_type
 
-    def add_source_data(self, clusters_in_bins):
+    def get_source_data(self, clusters_in_bins):
 
         import sklearn.neighbors
         import astropy
@@ -94,8 +94,6 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         print("    Get cluster-galaxy pairs")
         # get cluster-galaxy pairs
         with self.open_input("cluster_shear_selection") as f:
-            #catalog_group = outfile.create_group("catalog")
-            #catalog_group.create_dataset("cluster_id", shape=(ncluster,), dtype=np.int64)
             #catalog_group.create_dataset("cluster_theta_max_arcmin", shape=(ncluster,), dtype=np.float64)
         
             # sort by cl_id to optimize the assignment
@@ -145,10 +143,12 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
                     weights, tangential_comp, cross_comp, g1, g2 = self.compute_sources_quantities(
                         clmm_cosmo, data, _in_cluster, cluster['redshift'], cluster['ra'], cluster['dec']
                     )
+                    print("weights:", weights.min(), weights.max())
 
                     clusters_list_of_source_lists[bin_key][i].append((distance, weights, tangential_comp, cross_comp, g1, g2))
 
-            gc.collect()
+            #gc.collect()
+
 
         print(f"Process {self.rank} done reading")
 
@@ -158,6 +158,7 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         # so we need to pull together all the shears relevant to each
         # cluster
         j = 0
+        #self.collect(weights, tangential_comp, cross_comp, g1, g2, distance)
         for cluster_list in clusters_list_of_source_lists.values():
             for src_list_in_cluster in cluster_list:
 
@@ -169,80 +170,29 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
                     # for this particular processor then we just send
                     # an empty array
                     weights = np.zeros(0)
-                    tangential_comps = np.zeros(0)
-                    cross_comps = np.zeros(0)
+                    tangential_comp = np.zeros(0)
+                    cross_comp = np.zeros(0)
                     g1 = np.zeros(0)
                     g2 = np.zeros(0)
-                    distances = np.zeros(0)
+                    distance = np.zeros(0)
                 else:
                     # Each process flattens the list of all the galaxies for this cluster
-                    distances = np.concatenate([d[0] for d in src_list_in_cluster])
+                    distance = np.concatenate([d[0] for d in src_list_in_cluster])
                     if self.config['delta_sigma']:
                         weights = np.concatenate([d[1] for d in src_list_in_cluster])
                     else:
                         #If we are using gamma, the weights do not deppend on each galaxy, so the function returns a float
-                        weights = np.full(len(distances), src_list_in_cluster[0][1])
-                    tangential_comps = np.concatenate([d[2] for d in src_list_in_cluster])
-                    cross_comps = np.concatenate([d[3] for d in src_list_in_cluster])
+                        weights = np.full(len(distance), src_list_in_cluster[0][1])
+                    tangential_comp = np.concatenate([d[2] for d in src_list_in_cluster])
+                    cross_comp = np.concatenate([d[3] for d in src_list_in_cluster])
                     g1 = np.concatenate([d[4] for d in src_list_in_cluster])
                     g2 = np.concatenate([d[5] for d in src_list_in_cluster])
-
-
-                # If we are running in parallel then collect together the values from
-                # all the processes
-                if self.comm is not None:
-                    print("Final collect!!!")
-                    cluster.source_data = self.collect(weights, tangential_comps, cross_comps, g1, g2, distances)
-                    #del cluster.list_of_source_lists
 
                 j += 1
 
         print("Adding source data - DONE!")
 
-
-    def collect(self, weights, tangential_comps, cross_comps, g1, g2, distances):
-        # total number of background objects for t
-
-        counts = np.array(self.comm.allgather(weights.size))
-        total = counts.sum()
-
-        # Early exit if nothing here
-        if total == 0:
-            weights = np.zeros(0)
-            tangential_comps = np.zeros(0)
-            cross_comps = np.zeros(0)
-            distances = np.zeros(0)
-            g1 = np.zeros(0)
-            g2 = np.zeros(0)
-        # This collects together all the results from different processes for this cluster
-        elif self.rank == 0:
-            all_weights = np.empty(total, dtype=weights.dtype)
-            all_tangential_comps = np.empty(total, dtype=tangential_comps.dtype)
-            all_cross_comps = np.empty(total, dtype=cross_comps.dtype)
-            all_g1 = np.empty(total, dtype=tangential_comps.dtype)
-            all_g2 = np.empty(total, dtype=cross_comps.dtype)
-            all_distances = np.empty(total, dtype=distances.dtype)
-            self.comm.Gatherv(sendbuf=distances, recvbuf=(all_distances, counts))
-            self.comm.Gatherv(sendbuf=cross_comps, recvbuf=(all_cross_comps, counts))
-            self.comm.Gatherv(sendbuf=tangential_comps, recvbuf=(all_tangential_comps, counts))
-            self.comm.Gatherv(sendbuf=g1, recvbuf=(all_g1, counts))
-            self.comm.Gatherv(sendbuf=g2, recvbuf=(all_g2, counts))
-            self.comm.Gatherv(sendbuf=weights, recvbuf=(all_weights, counts))
-            weights = all_weights
-            tangential_comps = all_tangential_comps
-            cross_comps = all_cross_comps
-            distances = all_distances
-            g1 = all_g1
-            g2 = all_g2
-        else:
-            self.comm.Gatherv(sendbuf=distances, recvbuf=(None, counts))
-            self.comm.Gatherv(sendbuf=cross_comps, recvbuf=(None, counts))
-            self.comm.Gatherv(sendbuf=tangential_comps, recvbuf=(None, counts))
-            self.comm.Gatherv(sendbuf=g1, recvbuf=(None, counts))
-            self.comm.Gatherv(sendbuf=g2, recvbuf=(None, counts))
-            self.comm.Gatherv(sendbuf=weights, recvbuf=(None, counts))
-
-        return weights, tangential_comps, cross_comps, g1, g2, distances
+        return clusters_list_of_source_lists
 
     def compute_sources_quantities(self, clmm_cosmo, data, index, z_cluster, ra_cluster, dec_cluster):
         import clmm
@@ -278,7 +228,7 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             
         g1 = data["g1"][index]
         g2 = data["g2"][index]
-        weight = clmm.dataops.compute_galaxy_weights(
+        weights = clmm.dataops.compute_galaxy_weights(
             sigma_c = sigma_c,
             is_deltasigma=is_deltasigma,
             use_shape_noise=use_shape_noise,
@@ -299,12 +249,11 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             validate_input=True,
         )
         
-        return weight, tangential_comp, cross_comp, g1, g2
+        return weights, tangential_comp, cross_comp, g1, g2
 
 
-
-
-    def create_cluster_ensemble(self, cluster_list, cluster_ensemble_id=0):
+    def create_cluster_ensemble(self, cluster_list, sources_lists, cluster_ensemble_id=0):
+        from astropy.table import Table
         import clmm
         bin_units = self.config["bin_units"].lower()
         # load cluster shear catalog using similar astropy table set up as cluster catalog
@@ -333,22 +282,26 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             
             #print("-> cluster id ",id_cl,"  ",cluster_cat_index," ",cluster_cat_indices,"  ",cluster_cat_indices[0]+cluster_cat_indices[1])
             #print(self.profile_type) 
-            #print('For cluster', id_cl, 'at z=',z_cl,'with n_source = ',len(bg_cat["source_index"]) , 'theta_max is', np.max(bg_cat["distance_arcmin"]), ' arcmin =', clmm.utils.convert_units(np.max(bg_cat["distance_arcmin"]), 'arcmin', 'Mpc', z_cl, self.clmm_cosmo), 'Mpc')
+            #print('For cluster', id_cl, 'at z=',z_cl,'with n_source = ',len(galcat["source_index"]) , 'theta_max is', np.max(galcat["distance_arcmin"]), ' arcmin =', clmm.utils.convert_units(np.max(galcat["distance_arcmin"]), 'arcmin', 'Mpc', z_cl, self.clmm_cosmo), 'Mpc')
             
             # To use CLMM, need to have galaxy table in clmm.GCData type
-            weights, tangential_comps, cross_comps, g1, g2, distances = cluster.source_data
+            #print(sources_lists[cluster_index][0])
+            distance, weights, tangential_comp, cross_comp, g1, g2 = sources_lists[cluster_index][0]
+            print("dist:", distance.min(), distance.max())
+            print("weights:", weights.min(), weights.max())
+            print("tangential_comp:", tangential_comp.min(), tangential_comp.max())
             galcat = clmm.GCData(
                 Table(
                     {
                         "tangential_comp_clmm": tangential_comp,
                         "cross_comp_clmm": cross_comp,
-                        "weight_clmm": weight,
-                        "distance_arcmin": np.degrees(distances) * 60,
+                        "weight_clmm": weights,
+                        "distance_arcmin": np.degrees(distance) * 60,
                     }
                 ),
                 meta={"coordinate_system": self.coordinate_system}
             )
-            print(galcat.meta)
+            #print(galcat.meta)
             galcat['theta'] = galcat['distance_arcmin']*np.pi/(60*180) # CLMM galcat requires a column called "theta" in radians
             galcat['z'] = np.zeros(len(galcat)) # clmm needs a column named 'z' but all computation have been done 
                                                 # in source_select_compute --> don't need it here, filling dummy array
@@ -356,18 +309,19 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             # Instantiating a CLMM galaxy cluster object
 
             gc_object = clmm.GalaxyCluster(
-                int(cluster_list[cluster_index]["id"]),
-                cluster_list[cluster_index]["ra"],
-                cluster_list[cluster_index]["dec"],
-                cluster_list[cluster_index]["redshift"],
+                int(cluster_list["id"][cluster_index]),
+                cluster_list["ra"][cluster_index],
+                cluster_list["dec"][cluster_index],
+                cluster_list["redshift"][cluster_index],
                 galcat,
             )
-            gc_object.richness = cluster_list[cluster_index]["richness"]
+            gc_object.richness = cluster_list["richness"][cluster_index]
+            #print(np.max(galcat["distance_arcmin"]), "arcmin", "Mpc", gc_object.z, self.clmm_cosmo)
             cat_max_distance = (
                 clmm.utils.convert_units(
-                    np.max(bg_cat["distance_arcmin"]), "arcmin", "Mpc", z_cl, self.clmm_cosmo
+                    np.max(galcat["distance_arcmin"]), "arcmin", "Mpc", gc_object.z, self.clmm_cosmo
                 )
-                if bin_units == "mpc" else np.max(bg_cat["distance_arcmin"])
+                if bin_units == "mpc" else np.max(galcat["distance_arcmin"])
             )
             if cat_max_distance < self.distance_bins[-1]:
                 print ("!!! maximum distance of source smaller than distance_bins")
@@ -397,6 +351,7 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
                     tan_component="tangential_comp",
                     cross_component="cross_comp",
                     weights="W_l")
+        print("cluster ensemble created")
 
         # Individual profile for all cluster of the ensemble have been computed in the loop above
         # Now, compute the stacked profile of the ensemble
@@ -428,12 +383,13 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             
         return clusters_in_bins
 
-    def make_ensemble(self, clusters_in_bins):
+    def make_ensemble(self, clusters_in_bins, clusters_list_of_source_lists):
+        print("Making ensemble")
         binned_cluster_stack = {}
         for key, clusters in clusters_in_bins.items():
-            print(clusters)
+            #print(clusters)
             if  len(clusters)>1:
-                cluster_stack = self.create_cluster_ensemble(clusters, cluster_ensemble_id=key)
+                cluster_stack = self.create_cluster_ensemble(clusters, clusters_list_of_source_lists[key], cluster_ensemble_id=key)
             else :
                 cluster_stack = None
             print('cl_ensemble_created')
