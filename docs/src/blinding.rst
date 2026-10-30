@@ -9,18 +9,26 @@ Blinding hides the true cosmological result of an analysis until it is finalised
 
 where :math:`t` is a theory prediction, :math:`\theta_{\rm ref}` is a reference cosmology, and :math:`\theta_{\rm shifted}` is a cosmology drawn at random from a seed. Analysing the blinded data gives a result shifted by an unknown amount.
 
-TXPipe has two blinding stages:
+TXPipe blinds data with the ``TXSmokescreenBlinding`` stage, which uses the DESC `Smokescreen <https://github.com/LSSTDESC/Smokescreen>`_ library. It works on real or harmonic-space data, with the TXPipe theory model or any `firecrown <https://github.com/LSSTDESC/firecrown>`_ likelihood, and supports all the Smokescreen options. For simulations, which do not need blinding, ``TXNullBlinding`` copies the real-space data without changing it.
 
-- ``TXBlinding``: the original TXPipe method. It blinds real-space data with the TXPipe 3x2pt theory model, drawing Gaussian shifts in a fixed set of parameters.
-- ``TXSmokescreenBlinding``: uses the DESC `Smokescreen <https://github.com/LSSTDESC/Smokescreen>`_ library. It works on real or harmonic-space data, with the TXPipe theory model or any `firecrown <https://github.com/LSSTDESC/firecrown>`_ likelihood, and supports all the Smokescreen options.
-
-The rest of this page describes ``TXSmokescreenBlinding``. The configuration options of both stages are listed in :doc:`stages/Blinding`.
+The configuration options of both stages are listed in :doc:`stages/Blinding`.
 
 
 Adding the stage to a pipeline
 ------------------------------
 
-The stage has a generic input, ``twopoint_data_raw``, and output, ``twopoint_data_blinded``. Use ``aliases`` to connect them to the files you want to blind, and ``classname`` to run it more than once. For example, to blind both the real and harmonic-space measurements:
+The stage has a generic input, ``twopoint_data_raw``, and output, ``twopoint_data_blinded``. Use ``aliases`` to connect them to the files you want to blind. The example pipelines blind the real-space measurements with:
+
+.. code-block:: yaml
+
+    stages:
+      - name: TXTwoPoint
+      - name: TXSmokescreenBlinding
+        aliases:
+            twopoint_data_raw: twopoint_data_real_raw
+            twopoint_data_blinded: twopoint_data_real
+
+To run the stage more than once, give each copy its own name and set ``classname``. For example, to blind both the real and harmonic-space measurements:
 
 .. code-block:: yaml
 
