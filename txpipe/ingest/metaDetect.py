@@ -79,18 +79,8 @@ class TXDP2Ingestion(PipelineStage):
             uri = butler.getURI('object_shear_all', dataId=ref.dataId)
             p = ParquetFile(uri.ospath)
             n += p.metadata.num_rows         
-
-        # We want a maximum size for each of the sub-catalogs.
-        # There are five, and all are close to the same size.
-        # In theory one could be a little larger so we give it
-        # some wiggle room. This is often not needed as we are
-        # usually cutting down by flags anyway but doesn't hurt.
-        n = int(n / 5 * 1.05)
-        print("Using max row count", n)
         return n
 
-
-# export DAF_BUTLER_REPOSITORY_INDEX=        
 
 class TXIngestRubinMetaDetect(TXDP2Ingestion):
     """
@@ -132,7 +122,12 @@ class TXIngestRubinMetaDetect(TXDP2Ingestion):
 
         shape_noise = self.config['pre_response_shape_noise']
 
-        max_size = self.get_maximum_catalog_size(butler, used_tract_refs)
+        # We want a maximum size for each of the sub-catalogs.
+        # There are five, and all are close to the same size.
+        # In theory one could be a little larger so we give it
+        # some wiggle room. This is often not needed as we are
+        # usually cutting down by flags anyway but doesn't hurt.
+        max_size = int(self.get_maximum_catalog_size(butler, used_tract_refs) / 5) * 1.05
         created_files = False
         for i, ref in enumerate(used_tract_refs):
             print(f"Processing tract {i + 1} / {n_used_tracts}")
@@ -202,7 +197,7 @@ class TXGenerateTractList(TXDP2Ingestion):
         ("tract_list_plot", PNGFile),
     ]
     config_options = TXDP2Ingestion.config_options | {
-        "nside_low": StageParameter(int, 512, msg="The nside resolution for finding tracts from "),
+        "nside_low": StageParameter(int, 512, msg="The nside resolution for finding tracts from ra/dec"),
         "dec_min": StageParameter(float, -40.0, msg="Minimum declination to keep. Designed to cut out a little island from a deep field that snuck through"),
     }
     def run(self):
@@ -440,6 +435,8 @@ class TXIngestDP2Photometry(TXDP2Ingestion):
 
 
 
+
+
 class TXIngestDESCMetaDetectV1_1(PipelineStage):
     """
     Initial ingestion of the Rubin MetaDetect catalog
@@ -653,8 +650,17 @@ def process_metadetect_data_v1_1(data, tract, patch, flag_exclusion, shape_noise
         # extra columns we are still adding:
         var_output["weight"] = 1 / (2 * shape_noise ** 2 + var_data["g1_err"]**2 + var_data["g2_err"]**2)
         var_output["g1_err"] = var_data["g1_err"]
-        var_output["g2_err"] = var_data["g1_err"]
-        global_id = np.int64(tract) * 10**10 + np.int64(patch) * 10**8 + var_data["cell_i"].astype(np.int64) * 10**6 + var_data["cell_j"].astype(np.int64) * 10**4 + var_data["obj_id"].astype(np.int64)
+        var_output["g2_err"] = var_data["g2_err"]
+        # The global id packs tract, patch, cell and object ids into decimal digits.
+        # If any field overflows its digits then ids can collide, so check first.
+        cell_i = var_data["cell_i"].astype(np.int64)
+        cell_j = var_data["cell_j"].astype(np.int64)
+        obj_id = var_data["obj_id"].astype(np.int64)
+        limits = {"patch": (patch, 100), "cell_i": (cell_i, 100), "cell_j": (cell_j, 100), "obj_id": (obj_id, 10**4)}
+        for field, (values, limit) in limits.items():
+            if np.any(np.asarray(values) < 0) or np.any(np.asarray(values) >= limit):
+                raise ValueError(f"{field} out of range [0, {limit}) in tract {tract}; global ids would not be unique")
+        global_id = np.int64(tract) * 10**10 + np.int64(patch) * 10**8 + cell_i * 10**6 + cell_j * 10**4 + obj_id
         var_output["id"] = global_id
 
         for band in "riz": # For v1.1 we only have the three bands
