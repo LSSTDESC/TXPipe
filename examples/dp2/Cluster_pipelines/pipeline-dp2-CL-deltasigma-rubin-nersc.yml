@@ -4,8 +4,8 @@
 #                    -> binned lens catalog + lens n(z) (CLClusterLensCatalog)
 #   shear catalog:   registry mask -> cut catalog -> source selection + calibration
 #                    -> BPZ photo-z per source -> source n(z)
-#   randoms:         source occupancy map at nside 1024 -> mask -> uniform depth -> TXRandomCat,
-#                    with redshifts drawn from each cluster bin's n(z)
+#   randoms:         cluster rows resampled onto the footprint (CLClusterRandoms) -> same redshift/richness
+#                    bins as the clusters -> binned random catalog aligned with the lens bins (CLClusterRandomsBinned)
 #   measurement:     TXDeltaSigma per (source bin 0, cluster bin k). The sacc tracers are named lens_k;
 #                    the lens_k -> (zbin, richbin) mapping is in the zbin/richbin attrs of lens/bin_k in
 #                    binned_lens_catalog.hdf5.
@@ -32,6 +32,8 @@ modules: >
     txpipe.extensions.cluster_counts.cluster_lens_catalog
     rail.estimation.algos.bpz_lite
     txpipe.extensions.cluster_counts.ingest_csv
+    txpipe.extensions.cluster_counts.randoms
+    txpipe.extensions.cluster_counts.cluster_random_catalog
 
 python_paths: []
 
@@ -78,24 +80,16 @@ stages:
       photoz_stack: shear_photoz_stack
 
   # ---- randoms
-  # The registry mask is nside 131072, too fine for TXRandomCat, so the randoms footprint is the
-  # pixels hit by sources at nside 1024. Separate tags keep the nside-64 source_maps/mask files intact.
-  - name: TXSourceMapsRandoms      # source maps at nside 1024
-    classname: TXSourceMaps
+  # Each random is a cluster row (so it keeps that cluster's redshift and richness) at a uniform
+  # position on the footprint, binned exactly like the clusters.
+  - name: CLClusterRandoms                 # cluster_catalog + footprint -> cluster_random_catalog
+  - name: CLClusterBinningRedshiftRichnessRandoms
+    classname: CLClusterBinningRedshiftRichness
+    nprocess: 1
     aliases:
-      source_maps: randoms_source_maps
-  - name: TXSimpleMaskSource       # pixels with lensing weight > 0
-    aliases:
-      source_maps: randoms_source_maps
-      mask: randoms_mask
-  - name: TXUniformDepthMap        # constant depth -> uniform random density
-    aliases:
-      mask: randoms_mask
-      depth_map: randoms_depth_map
-  - name: TXRandomCat              # randoms per cluster bin, z drawn from lens_photoz_stack
-    aliases:
-      mask: randoms_mask
-      depth_map: randoms_depth_map
+      cluster_catalog: cluster_random_catalog
+      cluster_catalog_tomography: cluster_random_catalog_tomography
+  - name: CLClusterRandomsBinned           # -> binned_random_catalog + random_cats, aligned with lens/bin_k
 
   # ---- Delta Sigma around clusters
   - name: TXDeltaSigma
@@ -115,12 +109,13 @@ stages:
 
 # User-specific paths: change output_dir, log_dir, pipeline_log and the non-registry inputs to your own.
 # Same output_dir as pipeline-dp2-CL-gglens-rubin-nersc.yml, so its finished stages are reused.
-output_dir: /pscratch/sd/y/yyzhang/dp2/outputs/rubin
+output_dir: /pscratch/sd/y/yyzhang/dp2/outputs_ds/rubin
 config: ./examples/dp2/Cluster_pipelines/config-dp2-CL-deltasigma.yml
 
 inputs:
-    # clusters: external catalogs (DES Y3 redMaPPer, ...) cross-matched to DP2 objects
-    cluster_catalog_csv: /pscratch/sd/y/yyzhang/desc/TXPipe/dp2_cluster_overlap_jul23.csv
+    # clusters: external catalogs (DES Y3 redMaPPer, ...) cross-matched to DP2 objects,
+    # cut to clusters whose centre is inside the DP2 mask (registry id 151)
+    cluster_catalog_csv: /global/cfs/cdirs/m1727/yyzhang/dp2_cluster_overlap_jul23_dp2footprint.csv
     # shear catalog, from the DESC data registry:
     # txpipe_dp2_shear_catalog_Rubin_metaDetect 0.3.0 (J. Zuntz), uncut
     full_shear_catalog:
@@ -128,6 +123,9 @@ inputs:
     # rubin_dp2_wide_metadetect_mask 0.2.0 (S. Mau): riz coverage, bright-star (metadetect v2)
     # and bright-galaxy masks, b < -25
     shear_mask:
+        id: 151
+    # footprint for the cluster randoms: the same registry mask
+    cluster_footprint:
         id: 151
     spectroscopic_catalog: /global/cfs/cdirs/m1727/kabelo/TXPipe/data/example/outputs_metadetect/spectroscopic_catalog.hdf5
     fiducial_cosmology: data/fiducial_cosmology.yml
@@ -138,5 +136,5 @@ inputs:
 registry: {}
 
 resume: true
-log_dir: /pscratch/sd/y/yyzhang/dp2/outputs/rubin/logs
-pipeline_log: /pscratch/sd/y/yyzhang/dp2/outputs/rubin/log_CL_deltasigma_pipeline.txt
+log_dir: /pscratch/sd/y/yyzhang/dp2/outputs/rubin_ds/logs
+pipeline_log: /pscratch/sd/y/yyzhang/dp2/outputs/rubin_ds/log_CL_deltasigma_pipeline.txt

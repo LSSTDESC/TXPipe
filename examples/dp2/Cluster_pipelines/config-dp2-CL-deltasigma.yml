@@ -12,8 +12,8 @@ global:
 TXIngestHealsparseMask: {}   # no options: reads the registry .hsp and rewrites it as a TXPipe mask file
 
 TXSourceTomography:
-    bands: [r, i, z] #used for selection
-    source_zbin_edges: [0.1, 3.0] # this can be big, not doing cosmic shear
+    bands: [g, r, i, z] # must match the shear catalog bands, which TXSourceSelectorMetadetectDP2 uses
+    source_zbin_edges: [0.1, 0.9, 3.0] # two source bins; must match TXSourceSelectorMetadetectDP2
 
 TXSourceSelectorMetadetectDP2:
     input_pz: false
@@ -21,9 +21,9 @@ TXSourceSelectorMetadetectDP2:
     T_cut: 0.5
     s2n_cut: 10.0
     delta_gamma: 0.02
-    source_zbin_edges: [0.1, 3.0]
+    source_zbin_edges: [0.1, 0.9, 3.0]   # must match TXSourceTomography
     true_z: false
-    do_tomography: false
+    do_tomography: true
     # DP2 cuts, copied from examples/dp2/config.yml (mag/colour cuts are placeholders)
     mag_g_cut: 30.0
     mag_r_cut: 30.0
@@ -82,19 +82,15 @@ TXPhotozStack:
 
 # ---------------- randoms ----------------
 
-TXSourceMapsRandoms:
-    name: TXSourceMapsRandoms       # instance name for the classname: TXSourceMaps copy
-    nside: 1024                     # randoms footprint resolution (~3.4 arcmin); global nside stays 64
+CLClusterRandoms:
+    randoms_per_cluster: 10         # x all clusters in the catalog, every random inside the footprint
+    richness_cutoff: 0.0            # no extra cut: the binning stage applies the same richness edges to clusters and randoms
+    seed: 43
 
-TXSimpleMaskSource:
-    require_all_bins: true
-
-TXUniformDepthMap:
-    depth: 25.0                     # any constant: gives a uniform random density
-
-TXRandomCat:
-    density: 0.1                    # randoms per arcmin^2 per cluster bin; check the printed counts
-    method: spherical_projection
+CLClusterBinningRedshiftRichnessRandoms:
+    name: CLClusterBinningRedshiftRichnessRandoms   # instance name for the classname copy
+    zedge: [0.2, 0.4, 0.6, 0.8]     # must match CLClusterBinningRedshiftRichness
+    richedge: [5., 10., 100.]
 
 # ---------------- Delta Sigma around clusters ----------------
 
@@ -102,7 +98,7 @@ TXRandomCat:
 # attrs of lens/bin_k in binned_lens_catalog.hdf5.
 # NOTE: TXDeltaSigma has no flip_g2, so with the image-frame DP2 g2 the signal averages to ~zero for now.
 TXDeltaSigma:
-    source_bins: [0]                # single non-tomographic source bin
+    source_bins: [0, 1]                # back to [0, 1] once the two-bin source files are regenerated
     lens_bins: [0, 1, 2]            # explicit: CLClusterLensCatalog writes no lens/bin_all
     photoz: true                    # use the source n(z) from TXPhotozStack, not per-object z
     r_min: 0.2                      # Mpc/h
@@ -111,7 +107,7 @@ TXDeltaSigma:
     source_cat_w_col: weight
     lens_cat_w_col: weight          # unit weights from CLClusterLensCatalog
     n_jobs: 32
-    n_jackknife: 50
+    n_jackknife: 20                 # must not exceed the linked lenses per field; 30+ fails for lens bin 0 (81 clusters, 29 linked)
 
 TXDeltaSigmaPlots:
     show_theory: false              # TXDeltaSigmaTheory is a galaxy HOD model, not run here
