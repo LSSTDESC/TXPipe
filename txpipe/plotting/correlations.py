@@ -187,7 +187,7 @@ def axis_setup(a, i, j, ny, ymin, ymax, name):
         plt.setp(a.get_xticklabels(), visible=False)
 
     if name.startswith(r"C_\ell"):
-        a.set_xlabel(r"$C_\ell$")
+        a.set_xlabel(r"$\ell$")
     else:
         a.set_xlabel(r"$\theta$ [arcmin]")
 
@@ -195,7 +195,7 @@ def axis_setup(a, i, j, ny, ymin, ymax, name):
     a.tick_params(axis="both", which="minor", length=5, direction="in")
 
     # Fix
-    a.text(0.1, 0.1, f"({j},{i})", transform=a.transAxes)
+    a.text(0.1, 0.1, f"({i},{j})", transform=a.transAxes)
     if i == j == 0:
         a.legend()
     if ymin is not None or ymax is not None:
@@ -229,8 +229,9 @@ def make_real_space_plot(corr, obs_data, obs_theory, fig=None):
 
     ymin, ymax = corr_y_limits[corr]
     auto_only, half_only = corr_plot_flags[corr]
-    name = rf"\theta {corr_names[corr]} \times 10^{4}"
-    scaling = 1e4
+    scaling_exponent = 4
+    scaling = 10**scaling_exponent
+    name = rf"\theta {corr_names[corr]} \times 10^{{{scaling_exponent}}}"
 
     plt.rcParams["font.size"] = 14
     f = fig if fig is not None else plt.figure(figsize=(nx * 3.5, ny * 3))
@@ -272,7 +273,7 @@ def make_real_space_plot(corr, obs_data, obs_theory, fig=None):
     # plt.tight_layout()
     # f.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.subplots_adjust(wspace=0.05, hspace=0.05)
-    return plt.gcf()
+    return f
 
 
 def make_fourier_space_plot(corr, obs_data, obs_theory, fig=None):
@@ -326,7 +327,7 @@ def make_fourier_space_plot(corr, obs_data, obs_theory, fig=None):
     # plt.tight_layout()
     # f.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.subplots_adjust(wspace=0.05, hspace=0.05)
-    return plt.gcf()
+    return f
 
 
 def make_ratio_plot(corr, obs_data, obs_theory, fig=None):
@@ -385,7 +386,7 @@ def make_ratio_plot(corr, obs_data, obs_theory, fig=None):
     # plt.tight_layout()
     # f.tight_layout(rect=[0, 0.03, 1, 0.95])
     plt.subplots_adjust(wspace=0.05, hspace=0.05)
-    return plt.gcf()
+    return f
 
 
 def smooth_nz(nz):
