@@ -141,8 +141,6 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
                     _in_gals = np.isin(sources_in_cluster, gal_indexes)
                     distance = cluster_source_dist[cluster["id"]][_in_gals]
                     
-                    print(f"             Compute source quantities, cluster id: {cluster['id']}")
-                    print(f"                 dist: {distance}")
                     # Compute source quantities
                     weights, tangential_comp, cross_comp, g1, g2 = self.compute_sources_quantities(
                         clmm_cosmo, data, _in_cluster, cluster['redshift'], cluster['ra'], cluster['dec']
@@ -178,18 +176,16 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
                     distances = np.zeros(0)
                 else:
                     # Each process flattens the list of all the galaxies for this cluster
-                    distances = np.concatenate([d[1] for d in src_list_in_cluster])
+                    distances = np.concatenate([d[0] for d in src_list_in_cluster])
                     if self.config['delta_sigma']:
-                        weights = np.concatenate([d[2] for d in src_list_in_cluster])
+                        weights = np.concatenate([d[1] for d in src_list_in_cluster])
                     else:
                         #If we are using gamma, the weights do not deppend on each galaxy, so the function returns a float
                         weights = np.full(len(distances), src_list_in_cluster[0][1])
-                    tangential_comps = np.concatenate([d[3] for d in src_list_in_cluster])
-                    cross_comps = np.concatenate([d[4] for d in src_list_in_cluster])
-                    g1 = np.concatenate([d[5] for d in src_list_in_cluster])
-                    print("g2")
-                    g2 = np.concatenate([d[6] for d in src_list_in_cluster])
-                    print("done concatenating!")
+                    tangential_comps = np.concatenate([d[2] for d in src_list_in_cluster])
+                    cross_comps = np.concatenate([d[3] for d in src_list_in_cluster])
+                    g1 = np.concatenate([d[4] for d in src_list_in_cluster])
+                    g2 = np.concatenate([d[5] for d in src_list_in_cluster])
 
 
                 # If we are running in parallel then collect together the values from
