@@ -33,7 +33,6 @@ class TXDiagnosticQuantiles(PipelineStage):
     """
 
     name = "TXDiagnosticQuantiles"
-    dask_parallel = True
     inputs = [
         ("shear_catalog", ShearCatalog),
         ("shear_tomography_catalog", TomographyCatalog),
@@ -49,8 +48,6 @@ class TXDiagnosticQuantiles(PipelineStage):
     }
 
     def run(self):
-        _, da = import_dask()
-
         # Configuration parameters
         chunk_rows = self.config["chunk_rows"]
         nedge = self.config["nbins"] + 1
@@ -59,18 +56,14 @@ class TXDiagnosticQuantiles(PipelineStage):
 
         with self.open_input("shear_catalog", wrapper=True) as f:
             group = f.get_primary_catalog_group()
+            psf_suffix = "_original" if self.config["use_psf_originals"] else ""
             col_names = {
-                "psf_g1": f"{group}/psf_g1",
+                "psf_g1": f"{group}/psf_g1{psf_suffix}",
+                "psf_g2": f"{group}/psf_g2{psf_suffix}",
                 "psf_T_mean": f"{group}/psf_T_mean",
                 "s2n": f"{group}/s2n",
                 "T": f"{group}/T",
             }
-            psf_suffix = (
-                "_original"
-                if self.config["use_psf_originals"] and f.catalog_type.endswith("metadetect")
-                else ""
-            )
-            col_names["psf_g1"] = f"{group}/psf_g1{psf_suffix}"
 
         for band in self.config["bands"]:
             col_names[f"mag_{band}"] = f"{group}/mag_{band}"
@@ -82,41 +75,19 @@ class TXDiagnosticQuantiles(PipelineStage):
         with self.open_input("shear_catalog") as f, self.open_input("shear_tomography_catalog") as g:
             # We will be checking if the source is in a tomographic bin
             # and doing quantiles only of selected obejcts (in any bin)
-            bins = da.from_array(g["tomography/bin"], chunks=chunk_rows)
+            bins = g["tomography/bin"][:]
             selected = bins >= 0
 
             # We now build up the quantile values
             quantile_values = {}
             for new_name, old_name in col_names.items():
-                # Create dask arrays of the columns. This loads them lazily,
-                # so no data is actually loaded here. Only when the "compute"
-                # method is called below does anything actually happen.
-                col = da.from_array(f[old_name], chunks=chunk_rows)
-
-                # Boolean-masking a dask array leaves it with unknown chunk
-                # sizes, which biases da.percentile's chunk-weighted merge
-                # (it can't tell how many rows survived per chunk). Force
-                # dask to recompute the real sizes before percentiling.
-                masked = col[selected]
-                masked = masked.compute_chunk_sizes()
-
-                # Ask dask to compute the percentiles of this column.
-                # Again, it will not actually do anything until the "compute"
-                # method is called below. When that happens, it will
-                # chunk up the data and calculate the percentiles in parallel.
-                quantile_values[new_name] = da.percentile(masked, percentiles)
+                col = f[old_name][:][selected]
+                quantile_values[new_name] = np.percentile(col, percentiles)
             
-            T_col = da.from_array(f[col_names["T"]], chunks=chunk_rows)
-            T_psf_col = da.from_array(f[col_names["psf_T_mean"]], chunks=chunk_rows)
-            T_col = T_col[selected]
-            T_psf_col = T_psf_col[selected]
-            T_col = T_col.compute_chunk_sizes()
-            T_psf_col = T_psf_col.compute_chunk_sizes()
+            T_col = f[col_names["T"]][:][selected]
+            T_psf_col = f[col_names["psf_T_mean"]][:][selected]
             T_ratio = T_col / T_psf_col
-            quantile_values["T_ratio"] = da.percentile(T_ratio, percentiles)
-
-            # Now ask dask to actually do the calculations
-            (quantile_values,) = da.compute(quantile_values)
+            quantile_values["T_ratio"] = np.percentile(T_ratio, percentiles)
 
         # Open the output file and save the results
         with self.open_output("shear_catalog_quantiles") as f:
@@ -236,7 +207,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         # Now loop through each chunk of input data, one at a time.
         # Each time we get a new segment of data, which goes to all the plotters
         for start, end, data in it:
-            print(f"Read data {start} - {end}")
+            print(f"Process {self.rank} read data {start:,} - {end:,}")
             # This causes each data = yield statement in each plotter to
             # be given this data chunk as the variable data.
 
@@ -482,6 +453,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
         plt.xlabel("SNR")
         plt.ylabel("Mean g")
         plt.legend()
+        plt.xscale("log")
         plt.tight_layout()
         fig.close()
 
@@ -734,7 +706,7 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 )
                 plt.bar(
                     mids,
-                    weight,
+                    weight * (count.sum()/weight.sum()),
                     width=width,
                     align="center",
                     color="none",
@@ -743,7 +715,6 @@ class TXSourceDiagnosticPlots(PipelineStage):
                 )
                 plt.xlabel(f"g{i}")
                 plt.ylabel("Count")
-                plt.ylim(0, 1.1 * max(count1))
                 plt.legend()
 
     def plot_snr_histogram(self):
