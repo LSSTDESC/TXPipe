@@ -6,7 +6,7 @@
 # then run:
 #     ceci examples/desy3_smokescreen/pipeline.yml
 stages:
-  - name: SmokescreenBlinding
+  - name: TXSmokescreenBlinding
     aliases:
         twopoint_data_blinded: twopoint_data_real
 

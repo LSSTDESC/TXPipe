@@ -222,8 +222,8 @@ TXBlinding:
 
 # Smokescreen blinding, used in pipeline_smokescreen.yml. The options follow
 # the Smokescreen command line tool. Shifts are drawn uniformly in [a, b].
-SmokescreenBlindingReal:
-    name: SmokescreenBlindingReal
+TXSmokescreenBlindingReal:
+    name: TXSmokescreenBlindingReal
     reference_cosmology:
         Omega_c: 0.2545
         Omega_b: 0.0485
@@ -240,8 +240,8 @@ SmokescreenBlindingReal:
     seed: "1972"
     delete_unblinded: true
 
-SmokescreenBlindingFourier:
-    name: SmokescreenBlindingFourier
+TXSmokescreenBlindingFourier:
+    name: TXSmokescreenBlindingFourier
     reference_cosmology:
         Omega_c: 0.2545
         Omega_b: 0.0485

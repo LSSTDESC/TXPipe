@@ -5,7 +5,7 @@ import os
 from ceci.config import StageParameter
 
 
-class SmokescreenBlinding(PipelineStage):
+class TXSmokescreenBlinding(PipelineStage):
     """
     Blinds two-point measurements using Smokescreen
 
@@ -23,7 +23,7 @@ class SmokescreenBlinding(PipelineStage):
     The configuration options follow those of the Smokescreen command line tool.
     """
 
-    name = "SmokescreenBlinding"
+    name = "TXSmokescreenBlinding"
     parallel = False
     inputs = [
         ("twopoint_data_raw", SACCFile),
@@ -168,7 +168,7 @@ class SmokescreenBlinding(PipelineStage):
             for name, value in self.config["shifts_dict"].items()
         }
         if not shifts:
-            raise ValueError("No shifts_dict was set for SmokescreenBlinding, so nothing would be blinded")
+            raise ValueError("No shifts_dict was set for TXSmokescreenBlinding, so nothing would be blinded")
 
         blinder = ConcealDataVector(
             cosmo,

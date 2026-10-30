@@ -1,7 +1,7 @@
 # DES Y3 3x2pt blinding with Smokescreen
 
 This example blinds the public DES Y3 MagLim 3x2pt real-space data vector with
-the `SmokescreenBlinding` stage. It uses a firecrown likelihood for DES Y3 that
+the `TXSmokescreenBlinding` stage. It uses a firecrown likelihood for DES Y3 that
 lives in this directory. The DES Y3 data has been unblinded and published
 already, so this is only a demonstration of the method.
 

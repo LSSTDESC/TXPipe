@@ -1,4 +1,4 @@
-SmokescreenBlinding:
+TXSmokescreenBlinding:
     likelihood_path: examples/desy3_smokescreen/des_y3_3x2pt_likelihood.py
 
     # DES Y3 fiducial cosmology. Omega_c is chosen so that Omega_m = 0.3,

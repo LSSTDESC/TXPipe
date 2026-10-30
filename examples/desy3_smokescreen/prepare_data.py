@@ -1,6 +1,6 @@
 """
 Download the public DES Y3 MagLim 3x2pt data vector and convert it to a
-TXPipe-style sacc file, ready to be blinded by SmokescreenBlinding.
+TXPipe-style sacc file, ready to be blinded by TXSmokescreenBlinding.
 
     python examples/desy3_smokescreen/prepare_data.py [--fits FILE] [--output FILE]
 

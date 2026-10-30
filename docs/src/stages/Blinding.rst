@@ -2,14 +2,14 @@ Blinding
 ========
 
 These stages deal with blinding measurements. TXBlinding is the original
-TXPipe method, and SmokescreenBlinding uses the DESC Smokescreen library
+TXPipe method, and TXSmokescreenBlinding uses the DESC Smokescreen library
 with any firecrown likelihood. See :doc:`/blinding` for how to use them.
 
 * :py:class:`~txpipe.blinding.TXBlinding` - Blinds real-space measurements following Muir et al
 
 * :py:class:`~txpipe.blinding.TXNullBlinding` - Pretend to blind but actually do nothing.
 
-* :py:class:`~txpipe.smokescreen_blinding.SmokescreenBlinding` - Blinds two-point measurements using Smokescreen
+* :py:class:`~txpipe.smokescreen_blinding.TXSmokescreenBlinding` - Blinds two-point measurements using Smokescreen
 
 
 
@@ -70,7 +70,7 @@ with any firecrown likelihood. See :doc:`/blinding` for how to use them.
 
 
 
-.. autotxclass:: txpipe.smokescreen_blinding.SmokescreenBlinding
+.. autotxclass:: txpipe.smokescreen_blinding.TXSmokescreenBlinding
     :members:
     :exclude-members: run
 

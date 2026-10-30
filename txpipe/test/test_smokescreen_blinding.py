@@ -8,7 +8,7 @@ import pyccl
 import sacc
 import yaml
 
-from ..smokescreen_blinding import SmokescreenBlinding
+from ..smokescreen_blinding import TXSmokescreenBlinding
 from ..utils.theory import theory_3x2pt, make_bias_parameters
 from .test_firecrown import make_sacc
 
@@ -87,9 +87,9 @@ def run_stage(tmp_path, sacc_data, name="blinded", **config):
     options.update(config)
     config_path = tmp_path / "config.yml"
     with open(config_path, "w") as f:
-        yaml.dump({"SmokescreenBlinding": options}, f)
+        yaml.dump({"TXSmokescreenBlinding": options}, f)
 
-    stage = SmokescreenBlinding(
+    stage = TXSmokescreenBlinding(
         {
             "twopoint_data_raw": raw_path,
             "twopoint_data_blinded": blinded_path,

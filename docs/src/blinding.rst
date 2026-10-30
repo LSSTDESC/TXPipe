@@ -12,9 +12,9 @@ where :math:`t` is a theory prediction, :math:`\theta_{\rm ref}` is a reference 
 TXPipe has two blinding stages:
 
 - ``TXBlinding``: the original TXPipe method. It blinds real-space data with the TXPipe 3x2pt theory model, drawing Gaussian shifts in a fixed set of parameters.
-- ``SmokescreenBlinding``: uses the DESC `Smokescreen <https://github.com/LSSTDESC/Smokescreen>`_ library. It works on real or harmonic-space data, with the TXPipe theory model or any `firecrown <https://github.com/LSSTDESC/firecrown>`_ likelihood, and supports all the Smokescreen options.
+- ``TXSmokescreenBlinding``: uses the DESC `Smokescreen <https://github.com/LSSTDESC/Smokescreen>`_ library. It works on real or harmonic-space data, with the TXPipe theory model or any `firecrown <https://github.com/LSSTDESC/firecrown>`_ likelihood, and supports all the Smokescreen options.
 
-The rest of this page describes ``SmokescreenBlinding``. The configuration options of both stages are listed in :doc:`stages/Blinding`.
+The rest of this page describes ``TXSmokescreenBlinding``. The configuration options of both stages are listed in :doc:`stages/Blinding`.
 
 
 Adding the stage to a pipeline
@@ -26,16 +26,16 @@ The stage has a generic input, ``twopoint_data_raw``, and output, ``twopoint_dat
 
     stages:
       - name: TXTwoPoint
-      - name: SmokescreenBlindingReal
-        classname: SmokescreenBlinding
+      - name: TXSmokescreenBlindingReal
+        classname: TXSmokescreenBlinding
         aliases:
             twopoint_data_raw: twopoint_data_real_raw
             twopoint_data_blinded: twopoint_data_real
       - name: TXTwoPointFourier
         aliases:
             twopoint_data_fourier: twopoint_data_fourier_raw
-      - name: SmokescreenBlindingFourier
-        classname: SmokescreenBlinding
+      - name: TXSmokescreenBlindingFourier
+        classname: TXSmokescreenBlinding
         aliases:
             twopoint_data_raw: twopoint_data_fourier_raw
             twopoint_data_blinded: twopoint_data_fourier
@@ -50,7 +50,7 @@ A configuration section for one of the stages above looks like this:
 
 .. code-block:: yaml
 
-    SmokescreenBlindingReal:
+    TXSmokescreenBlindingReal:
         reference_cosmology:
             Omega_c: 0.2545
             Omega_b: 0.0485

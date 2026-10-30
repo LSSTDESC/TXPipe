@@ -144,12 +144,12 @@ Covariance:
 Blinding:
     blurb: |
         These stages deal with blinding measurements. TXBlinding is the original
-        TXPipe method, and SmokescreenBlinding uses the DESC Smokescreen library
+        TXPipe method, and TXSmokescreenBlinding uses the DESC Smokescreen library
         with any firecrown likelihood. See :doc:`/blinding` for how to use them.
     stages:
         - TXBlinding
         - TXNullBlinding
-        - SmokescreenBlinding
+        - TXSmokescreenBlinding
 
 
 Plots:

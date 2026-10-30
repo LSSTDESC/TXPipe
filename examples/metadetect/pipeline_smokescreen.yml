@@ -75,8 +75,8 @@ stages:
   - name: TXJackknifeCenters     # Split the area into jackknife regions
   - name: TXTwoPoint             # Compute real-space 2-point correlations
     threads_per_process: 2
-  - name: SmokescreenBlindingReal  # Blind the real-space data with Smokescreen
-    classname: SmokescreenBlinding
+  - name: TXSmokescreenBlindingReal  # Blind the real-space data with Smokescreen
+    classname: TXSmokescreenBlinding
     aliases:
         twopoint_data_raw: twopoint_data_real_raw
         twopoint_data_blinded: twopoint_data_real
@@ -127,8 +127,8 @@ stages:
   - name: TXTwoPointFourier      # Compute power spectra C_ell
     aliases:
         twopoint_data_fourier: twopoint_data_fourier_raw
-  - name: SmokescreenBlindingFourier  # Blind the harmonic-space data with Smokescreen
-    classname: SmokescreenBlinding
+  - name: TXSmokescreenBlindingFourier  # Blind the harmonic-space data with Smokescreen
+    classname: TXSmokescreenBlinding
     aliases:
         twopoint_data_raw: twopoint_data_fourier_raw
         twopoint_data_blinded: twopoint_data_fourier
