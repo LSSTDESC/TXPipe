@@ -78,6 +78,7 @@ class TXSmokescreenBlinding(PipelineStage):
          - Optionally encrypt and/or delete the unblinded data
         """
         import sacc
+        import smokescreen
 
         unblinded_fname = self.get_input("twopoint_data_raw")
 
@@ -91,7 +92,7 @@ class TXSmokescreenBlinding(PipelineStage):
                 "It can clear the input file to enforce blindness."
             )
 
-        sack = sacc.Sacc.load_fits(unblinded_fname)
+        sack = sacc.Sacc.load(unblinded_fname)
         likelihood_path = self.get_likelihood_path()
         print(f"Blinding {unblinded_fname} with Smokescreen, likelihood {likelihood_path}")
 
@@ -104,8 +105,6 @@ class TXSmokescreenBlinding(PipelineStage):
         blinded_sack = sack.copy()
         for i, value in zip(modelled_indices, concealed_vector):
             blinded_sack.data[i].value = value
-
-        import smokescreen
 
         blinded_sack.metadata["concealed"] = True
         blinded_sack.metadata["blinding_method"] = "smokescreen"
@@ -200,7 +199,7 @@ class TXSmokescreenBlinding(PipelineStage):
         if systematics:
             return {name: float(value) for name, value in systematics.items()}
 
-        # As in TXBlinding, the TXPipe model can use a bias b0 / growth
+        # The TXPipe model can use a bias b0 / growth
         if self.using_default_model() and self.config["b0"] != 0:
             return make_bias_parameters(self.config["b0"], modelled_sack, cosmo)
 
