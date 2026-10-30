@@ -1,0 +1,50 @@
+# Cluster weak-lensing pipeline on the metadetect example data: source selection,
+# cluster binning, cluster-source pairs, stacked profiles and the SACC file.
+stages:
+  - name: TXSourceTomography            # classifier input of the source selector (not used with true_z)
+  - name: TXSourceSelectorMetadetect    # select the sources and compute their response
+  - name: CLClusterBinningRedshiftRichness   # split the clusters in redshift and richness bins
+  - name: CLClusterShearCatalogs        # find the background sources of each cluster
+  - name: CLClusterEnsembleProfiles     # stack the profiles of each bin with CLMM
+  - name: CLClusterSACC                 # save the stacked profiles in a SACC file
+
+# modules and packages to import that have pipeline
+# stages defined in them
+modules: >
+    txpipe
+    txpipe.extensions
+
+python_paths: []
+
+# Where to put outputs
+output_dir: data/example/outputs_metadetect_cluster
+
+# How to run the pipeline: mini, parsl, or cwl
+launcher:
+    name: mini
+    interval: 1.0
+
+# Where to run the pipeline: cori-interactive, cori-batch, or local
+site:
+    name: local
+    max_threads: 2
+
+# configuration settings
+config: examples/metadetect_cluster/config.yml
+
+inputs:
+    # See README for paths to download these files
+    shear_catalog: data/example/inputs/metadetect_shear_catalog.hdf5
+    spectroscopic_catalog: data/example/inputs/mock_spectroscopic_catalog.hdf5
+    cluster_catalog: data/example/inputs/cluster_catalog.hdf5
+    source_photoz_pdfs: data/example/inputs/photoz_pdfs.hdf5
+    # This file comes with the code
+    fiducial_cosmology: data/fiducial_cosmology.yml
+
+# if supported by the launcher, restart the pipeline where it left off
+# if interrupted
+resume: true
+# where to put output logs for individual stages
+log_dir: data/example/logs_metadetect_cluster
+# where to put an overall parsl pipeline log
+pipeline_log: data/example/log_metadetect_cluster.txt

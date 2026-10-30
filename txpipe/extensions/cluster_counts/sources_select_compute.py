@@ -307,7 +307,7 @@ class CLClusterShearCatalogs(PipelineStage):
             distances = np.zeros(0)
             g1 = np.zeros(0)
             g2 = np.zeros(0)
-            return indices, weights, distances, g1, g2
+            return indices, weights, tangential_comps, cross_comps, g1, g2, distances
 
         # This collects together all the results from different processes for this cluster
         if self.rank == 0:

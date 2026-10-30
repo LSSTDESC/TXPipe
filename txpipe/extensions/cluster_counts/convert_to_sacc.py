@@ -28,6 +28,9 @@ class CLClusterSACC(PipelineStage):
         survey_name = my_configs['survey_name']
         area = my_configs['area']
         output_filename = self.get_output("cluster_sacc_catalog", final_name=True)
+        for bin_comb, bin_data in data.items():
+            if bin_data["clmm_cluster_ensemble"] is None:
+                raise ValueError(f"No ensemble profile for {bin_comb}, which has {bin_data['n_cl']} cluster(s). Each bin needs at least two clusters.")
         first_bin = next(iter(data.values()))
         profile_type = first_bin["profile_type"]        
         sacc_obj = sacc.Sacc()
