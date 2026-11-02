@@ -1,6 +1,6 @@
 import numpy as np
 from .calibration_utils.names import META_VARIANTS, SCALAR_META_VARIANTS, metacal_variants, band_variants
-from .data_types import ShearCatalog, CatalogSelection
+from .data_types import ShearCatalog, CatalogSelection, MapsFile
 from .base_stage import PipelineStage
 from .calibration_utils.calibration_calculators import _DataWrapper
 from ceci.config import StageParameter
@@ -183,65 +183,151 @@ class TXHSCSelection(TXSimpleSelection):
         return cutter.sel
 
 
-class TXDP2Selection(TXMetaDetectSelection):
-    name = "TXDP2Selection"
+class TXDP2RubinMetadetectSelection(TXMetaDetectSelection):
+    name = "TXDP2RubinMetadetectSelection"
 
-    config_options = {
-        "chunk_rows": StageParameter(int, 10_000, msg="Number of rows to process at once"),
-        "s2n_min": StageParameter(float, 10.0, msg="Minimum s/n for selection"),
-        "T_min": StageParameter(float, 0.5, msg="Minimum T/Tpsf for selection"),
-        "verbose": StageParameter(bool, False, msg="Whether to print out lots of information"),
+    columns = [
+        "ra", "is_primary", "mfrac", "gauss_snr", "gauss_T", "gauss_psfReconvolved_T", "g1", "g2", "weight",
+    ] + band_variants("griz", "mag", shear_catalog_type="simple")
+
+    config_options = TXMetaDetectSelection.config_options | {
+        "mfrac_max": StageParameter(float, default=0.1, msg="Maximum mask fraction for object selection"),
+        "s2n_min": StageParameter(float, default=10.0, msg="Minimum gauss_snr for object selection"),
+        "T_max": StageParameter(float, default=20.0, msg="Maximum gauss_T for object selection"),
+        "Tratio_min": StageParameter(float, default=0.5, msg="Minimum gauss_T / gauss_psfReconvolved_T for object selection"),
+        "i_min": StageParameter(float, default=18.2, msg="Minimum i-band magnitude"),
+        "i_max": StageParameter(float, default=23.5, msg="Maximum i-band magnitude"),
+        "r_min": StageParameter(float, default=15.2, msg="Minimum r-band magnitude"),
+        "g_min": StageParameter(float, default=15.2, msg="Minimum g-band magnitude"),
+        "rmi_min": StageParameter(float, default=-1.5, msg="Minimum r-i color for object selection"),
+        "rmi_max": StageParameter(float, default=4.0, msg="Maximum r-i color for object selection"),
+        "imz_min": StageParameter(float, default=-1.5, msg="Minimum i-z color for object selection"),
+        "imz_max": StageParameter(float, default=4.0, msg="Maximum i-z color for object selection"),
     }
 
-    columns = ["T", "s2n", "psf_T_mean", "flags", "mag_g", "mag_r", "mag_i", "mag_z", "gauss_T", "mfrac", "g1", "g2", "weight", "is_primary"]
-
     def compute_selection(self, start, end, data):
+        # shortcut if no data
+        if data["gauss_T"].size == 0:
+            return np.zeros(0, dtype=bool)
 
-        # These are the same cuts as the base class but repeated here
-        # for clarity.
-        s2n_cut = self.config["s2n_min"]
-        T_cut = self.config["T_min"]
-        verbose = self.config["verbose"]
-        n = data["s2n"].size
-        cutter = Cutter(n, verbose=verbose)
+        config = self.config
 
-        cutter.keep(data["flags"] == 0, "Flag")
-        cutter.keep(data["s2n"] > s2n_cut, "S/N")
-        cutter.keep(data["T"] / data["psf_T_mean"] > T_cut, "T/Tpsf")
+        mfrac_max = config["mfrac_max"]
+        s2n_min = config["s2n_min"]
+        T_max = config["T_max"]
+        Tratio_min = config["Tratio_min"]
+        i_min = config["i_min"]
+        i_max = config["i_max"]
+        r_min = config["r_min"]
+        g_min = config["g_min"]
+        rmi_min = config["rmi_min"]
+        rmi_max = config["rmi_max"]
+        imz_min = config["imz_min"]
+        imz_max = config["imz_max"]
 
+        T_ratio = data["gauss_T"] / data["gauss_psfReconvolved_T"]
+        rmi = data["mag_r"] - data["mag_i"]
+        imz = data["mag_i"] - data["mag_z"]
 
-        # --- metadetect-specific cuts go here ---
-        mag_g_cut = config["mag_g_cut"]
-        mag_r_cut = config["mag_r_cut"]
-        mag_i_cut = config["mag_i_cut"]
-        mag_z_cut = config["mag_z_cut"]
-        gmr_cut = config["gr_cut"]
-        rmi_cut = config["ri_cut"]
-        imz_cut = config["iz_cut"]
-        T_max = config['T_max']
-        mfrac_cut = config['mfrac_cut']
-        bands = config['bands']
+        cutter = Cutter(data["ra"].size, verbose=config["verbose"])
 
-        cutter.keep(data["mag_g"] < config["mag_g_cut"], "mag_g")
-        cutter.keep(data["mag_r"] < config["mag_r_cut"], "mag_r")
-        cutter.keep(data["mag_i"] < config["mag_i_cut"], "mag_i")
-        cutter.keep(data["mag_z"] < config["mag_z_cut"], "mag_z")
-
-        if "g" in bands and "r" in bands:
-            cutter.keep(np.abs(data["mag_g"] - data["mag_r"]) < gmr_cut, "g - r")
-        if "r" in bands and "i" in bands:
-            cutter.keep(np.abs(data["mag_r"] - data["mag_i"]) < r-i_cut, "r - i")
-        if "i" in bands and "z" in bands:
-            cutter.keep(np.abs(data["mag_i"] - data["mag_z"]) < imz_cut, "i - z")
-        # We should also have some crazy color cuts and magnitude cuts which should come from PZ group
-        cutter.keep((data["gauss_T"] < T_max), "gauss_T" )
-        cutter.keep((data['mfrac'] < mfrac_cut), "mfrac" )
+        # Basic cuts
+        cutter.keep(data["is_primary"] == True, "is_primary")
+        cutter.keep(data["mfrac"] < mfrac_max, f"mfrac < {mfrac_max}")
         cutter.keep(np.isfinite(data["g1"]), "g1 finite" )
         cutter.keep(np.isfinite(data["g2"]), "g2 finite" )
         cutter.keep(np.isfinite(data["weight"]), "weight finite" )
-        cutter.keep(data["is_primary"], "is_primary" )
+        
+        # Galaxy cuts
+        cutter.keep(data["gauss_snr"] > s2n_min, f"S/N > {s2n_min}")
+        cutter.keep(data["gauss_T"] < T_max, f"T < {T_max}")
+        cutter.keep(T_ratio > Tratio_min, f"T / T psf > {Tratio_min}")
+
+        # Magnitude cuts
+        cutter.keep((data["mag_i"] > i_min) & (data["mag_i"] < i_max), f"i in [{i_min}, {i_max}]")
+        cutter.keep(data["mag_r"] > r_min, f"r > {r_min}")
+        cutter.keep(data["mag_g"] > g_min, f"g > {g_min}")
+
+        # Sanity cuts on color
+        cutter.keep((rmi > rmi_min) & (rmi < rmi_max), f"r-i color in [{rmi_min}, {rmi_max}]")
+        cutter.keep((imz > imz_min) & (imz < imz_max), f"i-z color in [{imz_min}, {imz_max}]")
 
         return cutter.sel
+
+
+class TXDP2UtilsSelection(TXSimpleSelection):
+    """Select DP2 metadetect objects using the versioned cuts in dp2utils.mdet.
+
+    The cuts are defined on the raw Butler column names, so the shear
+    catalog must be ingested with all_columns: True.
+    """
+    name = "TXDP2UtilsSelection"
+
+    config_options = {
+        "chunk_rows": StageParameter(int, 10_000, msg="Number of rows to process at once"),
+        "mdet_cut_version": StageParameter(str, "0", msg="Version of the dp2utils.mdet cuts to apply"),
+        "mdet_version": StageParameter(str, "rubin", msg="Version of the metadetect code to use"),
+        "verbose": StageParameter(bool, False, msg="Whether to print out lots of information"),
+    }
+
+    # Shear variants in each type of metadetect catalog
+    mdet_variants = {
+        "rubin": META_VARIANTS,
+        "desc": SCALAR_META_VARIANTS,
+    }
+
+    # Columns used by dp2utils.mdet for each type of metadetect catalog:
+    # (always used, used only if present in the catalog)
+    mdet_columns = {
+        "rubin": (
+            [
+                "ra", "dec", "gauss_snr", "gauss_T", "gauss_psfReconvolved_T", "mfrac",
+                "r_pgaussFlux", "i_pgaussFlux", "z_pgaussFlux",
+            ],
+            [
+                "is_primary", "bmask_flags", "image_flags", "gauss_flags", "pgauss_flags",
+                "gauss_object_flags", "pgauss_object_flags", "gauss_psfReconvolved_flags",
+                "psfOriginal_flags", "gauss_shape_flags", "pgauss_shape_flags",
+            ] + [f"{b}_{f}" for b in "riz" for f in ["gaussFlux_flags", "pgaussFlux_flags"]],
+        ),
+        "desc": (
+            [
+                "ra", "dec", "s2n", "T", "psf_T_mean", "mfrac",
+                "flux_r", "flux_i", "flux_z", "psfrec_g1", "psfrec_g2",
+            ],
+            [
+                "is_primary", "psfrec_flags", "psf_flags", "g_flags", "flags", "deblend_flags",
+            ] + [f"{f}_{b}" for f in ["psfrec_flags", "psf_flags"] for b in "riz"],
+        ),
+    }
+
+    def run(self):
+        # The groups and columns depend on the configuration, so shadow
+        # the class variables with ones specific to this instance
+        mdet_version = self.config["mdet_version"]
+        if mdet_version not in self.mdet_variants:
+            raise ValueError(f"mdet_version must be one of {list(self.mdet_variants)}, not {mdet_version!r}")
+        self.groups = ["shear/" + v for v in self.mdet_variants[mdet_version]]
+
+        required, optional = self.mdet_columns[mdet_version]
+        with self.open_input("shear_catalog") as f:
+            available = set(f[self.groups[0]].keys())
+        self.columns = required + [c for c in optional if c in available]
+
+        super().run()
+
+    def compute_selection(self, start, end, data):
+        
+        from dp2utils.mdet import make_mdet_cuts
+        sel = make_mdet_cuts(
+            data,
+            data.keys(),
+            self.config["mdet_cut_version"],
+            verbose=self.config["verbose"],
+            mask=None, # ingested catalog has mask applied so no extra masking is applied.
+            mdet=self.config["mdet_version"]
+        )
+        return sel
 
 
 class TXDP2DESCSelection(TXScalarMetaDetectSelection):
