@@ -1033,6 +1033,14 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
             else:
                 lmax_deproj = self.config["ell_max_deproj"]
 
+            kwargs = {}
+            if int(nmt.__version__.split(".")[0]) >= 3:
+                # In namaster 3 the noise deprojection bias is computed on demand
+                # from the retained catalog, rather than at construction time.
+                kwargs["retain_catalog"] = self.config["calc_noise_dp_bias"]
+            else:
+                kwargs["calculate_noise_dp_bias"] = self.config["calc_noise_dp_bias"]
+
             field = nmt.NmtFieldCatalogClustering(
                 positions,
                 weight,
@@ -1044,7 +1052,7 @@ class TXTwoPointFourierCatalog(TXTwoPointFourier):
                 templates=templates,
                 lmax_deproj=lmax_deproj,
                 lonlat=True,
-                calculate_noise_dp_bias=self.config["calc_noise_dp_bias"],
+                **kwargs,
             )
         return field
 

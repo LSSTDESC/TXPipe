@@ -16,27 +16,6 @@ global:
     chunk_size: 100000
     source_zbin_edges: [0.1, 0.4, 0.6, 0.8, 9999.9]
 
-TXIngestRubinMetaDetect:
-    butler_repository_index: "/global/cfs/cdirs/lsst/production/gen3/shared/data-repos.yaml"
-    butler_config_file: "dp2"
-    collections: "dp2"
-    pre_response_shape_noise: 0.22
-    flag_list: ["gauss_object_flags",
-                "is_primary",
-                "psfOriginal_flags", 
-                "gauss_psfReconvolved_flags", 
-                "image_flags",
-                "bmask_flags",
-                "gauss_shape_flags",
-                "gauss_object_flags",
-                "gauss_flags",
-                "pgauss_shape_flags",
-                "pgauss_object_flags",
-                "pgauss_flags",
-                "gaussFlux_flags",
-                "pgaussFlux_flags"
-                ]
-    all_columns: True
 
 TXIngestDESCMetaDetectV1_1:
         base_dir: "/pscratch/sd/e/esheldon/lsst-mdet-runs/run-dp2-v01.1"
@@ -61,38 +40,13 @@ TXMockGaussianPhotozStack:
     sigmas: [0.2]
 
 
-TXComputeShearCalibrationMetadetect:
-    input_pz: false
-    true_z: false
-    bands: [r, i, z]
-    T_cut: 0.5
-    s2n_cut: 10.0
-    delta_gamma: 0.02
-    do_tomography: false
-
-TXComputeShearCalibrationMetadetectDP2:
-    input_pz: false
-    true_z: false
-    bands: [g, r, i, z]
-    T_cut: 0.5
-    s2n_cut: 10.0
-    delta_gamma: 0.02
-    do_tomography: false
-    mag_g_cut: 30.0
-    mag_r_cut: 30.0
-    mag_i_cut: 30.0
-    mag_z_cut: 30.0
-    gr_cut: 5.0
-    ri_cut: 5.0
-    iz_cut: 5.0
-    mfrac_cut: 0.1
-    T_max: 20.0
 
 TXComputeShearCalibrationScalarMetadetectDP2:
     input_pz: false
     true_z: false
     delta_gamma: 0.02
     bands: [r, i, z]
+
 
 TXDP2DESCSelection:
     max_psf_g: 0.05

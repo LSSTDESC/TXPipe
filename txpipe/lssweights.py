@@ -13,7 +13,6 @@ from .data_types import (
 import numpy as np
 import glob
 import time
-from .utils.theory import theory_3x2pt
 from .utils.fitting import calc_chi2
 from ceci.config import StageParameter
 

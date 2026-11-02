@@ -1,12 +1,18 @@
 # Stages to run
-# Processors for PZ stages. There's a bug in rail_base logging
-# that crashes if you use too many. PR in progress.
+
+{% set pipe_name = "rubin_metadetect" %}
+
 
 stages:
-  - name: TXDP2DESCSelection
+  - name: TXCutShearCatalog
     nprocess: 64
-  - name: PZCollateRailAssignmentsScalarMetadetect
-  - name: TXComputeShearCalibrationScalarMetadetect    # select and split objects into source bins
+    aliases:
+      shear_catalog: full_shear_catalog
+      cut_shear_catalog: shear_catalog
+  - name: TXDP2RubinMetadetectSelection
+    nprocess: 64
+  - name: PZCollateRailAssignmentsMetadetect
+  - name: TXComputeShearCalibrationMetadetect    # select and split objects into source bins
     nprocess: 64
   - name: TXShearCalibration       # Calibrate and split the source sample tomographically
     nprocess: 64
@@ -27,8 +33,8 @@ stages:
   - name: TXPhotozPlotSource          # Plot the bin n(z)
     classname: TXPhotozPlot
     aliases:
-        nz_plot: nz_source
         photoz_stack: shear_photoz_stack
+        nz_plot: nz_source
   - name: TXRealGaussianCovariance
     threads_per_process: 32
   - name: TXDiagnosticQuantiles
@@ -63,7 +69,7 @@ stages:
     nprocess: 64 
 # Loop over the different variants we need to get tomographic
 # bin assignments for
-{% for variant in ["ns", "1p", "1m"] %}
+{% for variant in ["ns", "1p", "1m", "2p", "2m"] %}
   - name: PZAssignGalaxiesToCells_{{ variant }}
     classname: SOMPZEstimatorDeep
     nprocess: 64
@@ -93,9 +99,30 @@ stages:
       input_photoz_stack: shear_photoz_stack_ns
       output_photoz_stack: shear_photoz_stack
 
+
+  # - name: PZRailSummarizeSource    # Run the DIR method on the lens sample to find n(z)
+  #   classname: PZRailSummarize
+  #   aliases:
+  #       tomography_catalog: shear_tomography_catalog
+  #       binned_catalog: binned_shear_catalog
+  #       model: source_direct_calibration_model
+  #       photoz_stack: shear_photoz_stack
+  #       photoz_realizations: source_photoz_realizations
+  # - name: NZDirInformerSource       # Prepare the DIR method inputs for the source sample
+  #   classname: NZDirInformer
+  #   aliases:
+  #       input: spectroscopic_catalog
+  #       model: source_direct_calibration_model
+  # - name: TXPSFMaps    # make PSF maps
   # - name: TXFlagMaps
   # - name: TXSimpleMaskSource       # combine maps to make a simple mask
   # - name: TXSourceNoiseMaps      # Compute shear noise using rotations
+  # - name: TXPhotozStack
+  #   aliases:
+  #     tomography_catalog: shear_tomography_catalog
+  #     photoz_stack: shear_photoz_stack
+  # - name: TXDiagnosticQuantiles
+  # - name: TXSourceDiagnosticPlots      # Make a suite of diagnostic plots
   # - name: TXRoweStatistics       # Compute and plot Rowe statistics
   #   threads_per_process: 2
   # - name: TXGalaxyStarShear      # Compute and plot the star-galaxy shear cross-correlation
@@ -127,7 +154,7 @@ modules: >
 python_paths: []
 
 # Where to put outputs
-output_dir: data/metadetect_desc_dp2
+output_dir: data/{{ pipe_name }}
 
 # How to run the pipeline: mini, parsl, or cwl
 launcher:
@@ -140,19 +167,13 @@ site:
 
 
 # configuration settings
-config: examples/dp2/config.yml
+config: examples/dp2/config_{{ pipe_name }}.yml
 
 # On NERSC, set this before running:
 # export DATA=${LSST}/groups/WL/users/zuntz/data/metacal-testbed
 
 inputs:
-    # See README for paths to download these files
-    # full_shear_catalog: data/metadetect_dp2_ingest/shear_catalog.hdf5
-    # star_catalog: data/example/inputs/star_catalog.hdf5
-    # This file comes with the code
     fiducial_cosmology: data/fiducial_cosmology.yml
-    # This is a shear-only analysis (no clustering or GGL) so we use
-    # these placeholders for all the lens-related files
     lens_maps: none
     depth_map: none
     bright_object_map: none
@@ -163,17 +184,18 @@ inputs:
     binned_random_catalog_sub: none
     lens_photoz_stack: none
     mask:
-      id: 148
-    shear_catalog:
-        id: 147
+        id: 138
+    full_shear_catalog:
+        id: 137
     input_spec_data:
-      id:  333
+        id: 340
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted
-resume: true
+resume: resume
 # where to put output logs for individual stages
-log_dir: data/metadetect_dp2/logs
+log_dir: data/{{ pipe_name }}/logs
 # where to put an overall parsl pipeline log
-pipeline_log: data/metadetect_dp2/log.txt
+pipeline_log: data/{{ pipe_name }}/log.txt
+# use the default registry configuration (this is usually all that's needed)
 registry: {}

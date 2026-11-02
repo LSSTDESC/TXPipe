@@ -1,14 +1,36 @@
 import os
 import pathlib
 
-import firecrown.likelihood.gauss_family.statistic.source.weak_lensing as wl
-import firecrown.likelihood.gauss_family.statistic.source.number_counts as nc
-from firecrown.likelihood.gauss_family.statistic.two_point import TwoPoint
-from firecrown.likelihood.gauss_family.gaussian import ConstGaussian
+import firecrown.likelihood.weak_lensing as wl
+import firecrown.likelihood.number_counts as nc
+from firecrown.likelihood import TwoPoint, ConstGaussian, NamedParameters
 from firecrown.modeling_tools import ModelingTools
 import sacc
 import pyccl as ccl
 import numpy as np
+
+
+class ExternalCosmologyTools(ModelingTools):
+    """
+    ModelingTools that use a pyccl.Cosmology supplied by the caller.
+
+    Since firecrown 1.15, ModelingTools.prepare always builds a new
+    cosmology from the sampled parameters, with its own CCL settings.
+    TXPipe wants theory predictions at exactly the cosmology object it
+    passes in, so we skip the factory and use that object directly.
+    We do not use perturbation theory calculators or P(k) modifiers here,
+    so there is nothing else that prepare would need to set up.
+    """
+
+    def prepare_with_cosmology(self, cosmo):
+        if not self.is_updated():
+            raise RuntimeError("ModelingTools has not been updated.")
+
+        if self._prepared:
+            raise RuntimeError("ModelingTools has already been prepared")
+
+        self.ccl_cosmo = cosmo
+        self._prepared = True
 
 
 def build_likelihood(build_parameters):
@@ -17,6 +39,10 @@ def build_likelihood(build_parameters):
     bias as a systematic.
 
     """
+    # Firecrown passes a NamedParameters object, but we also
+    # accept a plain dictionary
+    if isinstance(build_parameters, NamedParameters):
+        build_parameters = build_parameters.data
     sacc_data = build_parameters["sacc_data"]
 
     # items in the build_parameters are supposed to be
@@ -54,7 +80,6 @@ def build_likelihood(build_parameters):
     # create a new two-point function.
 
     stats = {}
-    computable_indices = []
     for dt in sacc_data.get_data_types():
         for t1, t2 in sacc_data.get_tracer_combinations(dt):
             try:
@@ -64,7 +89,6 @@ def build_likelihood(build_parameters):
                     sacc_data_type=dt,
                 )
                 stats[f"{stat}_{t1}_{t2}"] = stat
-                computable_indices.extend(sacc_data.indices(dt, (t1, t2)))
             except ValueError as err:
                 # B modes and things like that can be in the files
                 # but are not supported
@@ -83,13 +107,13 @@ def build_likelihood(build_parameters):
     # file and the sources their respective dndz.
     lk.read(sacc_data)
 
-    # computable_indices is a mask for all the bins that
-    # firecrown can calculate. Some of them, like the BB, EB modes, etc.
-    # are just zero in the theory, and FireCrown can't predict them right now.
-    # so we record this information because in TXPipe's theory prediction
-    # we want to set those to zero
+    # The sacc indices of the bins that firecrown can calculate, in the
+    # same order as the theory vector. Some of them, like the BB, EB modes,
+    # etc. are just zero in the theory, and FireCrown can't predict them
+    # right now, so we record this information because in TXPipe's theory
+    # prediction we want to set those to zero.
     # This modelling tools class seems a reasonable place to store them
-    tools = ModelingTools()
-    tools._tx_indices = computable_indices
+    tools = ExternalCosmologyTools()
+    tools._tx_indices = lk.get_sacc_indices()
 
     return lk, tools
