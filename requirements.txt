@@ -38,3 +38,6 @@ tjpcov
 glass
 # SQLAlchemy>=2.1 defaults postgresql:// to psycopg v3 (needed by dataregistry)
 psycopg[binary]
+
+# dp2utils package
+git+https://github.com/LSSTDESC/dp2utils.git
