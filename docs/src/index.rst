@@ -20,6 +20,7 @@ It is designed to take catalogs of objects (as produced by the LSST Project), an
    structure
    file_types
    files
+   selection_tomography
    shear_calibration
    masking
    weights
@@ -30,6 +31,9 @@ It is designed to take catalogs of objects (as produced by the LSST Project), an
 
    running
    data_sources
+   data_registry
+   examples
+   dp2
    adding
    parallel
    nersc

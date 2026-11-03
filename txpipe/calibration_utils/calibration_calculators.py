@@ -45,6 +45,7 @@ class CalibrationCalculator:
     Or for any other sub-selection, like bins in magnitude or size for null tests.
 
     The life-cycle of a CalibrationCalculator is as follows:
+
     - Create a CalibrationCalculator for each object using a function that selects your WL
       sample from input dictionaries (or similar) of data.
     - Add chunks of data to each calculator using the add_data method, which applies the
@@ -376,6 +377,15 @@ class MetaDetectCalculator(CalibrationCalculator):
         selections = []
         prefixes = [m + "/" for m in META_VARIANTS]
         for i, p in enumerate(prefixes):
+            # Unlike the other catalog types, metadetect data may be read
+            # with the shear variants in an outer loop, so a given chunk of
+            # data can contain only some of the variants. If this chunk has
+            # no data for this variant then there is nothing to add: skip it.
+            if p + "g1" not in data:
+                sel = np.zeros(0, dtype=int)
+                selections.append(sel)
+                continue
+
             data_p = _DataWrapper(data, prefix=p)
             sel = self.selector(data_p, *args, **kwargs)
             selections.append(sel)
@@ -504,6 +514,10 @@ class ScalarMetaDetectCalculator(CalibrationCalculator):
         selections = []
         prefixes = [m + "/" for m in SCALAR_META_VARIANTS]
         for i, p in enumerate(prefixes):
+            if p + "g1" not in data:
+                sel = np.zeros(0, dtype=bool)
+                selections.append(sel)
+                continue
             data_p = _DataWrapper(data, prefix=p)
             sel = self.selector(data_p, *args, **kwargs)
             selections.append(sel)

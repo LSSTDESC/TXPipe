@@ -35,6 +35,7 @@ The template below is an example of a new pipeline stage.
 
     from .base_stage import PipelineStage
     from .data_types import HDFFile
+    from ceci.config import StageParameter
     import numpy as np
 
     class TXYourStageName(PipelineStage):
@@ -51,11 +52,15 @@ The template below is an example of a new pipeline stage.
         ]
 
         config_options = {
-            "name_of_option": "default_value",
-            # or for things without a default, specify the type,
-            # e.g. int, float, str, [float]
-            # the latter is for a list of floats.
-            "name_of_required_param": int, 
+            # Preferred form: a StageParameter with a type, a default
+            # and a help message, which is shown in the stage documentation
+            "name_of_option": StageParameter(float, 1.0, msg="What this option does"),
+            # or for things without a default, say that it is required
+            "name_of_required_param": StageParameter(int, required=True, msg="What this option does"),
+            # The older forms still work: a default value, or just a type
+            # for a required parameter
+            "older_style_option": "default_value",
+            "older_style_required": int,
         }
 
         def run(self):
@@ -73,6 +78,8 @@ You need to decide on the inputs and outputs for the file, and give them tags an
 * For each output, you can choose a tag, which will determine the name of the output file, and choose a file type from the various classes in the data\_types page in the stages listing for details.
 
 
+
+Give the class a docstring. Its first line is shown in the :ref:`stage listing<TXPipe Stage Listing>`, and the rest of it appears on the stage's documentation page, so say briefly what the stage does, what its inputs are, and any important choices. The ``msg`` of each ``StageParameter`` is shown there too.
 
 Using configuration parameters
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -144,6 +151,20 @@ Then you can run a stage and get a list of options with::
     python -m txpipe TXYourStageName --help
 
 It will tell you the options you can specify to set input paths. Output paths are optional, and if left out the outputs will be put in your current directory.
+
+Add your stage to the list of sections in ``docs/make-stages.py`` and run it from the ``docs`` directory (``python make-stages.py``) to include it in the stage listing in the documentation. The script warns about any stage that is not yet in a section.
+
+Adding a new type of shear catalog
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The source selection, tomography and calibration stages (see :ref:`Source selection and tomography`) are designed so that a new type of shear catalog needs only a small amount of new code:
+
+#. Add a subclass of ``ShearCatalog`` in ``txpipe/data_types.py`` that describes the columns and groups of the format (for example ``get_tomography_bin_columns`` and ``get_extra_calibration_columns``), and add it to ``class_for_shear_catalog_type``.
+#. If the calibration scheme is new, add a calculator and a calibrator in ``txpipe/calibration_utils/`` (see :ref:`Shear calibration guide`). If it is like an existing one, reuse it.
+#. Add a selection stage by subclassing ``TXSimpleSelection`` in ``txpipe/source_selection.py``, overriding ``compute_selection`` if your catalog needs different cuts.
+#. Add a calibration stage by subclassing ``TXComputeShearCalibrationBase`` in ``txpipe/shear_calibration/``, supplying ``setup_response_calculators`` and, if your calibration saves anything beyond the standard bin and counts information, the setup and writing of the "response" group.
+#. The tomography stages do not usually need changing, because they use the classifier prefixes and suffixes from your ``ShearCatalog`` subclass.
+#. Import your stages in ``txpipe/__init__.py``.
 
 
 Parallelizing your stage

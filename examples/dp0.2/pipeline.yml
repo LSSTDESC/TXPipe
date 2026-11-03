@@ -26,10 +26,12 @@ stages:
     threads_per_process: 2
     aliases:
         lens_photoz_pdfs: photoz_pdfs
-  - name: TXSourceSelectorHSC
+  - name: TXComputeShearCalibrationHSC
     nprocess: 32
     threads_per_process: 2
-  - name: TXSourceTomography
+  - name: TXHSCSelection
+  - name: TXApplyRandomForestSourceTomography
+  - name: TXTrainRandomForestTomography
     threads_per_process: 4
   - name: TXPhotozSourceStack
     nprocess: 32

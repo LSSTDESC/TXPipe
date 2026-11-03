@@ -124,7 +124,7 @@ TXSourceTrueNumberDensity:
     nz: 301
     zmax: 3.0
 
-TXSourceSelectorHSC:
+TXComputeShearCalibrationHSC:
     input_pz: true
     true_z: false
     bands: [i]    #used for selection
@@ -134,7 +134,7 @@ TXSourceSelectorHSC:
     source_zbin_edges: [0.5, 1.5, 2.5, 3.5, 4.5]
     shear_catalog_type: hsc
 
-TXSourceSelectorMetacal:
+TXComputeShearCalibrationMetacal:
     input_pz: true
     true_z: false
     bands: [r, i, z] #used for selection
@@ -378,4 +378,26 @@ TXpureB:
     theta_min: 2.5                         # (only for hybrideb) theta min in arcmin 
     theta_max: 250                         # (only for hybrideb) theta max in arcmin 
     Ntheta: 1000                           # (only for hybrideb) Number of theta bins 
-    precomputed_hybrideb_weights: /global/cfs/cdirs/lsst/groups/WL/users/yomori/repo/aaa/TXPipe/geb_nosep_dict.npz
+    precomputed_hybrideb_weights: 
+        /global/cfs/cdirs/lsst/groups/WL/users/yomori/repo/aaa/TXPipe/geb_nosep_dict.npz
+TXHSCSelection:
+    input_pz: true
+    true_z: false
+    bands: [i]    #used for selection
+    T_min: 0.0
+    s2n_min: 10.0
+    max_rows: 10000000000
+    source_zbin_edges: [0.5, 1.5, 2.5, 3.5, 4.5]
+    shear_catalog_type: hsc
+
+TXSimpleRedshiftSourceTomography:
+    input_pz: true
+    true_z: false
+    bands: [i]    #used for selection
+    max_rows: 10000000000
+    source_zbin_edges: [0.5, 1.5, 2.5, 3.5, 4.5]
+    shear_catalog_type: hsc
+
+    T_min: 0.0
+    s2n_min: 10.0
+    redshift_col: mean_z

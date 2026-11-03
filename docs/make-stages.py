@@ -1,74 +1,135 @@
 import sys
 sys.path.append('..')
 import txpipe
+# The extension stages are not imported by default, but we want to document them
+import txpipe.extensions
 import yaml
 import collections
+import html
 import ceci
 
 sections = yaml.safe_load("""
 Ingestion:
     blurb: |
-        These stages import data into TXPipe input formats, or generate mock data from
-        simpler input catalogs.
+        These stages import data into TXPipe input formats from general-purpose
+        or survey-independent sources.
+    stages:
+        - TXIngestCatalogBase
+        - TXIngestCatalogFits
+        - TXIngestCatalogH5
+        - TXIngestMapsBase
+        - TXIngestMapsHsp
+        - TXIngestRedmagic
+        - TXExposureInfo
+        - TXIngestStars
+        - TXIngestStarCatalog
+        - TXMetacalGCRInput
+        - TXIngestDataPreview02
+        - TXIngestDataPreview1
+        - TXIngestDESI
+        - TXIngestDESIRandoms
+
+Rubin DP2 Ingestion:
+    blurb: |
+        These stages ingest Rubin Data Preview 2 data, and the DESC-processed
+        versions of it, into TXPipe formats.
+    stages:
+        - TXDP2Ingestion
+        - TXGenerateTractList
+        - TXIngestRubinMetaDetect
+        - TXIngestDESCMetaDetectV1_1
+        - TXIngestDP2Photometry
+        - TXIngestHealsparseMask
+
+DES Y3 Ingestion:
+    blurb: |
+        These stages ingest Dark Energy Survey Year 3 data products.
+    stages:
+        - TXIngestDESY3Footprint
+        - TXIngestDESY3Gold
+        - TXIngestDESY3Shear
+        - TXIngestDESY3SourceRedshift
+        - TXIngestDESY3SpeczCat
+
+Mock Catalogs:
+    blurb: |
+        These stages generate mock data from simpler input catalogs or from
+        simulations.
     stages:
         - TXCosmoDC2Mock
         - TXBuzzardMock
         - TXGaussianSimsMock
-        - TXIngestRedmagic
-        - TXExposureInfo
-        - TXIngestStars
-        - TXMetacalGCRInput
-        - TXIngestDataPreview02
         - TXSimpleMock
         - TXMockTruthPZ
         - TXLogNormalGlass
-
-Photo-z:
-    blurb: |
-        These stages deal with photo-z PDF training and estimation
-    stages:
-        - TXPhotozStack
-        - TXTruePhotozStack
-        - PZRailTrainSource
-        - PZRailTrainLens
-        - PZRailTrainLensFromSource
-        - PZRailTrainSourceFromLens
-        - PZRailEstimateSource
-        - PZRailEstimateLens
-        - PZRailEstimateSourceFromLens
-        - PZRailEstimateLensFromSource
-
+        - TXIngestFlagshipMocks
+        - TXIngestFlagshipMasks
 
 Selection:
     blurb: |
-        These stages deal with selection objects and assigning them to tomographic
-        bins.
+        These stages decide which objects in a shear catalog are good enough to
+        be in the source sample, before they are assigned to tomographic bins. They
+        write a catalog selection file. See :ref:`Source selection and tomography`.
     stages:
-        - TXSourceSelector
-        - TXSourceSelectorSimple
-        - TXSourceSelectorMetacal
-        - TXSourceSelectorMetadetect
-        - TXSourceSelectorLensfit
-        - TXSourceSelectorHSC
+        - TXSimpleSelection
+        - TXMetaDetectSelection
+        - TXScalarMetaDetectSelection
+        - TXMetacalSelection
+        - TXLensfitSelection
+        - TXHSCSelection
+        - TXDP2RubinMetadetectSelection
+        - TXDP2DESCSelection
+
+Tomography:
+    blurb: |
+        These stages assign objects in a shear catalog to tomographic bins,
+        independently of the source selection. They write a bin assignments file.
+        See :ref:`Source selection and tomography`.
+    stages:
+        - TXTrainRandomForestTomography
+        - TXComputeSourceTomography
+        - TXApplyRandomForestSourceTomography
+        - TXSimpleRedshiftSourceTomography
+        - PZCollateRailAssignmentsMetadetect
+        - PZCollateRailAssignmentsScalarMetadetect
+        - PZGenerateSOMInformerSubsample
+
+Lens Selection:
+    blurb: |
+        These stages deal with selecting lens objects and assigning them to
+        tomographic bins.
+    stages:
         - TXBaseLensSelector
         - TXTruthLensSelector
         - TXMeanLensSelector
         - TXModeLensSelector
         - TXRandomForestLensSelector
-
+        - TXCustomLensSelector
+        - TXDESISelector
+        - TXDESIMockSelector
+        - TXDESIMultiMockSelector
 
 Calibration and Splitting:
     blurb: |
-        These stages deal with calibrating shear and splitting up catalogs into
-        sub-catalogs.
+        These stages compute the shear calibration of each tomographic bin from
+        the source selection and bin assignments, apply it, and split up catalogs
+        into sub-catalogs. See :ref:`Shear calibration guide`.
     stages:
+        - TXComputeShearCalibration
+        - TXComputeShearCalibrationSimple
+        - TXComputeShearCalibrationMetacal
+        - TXComputeShearCalibrationMetadetect
+        - TXComputeShearCalibrationScalarMetadetect
+        - TXComputeShearCalibrationLensfit
+        - TXComputeShearCalibrationHSC
+        - TXComputeShearCalibrationDESY3
         - TXShearCalibration
         - TXStarCatalogSplitter
         - TXLensCatalogSplitter
         - TXExternalLensCatalogSplitter
         - TXTruthLensCatalogSplitter
         - TXTruthLensCatalogSplitterWeighted
-        
+
 Weights:
     blurb: |
         These stages deal with weighting the lens sample
@@ -77,7 +138,22 @@ Weights:
         - TXLSSWeightsLinBinned
         - TXLSSWeightsLinPix
         - TXLSSWeightsUnit
-    
+        - TXLSSDensityBase
+        - TXLSSDensityNullTests
+
+Masks and Cuts:
+    blurb: |
+        These stages make masks, and cut catalogs down to sub-samples.
+    stages:
+        - TXBaseMask
+        - TXSimpleMask
+        - TXSimpleMaskSource
+        - TXSimpleMaskFrac
+        - TXCustomMask
+        - TXJointMask
+        - TXDESIJointMask
+        - TXCutCatalog
+        - TXCutShearCatalog
 
 Maps:
     blurb: |
@@ -94,24 +170,25 @@ Maps:
         - TXNoiseMapsJax
         - TXConvergenceMaps
         - TXMapCorrelations
-        - TXSimpleMask
-        - TXSimpleMaskSource
-        - TXSimpleMaskFrac
-        - TXAuxiliarySourceMaps
-        - TXAuxiliaryLensMaps
+        - TXSourceAuxMapsBase
+        - TXPSFMaps
+        - TXFlagMaps
+        - TXDepthMaps
+        - TXBrightObjectMaps
+        - TXPredictDensitySelectionFunction
         - TXUniformDepthMap
 
 Ensemble Photo-z:
     blurb: |
         These stages compute ensemble redshift histograms n(z) for bins
     stages:
-        - TXPhotozSourceStack
-        - TXPhotozLensStack
-        - TXSourceTrueNumberDensity
-        - TXLensTrueNumberDensity
+        - TXPhotozStack
+        - TXTruePhotozStack
+        - TXMockGaussianPhotozStack
+        - PZRailSummarizeBase
         - PZRailSummarize
-        
-
+        - PZRailPZSummarize
+        - PZAddNonTomographicNZ
 
 Two-Point:
     blurb: |
@@ -120,6 +197,7 @@ Two-Point:
         - TXJackknifeCenters
         - TXJackknifeCentersSource
         - TXTwoPointFourier
+        - TXTwoPointFourierCatalog
         - TXTwoPoint
         - TXRandomCat
         - TXSubsampleRandoms
@@ -127,8 +205,14 @@ Two-Point:
         - TXTwoPointTheoryFourier
         - TXTwoPointPixel
         - TXTwoPointPixelExtCross
-        - TXTwoPointRLens
 
+Delta Sigma:
+    blurb: |
+        These stages measure and predict the excess surface density
+    stages:
+        - TXDeltaSigma
+        - TXDeltaSigmaTheory
+        - TXDeltaSigmaPlots
 
 Covariance:
     blurb: |
@@ -140,14 +224,12 @@ Covariance:
         - TXFourierNamasterCovariance
         - TXRealNamasterCovariance
 
-
 Blinding:
     blurb: |
         These stages deal with blinding measurements
     stages:
         - TXBlinding
         - TXNullBlinding
-
 
 Plots:
     blurb: |
@@ -161,7 +243,6 @@ Plots:
         - TXTwoPointPlotsTheory
         - TXPhotozPlot
 
-
 Diagnostics:
     blurb: |
         These stages compute and/or plot diagnostics of catalogs or other data
@@ -169,6 +250,7 @@ Diagnostics:
         - TXDiagnosticQuantiles
         - TXSourceDiagnosticPlots
         - TXLensDiagnosticPlots
+        - TXResponseInBins
         - TXPSFDiagnostics
         - TXPSFMomentCorr
         - TXRoweStatistics
@@ -188,24 +270,32 @@ Source Injection:
     stages:
         - TXIngestSSIGCR
         - TXMatchSSI
-        - TXIngestSSIMatched
         - TXIngestSSIMatchedDESBalrog
         - TXSSIMagnification
         - TXAuxiliarySSIMaps
         - TXMapPlotsSSI
-        - TXIngestSSI
         - TXIngestSSIDESBalrog
         - TXIngestSSIDetectionDESBalrog
 
-
 Extensions:
     blurb: |
-        These stages are written for TXPipe extension projects.
+        These stages are written for TXPipe extension projects. They are not imported
+        by default; see :ref:`TXPipe Stages`.
     stages:
-        - TXSelfCalibrationIA
+        - TXTwoPointSCIA
+        - TXTwoPointSCIAArc
+        - TXTwoPointSourcePixel
+        - TXTwoPointCluster
         - CLClusterBinningRedshiftRichness
         - CLClusterShearCatalogs
         - CLClusterEnsembleProfiles
+        - CLClusterSACC
+        - TXIngestPlanckLensingMaps
+        - TXIngestQuaia
+        - TXCMBLensingCrossMonteCarloCorrection
+        - TXTwoPointFourierCMBLensingCrossDensity
+        - HOSStage
+        - HOSFSB
 
 New and Miscellaneous:
     blurb: |
@@ -249,27 +339,26 @@ def describe_config(cls):
     lines = ["            <UL>"]
     for name, val in cls.config_options.items():
         if isinstance(val, ceci.config.StageParameter):
-            if val.required:
-                req = True
-            if val.dtype is None:
-                dt = "any"
-            else:
-                dt = val.dtype.__name__
-                default = val.default
+            req = val.required
+            default = val.default
+            dt = "any" if val.dtype is None else val.dtype.__name__
             help = val._help
         else:
             help = ""
             if isinstance(val, type):
                 dt = val.__name__
                 req = True
+                default = None
             else:
                 dt = type(val).__name__
                 req = False
                 default = val
+        # The help text can contain characters that are special in HTML
+        help = html.escape(str(help)) if help else ""
         if req:
             lines.append(f"            <LI><strong>{name}</strong>: ({dt}) Required. {help}</LI>")
         else:
-            lines.append(f"            <LI><strong>{name}</strong>: ({dt}) Default={default}. {help}</LI>")
+            lines.append(f"            <LI><strong>{name}</strong>: ({dt}) Default={html.escape(str(default))}. {help}</LI>")
     lines.append("            </UL>")
     return "\n".join(lines)
 

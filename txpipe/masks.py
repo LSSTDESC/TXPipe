@@ -661,7 +661,7 @@ class TXCutCatalog(PipelineStage):
                 # Create output group and datasets collectively on all ranks.
                 g_out = f_out.create_group(group_name)
 
-# Copy attributes from this group and, for nested groups, its parent.
+                # Copy attributes from this group and, for nested groups, its parent.
                 for key, value in g_in.attrs.items():
                     g_out.attrs[key] = value
                 parent_name = group_name.rpartition("/")[0]

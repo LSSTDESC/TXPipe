@@ -14,10 +14,12 @@ python_paths:
 stages:
   - name: TXRandomCat
   - name: TXIngestRedmagic
-  - name: TXSourceSelectorMetacal
+  - name: TXComputeShearCalibrationMetacal
     nprocess: 64
     nodes: 2
-  - name: TXSourceTomography
+  - name: TXMetacalSelection
+  - name: TXApplyRandomForestSourceTomography
+  - name: TXTrainRandomForestTomography
     threads_per_process: 4
   - name: TXShearCalibration
     nprocess: 7

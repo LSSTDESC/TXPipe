@@ -441,6 +441,11 @@ class TXDeltaSigma(PipelineStage):
 
 
 class TXDeltaSigmaTheory(PipelineStage):
+    """Compute theory predictions for the excess surface density Delta Sigma with dsf.
+
+    Uses the fiducial cosmology and the lens n(z) to predict Delta Sigma(r), on the radial
+    range set in the configuration.
+    """
 
     name = "TXDeltaSigmaTheory"
     inputs = [
@@ -461,6 +466,7 @@ class TXDeltaSigmaTheory(PipelineStage):
         "a_max": StageParameter(float, 1.0, msg="Max scale factor to use in theory calculation"),
         "na": StageParameter(int, 128, msg="Number of scale factor values to use in theory calculation"),
     }
+    parallel = False
 
     def run(self):
         import dsf
@@ -585,6 +591,7 @@ class TXDeltaSigmaPlots(PipelineStage):
     config_options = {
         "show_theory": StageParameter(bool, True, msg="Whether to show theory line"),
     }
+    parallel = False
 
     def run(self):
         import sacc

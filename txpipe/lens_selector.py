@@ -465,7 +465,7 @@ class TXModeLensSelector(TXBaseLensSelector):
 
 class TXCustomLensSelector(TXBaseLensSelector):
     """
-    Select lens objects based on best-fit redshifts and BOSS criteria
+    Select lens objects based on pre-computed redshifts.
 
     This requires PDFs to have been estimated earlier.
     """
@@ -499,6 +499,11 @@ class TXCustomLensSelector(TXBaseLensSelector):
 
 
 class TXRandomForestLensSelector(TXBaseLensSelector):
+    """Select lens objects and assign them to bins using a random forest classifier.
+
+    The classifier is trained on a spectroscopic catalog, using the magnitudes and colours
+    in the chosen bands, to predict the lens redshift bins.
+    """
     name = "TXRandomForestLensSelector"
     inputs = [
         ("photometry_catalog", PhotometryCatalog),
@@ -549,9 +554,8 @@ class TXRandomForestLensSelector(TXBaseLensSelector):
 
     def apply_redshift_cut(self, phot_data, selector):
         classifier, features = selector
-        shear_catalog_type = "not applicable"
         bands = self.config["bands"]
-        pz_data = apply_classifier(classifier, features, bands, shear_catalog_type, phot_data)
+        pz_data = apply_classifier(classifier, features, bands, phot_data)
         return pz_data
 
 
@@ -818,9 +822,11 @@ class TXDESISelector(PipelineStage):
     Select lens galaxies from a DESI spectroscopic FITS catalog.
 
     Reads a raw DESI FITS catalog and applies:
-    TODO: ADJUST NECESSARY CUTS FOR REAL DATA
-      - Redshift range cut
-      - Optional survey mask
+
+    - Redshift range cut
+    - Optional survey mask
+
+    TODO: adjust the cuts as needed for real data.
 
     Outputs a standardized FITS file consumed by TXIngestDESI.
     """
