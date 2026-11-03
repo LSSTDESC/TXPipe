@@ -59,4 +59,4 @@ dependencies:
     - numpy==2.3.*
     - dsigma==1.2.*
     # We should pin this to a version once we get to merging this
-    - git+https://github.com/LSSTDESC/dsf.git
+    - git+https://github.com/LSSTDESC/dsf.git@792d08e443d8242bbe3ff6c68275e550c1bd8849

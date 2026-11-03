@@ -71,5 +71,5 @@ dependencies:
     # NERSC-specific
     - git+https://github.com/LSSTDESC/dataregistry.git
     - dsigma==1.2.*
-    - git+https://github.com/LSSTDESC/dsf.git
+    - git+https://github.com/LSSTDESC/dsf.git@792d08e443d8242bbe3ff6c68275e550c1bd8849
   
