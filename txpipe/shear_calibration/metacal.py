@@ -113,7 +113,14 @@ class TXComputeShearCalibrationDESY3(TXComputeShearCalibrationMetacal):
     ]
 
     def run(self):
-        raise ValueError("Have not re-written DESY3 pipeline")
+        # The DESY3 pipeline has not been ported to the rewritten selection
+        # and calibration code. If you need it, use the last release before
+        # that rewrite, which is tagged "pre-dp2" in the git repository
+        # (git checkout pre-dp2).
+        raise ValueError(
+            "Have not re-written DESY3 pipeline. Use the git tag 'pre-dp2' "
+            "to get a version of TXPipe that supports it."
+        )
 
     def make_tomographic_bin_chooser_function(self):
         import h5py

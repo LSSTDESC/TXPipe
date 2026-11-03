@@ -13,8 +13,9 @@ class TXComputeShearCalibrationHSC(TXComputeShearCalibrationBase):
     This scheme is quite similar to the one used by lensfit. The main difference is in
     the per-object response.
 
-    TODO: The HSC calibrator is currently broken, and will crash when it gets
-    to compute_output_stats
+    TODO: The HSCCalculator class that this stage uses to accumulate the
+    calibration is currently broken, so this stage will crash when it gets
+    to compute_output_stats.
     """
 
     name = "TXComputeShearCalibrationHSC"

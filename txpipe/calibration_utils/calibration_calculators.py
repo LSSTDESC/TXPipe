@@ -376,11 +376,10 @@ class MetaDetectCalculator(CalibrationCalculator):
         selections = []
         prefixes = [m + "/" for m in META_VARIANTS]
         for i, p in enumerate(prefixes):
-            # With metadetect, unlike the other catalog approaches,
-            # we might want to iterate through the variants in an outer
-            # loop and so all the data that we add in a chunk might be
-            # from one variant. So it's possible that this data chunk might
-            # not have anything from this variant in. Skip if so.
+            # Unlike the other catalog types, metadetect data may be read
+            # with the shear variants in an outer loop, so a given chunk of
+            # data can contain only some of the variants. If this chunk has
+            # no data for this variant then there is nothing to add: skip it.
             if p + "g1" not in data:
                 sel = np.zeros(0, dtype=int)
                 selections.append(sel)

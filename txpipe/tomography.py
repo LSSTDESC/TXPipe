@@ -64,6 +64,10 @@ class TXTrainRandomForestTomography(PipelineStage):
 
 class TXComputeSourceTomography(PipelineStage):
     """Base class for tomography.
+
+    This is an abstract base class and cannot be run directly: use one of the
+    subclasses below, each of which must implement compute_tomography
+    (and usually prepare_tomography and choose_columns too).
     """
     name = "TXComputeSourceTomography"
     inputs = [
@@ -76,6 +80,12 @@ class TXComputeSourceTomography(PipelineStage):
         "chunk_rows": StageParameter(int, 10_000, msg="Rows to read at once")
     }
     
+    def compute_tomography(self, data, info):
+        raise NotImplementedError(
+            f"{type(self).__name__} does not implement compute_tomography. "
+            "TXComputeSourceTomography is a base class and cannot be used directly."
+        )
+
     def run(self):
         # do some setup
         info = self.prepare_tomography()
@@ -125,7 +135,7 @@ class TXComputeSourceTomography(PipelineStage):
     def prepare_tomography(self):
         return {}
 
-    def choose_columns(self):
+    def choose_columns(self, info):
         return []
 
     def save_metadata(self, output_file, info):
