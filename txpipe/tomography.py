@@ -93,7 +93,7 @@ class TXComputeSourceTomography(PipelineStage):
         output_cols = f_in.get_classifier_output_columns()
         
         for (pre, suf, out_col_name) in zip(prefixes, suffices, output_cols):
-            n = f_in.file[f"shear/{pre}g1{suf}"].size
+            n = f_in.file[f"shear/{pre}ra"].size
             out_col = f_out.create_dataset(out_col_name, shape=(n,), dtype=np.int16)
 
             # Determine the input column names for this group. Some names
@@ -104,7 +104,7 @@ class TXComputeSourceTomography(PipelineStage):
             with self.open_input("shear_catalog") as f:
                 for col in input_columns:
                     var_col = f"{pre}{col}{suf}"
-                    if var_col in f:
+                    if var_col in f["shear"]:
                         cols.append(var_col)
                     else:
                         cols.append(f"{pre}{col}")
@@ -121,6 +121,10 @@ class TXComputeSourceTomography(PipelineStage):
                 }
                 zbin = self.compute_tomography(data, info)
                 out_col[s:e] = zbin
+        f_in.close()
+        f_out.close()
+
+            
 
     def prepare_tomography(self):
         return {}

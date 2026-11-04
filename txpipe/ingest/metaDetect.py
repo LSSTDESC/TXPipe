@@ -666,3 +666,36 @@ def process_metadetect_data_v1_1(data, tract, patch, flag_exclusion, shape_noise
         output[variant] = var_output
 
     return output
+
+class TXCombineTractLists(PipelineStage):
+    """
+    Combine the per-field tract lists into a single list of unique tracts.
+    """
+    name = "TXCombineTractLists"
+    inputs = [
+        ("tract_list_wide", TextFile),
+        ("tract_list_edfs", TextFile),
+        ("tract_list_cosmos", TextFile),
+        ("tract_list_ecdfs", TextFile),
+        ("tract_list_elais_s1", TextFile),
+    ]
+    outputs = [
+        ("tract_list", TextFile),
+    ]
+    config_options = {}
+
+    def run(self):
+        all_tracts = []
+        for tag, _ in self.inputs:
+            path = self.get_input(tag)
+            tracts = np.loadtxt(path, dtype=int, ndmin=1)
+            print(f"Loaded {len(tracts)} tracts from {tag}")
+            all_tracts.append(tracts)
+
+        combined = np.unique(np.concatenate(all_tracts))
+        print(f"Combined list has {len(combined)} unique tracts")
+
+        with self.open_output("tract_list") as f:
+            np.savetxt(f, combined, fmt="%i")
+
+

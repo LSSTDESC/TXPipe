@@ -18,22 +18,8 @@ def class_for_shear_catalog_type(shear_catalog_type):
         return MetaDetectShearCatalog
     elif shear_catalog_type == "scalar_metadetect":
         return ScalarMetaDetectCatalog
-    elif shear_catalog_type == "lensfit":
-        return LensfitShearCatalog
-    elif shear_catalog_type == "hsc":
-        return HSCShearCatalog
-    raise ValueError(f"Unknown catalog type: {shear_catalog_type}")
-
-
-def class_for_shear_catalog_type(shear_catalog_type):
-    if shear_catalog_type == "metacal":
-        return MetacalShearCatalog
-    elif shear_catalog_type == "simple":
-        return SimpleShearCatalog
-    elif shear_catalog_type == "metadetect":
-        return MetaDetectShearCatalog
-    elif shear_catalog_type == "scalar_metadetect":
-        return ScalarMetaDetectCatalog
+    elif shear_catalog_type == "anacal":
+        return AnacalShearCatalog
     elif shear_catalog_type == "lensfit":
         return LensfitShearCatalog
     elif shear_catalog_type == "hsc":
@@ -374,6 +360,54 @@ class ScalarMetaDetectCatalog(MetaDetectShearCatalog):
         )
         shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="scalar_metadetect")
         return shear_cols
+
+
+class AnacalShearCatalog(ShearCatalog):
+    def get_primary_catalog_names(self, true_shear=False):
+        if true_shear:
+            shear_cols = ["true_g1", "true_g2", "ra", "dec", "weight"]
+            rename = {"true_g1": "g1", "true_g2":"g2"}
+        else:
+            shear_cols = ["e1", "e2", "ra", "dec", "weight"]
+            rename = {"e1":"g1", "e2":"g2"}
+        return shear_cols, rename
+
+    def get_diagnostic_shear_columns(self, bands=None, use_psf_originals=False):
+        if bands is None:
+            bands = self.get_bands()
+        return [
+            "dec",
+            "ra",
+            "psf_g1",
+            "psf_g2",
+            "psf_T_mean",
+            "e1",
+            "e2",
+            "de1_dg1",
+            "de2_dg2",
+            # needed by AnaCalCalculator for R_shape and R_detect
+            "e1_raw",
+            "e2_raw",
+            "wsel",
+            "weight_dg1",
+            "weight_dg2",
+            "s2n",
+            "T",
+            "weight"
+        ] + [f"mag_{b}" for b in bands]
+
+
+    @staticmethod
+    def get_classifier_prefixes():
+        return [""] * 5
+
+    @staticmethod
+    def get_classifier_suffixes():
+        return ["", "_1p", "_1m", "_2p", "_2m"]
+
+    @staticmethod
+    def get_classifier_output_columns():
+        return ["bin", "bin_1p", "bin_1m", "bin_2p", "bin_2m"]
 
 
 class LensfitShearCatalog(ShearCatalog):

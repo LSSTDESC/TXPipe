@@ -4,3 +4,4 @@ from .lensfit import TXComputeShearCalibrationLensfit
 from .metacal import TXComputeShearCalibrationMetacal
 from .metadetect import TXComputeShearCalibrationMetadetect
 from .scalar_metadetect import TXComputeShearCalibrationScalarMetadetect
+from .anacal import TXComputeShearCalibrationAnacal
