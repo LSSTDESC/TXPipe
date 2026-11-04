@@ -735,9 +735,9 @@ class HSCCalibrator(Calibrator):
 
 class AnaCalibrator(MetaCalibrator):
     """Stores information needed to calibrate an AnaCal shear method."""
-    def __init__(self, R, mu, mu_is_weighted=True):
+    def __init__(self, R, mu, mu_is_calibrated=True):
         self.R = float(np.squeeze(R))
-        if mu_is_weighted:
+        if mu_is_calibrated:
             self.mu = np.array(mu, dtype=float)
         else:
             self.mu = np.array(mu, dtype=float) / R

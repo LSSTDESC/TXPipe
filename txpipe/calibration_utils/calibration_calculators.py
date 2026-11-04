@@ -1199,7 +1199,7 @@ class AnaCalCalculator(CalibrationCalculator):
 
         Neff = None if sum_weights is None else sum_weights ** 2 / sum_sq_weights
 
-        calibrator = AnaCalibrator(R_total, mean_e, mu_is_weighted=False)
+        calibrator = AnaCalibrator(R_total, mean_e, mu_is_calibrated=False)
         sigma_e = calibrator.calibrate_variance_to_sigma_e(var_e)
         sigma = calibrator.calibrate_sigma(np.sqrt(var_e))
         return BinStats(count, Neff, calibrator.mu, sigma_e, sigma, calibrator)
