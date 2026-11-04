@@ -23,7 +23,7 @@ The ``stages`` list describes which stages to run, e.g.:
 .. code-block:: yaml
 
     stages:
-    - name: TXSourceSelector
+    - name: TXMetaDetectSelection
     ...
     - name: TXTwoPoint
       nodes: 1

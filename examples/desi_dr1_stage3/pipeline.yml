@@ -5,8 +5,8 @@ stages:
   #   aliases:
   #       catalog: shear_catalog
   #       cut_catalog: cut_shear_catalog
-  # - name: TXSourceSelectorMetacal
-  # - name: TXSourceSelectorMetadetect
+  # - name: TXComputeShearCalibrationMetacal
+  # - name: TXComputeShearCalibrationMetadetect
   #   aliases:
   #       shear_catalog: cut_shear_catalog
   # - name: TXSourceTomography

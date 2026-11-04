@@ -1,7 +1,13 @@
 Generic shear catalogs
 ======================
 
-Generic shear catalogs are a type of shear catalog that require no calibration. They are used for testing and development purposes. The columns in a generic shear catalog are:
+Generic shear catalogs are a type of shear catalog that require no calibration. They are used for testing and development purposes, for mock catalogs, and for catalogs such as the DP1 ingestion output where calibration is not applied. They are read with the ``SimpleShearCatalog`` class.
+
+Everything is stored in a single "shear" group, which should have the attribute ``catalog_type = "simple"``; TXPipe cannot identify this type of catalog from its columns alone, so the attribute is needed.
+
+The selection stage is :py:class:`~txpipe.source_selection.TXSimpleSelection` and the calibration stage is :py:class:`~txpipe.shear_calibration.simple.TXComputeShearCalibrationSimple`; the latter just counts objects and does not compute any response.
+
+The columns in a generic shear catalog are:
 
 =======  =================  ==========  =========
 Group    Name               Kind        Meaning

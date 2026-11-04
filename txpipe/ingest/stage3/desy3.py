@@ -163,6 +163,7 @@ class TXIngestDESY3SpeczCat(TXIngestCatalogFits):
 
 
 class TXIngestDESY3Shear(PipelineStage):
+    """Convert the DES Y3 metacal shear catalog into TXPipe format."""
     name = "TXIngestDESY3Shear"
     parallel = False
     inputs = [
@@ -272,6 +273,11 @@ class TXIngestDESY3Shear(PipelineStage):
 
 
 class TXIngestDESY3SourceRedshift(PipelineStage):
+    """Extract the DES Y3 source n(z) from the published data vector file.
+
+    Reads the redshift distributions for the source tomographic bins from the DES data
+    vector FITS file and saves them as a TXPipe photo-z stack.
+    """
     name = "TXIngestDESY3SourceRedshift"
     parallel = False
     inputs = [

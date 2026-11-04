@@ -12,7 +12,9 @@ stages:
     aliases:
         input: specz_catalog_pq
         output: spectroscopic_catalog
-  - name: TXSourceSelectorLensfit
+  - name: TXComputeShearCalibrationLensfit
+  - name: TXLensfitSelection
+  - name: TXSimpleRedshiftSourceTomography
   - name: TXShearCalibration
   - name: TXLensCatalogSplitter
   - name: TXStarCatalogSplitter

@@ -12,6 +12,11 @@ import itertools
 
 
 class CLClusterBinningRedshiftRichness(PipelineStage):
+    """Divide a cluster catalog into bins of redshift and richness.
+
+    The bin edges are set with zedge and richedge. Objects outside the edges go in extra
+    bins at each end.
+    """
     name = "CLClusterBinningRedshiftRichness"
     parallel = False
     inputs = [("cluster_catalog", HDFFile)]
