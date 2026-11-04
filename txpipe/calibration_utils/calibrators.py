@@ -789,6 +789,8 @@ class AnaCalibrator(MetaCalibrator):
         -------
         cals: list
             A set of AnaCalibrators, one per bin
+        cals2d: AnaCalibrator
+            A single AnaCalibrator for the 2D bin
         """
         import h5py
 
