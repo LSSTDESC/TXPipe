@@ -1,4 +1,4 @@
-from ..utils.theory import theory_3x2pt, fill_empty_sacc
+from ..theory.theory_utils import theory_3x2pt, fill_empty_sacc
 import pyccl
 import pytest
 import sacc

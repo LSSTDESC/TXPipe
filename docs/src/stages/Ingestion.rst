@@ -4,7 +4,7 @@ Ingestion
 These stages import data into TXPipe input formats from general-purpose
 or survey-independent sources.
 
-* :py:class:`~txpipe.exposure_info.TXExposureInfo` - Ingest exposure information from an OpSim database
+* :py:class:`~txpipe.diagnostics.exposure_info.TXExposureInfo` - Ingest exposure information from an OpSim database
 
 * :py:class:`~txpipe.ingest.dp02.TXIngestDataPreview02` - Ingest galaxy catalogs from DP0.2
 
@@ -34,7 +34,7 @@ or survey-independent sources.
 
 
 
-.. autotxclass:: txpipe.exposure_info.TXExposureInfo
+.. autotxclass:: txpipe.diagnostics.exposure_info.TXExposureInfo
     :members:
     :exclude-members: run
 

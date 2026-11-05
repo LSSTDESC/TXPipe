@@ -3,8 +3,9 @@ This file contains TXPipe-specific file types, subclassing the more
 generic types in ceci.
 """
 from ceci.file_types import HDFFile, DataFile, YamlFile, TextFile, FitsFile, Directory, FileCollection, PickleFile, ParquetFile, PNGFile, FileValidationError
-from .mapping import degrade_healsparse
-from .calibration_utils.names import META_VARIANTS, SCALAR_META_VARIANTS, metacal_variants, metadetect_variants, scalar_metadetect_variants, band_variants
+# The calibration_utils and maps.mapping imports are done inside the methods
+# that use them, to avoid circular imports: those packages import stages,
+# which import base_stage, which imports this module.
 import yaml
 import numpy as np
 
@@ -210,6 +211,8 @@ class MetacalShearCatalog(ShearCatalog):
 
     @staticmethod
     def get_column_name_variants(*columns):
+        from .calibration.calibration_utils.names import metacal_variants
+
         return metacal_variants(*columns)
 
     @staticmethod
@@ -294,11 +297,15 @@ class MetaDetectShearCatalog(ShearCatalog):
 
     @staticmethod
     def get_column_name_variants(*columns):
+        from .calibration.calibration_utils.names import metadetect_variants
+
         return metadetect_variants(*columns)
 
     def get_diagnostic_shear_columns(self, bands=None, use_psf_originals=False):
         if bands is None:
             bands = self.get_bands()
+        from .calibration.calibration_utils.names import metadetect_variants, band_variants
+
         psf_suffix = "_original" if use_psf_originals else ""
         shear_cols = metadetect_variants(
             "g1",
@@ -340,11 +347,15 @@ class ScalarMetaDetectCatalog(MetaDetectShearCatalog):
 
     @staticmethod
     def get_column_name_variants(*columns):
+        from .calibration.calibration_utils.names import scalar_metadetect_variants
+
         return scalar_metadetect_variants(*columns)
 
     def get_diagnostic_shear_columns(self, bands=None, use_psf_originals=False):
         if bands is None:
             bands = self.get_bands()
+        from .calibration.calibration_utils.names import scalar_metadetect_variants, band_variants
+
         psf_suffix = "_original" if use_psf_originals else ""
         shear_cols = scalar_metadetect_variants(
             "g1",
@@ -620,6 +631,8 @@ class MapsFile(HDFFile):
         if (degrade_nside is not None) and (degrade_nside < mask.nside_sparse):
             # In this case we need a float mask to allow the mask-like
             # degrading to work
+            from .maps.mapping import degrade_healsparse
+
             mask = mask.astype("float")
             mask = degrade_healsparse(
                 mask, reduction="mask", degrade_nside=degrade_nside

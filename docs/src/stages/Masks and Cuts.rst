@@ -3,27 +3,27 @@ Masks and Cuts
 
 These stages make masks, and cut catalogs down to sub-samples.
 
-* :py:class:`~txpipe.masks.TXBaseMask` - Base class for generating binary survey masks using auxiliary input maps.
+* :py:class:`~txpipe.maps.masks.TXBaseMask` - Base class for generating binary survey masks using auxiliary input maps.
 
-* :py:class:`~txpipe.masks.TXSimpleMask` - Generate a simple binary mask using cuts on depth and bright object maps.
+* :py:class:`~txpipe.maps.masks.TXSimpleMask` - Generate a simple binary mask using cuts on depth and bright object maps.
 
-* :py:class:`~txpipe.masks.TXSimpleMaskSource` - Generate a binary mask for source galaxies using positive lensing weights
+* :py:class:`~txpipe.maps.masks.TXSimpleMaskSource` - Generate a binary mask for source galaxies using positive lensing weights
 
-* :py:class:`~txpipe.masks.TXSimpleMaskFrac` - Make a simple mask using a depth cut and bright object cut
+* :py:class:`~txpipe.maps.masks.TXSimpleMaskFrac` - Make a simple mask using a depth cut and bright object cut
 
-* :py:class:`~txpipe.masks.TXCustomMask` - Make a mask from a custom list of cuts to aux maps (e.g depth cut and bright object cuts)
+* :py:class:`~txpipe.maps.masks.TXCustomMask` - Make a mask from a custom list of cuts to aux maps (e.g depth cut and bright object cuts)
 
-* :py:class:`~txpipe.masks.TXJointMask` - Combine two binary masks into one using AND intersection.
+* :py:class:`~txpipe.maps.masks.TXJointMask` - Combine two binary masks into one using AND intersection.
 
-* :py:class:`~txpipe.masks.TXDESIJointMask` - Combine the DESI lens mask and the shear catalog mask using AND intersection.
+* :py:class:`~txpipe.maps.masks.TXDESIJointMask` - Combine the DESI lens mask and the shear catalog mask using AND intersection.
 
-* :py:class:`~txpipe.masks.TXCutCatalog` - Cut a catalog to the footprint defined by an input mask, and write out the cut catalog.
+* :py:class:`~txpipe.maps.masks.TXCutCatalog` - Cut a catalog to the footprint defined by an input mask, and write out the cut catalog.
 
-* :py:class:`~txpipe.masks.TXCutShearCatalog` - Cut a shear catalog to the footprint defined by an input mask.
+* :py:class:`~txpipe.maps.masks.TXCutShearCatalog` - Cut a shear catalog to the footprint defined by an input mask.
 
 
 
-.. autotxclass:: txpipe.masks.TXBaseMask
+.. autotxclass:: txpipe.maps.masks.TXBaseMask
     :members:
     :exclude-members: run
 
@@ -45,7 +45,7 @@ These stages make masks, and cut catalogs down to sub-samples.
 
 
 
-.. autotxclass:: txpipe.masks.TXSimpleMask
+.. autotxclass:: txpipe.maps.masks.TXSimpleMask
     :members:
     :exclude-members: run
 
@@ -72,7 +72,7 @@ These stages make masks, and cut catalogs down to sub-samples.
 
 
 
-.. autotxclass:: txpipe.masks.TXSimpleMaskSource
+.. autotxclass:: txpipe.maps.masks.TXSimpleMaskSource
     :members:
     :exclude-members: run
 
@@ -97,7 +97,7 @@ These stages make masks, and cut catalogs down to sub-samples.
 
 
 
-.. autotxclass:: txpipe.masks.TXSimpleMaskFrac
+.. autotxclass:: txpipe.maps.masks.TXSimpleMaskFrac
     :members:
     :exclude-members: run
 
@@ -127,7 +127,7 @@ These stages make masks, and cut catalogs down to sub-samples.
 
 
 
-.. autotxclass:: txpipe.masks.TXCustomMask
+.. autotxclass:: txpipe.maps.masks.TXCustomMask
     :members:
     :exclude-members: run
 
@@ -154,7 +154,7 @@ These stages make masks, and cut catalogs down to sub-samples.
 
 
 
-.. autotxclass:: txpipe.masks.TXJointMask
+.. autotxclass:: txpipe.maps.masks.TXJointMask
     :members:
     :exclude-members: run
 
@@ -179,7 +179,7 @@ These stages make masks, and cut catalogs down to sub-samples.
 
 
 
-.. autotxclass:: txpipe.masks.TXDESIJointMask
+.. autotxclass:: txpipe.maps.masks.TXDESIJointMask
     :members:
     :exclude-members: run
 
@@ -204,7 +204,7 @@ These stages make masks, and cut catalogs down to sub-samples.
 
 
 
-.. autotxclass:: txpipe.masks.TXCutCatalog
+.. autotxclass:: txpipe.maps.masks.TXCutCatalog
     :members:
     :exclude-members: run
 
@@ -233,7 +233,7 @@ These stages make masks, and cut catalogs down to sub-samples.
 
 
 
-.. autotxclass:: txpipe.masks.TXCutShearCatalog
+.. autotxclass:: txpipe.maps.masks.TXCutShearCatalog
     :members:
     :exclude-members: run
 

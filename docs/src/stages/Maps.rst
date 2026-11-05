@@ -4,43 +4,43 @@ Maps
 These stages deal with making different kinds of maps for analysis and
 plotting.
 
-* :py:class:`~txpipe.maps.TXBaseMaps` - A base class for mapping stages
+* :py:class:`~txpipe.maps.maps.TXBaseMaps` - A base class for mapping stages
 
-* :py:class:`~txpipe.maps.TXSourceMaps` - Generate source maps directly from binned, calibrated shear catalogs.
+* :py:class:`~txpipe.maps.maps.TXSourceMaps` - Generate source maps directly from binned, calibrated shear catalogs.
 
-* :py:class:`~txpipe.maps.TXLensMaps` - Make tomographic lens number count maps
+* :py:class:`~txpipe.maps.maps.TXLensMaps` - Make tomographic lens number count maps
 
-* :py:class:`~txpipe.maps.TXDensityMaps` - Convert galaxy count maps to overdensity delta maps
+* :py:class:`~txpipe.maps.maps.TXDensityMaps` - Convert galaxy count maps to overdensity delta maps
 
-* :py:class:`~txpipe.noise_maps.TXSourceNoiseMaps` - Generate realizations of shear noise maps with random rotations
+* :py:class:`~txpipe.maps.auxiliary_maps.TXSourceAuxMapsBase` - Base class for stages that make auxiliary maps of the source catalog.
 
-* :py:class:`~txpipe.noise_maps.TXLensNoiseMaps` - Generate lens density noise realizations using random splits
+* :py:class:`~txpipe.maps.auxiliary_maps.TXPSFMaps` - Make maps of the mean PSF ellipticity in each tomographic bin.
 
-* :py:class:`~txpipe.noise_maps.TXExternalLensNoiseMaps` - Generate lens density noise realizations using random splits of an external catalog
+* :py:class:`~txpipe.maps.auxiliary_maps.TXFlagMaps` - Make maps of how often each shear catalog flag bit is set.
 
-* :py:class:`~txpipe.noise_maps.TXNoiseMapsJax` - Generate noise realisations of lens and source maps using JAX
+* :py:class:`~txpipe.maps.auxiliary_maps.TXDepthMaps` - Generate depth maps from the lens photometry catalog.
 
-* :py:class:`~txpipe.auxiliary_maps.TXSourceAuxMapsBase` - Base class for stages that make auxiliary maps of the source catalog.
+* :py:class:`~txpipe.maps.auxiliary_maps.TXBrightObjectMaps` - Generate bright-object count maps from the lens photometry catalog.
 
-* :py:class:`~txpipe.auxiliary_maps.TXPSFMaps` - Make maps of the mean PSF ellipticity in each tomographic bin.
+* :py:class:`~txpipe.maps.auxiliary_maps.TXUniformDepthMap` - Generate a uniform depth map from the mask
 
-* :py:class:`~txpipe.auxiliary_maps.TXFlagMaps` - Make maps of how often each shear catalog flag bit is set.
+* :py:class:`~txpipe.maps.auxiliary_maps.TXPredictDensitySelectionFunction` - Model selection function across footprint using survey property maps.
 
-* :py:class:`~txpipe.auxiliary_maps.TXDepthMaps` - Generate depth maps from the lens photometry catalog.
+* :py:class:`~txpipe.maps.noise_maps.TXSourceNoiseMaps` - Generate realizations of shear noise maps with random rotations
 
-* :py:class:`~txpipe.auxiliary_maps.TXBrightObjectMaps` - Generate bright-object count maps from the lens photometry catalog.
+* :py:class:`~txpipe.maps.noise_maps.TXLensNoiseMaps` - Generate lens density noise realizations using random splits
 
-* :py:class:`~txpipe.auxiliary_maps.TXUniformDepthMap` - Generate a uniform depth map from the mask
+* :py:class:`~txpipe.maps.noise_maps.TXExternalLensNoiseMaps` - Generate lens density noise realizations using random splits of an external catalog
 
-* :py:class:`~txpipe.auxiliary_maps.TXPredictDensitySelectionFunction` - Model selection function across footprint using survey property maps.
+* :py:class:`~txpipe.maps.noise_maps.TXNoiseMapsJax` - Generate noise realisations of lens and source maps using JAX
 
-* :py:class:`~txpipe.convergence.TXConvergenceMaps` - Make a convergence map from a source map using Kaiser-Squires
+* :py:class:`~txpipe.maps.convergence.TXConvergenceMaps` - Make a convergence map from a source map using Kaiser-Squires
 
-* :py:class:`~txpipe.map_correlations.TXMapCorrelations` - Plot shear, density, and convergence correlations with survey property maps
+* :py:class:`~txpipe.maps.map_correlations.TXMapCorrelations` - Plot shear, density, and convergence correlations with survey property maps
 
 
 
-.. autotxclass:: txpipe.maps.TXBaseMaps
+.. autotxclass:: txpipe.maps.maps.TXBaseMaps
     :members:
     :exclude-members: run
 
@@ -60,7 +60,7 @@ plotting.
 
 
 
-.. autotxclass:: txpipe.maps.TXSourceMaps
+.. autotxclass:: txpipe.maps.maps.TXSourceMaps
     :members:
     :exclude-members: run
 
@@ -94,7 +94,7 @@ plotting.
 
 
 
-.. autotxclass:: txpipe.maps.TXLensMaps
+.. autotxclass:: txpipe.maps.maps.TXLensMaps
     :members:
     :exclude-members: run
 
@@ -128,7 +128,7 @@ plotting.
 
 
 
-.. autotxclass:: txpipe.maps.TXDensityMaps
+.. autotxclass:: txpipe.maps.maps.TXDensityMaps
     :members:
     :exclude-members: run
 
@@ -154,127 +154,7 @@ plotting.
 
 
 
-.. autotxclass:: txpipe.noise_maps.TXSourceNoiseMaps
-    :members:
-    :exclude-members: run
-
-    Inputs: 
-
-    - shear_catalog: ShearCatalog
-    - shear_tomography_catalog: TomographyCatalog
-    - mask: MapsFile
-
-    Outputs: 
-
-    - source_noise_maps: LensingNoiseMaps
-    
-    Parallel: Yes - MPI
-
-
-    .. collapse:: Configuration
-
-        .. raw:: html
-
-            <UL>
-            <LI><strong>chunk_rows</strong>: (int) Default=100000. Number of rows to process in each chunk.</LI>
-            <LI><strong>lensing_realizations</strong>: (int) Default=30. Number of lensing noise realizations to generate.</LI>
-            <LI><strong>true_shear</strong>: (bool) Default=False. Whether to use true shear values for noise maps.</LI>
-            </UL>
-
-
-
-.. autotxclass:: txpipe.noise_maps.TXLensNoiseMaps
-    :members:
-    :exclude-members: run
-
-    Inputs: 
-
-    - lens_tomography_catalog: TomographyCatalog
-    - photometry_catalog: HDFFile
-    - mask: MapsFile
-
-    Outputs: 
-
-    - lens_noise_maps: ClusteringNoiseMaps
-    
-    Parallel: Yes - MPI
-
-
-    .. collapse:: Configuration
-
-        .. raw:: html
-
-            <UL>
-            <LI><strong>chunk_rows</strong>: (int) Default=100000. Number of rows to process in each chunk.</LI>
-            <LI><strong>clustering_realizations</strong>: (int) Default=1. Number of clustering noise realizations to generate.</LI>
-            <LI><strong>mask_in_weights</strong>: (bool) Default=False. Whether to include mask in weight calculations.</LI>
-            </UL>
-
-
-
-.. autotxclass:: txpipe.noise_maps.TXExternalLensNoiseMaps
-    :members:
-    :exclude-members: run
-
-    Inputs: 
-
-    - lens_tomography_catalog: TomographyCatalog
-    - lens_catalog: HDFFile
-    - mask: MapsFile
-
-    Outputs: 
-
-    - lens_noise_maps: ClusteringNoiseMaps
-    
-    Parallel: Yes - MPI
-
-
-    .. collapse:: Configuration
-
-        .. raw:: html
-
-            <UL>
-            <LI><strong>chunk_rows</strong>: (int) Default=100000. Number of rows to process in each chunk.</LI>
-            <LI><strong>clustering_realizations</strong>: (int) Default=1. Number of clustering noise realizations to generate.</LI>
-            <LI><strong>mask_in_weights</strong>: (bool) Default=False. Whether to include mask in weight calculations.</LI>
-            </UL>
-
-
-
-.. autotxclass:: txpipe.noise_maps.TXNoiseMapsJax
-    :members:
-    :exclude-members: run
-
-    Inputs: 
-
-    - shear_catalog: ShearCatalog
-    - lens_tomography_catalog: TomographyCatalog
-    - shear_tomography_catalog: TomographyCatalog
-    - mask: MapsFile
-    - lens_maps: MapsFile
-
-    Outputs: 
-
-    - source_noise_maps: LensingNoiseMaps
-    - lens_noise_maps: ClusteringNoiseMaps
-    
-    Parallel: Yes - MPI
-
-
-    .. collapse:: Configuration
-
-        .. raw:: html
-
-            <UL>
-            <LI><strong>chunk_rows</strong>: (int) Default=4000000. Number of rows to process in each chunk.</LI>
-            <LI><strong>lensing_realizations</strong>: (int) Default=30. Number of lensing realizations.</LI>
-            <LI><strong>clustering_realizations</strong>: (int) Default=1. Number of clustering realizations.</LI>
-            <LI><strong>seed</strong>: (int) Default=0. Random seed for reproducibility.</LI>
-            </UL>
-
-
-
-.. autotxclass:: txpipe.auxiliary_maps.TXSourceAuxMapsBase
+.. autotxclass:: txpipe.maps.auxiliary_maps.TXSourceAuxMapsBase
     :members:
     :exclude-members: run
 
@@ -294,7 +174,7 @@ plotting.
 
 
 
-.. autotxclass:: txpipe.auxiliary_maps.TXPSFMaps
+.. autotxclass:: txpipe.maps.auxiliary_maps.TXPSFMaps
     :members:
     :exclude-members: run
 
@@ -331,7 +211,7 @@ plotting.
 
 
 
-.. autotxclass:: txpipe.auxiliary_maps.TXFlagMaps
+.. autotxclass:: txpipe.maps.auxiliary_maps.TXFlagMaps
     :members:
     :exclude-members: run
 
@@ -367,7 +247,7 @@ plotting.
 
 
 
-.. autotxclass:: txpipe.auxiliary_maps.TXDepthMaps
+.. autotxclass:: txpipe.maps.auxiliary_maps.TXDepthMaps
     :members:
     :exclude-members: run
 
@@ -395,7 +275,7 @@ plotting.
 
 
 
-.. autotxclass:: txpipe.auxiliary_maps.TXBrightObjectMaps
+.. autotxclass:: txpipe.maps.auxiliary_maps.TXBrightObjectMaps
     :members:
     :exclude-members: run
 
@@ -421,7 +301,7 @@ plotting.
 
 
 
-.. autotxclass:: txpipe.auxiliary_maps.TXUniformDepthMap
+.. autotxclass:: txpipe.maps.auxiliary_maps.TXUniformDepthMap
     :members:
     :exclude-members: run
 
@@ -446,7 +326,7 @@ plotting.
 
 
 
-.. autotxclass:: txpipe.auxiliary_maps.TXPredictDensitySelectionFunction
+.. autotxclass:: txpipe.maps.auxiliary_maps.TXPredictDensitySelectionFunction
     :members:
     :exclude-members: run
 
@@ -489,7 +369,127 @@ plotting.
 
 
 
-.. autotxclass:: txpipe.convergence.TXConvergenceMaps
+.. autotxclass:: txpipe.maps.noise_maps.TXSourceNoiseMaps
+    :members:
+    :exclude-members: run
+
+    Inputs: 
+
+    - shear_catalog: ShearCatalog
+    - shear_tomography_catalog: TomographyCatalog
+    - mask: MapsFile
+
+    Outputs: 
+
+    - source_noise_maps: LensingNoiseMaps
+    
+    Parallel: Yes - MPI
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>chunk_rows</strong>: (int) Default=100000. Number of rows to process in each chunk.</LI>
+            <LI><strong>lensing_realizations</strong>: (int) Default=30. Number of lensing noise realizations to generate.</LI>
+            <LI><strong>true_shear</strong>: (bool) Default=False. Whether to use true shear values for noise maps.</LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.maps.noise_maps.TXLensNoiseMaps
+    :members:
+    :exclude-members: run
+
+    Inputs: 
+
+    - lens_tomography_catalog: TomographyCatalog
+    - photometry_catalog: HDFFile
+    - mask: MapsFile
+
+    Outputs: 
+
+    - lens_noise_maps: ClusteringNoiseMaps
+    
+    Parallel: Yes - MPI
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>chunk_rows</strong>: (int) Default=100000. Number of rows to process in each chunk.</LI>
+            <LI><strong>clustering_realizations</strong>: (int) Default=1. Number of clustering noise realizations to generate.</LI>
+            <LI><strong>mask_in_weights</strong>: (bool) Default=False. Whether to include mask in weight calculations.</LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.maps.noise_maps.TXExternalLensNoiseMaps
+    :members:
+    :exclude-members: run
+
+    Inputs: 
+
+    - lens_tomography_catalog: TomographyCatalog
+    - lens_catalog: HDFFile
+    - mask: MapsFile
+
+    Outputs: 
+
+    - lens_noise_maps: ClusteringNoiseMaps
+    
+    Parallel: Yes - MPI
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>chunk_rows</strong>: (int) Default=100000. Number of rows to process in each chunk.</LI>
+            <LI><strong>clustering_realizations</strong>: (int) Default=1. Number of clustering noise realizations to generate.</LI>
+            <LI><strong>mask_in_weights</strong>: (bool) Default=False. Whether to include mask in weight calculations.</LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.maps.noise_maps.TXNoiseMapsJax
+    :members:
+    :exclude-members: run
+
+    Inputs: 
+
+    - shear_catalog: ShearCatalog
+    - lens_tomography_catalog: TomographyCatalog
+    - shear_tomography_catalog: TomographyCatalog
+    - mask: MapsFile
+    - lens_maps: MapsFile
+
+    Outputs: 
+
+    - source_noise_maps: LensingNoiseMaps
+    - lens_noise_maps: ClusteringNoiseMaps
+    
+    Parallel: Yes - MPI
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>chunk_rows</strong>: (int) Default=4000000. Number of rows to process in each chunk.</LI>
+            <LI><strong>lensing_realizations</strong>: (int) Default=30. Number of lensing realizations.</LI>
+            <LI><strong>clustering_realizations</strong>: (int) Default=1. Number of clustering realizations.</LI>
+            <LI><strong>seed</strong>: (int) Default=0. Random seed for reproducibility.</LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.maps.convergence.TXConvergenceMaps
     :members:
     :exclude-members: run
 
@@ -515,7 +515,7 @@ plotting.
 
 
 
-.. autotxclass:: txpipe.map_correlations.TXMapCorrelations
+.. autotxclass:: txpipe.maps.map_correlations.TXMapCorrelations
     :members:
     :exclude-members: run
 

@@ -4,27 +4,27 @@ Lens Selection
 These stages deal with selecting lens objects and assigning them to
 tomographic bins.
 
-* :py:class:`~txpipe.lens_selector.TXBaseLensSelector` - Base class for lens object selection, using the BOSS Target Selection.
+* :py:class:`~txpipe.selection.lens_selector.TXBaseLensSelector` - Base class for lens object selection, using the BOSS Target Selection.
 
-* :py:class:`~txpipe.lens_selector.TXTruthLensSelector` - Select lens objects based on true redshifts and BOSS criteria
+* :py:class:`~txpipe.selection.lens_selector.TXTruthLensSelector` - Select lens objects based on true redshifts and BOSS criteria
 
-* :py:class:`~txpipe.lens_selector.TXMeanLensSelector` - Select lens objects based on mean redshifts and BOSS criteria
+* :py:class:`~txpipe.selection.lens_selector.TXMeanLensSelector` - Select lens objects based on mean redshifts and BOSS criteria
 
-* :py:class:`~txpipe.lens_selector.TXModeLensSelector` - Select lens objects based on best-fit redshifts and BOSS criteria
+* :py:class:`~txpipe.selection.lens_selector.TXModeLensSelector` - Select lens objects based on best-fit redshifts and BOSS criteria
 
-* :py:class:`~txpipe.lens_selector.TXCustomLensSelector` - Select lens objects based on pre-computed redshifts.
+* :py:class:`~txpipe.selection.lens_selector.TXCustomLensSelector` - Select lens objects based on pre-computed redshifts.
 
-* :py:class:`~txpipe.lens_selector.TXRandomForestLensSelector` - Select lens objects and assign them to bins using a random forest classifier.
+* :py:class:`~txpipe.selection.lens_selector.TXRandomForestLensSelector` - Select lens objects and assign them to bins using a random forest classifier.
 
-* :py:class:`~txpipe.lens_selector.TXDESISelector` - Select lens galaxies from a DESI spectroscopic FITS catalog.
+* :py:class:`~txpipe.selection.lens_selector.TXDESISelector` - Select lens galaxies from a DESI spectroscopic FITS catalog.
 
-* :py:class:`~txpipe.lens_selector.TXDESIMockSelector` - Select lens galaxies from a DESI mock Parquet catalog.
+* :py:class:`~txpipe.selection.lens_selector.TXDESIMockSelector` - Select lens galaxies from a DESI mock Parquet catalog.
 
-* :py:class:`~txpipe.lens_selector.TXDESIMultiMockSelector` - Select lens galaxies from a list of DESI mock Parquet catalogs.
+* :py:class:`~txpipe.selection.lens_selector.TXDESIMultiMockSelector` - Select lens galaxies from a list of DESI mock Parquet catalogs.
 
 
 
-.. autotxclass:: txpipe.lens_selector.TXBaseLensSelector
+.. autotxclass:: txpipe.selection.lens_selector.TXBaseLensSelector
     :members:
     :exclude-members: run
 
@@ -62,7 +62,7 @@ tomographic bins.
 
 
 
-.. autotxclass:: txpipe.lens_selector.TXTruthLensSelector
+.. autotxclass:: txpipe.selection.lens_selector.TXTruthLensSelector
     :members:
     :exclude-members: run
 
@@ -102,48 +102,7 @@ tomographic bins.
 
 
 
-.. autotxclass:: txpipe.lens_selector.TXMeanLensSelector
-    :members:
-    :exclude-members: run
-
-    Inputs: 
-
-    - photometry_catalog: PhotometryCatalog
-    - lens_photoz_pdfs: HDFFile
-
-    Outputs: 
-
-    - lens_tomography_catalog_unweighted: TomographyCatalog
-    
-    Parallel: Yes - MPI
-
-
-    .. collapse:: Configuration
-
-        .. raw:: html
-
-            <UL>
-            <LI><strong>verbose</strong>: (bool) Default=False. Enable verbose output for lens selection.</LI>
-            <LI><strong>chunk_rows</strong>: (int) Default=10000. Number of rows to process in each chunk.</LI>
-            <LI><strong>lens_zbin_edges</strong>: (list) Default=[&lt;class &#x27;float&#x27;&gt;]. Edges of lens redshift bins.</LI>
-            <LI><strong>cperp_cut</strong>: (float) Default=0.2. cperp cut for BOSS selection.</LI>
-            <LI><strong>r_cpar_cut</strong>: (float) Default=13.5. r_cpar cut for BOSS selection.</LI>
-            <LI><strong>r_lo_cut</strong>: (float) Default=16.0. Lower r-band magnitude cut.</LI>
-            <LI><strong>r_hi_cut</strong>: (float) Default=19.6. Upper r-band magnitude cut.</LI>
-            <LI><strong>i_lo_cut</strong>: (float) Default=17.5. Lower i-band magnitude cut.</LI>
-            <LI><strong>i_hi_cut</strong>: (float) Default=19.9. Upper i-band magnitude cut.</LI>
-            <LI><strong>r_i_cut</strong>: (float) Default=2.0. r-i color cut.</LI>
-            <LI><strong>random_seed</strong>: (int) Default=42. Random seed for reproducibility.</LI>
-            <LI><strong>selection_type</strong>: (str) Default=boss. Type of lens selection (e.g., boss).</LI>
-            <LI><strong>maglim_band</strong>: (str) Default=i. Band for magnitude limit.</LI>
-            <LI><strong>maglim_limit</strong>: (float) Default=24.1. Magnitude limit value.</LI>
-            <LI><strong>extra_cols</strong>: (list) Default=[&#x27;&#x27;]. Extra columns to include in output.</LI>
-            <LI><strong>apply_mask</strong>: (bool) Default=False. Whether to apply a mask to the selection.</LI>
-            </UL>
-
-
-
-.. autotxclass:: txpipe.lens_selector.TXModeLensSelector
+.. autotxclass:: txpipe.selection.lens_selector.TXMeanLensSelector
     :members:
     :exclude-members: run
 
@@ -184,7 +143,48 @@ tomographic bins.
 
 
 
-.. autotxclass:: txpipe.lens_selector.TXCustomLensSelector
+.. autotxclass:: txpipe.selection.lens_selector.TXModeLensSelector
+    :members:
+    :exclude-members: run
+
+    Inputs: 
+
+    - photometry_catalog: PhotometryCatalog
+    - lens_photoz_pdfs: HDFFile
+
+    Outputs: 
+
+    - lens_tomography_catalog_unweighted: TomographyCatalog
+    
+    Parallel: Yes - MPI
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>verbose</strong>: (bool) Default=False. Enable verbose output for lens selection.</LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=10000. Number of rows to process in each chunk.</LI>
+            <LI><strong>lens_zbin_edges</strong>: (list) Default=[&lt;class &#x27;float&#x27;&gt;]. Edges of lens redshift bins.</LI>
+            <LI><strong>cperp_cut</strong>: (float) Default=0.2. cperp cut for BOSS selection.</LI>
+            <LI><strong>r_cpar_cut</strong>: (float) Default=13.5. r_cpar cut for BOSS selection.</LI>
+            <LI><strong>r_lo_cut</strong>: (float) Default=16.0. Lower r-band magnitude cut.</LI>
+            <LI><strong>r_hi_cut</strong>: (float) Default=19.6. Upper r-band magnitude cut.</LI>
+            <LI><strong>i_lo_cut</strong>: (float) Default=17.5. Lower i-band magnitude cut.</LI>
+            <LI><strong>i_hi_cut</strong>: (float) Default=19.9. Upper i-band magnitude cut.</LI>
+            <LI><strong>r_i_cut</strong>: (float) Default=2.0. r-i color cut.</LI>
+            <LI><strong>random_seed</strong>: (int) Default=42. Random seed for reproducibility.</LI>
+            <LI><strong>selection_type</strong>: (str) Default=boss. Type of lens selection (e.g., boss).</LI>
+            <LI><strong>maglim_band</strong>: (str) Default=i. Band for magnitude limit.</LI>
+            <LI><strong>maglim_limit</strong>: (float) Default=24.1. Magnitude limit value.</LI>
+            <LI><strong>extra_cols</strong>: (list) Default=[&#x27;&#x27;]. Extra columns to include in output.</LI>
+            <LI><strong>apply_mask</strong>: (bool) Default=False. Whether to apply a mask to the selection.</LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.selection.lens_selector.TXCustomLensSelector
     :members:
     :exclude-members: run
 
@@ -226,7 +226,7 @@ tomographic bins.
 
 
 
-.. autotxclass:: txpipe.lens_selector.TXRandomForestLensSelector
+.. autotxclass:: txpipe.selection.lens_selector.TXRandomForestLensSelector
     :members:
     :exclude-members: run
 
@@ -270,7 +270,7 @@ tomographic bins.
 
 
 
-.. autotxclass:: txpipe.lens_selector.TXDESISelector
+.. autotxclass:: txpipe.selection.lens_selector.TXDESISelector
     :members:
     :exclude-members: run
 
@@ -305,7 +305,7 @@ tomographic bins.
 
 
 
-.. autotxclass:: txpipe.lens_selector.TXDESIMockSelector
+.. autotxclass:: txpipe.selection.lens_selector.TXDESIMockSelector
     :members:
     :exclude-members: run
 
@@ -340,7 +340,7 @@ tomographic bins.
 
 
 
-.. autotxclass:: txpipe.lens_selector.TXDESIMultiMockSelector
+.. autotxclass:: txpipe.selection.lens_selector.TXDESIMultiMockSelector
     :members:
     :exclude-members: run
 

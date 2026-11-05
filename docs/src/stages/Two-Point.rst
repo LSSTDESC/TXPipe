@@ -3,31 +3,31 @@ Two-Point
 
 These stages deal with measuring or predicting two-point statistics.
 
-* :py:class:`~txpipe.random_cats.TXRandomCat` - Generate a catalog of randomly positioned points
+* :py:class:`~txpipe.randoms.random_cats.TXRandomCat` - Generate a catalog of randomly positioned points
 
-* :py:class:`~txpipe.random_cats.TXSubsampleRandoms` - Randomly subsample the binned random catalog and save catalog
+* :py:class:`~txpipe.randoms.random_cats.TXSubsampleRandoms` - Randomly subsample the binned random catalog and save catalog
 
-* :py:class:`~txpipe.twopoint_fourier.TXTwoPointFourier` - Make Fourier space 3x2pt measurements using NaMaster
+* :py:class:`~txpipe.twopoint.twopoint.TXTwoPoint` - Make 2pt measurements using TreeCorr
 
-* :py:class:`~txpipe.twopoint_fourier.TXTwoPointFourierCatalog` - Make Fourier space 3x2pt measurements directly from catalogues using NaMaster
+* :py:class:`~txpipe.twopoint.twopoint.TXTwoPointPixel` - This subclass of the standard TXTwoPoint uses maps to compute
 
-* :py:class:`~txpipe.twopoint.TXTwoPoint` - Make 2pt measurements using TreeCorr
+* :py:class:`~txpipe.twopoint.twopoint.TXTwoPointPixelExtCross` - TXTwoPointPixel - External - Cross correlation
 
-* :py:class:`~txpipe.twopoint.TXTwoPointPixel` - This subclass of the standard TXTwoPoint uses maps to compute
+* :py:class:`~txpipe.theory.theory.TXTwoPointTheoryReal` - Compute theory predictions for real-space 3x2pt measurements.
 
-* :py:class:`~txpipe.twopoint.TXTwoPointPixelExtCross` - TXTwoPointPixel - External - Cross correlation
+* :py:class:`~txpipe.theory.theory.TXTwoPointTheoryFourier` - Compute theory predictions for Fourier-space 3x2pt measurements.
 
-* :py:class:`~txpipe.theory.TXTwoPointTheoryReal` - Compute theory predictions for real-space 3x2pt measurements.
+* :py:class:`~txpipe.twopoint.twopoint_fourier.TXTwoPointFourier` - Make Fourier space 3x2pt measurements using NaMaster
 
-* :py:class:`~txpipe.theory.TXTwoPointTheoryFourier` - Compute theory predictions for Fourier-space 3x2pt measurements.
+* :py:class:`~txpipe.twopoint.twopoint_fourier.TXTwoPointFourierCatalog` - Make Fourier space 3x2pt measurements directly from catalogues using NaMaster
 
-* :py:class:`~txpipe.jackknife.TXJackknifeCenters` - Generate jack-knife centers from random catalogs.
+* :py:class:`~txpipe.twopoint.jackknife.TXJackknifeCenters` - Generate jack-knife centers from random catalogs.
 
-* :py:class:`~txpipe.jackknife.TXJackknifeCentersSource` - Generate jack-knife centers from a shear catalog.
+* :py:class:`~txpipe.twopoint.jackknife.TXJackknifeCentersSource` - Generate jack-knife centers from a shear catalog.
 
 
 
-.. autotxclass:: txpipe.random_cats.TXRandomCat
+.. autotxclass:: txpipe.randoms.random_cats.TXRandomCat
     :members:
     :exclude-members: run
 
@@ -63,7 +63,7 @@ These stages deal with measuring or predicting two-point statistics.
 
 
 
-.. autotxclass:: txpipe.random_cats.TXSubsampleRandoms
+.. autotxclass:: txpipe.randoms.random_cats.TXSubsampleRandoms
     :members:
     :exclude-members: run
 
@@ -89,114 +89,7 @@ These stages deal with measuring or predicting two-point statistics.
 
 
 
-.. autotxclass:: txpipe.twopoint_fourier.TXTwoPointFourier
-    :members:
-    :exclude-members: run
-
-    Inputs: 
-
-    - shear_photoz_stack: QPNOfZFile
-    - lens_photoz_stack: QPNOfZFile
-    - fiducial_cosmology: FiducialCosmology
-    - tracer_metadata: HDFFile
-    - lens_maps: MapsFile
-    - source_maps: MapsFile
-    - density_maps: MapsFile
-    - mask: MapsFile
-    - source_noise_maps: LensingNoiseMaps
-    - lens_noise_maps: ClusteringNoiseMaps
-
-    Outputs: 
-
-    - twopoint_data_fourier: SACCFile
-    
-    Parallel: Yes - MPI
-
-
-    .. collapse:: Configuration
-
-        .. raw:: html
-
-            <UL>
-            <LI><strong>mask_threshold</strong>: (float) Default=0.0. Threshold for masking pixels</LI>
-            <LI><strong>flip_g1</strong>: (bool) Default=False. Whether to flip the sign of g1</LI>
-            <LI><strong>flip_g2</strong>: (bool) Default=False. Whether to flip the sign of g2</LI>
-            <LI><strong>cache_dir</strong>: (str) Default=./cache/twopoint_fourier. Directory for caching intermediate results</LI>
-            <LI><strong>low_mem</strong>: (bool) Default=False. Whether to use low memory mode</LI>
-            <LI><strong>deproject_syst_clustering</strong>: (bool) Default=False. Whether to deproject systematic modes from clustering</LI>
-            <LI><strong>systmaps_clustering_dir</strong>: (str) Default=. Directory containing systematic maps for clustering</LI>
-            <LI><strong>ell_min</strong>: (int) Default=100. Minimum ell value for power spectra</LI>
-            <LI><strong>ell_max</strong>: (int) Default=1500. Maximum ell value for power spectra</LI>
-            <LI><strong>n_ell</strong>: (int) Default=20. Number of ell bins</LI>
-            <LI><strong>ell_spacing</strong>: (str) Default=log. Spacing of ell bins (log or linear)</LI>
-            <LI><strong>true_shear</strong>: (bool) Default=False. Whether to use true shear values</LI>
-            <LI><strong>analytic_noise</strong>: (bool) Default=False. Whether to use analytic noise estimates</LI>
-            <LI><strong>gaussian_sims_factor</strong>: (list) Default=[1.0]. Factor by which to decrease lens density to account for increased density contrast.</LI>
-            <LI><strong>b0</strong>: (float) Default=1.0. Galaxy bias parameter</LI>
-            <LI><strong>do_shear_shear</strong>: (bool) Default=True. Whether to compute shear-shear power spectra</LI>
-            <LI><strong>do_shear_pos</strong>: (bool) Default=True. Whether to compute shear-position power spectra</LI>
-            <LI><strong>do_pos_pos</strong>: (bool) Default=True. Whether to compute position-position power spectra</LI>
-            <LI><strong>compute_theory</strong>: (bool) Default=True. Whether to compute theory predictions</LI>
-            </UL>
-
-
-
-.. autotxclass:: txpipe.twopoint_fourier.TXTwoPointFourierCatalog
-    :members:
-    :exclude-members: run
-
-    Inputs: 
-
-    - binned_shear_catalog: BinnedCatalog
-    - binned_lens_catalog: BinnedCatalog
-    - binned_random_catalog: BinnedCatalog
-    - tracer_metadata: HDFFile
-    - shear_photoz_stack: QPNOfZFile
-    - lens_photoz_stack: QPNOfZFile
-    - mask: MapsFile
-    - fiducial_cosmology: FiducialCosmology
-    - source_maps: MapsFile
-    - lens_maps: MapsFile
-
-    Outputs: 
-
-    - twopoint_data_fourier_cat: SACCFile
-    
-    Parallel: Yes - MPI
-
-
-    .. collapse:: Configuration
-
-        .. raw:: html
-
-            <UL>
-            <LI><strong>mask_threshold</strong>: (float) Default=0.0. Threshold for masking pixels</LI>
-            <LI><strong>flip_g1</strong>: (bool) Default=False. Whether to flip the sign of g1</LI>
-            <LI><strong>flip_g2</strong>: (bool) Default=False. Whether to flip the sign of g2</LI>
-            <LI><strong>cache_dir</strong>: (str) Default=./cache/twopoint_fourier. Directory for caching intermediate results</LI>
-            <LI><strong>low_mem</strong>: (bool) Default=False. Whether to use low memory mode</LI>
-            <LI><strong>deproject_syst_clustering</strong>: (bool) Default=False. Whether to deproject systematic modes from clustering</LI>
-            <LI><strong>systmaps_clustering_dir</strong>: (str) Default=. Directory containing systematic maps for clustering</LI>
-            <LI><strong>ell_min</strong>: (int) Default=100. Minimum ell value for power spectra</LI>
-            <LI><strong>ell_max</strong>: (int) Default=1500. Maximum ell value for power spectra</LI>
-            <LI><strong>n_ell</strong>: (int) Default=20. Number of ell bins</LI>
-            <LI><strong>ell_spacing</strong>: (str) Default=log. Spacing of ell bins (log or linear)</LI>
-            <LI><strong>true_shear</strong>: (bool) Default=False. Whether to use true shear values</LI>
-            <LI><strong>analytic_noise</strong>: (bool) Default=False. Whether to use analytic noise estimates</LI>
-            <LI><strong>gaussian_sims_factor</strong>: (list) Default=[1.0]. Factor by which to decrease lens density to account for increased density contrast.</LI>
-            <LI><strong>b0</strong>: (float) Default=1.0. Galaxy bias parameter</LI>
-            <LI><strong>do_shear_shear</strong>: (bool) Default=True. Whether to compute shear-shear power spectra</LI>
-            <LI><strong>do_shear_pos</strong>: (bool) Default=True. Whether to compute shear-position power spectra</LI>
-            <LI><strong>do_pos_pos</strong>: (bool) Default=True. Whether to compute position-position power spectra</LI>
-            <LI><strong>compute_theory</strong>: (bool) Default=True. Whether to compute theory predictions</LI>
-            <LI><strong>use_randoms_clustering</strong>: (bool) Default=False. Whether to use randoms instead of a map-based mask for clustering</LI>
-            <LI><strong>calc_noise_dp_bias</strong>: (bool) Default=False. Whether to analytically compute bias in the shot noise component induced by deprojection.</LI>
-            <LI><strong>ell_max_deproj</strong>: (int) Default=-1. A parameter</LI>
-            </UL>
-
-
-
-.. autotxclass:: txpipe.twopoint.TXTwoPoint
+.. autotxclass:: txpipe.twopoint.twopoint.TXTwoPoint
     :members:
     :exclude-members: run
 
@@ -254,7 +147,7 @@ These stages deal with measuring or predicting two-point statistics.
 
 
 
-.. autotxclass:: txpipe.twopoint.TXTwoPointPixel
+.. autotxclass:: txpipe.twopoint.twopoint.TXTwoPointPixel
     :members:
     :exclude-members: run
 
@@ -314,7 +207,7 @@ These stages deal with measuring or predicting two-point statistics.
 
 
 
-.. autotxclass:: txpipe.twopoint.TXTwoPointPixelExtCross
+.. autotxclass:: txpipe.twopoint.twopoint.TXTwoPointPixelExtCross
     :members:
     :exclude-members: run
 
@@ -376,7 +269,7 @@ These stages deal with measuring or predicting two-point statistics.
 
 
 
-.. autotxclass:: txpipe.theory.TXTwoPointTheoryReal
+.. autotxclass:: txpipe.theory.theory.TXTwoPointTheoryReal
     :members:
     :exclude-members: run
 
@@ -403,7 +296,7 @@ These stages deal with measuring or predicting two-point statistics.
 
 
 
-.. autotxclass:: txpipe.theory.TXTwoPointTheoryFourier
+.. autotxclass:: txpipe.theory.theory.TXTwoPointTheoryFourier
     :members:
     :exclude-members: run
 
@@ -430,7 +323,114 @@ These stages deal with measuring or predicting two-point statistics.
 
 
 
-.. autotxclass:: txpipe.jackknife.TXJackknifeCenters
+.. autotxclass:: txpipe.twopoint.twopoint_fourier.TXTwoPointFourier
+    :members:
+    :exclude-members: run
+
+    Inputs: 
+
+    - shear_photoz_stack: QPNOfZFile
+    - lens_photoz_stack: QPNOfZFile
+    - fiducial_cosmology: FiducialCosmology
+    - tracer_metadata: HDFFile
+    - lens_maps: MapsFile
+    - source_maps: MapsFile
+    - density_maps: MapsFile
+    - mask: MapsFile
+    - source_noise_maps: LensingNoiseMaps
+    - lens_noise_maps: ClusteringNoiseMaps
+
+    Outputs: 
+
+    - twopoint_data_fourier: SACCFile
+    
+    Parallel: Yes - MPI
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>mask_threshold</strong>: (float) Default=0.0. Threshold for masking pixels</LI>
+            <LI><strong>flip_g1</strong>: (bool) Default=False. Whether to flip the sign of g1</LI>
+            <LI><strong>flip_g2</strong>: (bool) Default=False. Whether to flip the sign of g2</LI>
+            <LI><strong>cache_dir</strong>: (str) Default=./cache/twopoint_fourier. Directory for caching intermediate results</LI>
+            <LI><strong>low_mem</strong>: (bool) Default=False. Whether to use low memory mode</LI>
+            <LI><strong>deproject_syst_clustering</strong>: (bool) Default=False. Whether to deproject systematic modes from clustering</LI>
+            <LI><strong>systmaps_clustering_dir</strong>: (str) Default=. Directory containing systematic maps for clustering</LI>
+            <LI><strong>ell_min</strong>: (int) Default=100. Minimum ell value for power spectra</LI>
+            <LI><strong>ell_max</strong>: (int) Default=1500. Maximum ell value for power spectra</LI>
+            <LI><strong>n_ell</strong>: (int) Default=20. Number of ell bins</LI>
+            <LI><strong>ell_spacing</strong>: (str) Default=log. Spacing of ell bins (log or linear)</LI>
+            <LI><strong>true_shear</strong>: (bool) Default=False. Whether to use true shear values</LI>
+            <LI><strong>analytic_noise</strong>: (bool) Default=False. Whether to use analytic noise estimates</LI>
+            <LI><strong>gaussian_sims_factor</strong>: (list) Default=[1.0]. Factor by which to decrease lens density to account for increased density contrast.</LI>
+            <LI><strong>b0</strong>: (float) Default=1.0. Galaxy bias parameter</LI>
+            <LI><strong>do_shear_shear</strong>: (bool) Default=True. Whether to compute shear-shear power spectra</LI>
+            <LI><strong>do_shear_pos</strong>: (bool) Default=True. Whether to compute shear-position power spectra</LI>
+            <LI><strong>do_pos_pos</strong>: (bool) Default=True. Whether to compute position-position power spectra</LI>
+            <LI><strong>compute_theory</strong>: (bool) Default=True. Whether to compute theory predictions</LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.twopoint.twopoint_fourier.TXTwoPointFourierCatalog
+    :members:
+    :exclude-members: run
+
+    Inputs: 
+
+    - binned_shear_catalog: BinnedCatalog
+    - binned_lens_catalog: BinnedCatalog
+    - binned_random_catalog: BinnedCatalog
+    - tracer_metadata: HDFFile
+    - shear_photoz_stack: QPNOfZFile
+    - lens_photoz_stack: QPNOfZFile
+    - mask: MapsFile
+    - fiducial_cosmology: FiducialCosmology
+    - source_maps: MapsFile
+    - lens_maps: MapsFile
+
+    Outputs: 
+
+    - twopoint_data_fourier_cat: SACCFile
+    
+    Parallel: Yes - MPI
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>mask_threshold</strong>: (float) Default=0.0. Threshold for masking pixels</LI>
+            <LI><strong>flip_g1</strong>: (bool) Default=False. Whether to flip the sign of g1</LI>
+            <LI><strong>flip_g2</strong>: (bool) Default=False. Whether to flip the sign of g2</LI>
+            <LI><strong>cache_dir</strong>: (str) Default=./cache/twopoint_fourier. Directory for caching intermediate results</LI>
+            <LI><strong>low_mem</strong>: (bool) Default=False. Whether to use low memory mode</LI>
+            <LI><strong>deproject_syst_clustering</strong>: (bool) Default=False. Whether to deproject systematic modes from clustering</LI>
+            <LI><strong>systmaps_clustering_dir</strong>: (str) Default=. Directory containing systematic maps for clustering</LI>
+            <LI><strong>ell_min</strong>: (int) Default=100. Minimum ell value for power spectra</LI>
+            <LI><strong>ell_max</strong>: (int) Default=1500. Maximum ell value for power spectra</LI>
+            <LI><strong>n_ell</strong>: (int) Default=20. Number of ell bins</LI>
+            <LI><strong>ell_spacing</strong>: (str) Default=log. Spacing of ell bins (log or linear)</LI>
+            <LI><strong>true_shear</strong>: (bool) Default=False. Whether to use true shear values</LI>
+            <LI><strong>analytic_noise</strong>: (bool) Default=False. Whether to use analytic noise estimates</LI>
+            <LI><strong>gaussian_sims_factor</strong>: (list) Default=[1.0]. Factor by which to decrease lens density to account for increased density contrast.</LI>
+            <LI><strong>b0</strong>: (float) Default=1.0. Galaxy bias parameter</LI>
+            <LI><strong>do_shear_shear</strong>: (bool) Default=True. Whether to compute shear-shear power spectra</LI>
+            <LI><strong>do_shear_pos</strong>: (bool) Default=True. Whether to compute shear-position power spectra</LI>
+            <LI><strong>do_pos_pos</strong>: (bool) Default=True. Whether to compute position-position power spectra</LI>
+            <LI><strong>compute_theory</strong>: (bool) Default=True. Whether to compute theory predictions</LI>
+            <LI><strong>use_randoms_clustering</strong>: (bool) Default=False. Whether to use randoms instead of a map-based mask for clustering</LI>
+            <LI><strong>calc_noise_dp_bias</strong>: (bool) Default=False. Whether to analytically compute bias in the shot noise component induced by deprojection.</LI>
+            <LI><strong>ell_max_deproj</strong>: (int) Default=-1. A parameter</LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.twopoint.jackknife.TXJackknifeCenters
     :members:
     :exclude-members: run
 
@@ -457,7 +457,7 @@ These stages deal with measuring or predicting two-point statistics.
 
 
 
-.. autotxclass:: txpipe.jackknife.TXJackknifeCentersSource
+.. autotxclass:: txpipe.twopoint.jackknife.TXJackknifeCentersSource
     :members:
     :exclude-members: run
 

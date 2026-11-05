@@ -3,15 +3,15 @@ Delta Sigma
 
 These stages measure and predict the excess surface density
 
-* :py:class:`~txpipe.delta_sigma.TXDeltaSigma` - Compute Delta-Sigma, the excess surface density around lenses.
+* :py:class:`~txpipe.twopoint.delta_sigma.TXDeltaSigma` - Compute Delta-Sigma, the excess surface density around lenses.
 
-* :py:class:`~txpipe.delta_sigma.TXDeltaSigmaTheory` - Compute theory predictions for the excess surface density Delta Sigma with dsf.
+* :py:class:`~txpipe.twopoint.delta_sigma.TXDeltaSigmaTheory` - Compute theory predictions for the excess surface density Delta Sigma with dsf.
 
-* :py:class:`~txpipe.delta_sigma.TXDeltaSigmaPlots` - Make plots of Delta Sigma results.
+* :py:class:`~txpipe.twopoint.delta_sigma.TXDeltaSigmaPlots` - Make plots of Delta Sigma results.
 
 
 
-.. autotxclass:: txpipe.delta_sigma.TXDeltaSigma
+.. autotxclass:: txpipe.twopoint.delta_sigma.TXDeltaSigma
     :members:
     :exclude-members: run
 
@@ -52,7 +52,7 @@ These stages measure and predict the excess surface density
 
 
 
-.. autotxclass:: txpipe.delta_sigma.TXDeltaSigmaTheory
+.. autotxclass:: txpipe.twopoint.delta_sigma.TXDeltaSigmaTheory
     :members:
     :exclude-members: run
 
@@ -86,7 +86,7 @@ These stages measure and predict the excess surface density
 
 
 
-.. autotxclass:: txpipe.delta_sigma.TXDeltaSigmaPlots
+.. autotxclass:: txpipe.twopoint.delta_sigma.TXDeltaSigmaPlots
     :members:
     :exclude-members: run
 

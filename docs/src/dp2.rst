@@ -13,7 +13,7 @@ Ingestion converts the DP2 products into the TXPipe formats described in :ref:`F
 - :py:class:`~txpipe.ingest.metaDetect.TXIngestDESCMetaDetectV1_1` ingests the DESC-run metadetect catalogs (version 1.1) into a :ref:`scalar metadetect catalog<Scalar metadetect catalogs>`.
 - :py:class:`~txpipe.ingest.metaDetect.TXIngestDP2Photometry` ingests the photometry catalog for the listed tracts.
 - :py:class:`~txpipe.ingest.metaDetect.TXIngestHealsparseMask` converts a healsparse mask file to a TXPipe mask.
-- :py:class:`~txpipe.masks.TXCutShearCatalog` can cut the ingested catalog down to a smaller region, to make test data sets.
+- :py:class:`~txpipe.maps.masks.TXCutShearCatalog` can cut the ingested catalog down to a smaller region, to make test data sets.
 
 The pipelines for these are ``examples/dp2/ingestion.yml`` (Rubin) and ``examples/dp2/ingestion1.1.yml`` (DESC version 1.1). They are marked as drafts in the files. The ingestion can be run in parallel with MPI, and the ``nprocess`` setting for each stage in the pipeline file controls this.
 
@@ -30,10 +30,10 @@ There are three analysis pipelines:
       - Selection and tomography
     * - ``analysis_rubin_metadetect.yml``
       - Rubin metadetect
-      - :py:class:`~txpipe.source_selection.TXDP2RubinMetadetectSelection`, with tomography from RAIL assignments collated by :py:class:`~txpipe.rail.summarize.PZCollateRailAssignmentsMetadetect`
+      - :py:class:`~txpipe.selection.source_selection.TXDP2RubinMetadetectSelection`, with tomography from RAIL assignments collated by :py:class:`~txpipe.photoz.rail.summarize.PZCollateRailAssignmentsMetadetect`
     * - ``analysis_desc_metadetect_1.1.yml``
       - DESC scalar metadetect v1.1
-      - :py:class:`~txpipe.source_selection.TXDP2DESCSelection`, with tomography from :py:class:`~txpipe.rail.summarize.PZCollateRailAssignmentsScalarMetadetect`
+      - :py:class:`~txpipe.selection.source_selection.TXDP2DESCSelection`, with tomography from :py:class:`~txpipe.photoz.rail.summarize.PZCollateRailAssignmentsScalarMetadetect`
     * - ``analysis1.1-mini.yml``
       - A 1 square degree subset
       - As for the DESC version, for quick tests
@@ -43,11 +43,11 @@ Each has a configuration file with the options for all the stages (``config_rubi
 The tomography in these pipelines uses a self-organizing map (SOM) in RAIL. In outline:
 
 1. The selection stage chooses the source sample.
-2. :py:class:`~txpipe.rail.summarize.PZGenerateSOMInformerSubsample` takes a random subsample of the selected objects to train the SOM.
+2. :py:class:`~txpipe.photoz.rail.summarize.PZGenerateSOMInformerSubsample` takes a random subsample of the selected objects to train the SOM.
 3. The RAIL SOM stages are trained, assign objects in each variant of the catalog to bins, and compute the tomographic n(z).
-4. :py:class:`~txpipe.rail.summarize.PZCollateRailAssignmentsMetadetect` (or the scalar version) gathers the assignments for all the variants into a :ref:`bin assignments file<Tomographic bin assignments>`.
+4. :py:class:`~txpipe.photoz.rail.summarize.PZCollateRailAssignmentsMetadetect` (or the scalar version) gathers the assignments for all the variants into a :ref:`bin assignments file<Tomographic bin assignments>`.
 5. The calibration stage computes the response of each bin, as for any other metadetect catalog, and the rest of the pipeline (maps, two-point measurements, covariance, diagnostics) follows the usual structure.
-6. :py:class:`~txpipe.rail.summarize.PZAddNonTomographicNZ` adds the non-tomographic n(z) to the photo-z stack.
+6. :py:class:`~txpipe.photoz.rail.summarize.PZAddNonTomographicNZ` adds the non-tomographic n(z) to the photo-z stack.
 
 The RAIL stages need the RAIL packages listed in ``bin/environment-local.yml``. See :ref:`Source selection and tomography` for the general structure.
 

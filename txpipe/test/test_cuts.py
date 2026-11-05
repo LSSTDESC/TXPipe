@@ -1,11 +1,11 @@
-from ..source_selection import TXSimpleSelection, TXMetaDetectSelection, TXScalarMetaDetectSelection, TXMetacalSelection, TXLensfitSelection, TXHSCSelection
-from ..tomography import TXSimpleRedshiftSourceTomography
-from ..shear_calibration.simple import TXComputeShearCalibrationSimple
-from ..shear_calibration.metadetect import TXComputeShearCalibrationMetadetect
-from ..shear_calibration.scalar_metadetect import TXComputeShearCalibrationScalarMetadetect
-from ..shear_calibration.metacal import TXComputeShearCalibrationMetacal
-from ..shear_calibration.lensfit import TXComputeShearCalibrationLensfit
-from ..calibration_utils.names import META_VARIANTS, SCALAR_META_VARIANTS, metacal_variants, metadetect_variants, scalar_metadetect_variants
+from ..selection.source_selection import TXSimpleSelection, TXMetaDetectSelection, TXScalarMetaDetectSelection, TXMetacalSelection, TXLensfitSelection, TXHSCSelection
+from ..photoz.tomography import TXSimpleRedshiftSourceTomography
+from ..calibration.shear_calibration.simple import TXComputeShearCalibrationSimple
+from ..calibration.shear_calibration.metadetect import TXComputeShearCalibrationMetadetect
+from ..calibration.shear_calibration.scalar_metadetect import TXComputeShearCalibrationScalarMetadetect
+from ..calibration.shear_calibration.metacal import TXComputeShearCalibrationMetacal
+from ..calibration.shear_calibration.lensfit import TXComputeShearCalibrationLensfit
+from ..calibration.calibration_utils.names import META_VARIANTS, SCALAR_META_VARIANTS, metacal_variants, metadetect_variants, scalar_metadetect_variants
 from tempfile import TemporaryDirectory
 import os
 import h5py

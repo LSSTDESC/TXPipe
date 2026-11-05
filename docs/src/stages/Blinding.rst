@@ -5,13 +5,13 @@ These stages deal with blinding measurements. TXSmokescreenBlinding blinds
 data with the DESC Smokescreen library, and TXNullBlinding copies data
 without blinding it. See :doc:`/blinding` for how to use them.
 
-* :py:class:`~txpipe.blinding.TXNullBlinding` - Pretend to blind but actually do nothing.
+* :py:class:`~txpipe.blinding.blinding.TXNullBlinding` - Pretend to blind but actually do nothing.
 
-* :py:class:`~txpipe.smokescreen_blinding.TXSmokescreenBlinding` - Blinds two-point measurements using Smokescreen
+* :py:class:`~txpipe.blinding.smokescreen_blinding.TXSmokescreenBlinding` - Blinds two-point measurements using Smokescreen
 
 
 
-.. autotxclass:: txpipe.blinding.TXNullBlinding
+.. autotxclass:: txpipe.blinding.blinding.TXNullBlinding
     :members:
     :exclude-members: run
 
@@ -35,7 +35,7 @@ without blinding it. See :doc:`/blinding` for how to use them.
 
 
 
-.. autotxclass:: txpipe.smokescreen_blinding.TXSmokescreenBlinding
+.. autotxclass:: txpipe.blinding.smokescreen_blinding.TXSmokescreenBlinding
     :members:
     :exclude-members: run
 

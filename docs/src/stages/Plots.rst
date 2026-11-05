@@ -3,23 +3,23 @@ Plots
 
 These stages make plots out TXPipe output data
 
-* :py:class:`~txpipe.photoz_stack.TXPhotozPlot` - Make n(z) plots of source and lens galaxies
+* :py:class:`~txpipe.photoz.photoz_stack.TXPhotozPlot` - Make n(z) plots of source and lens galaxies
 
-* :py:class:`~txpipe.map_plots.TXMapPlots` - Make plots of all the available maps
+* :py:class:`~txpipe.photoz.rail.summarize.PZRealizationsPlot` - Plot realizations of the tomographic n(z) distributions.
 
-* :py:class:`~txpipe.convergence.TXConvergenceMapPlots` - Make plots convergence maps
+* :py:class:`~txpipe.maps.map_plots.TXMapPlots` - Make plots of all the available maps
 
-* :py:class:`~txpipe.rail.summarize.PZRealizationsPlot` - Plot realizations of the tomographic n(z) distributions.
+* :py:class:`~txpipe.maps.convergence.TXConvergenceMapPlots` - Make plots convergence maps
 
-* :py:class:`~txpipe.twopoint_plots.TXTwoPointPlots` - Make plots of the correlation functions and their ratios to theory
+* :py:class:`~txpipe.twopoint.twopoint_plots.TXTwoPointPlots` - Make plots of the correlation functions and their ratios to theory
 
-* :py:class:`~txpipe.twopoint_plots.TXTwoPointPlotsFourier` - Make plots of the C_ell and their ratios to theory
+* :py:class:`~txpipe.twopoint.twopoint_plots.TXTwoPointPlotsFourier` - Make plots of the C_ell and their ratios to theory
 
-* :py:class:`~txpipe.twopoint_plots.TXTwoPointPlotsTheory` - Plot real-space two-point measurements together with a theory prediction.
+* :py:class:`~txpipe.twopoint.twopoint_plots.TXTwoPointPlotsTheory` - Plot real-space two-point measurements together with a theory prediction.
 
 
 
-.. autotxclass:: txpipe.photoz_stack.TXPhotozPlot
+.. autotxclass:: txpipe.photoz.photoz_stack.TXPhotozPlot
     :members:
     :exclude-members: run
 
@@ -45,7 +45,33 @@ These stages make plots out TXPipe output data
 
 
 
-.. autotxclass:: txpipe.map_plots.TXMapPlots
+.. autotxclass:: txpipe.photoz.rail.summarize.PZRealizationsPlot
+    :members:
+    :exclude-members: run
+
+    Inputs: 
+
+    - photoz_realizations: QPMultiFile
+
+    Outputs: 
+
+    - photoz_realizations_plot: PNGFile
+    
+    Parallel: No - Serial
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>zmax</strong>: (float) Default=3.0. Maximum redshift for plotting.</LI>
+            <LI><strong>nz</strong>: (int) Default=301. Number of redshift bins for plotting.</LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.maps.map_plots.TXMapPlots
     :members:
     :exclude-members: run
 
@@ -81,7 +107,7 @@ These stages make plots out TXPipe output data
 
 
 
-.. autotxclass:: txpipe.convergence.TXConvergenceMapPlots
+.. autotxclass:: txpipe.maps.convergence.TXConvergenceMapPlots
     :members:
     :exclude-members: run
 
@@ -106,33 +132,7 @@ These stages make plots out TXPipe output data
 
 
 
-.. autotxclass:: txpipe.rail.summarize.PZRealizationsPlot
-    :members:
-    :exclude-members: run
-
-    Inputs: 
-
-    - photoz_realizations: QPMultiFile
-
-    Outputs: 
-
-    - photoz_realizations_plot: PNGFile
-    
-    Parallel: No - Serial
-
-
-    .. collapse:: Configuration
-
-        .. raw:: html
-
-            <UL>
-            <LI><strong>zmax</strong>: (float) Default=3.0. Maximum redshift for plotting.</LI>
-            <LI><strong>nz</strong>: (int) Default=301. Number of redshift bins for plotting.</LI>
-            </UL>
-
-
-
-.. autotxclass:: txpipe.twopoint_plots.TXTwoPointPlots
+.. autotxclass:: txpipe.twopoint.twopoint_plots.TXTwoPointPlots
     :members:
     :exclude-members: run
 
@@ -163,7 +163,7 @@ These stages make plots out TXPipe output data
 
 
 
-.. autotxclass:: txpipe.twopoint_plots.TXTwoPointPlotsFourier
+.. autotxclass:: txpipe.twopoint.twopoint_plots.TXTwoPointPlotsFourier
     :members:
     :exclude-members: run
 
@@ -193,7 +193,7 @@ These stages make plots out TXPipe output data
 
 
 
-.. autotxclass:: txpipe.twopoint_plots.TXTwoPointPlotsTheory
+.. autotxclass:: txpipe.twopoint.twopoint_plots.TXTwoPointPlotsTheory
     :members:
     :exclude-members: run
 

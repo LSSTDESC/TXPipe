@@ -73,7 +73,7 @@ class TXTwoPointFourierCMBLensingCrossDensity(PipelineStage):
         import scipy.interpolate
         import matplotlib.pyplot as plt
         import sacc
-        from ...utils.nmt_utils import choose_ell_bins
+        from ...theory.nmt_utils import choose_ell_bins
 
         # make the field object for the CMB kappa map
         kappa_cmb, kappa_cmb_mask = self.load_kappa_maps()

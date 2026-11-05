@@ -3,23 +3,23 @@ Ensemble Photo-z
 
 These stages compute ensemble redshift histograms n(z) for bins
 
-* :py:class:`~txpipe.photoz_stack.TXPhotozStack` - Naive stacker using QP.
+* :py:class:`~txpipe.photoz.photoz_stack.TXPhotozStack` - Naive stacker using QP.
 
-* :py:class:`~txpipe.photoz_stack.TXTruePhotozStack` - Make an ideal true source n(z) using true redshifts
+* :py:class:`~txpipe.photoz.photoz_stack.TXTruePhotozStack` - Make an ideal true source n(z) using true redshifts
 
-* :py:class:`~txpipe.photoz_stack.TXMockGaussianPhotozStack` - Makes a mock Gaussian n(z) as a placeholder. Do not use for science!
+* :py:class:`~txpipe.photoz.photoz_stack.TXMockGaussianPhotozStack` - Makes a mock Gaussian n(z) as a placeholder. Do not use for science!
 
-* :py:class:`~txpipe.rail.summarize.PZRailSummarizeBase` - Base class to build the n(z) from some tomographic bins and collate the results from all the bin ...
+* :py:class:`~txpipe.photoz.rail.summarize.PZRailSummarizeBase` - Base class to build the n(z) from some tomographic bins and collate the results from all the bin ...
 
-* :py:class:`~txpipe.rail.summarize.PZRailSummarize` - Runs a specified RAIL "CatSummarizer" on each tomographic bin and collate the results from all t ...
+* :py:class:`~txpipe.photoz.rail.summarize.PZRailSummarize` - Runs a specified RAIL "CatSummarizer" on each tomographic bin and collate the results from all t ...
 
-* :py:class:`~txpipe.rail.summarize.PZRailPZSummarize` - Runs a specified RAIL *masked* "PZSummarizer" on each tomographic bin and collate the results fr ...
+* :py:class:`~txpipe.photoz.rail.summarize.PZRailPZSummarize` - Runs a specified RAIL *masked* "PZSummarizer" on each tomographic bin and collate the results fr ...
 
-* :py:class:`~txpipe.rail.summarize.PZAddNonTomographicNZ` - Sum up tomographic n(z)s in a file and append the non-tomographic one.
+* :py:class:`~txpipe.photoz.rail.summarize.PZAddNonTomographicNZ` - Sum up tomographic n(z)s in a file and append the non-tomographic one.
 
 
 
-.. autotxclass:: txpipe.photoz_stack.TXPhotozStack
+.. autotxclass:: txpipe.photoz.photoz_stack.TXPhotozStack
     :members:
     :exclude-members: run
 
@@ -50,7 +50,7 @@ These stages compute ensemble redshift histograms n(z) for bins
 
 
 
-.. autotxclass:: txpipe.photoz_stack.TXTruePhotozStack
+.. autotxclass:: txpipe.photoz.photoz_stack.TXTruePhotozStack
     :members:
     :exclude-members: run
 
@@ -82,7 +82,7 @@ These stages compute ensemble redshift histograms n(z) for bins
 
 
 
-.. autotxclass:: txpipe.photoz_stack.TXMockGaussianPhotozStack
+.. autotxclass:: txpipe.photoz.photoz_stack.TXMockGaussianPhotozStack
     :members:
     :exclude-members: run
 
@@ -108,7 +108,7 @@ These stages compute ensemble redshift histograms n(z) for bins
 
 
 
-.. autotxclass:: txpipe.rail.summarize.PZRailSummarizeBase
+.. autotxclass:: txpipe.photoz.rail.summarize.PZRailSummarizeBase
     :members:
     :exclude-members: run
 
@@ -131,7 +131,7 @@ These stages compute ensemble redshift histograms n(z) for bins
 
 
 
-.. autotxclass:: txpipe.rail.summarize.PZRailSummarize
+.. autotxclass:: txpipe.photoz.rail.summarize.PZRailSummarize
     :members:
     :exclude-members: run
 
@@ -163,7 +163,7 @@ These stages compute ensemble redshift histograms n(z) for bins
 
 
 
-.. autotxclass:: txpipe.rail.summarize.PZRailPZSummarize
+.. autotxclass:: txpipe.photoz.rail.summarize.PZRailPZSummarize
     :members:
     :exclude-members: run
 
@@ -196,7 +196,7 @@ These stages compute ensemble redshift histograms n(z) for bins
 
 
 
-.. autotxclass:: txpipe.rail.summarize.PZAddNonTomographicNZ
+.. autotxclass:: txpipe.photoz.rail.summarize.PZAddNonTomographicNZ
     :members:
     :exclude-members: run
 

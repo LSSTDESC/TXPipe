@@ -5,25 +5,25 @@ These stages decide which objects in a shear catalog are good enough to
 be in the source sample, before they are assigned to tomographic bins. They
 write a catalog selection file. See :ref:`Source selection and tomography`.
 
-* :py:class:`~txpipe.source_selection.TXSimpleSelection` - Compute non-redshift related shear catalog cuts.
+* :py:class:`~txpipe.selection.source_selection.TXSimpleSelection` - Compute non-redshift related shear catalog cuts.
 
-* :py:class:`~txpipe.source_selection.TXMetaDetectSelection` - Compute source-sample cuts for metadetect catalogs.
+* :py:class:`~txpipe.selection.source_selection.TXMetaDetectSelection` - Compute source-sample cuts for metadetect catalogs.
 
-* :py:class:`~txpipe.source_selection.TXScalarMetaDetectSelection` - Compute source-sample cuts for scalar metadetect catalogs.
+* :py:class:`~txpipe.selection.source_selection.TXScalarMetaDetectSelection` - Compute source-sample cuts for scalar metadetect catalogs.
 
-* :py:class:`~txpipe.source_selection.TXMetacalSelection` - Compute source-sample cuts for metacal catalogs.
+* :py:class:`~txpipe.selection.source_selection.TXMetacalSelection` - Compute source-sample cuts for metacal catalogs.
 
-* :py:class:`~txpipe.source_selection.TXLensfitSelection` - Compute source-sample cuts for lensfit catalogs.
+* :py:class:`~txpipe.selection.source_selection.TXLensfitSelection` - Compute source-sample cuts for lensfit catalogs.
 
-* :py:class:`~txpipe.source_selection.TXHSCSelection` - Compute source-sample cuts for HSC catalogs.
+* :py:class:`~txpipe.selection.source_selection.TXHSCSelection` - Compute source-sample cuts for HSC catalogs.
 
-* :py:class:`~txpipe.source_selection.TXDP2RubinMetadetectSelection` - Compute source-sample cuts for the Rubin DP2 metadetect catalogs.
+* :py:class:`~txpipe.selection.source_selection.TXDP2RubinMetadetectSelection` - Compute source-sample cuts for the Rubin DP2 metadetect catalogs.
 
-* :py:class:`~txpipe.source_selection.TXDP2DESCSelection` - Compute source-sample cuts for the DESC-processed DP2 scalar metadetect catalogs.
+* :py:class:`~txpipe.selection.source_selection.TXDP2DESCSelection` - Compute source-sample cuts for the DESC-processed DP2 scalar metadetect catalogs.
 
 
 
-.. autotxclass:: txpipe.source_selection.TXSimpleSelection
+.. autotxclass:: txpipe.selection.source_selection.TXSimpleSelection
     :members:
     :exclude-members: run
 
@@ -51,7 +51,7 @@ write a catalog selection file. See :ref:`Source selection and tomography`.
 
 
 
-.. autotxclass:: txpipe.source_selection.TXMetaDetectSelection
+.. autotxclass:: txpipe.selection.source_selection.TXMetaDetectSelection
     :members:
     :exclude-members: run
 
@@ -79,7 +79,7 @@ write a catalog selection file. See :ref:`Source selection and tomography`.
 
 
 
-.. autotxclass:: txpipe.source_selection.TXScalarMetaDetectSelection
+.. autotxclass:: txpipe.selection.source_selection.TXScalarMetaDetectSelection
     :members:
     :exclude-members: run
 
@@ -107,7 +107,7 @@ write a catalog selection file. See :ref:`Source selection and tomography`.
 
 
 
-.. autotxclass:: txpipe.source_selection.TXMetacalSelection
+.. autotxclass:: txpipe.selection.source_selection.TXMetacalSelection
     :members:
     :exclude-members: run
 
@@ -135,7 +135,7 @@ write a catalog selection file. See :ref:`Source selection and tomography`.
 
 
 
-.. autotxclass:: txpipe.source_selection.TXLensfitSelection
+.. autotxclass:: txpipe.selection.source_selection.TXLensfitSelection
     :members:
     :exclude-members: run
 
@@ -163,7 +163,7 @@ write a catalog selection file. See :ref:`Source selection and tomography`.
 
 
 
-.. autotxclass:: txpipe.source_selection.TXHSCSelection
+.. autotxclass:: txpipe.selection.source_selection.TXHSCSelection
     :members:
     :exclude-members: run
 
@@ -192,7 +192,7 @@ write a catalog selection file. See :ref:`Source selection and tomography`.
 
 
 
-.. autotxclass:: txpipe.source_selection.TXDP2RubinMetadetectSelection
+.. autotxclass:: txpipe.selection.source_selection.TXDP2RubinMetadetectSelection
     :members:
     :exclude-members: run
 
@@ -231,7 +231,7 @@ write a catalog selection file. See :ref:`Source selection and tomography`.
 
 
 
-.. autotxclass:: txpipe.source_selection.TXDP2DESCSelection
+.. autotxclass:: txpipe.selection.source_selection.TXDP2DESCSelection
     :members:
     :exclude-members: run
 
