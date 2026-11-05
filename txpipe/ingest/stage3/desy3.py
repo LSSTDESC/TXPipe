@@ -1,4 +1,4 @@
-from ...data_types import HDFFile, MapsFile, FitsFile, ShearCatalog, QPNOfZFile
+from ...data_types import HDFFile, MapsFile, FitsFile, ShearCatalog, QPNOfZFile, CatalogSelection, BinAssignments
 from ..base import TXIngestCatalogH5, TXIngestMapsHsp, TXIngestCatalogFits, PipelineStage
 from ceci.config import StageParameter
 import numpy as np
@@ -322,3 +322,55 @@ class TXIngestDESY3SourceRedshift(PipelineStage):
         q = qp.Ensemble(qp.interp, data={"xvals": z, "yvals": pdfs})
         with self.open_output("shear_photoz_stack", wrapper=True) as f:
             f.write_ensemble(q)
+
+
+class TXIngestDESY3Selection(PipelineStage):
+    """
+    Convert the DES Y3 index selection files to TXPipe selection and
+    tomographic bin assignment files.
+
+    The DES index catalog stores lists of selected row indices, overall and
+    per tomographic bin, for the unsheared case and each metacal variant.
+    Here we convert those to a boolean selection and an int16 bin
+    assignment for every row (-1 for objects in no bin).
+    """
+    name = "TXIngestDESY3Selection"
+    parallel = False
+    inputs = [
+        ("des_index_catalog", HDFFile),
+    ]
+
+    outputs = [
+        ("shear_selection", CatalogSelection),
+        ("shear_bin_assignments", BinAssignments),
+    ]
+
+    config_options = {
+        "nbin": StageParameter(int, 4, msg="Number of tomographic bins"),
+    }
+
+    variants = ["", "_1p", "_1m", "_2p", "_2m"]
+
+    def run(self):
+        nbin = self.config["nbin"]
+
+        with self.open_input("des_index_catalog") as f_in, \
+             self.open_output("shear_selection") as f_sel, \
+             self.open_output("shear_bin_assignments") as f_bin:
+
+            index = f_in["index"]
+            n = index["coadd_object_id"].shape[0]
+            sel_group = f_sel.create_group("shear")
+
+            for v in self.variants:
+                selected = index[f"select{v}"][:]
+                sel = np.zeros(n, dtype=bool)
+                sel[selected] = True
+                sel_group.create_dataset(f"selection{v}", data=sel)
+
+                bins = np.full(n, -1, dtype=np.int16)
+                for i in range(1, nbin + 1):
+                    # DES bins are numbered from 1; TXPipe from 0
+                    idx = index[f"select{v}_bin{i}"][:]
+                    bins[idx] = i - 1
+                f_bin.create_dataset(f"bin{v}", data=bins)
