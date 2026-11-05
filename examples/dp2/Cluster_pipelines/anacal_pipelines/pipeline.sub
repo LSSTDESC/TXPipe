@@ -1,0 +1,15 @@
+#!/bin/bash
+#SBATCH -A m1727
+#SBATCH -C cpu
+#SBATCH --qos=regular
+#SBATCH --time=02:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=64
+#SBATCH --cpus-per-task=2
+#SBATCH -o /pscratch/sd/e/edujb/dp2/outputs/anacal/slurm-%j.out
+# DP2 AnaCal cluster pipeline. From the TXPipe directory:
+#     sbatch examples/dp2/Cluster_pipelines/anacal_pipelines/pipeline.sub
+# resume: true in the pipeline file skips finished stages on reruns.
+module load python
+conda activate /pscratch/sd/e/edujb/.conda/txpipe
+ceci examples/dp2/Cluster_pipelines/anacal_pipelines/pipeline.yml
