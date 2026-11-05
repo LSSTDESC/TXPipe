@@ -7,7 +7,12 @@ from ceci.config import StageParameter
 
 from .base_stage import PipelineStage
 from .data_types import ShearCatalog, TomographyCatalog, MapsFile, FileCollection, HDFFile
-from .calibration_utils import MeanShearInBins, metadetect_variants, META_VARIANTS
+from .calibration_utils import (
+    MeanShearInBins,
+    metadetect_variants,
+    META_VARIANTS,
+    SCALAR_META_VARIANTS,
+)
 from .utils import read_shear_catalog_type
 from .utils.fitting import fit_straight_line, calc_chi2
 from .diagnostics import where_all_finite
@@ -141,6 +146,20 @@ def _property_values_at(hsp_map, nside, ra, dec):
     return prop_vals
 
 
+def _detection_variants(cat_type):
+    """
+    The shear-variant names (ns, 1p, ...) for a metadetect-style catalog type,
+    or None for catalog types whose variants share one set of positions.
+
+    Scalar metadetect catalogs only have the ns, 1p and 1m variants.
+    """
+    if cat_type == "metadetect":
+        return META_VARIANTS
+    if cat_type == "scalar_metadetect":
+        return SCALAR_META_VARIANTS
+    return None
+
+
 def _assign_property_column(data, cat_type, hsp_map, nside, ra_key, dec_key):
     """
     Set the ``survey_prop`` column(s) on a data chunk for ``MeanShearInBins``.
@@ -159,12 +178,13 @@ def _assign_property_column(data, cat_type, hsp_map, nside, ra_key, dec_key):
     Other catalogue types (metacal, lensfit, hsc) share one position array and
     length across variants, so a single ``survey_prop`` column suffices.
     """
-    if cat_type == "metadetect":
-        for v in META_VARIANTS:
+    variants = _detection_variants(cat_type)
+    if variants is not None:
+        for v in variants:
             data[f"{v}/survey_prop"] = _property_values_at(
                 hsp_map, nside, data[f"{v}/ra"], data[f"{v}/dec"]
             )
-        data["survey_prop"] = data[f"{META_VARIANTS[0]}/survey_prop"]
+        data["survey_prop"] = data[f"{variants[0]}/survey_prop"]
     else:
         data["survey_prop"] = _property_values_at(
             hsp_map, nside, data[ra_key], data[dec_key]
@@ -427,6 +447,7 @@ class TXMeanShearSurveyProperties(PipelineStage):
     }
 
     def run(self):
+        from .utils.fitting import fit_straight_line, calc_chi2
         import matplotlib
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
@@ -453,25 +474,33 @@ class TXMeanShearSurveyProperties(PipelineStage):
             # response of a re-binned selection differs from the tomographic-bin
             # response saved in the catalog.
             ra_key, dec_key = "ra", "dec"
-        elif cat_type == "metadetect":
-            unsheared = META_VARIANTS[0]
+        elif cat_type in ("metadetect", "scalar_metadetect"):
+            variants = _detection_variants(cat_type)
+            unsheared = variants[0]
             # ra/dec are read for every variant, not just the unsheared one:
             # each metadetect variant is a separate detection catalogue with its
             # own positions and length, and the property must be looked up at
             # each variant's positions (see _assign_property_column).
-            shear_cols = metadetect_variants("ra", "dec", "g1", "g2", "weight")
+            shear_cols = [
+                f"{v}/{name}"
+                for v in variants
+                for name in ("ra", "dec", "g1", "g2", "weight")
+            ]
             ra_key, dec_key = f"{unsheared}/ra", f"{unsheared}/dec"
-        else:
-            # lensfit, hsc
+        elif cat_type in ("lensfit", "hsc"):
             shear_cols = ["ra", "dec", "g1", "g2", "weight", "m"]
             ra_key, dec_key = "ra", "dec"
+        else:
+            raise ValueError(
+                f"TXMeanShearSurveyProperties: unsupported shear catalog type '{cat_type}'"
+            )
 
         # MeanShearInBins cuts down to the source sample using a bin column.
         # For metadetect that column is per-variant (bin_ns, bin_1p, ...), since
         # the selector runs once per sheared variant; the other catalog types
         # have a single "bin". Compare TXDiagnosticPlots, which does the same.
-        if cat_type == "metadetect":
-            tomo_cols = [f"bin_{v}" for v in META_VARIANTS]
+        if _detection_variants(cat_type) is not None:
+            tomo_cols = [f"bin_{v}" for v in _detection_variants(cat_type)]
         else:
             tomo_cols = ["bin"]
 
@@ -545,7 +574,7 @@ class TXMeanShearSurveyProperties(PipelineStage):
         # MeanShearInBins source-bin cut). The bin column is per-variant for
         # metadetect -- the unsheared variant "ns" -- and a single "bin"
         # otherwise; see MeanShearInBins.selector.
-        source_bin_key = "bin_ns" if cat_type == "metadetect" else "bin"
+        source_bin_key = "bin_ns" if _detection_variants(cat_type) else "bin"
 
         # Pass 1: choose bin edges from the property values at the galaxy
         # positions that actually enter the measurement, i.e. galaxies in a

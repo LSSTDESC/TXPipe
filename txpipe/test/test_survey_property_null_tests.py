@@ -227,6 +227,24 @@ def test_assign_property_column_metadetect_per_variant_lengths():
         assert w.shape == (lengths[v],)
 
 
+def test_assign_property_column_scalar_metadetect_has_three_variants():
+    prop = _observed_map(1.0)
+    patch_pix = _patch_pixels()
+    rng = np.random.default_rng(1)
+    variants = ["ns", "1p", "1m"]
+    data = {}
+    for i, v in enumerate(variants):
+        ra, dec = _positions(rng.choice(patch_pix, size=50 + 7 * i))
+        data[f"{v}/ra"], data[f"{v}/dec"] = ra, dec
+
+    _assign_property_column(data, "scalar_metadetect", prop, NSIDE, "ns/ra", "ns/dec")
+
+    for i, v in enumerate(variants):
+        assert data[f"{v}/survey_prop"].shape == (50 + 7 * i,)
+    assert "2p/survey_prop" not in data
+    assert data["survey_prop"].shape == (50,)
+
+
 def test_assign_property_column_single_for_non_metadetect():
     """metacal/lensfit/hsc share one length across variants: one column only."""
     prop = _observed_map(2.5)
