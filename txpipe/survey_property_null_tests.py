@@ -7,7 +7,7 @@ from ceci.config import StageParameter
 
 from .base_stage import PipelineStage
 from .data_types import ShearCatalog, TomographyCatalog, MapsFile, FileCollection, HDFFile
-from .shear_calibration import MeanShearInBins, metadetect_variants, META_VARIANTS
+from .calibration_utils import MeanShearInBins, metadetect_variants, META_VARIANTS
 from .utils import read_shear_catalog_type
 from .utils.fitting import fit_straight_line, calc_chi2
 from .diagnostics import where_all_finite
