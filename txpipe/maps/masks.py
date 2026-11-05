@@ -1,7 +1,7 @@
 import numpy as np
-from .utils import choose_pixelization, read_shear_catalog_type
-from .base_stage import PipelineStage
-from .data_types import MapsFile, HDFFile, ShearCatalog
+from ..utils import choose_pixelization, read_shear_catalog_type
+from ..base_stage import PipelineStage
+from ..data_types import MapsFile, HDFFile, ShearCatalog
 from ceci.config import StageParameter
 from .mapping import degrade_healsparse
 

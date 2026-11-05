@@ -1,5 +1,5 @@
-from .base_stage import PipelineStage
-from .data_types import Directory, HDFFile, PNGFile
+from ..base_stage import PipelineStage
+from ..data_types import Directory, HDFFile, PNGFile
 import numpy as np
 
 

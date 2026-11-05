@@ -1,6 +1,6 @@
 from ceci.config import StageParameter
-from .base_stage import PipelineStage
-from .data_types import (
+from ..base_stage import PipelineStage
+from ..data_types import (
     ShearCatalog,
     HDFFile,
     FiducialCosmology,
@@ -8,7 +8,7 @@ from .data_types import (
     YamlFile,
     MapsFile,
 )
-from .twopoint_fourier import TXTwoPointFourier
+from ..twopoint.twopoint_fourier import TXTwoPointFourier
 import numpy as np
 import warnings
 import os
@@ -387,7 +387,7 @@ class TXFourierGaussianCovariance(PipelineStage):
         return cov
 
     def get_angular_bins(self, cl_sacc):
-        from .utils.nmt_utils import choose_ell_bins
+        from ..theory.nmt_utils import choose_ell_bins
 
         return choose_ell_bins(**cl_sacc.metadata)
 
@@ -816,7 +816,7 @@ class TXFourierTJPCovariance(PipelineStage):
 
     def load_workspace_cache(self, dirname):
         # Copied from twopoint_fourier.py
-        from .utils.nmt_utils import WorkspaceCache
+        from ..theory.nmt_utils import WorkspaceCache
 
         if not dirname:
             if self.rank == 0:
@@ -829,7 +829,7 @@ class TXFourierTJPCovariance(PipelineStage):
     def recover_NmtBin(self, cl_sacc):
         # This function replicates `choose_ell_bins` in twopoint_fourier.py
         # TODO: Move this to txpipe/utils/nmt_utils.py
-        from .utils.nmt_utils import choose_ell_bins
+        from ..theory.nmt_utils import choose_ell_bins
 
         ell_bins = choose_ell_bins(**cl_sacc.metadata)
 

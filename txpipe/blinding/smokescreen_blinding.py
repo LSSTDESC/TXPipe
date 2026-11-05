@@ -1,6 +1,6 @@
-from .base_stage import PipelineStage
-from .data_types import SACCFile
-from .utils.theory import default_theory_model
+from ..base_stage import PipelineStage
+from ..data_types import SACCFile
+from ..theory.theory_utils import default_theory_model
 import os
 from ceci.config import StageParameter
 
@@ -193,7 +193,7 @@ class TXSmokescreenBlinding(PipelineStage):
 
         Returns None if Smokescreen should use the likelihood's defaults.
         """
-        from .utils.theory import make_bias_parameters
+        from ..theory.theory_utils import make_bias_parameters
 
         systematics = self.config["systematics"]
         if systematics:

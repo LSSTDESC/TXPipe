@@ -7,7 +7,7 @@ from ..calibration_utils import (
 )
 import numpy as np
 from ceci.config import StageParameter
-from ..utils import rename_iterated
+from ...utils import rename_iterated
 
 
 class TXComputeShearCalibrationMetadetect(TXComputeShearCalibrationBase):

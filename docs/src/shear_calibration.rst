@@ -14,7 +14,7 @@ Later stages load those values with the calibrator classes. The ``TXShearCalibra
 
 If you are doing straightforward analysis on tomographic quantities you may be able to avoid understanding the shear calibration at all, since these stages do it all for you. The classes below are for people who want to write new diagnostics, or add a new type of shear catalog.
 
-TXPipe uses several classes in shear calibration, all in the ``txpipe.calibration_utils`` sub-module.
+TXPipe uses several classes in shear calibration, all in the ``txpipe.calibration.calibration_utils`` sub-module.
 
 - ``CalibrationCalculator``: the calculator sub-classes compute the shear calibration factor.
 - ``Calibrator``: the calibrator sub-classes load the shear calibration factor from a file and then apply it to a sample.

@@ -1,6 +1,6 @@
-from .base_stage import PipelineStage
-from .data_types import FiducialCosmology, SACCFile
-from .utils.theory import theory_3x2pt
+from ..base_stage import PipelineStage
+from ..data_types import FiducialCosmology, SACCFile
+from .theory_utils import theory_3x2pt
 from ceci.config import StageParameter
 import numpy as np
 

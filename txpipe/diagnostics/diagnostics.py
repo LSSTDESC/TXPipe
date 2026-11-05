@@ -1,6 +1,6 @@
-from .base_stage import PipelineStage
-from .data_types import Directory, ShearCatalog, HDFFile, PNGFile, TomographyCatalog, TextFile
-from .calibration_utils import (
+from ..base_stage import PipelineStage
+from ..data_types import Directory, ShearCatalog, HDFFile, PNGFile, TomographyCatalog, TextFile
+from ..calibration.calibration_utils import (
     Calibrator,
     MeanShearInBins,
     metadetect_variants,
@@ -8,10 +8,10 @@ from .calibration_utils import (
     CalibrationCalculator,
     META_VARIANTS
 )
-from .utils.fitting import fit_straight_line
-from .utils import import_dask, read_shear_catalog_type, rename_iterated
+from ..utils.fitting import fit_straight_line
+from ..utils import import_dask, read_shear_catalog_type, rename_iterated
 
-from .plotting import manual_step_histogram
+from ..plotting import manual_step_histogram
 import numpy as np
 from ceci.config import StageParameter
 

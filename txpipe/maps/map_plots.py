@@ -1,5 +1,5 @@
-from .data_types import MapsFile, PNGFile
-from .base_stage import PipelineStage
+from ..data_types import MapsFile, PNGFile
+from ..base_stage import PipelineStage
 from ceci.config import StageParameter
 import sys
 

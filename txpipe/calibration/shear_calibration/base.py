@@ -1,7 +1,7 @@
-from ..base_stage import PipelineStage
-from ..data_types import ShearCatalog, TomographyCatalog, HDFFile, PickleFile, CatalogSelection, BinAssignments
-from ..utils import read_shear_catalog_type
-from ..binning import apply_classifier
+from ...base_stage import PipelineStage
+from ...data_types import ShearCatalog, TomographyCatalog, HDFFile, PickleFile, CatalogSelection, BinAssignments
+from ...utils import read_shear_catalog_type
+from ...selection.binning import apply_classifier
 from ceci.config import StageParameter
 import numpy as np
 

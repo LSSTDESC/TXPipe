@@ -1,5 +1,5 @@
-from .base_stage import PipelineStage
-from .data_types import (
+from ..base_stage import PipelineStage
+from ..data_types import (
     YamlFile,
     TomographyCatalog,
     HDFFile,
@@ -12,7 +12,7 @@ from .data_types import (
     DataFile,
     BinnedCatalog,
 )
-from .utils import LensNumberDensityStats, Splitter, rename_iterated
+from ..utils import LensNumberDensityStats, Splitter, rename_iterated
 from .binning import build_tomographic_classifier, apply_classifier, read_training_data
 import numpy as np
 import warnings

@@ -1,8 +1,8 @@
-from .base_stage import PipelineStage
+from ..base_stage import PipelineStage
 from ceci.config import StageParameter
-from .data_types import HDFFile, PickleFile, ShearCatalog, BinAssignments, TomographyCatalog
-from .binning import read_training_data, build_tomographic_classifier, apply_classifier
-from .calibration_utils import band_variants
+from ..data_types import HDFFile, PickleFile, ShearCatalog, BinAssignments, TomographyCatalog
+from ..selection.binning import read_training_data, build_tomographic_classifier, apply_classifier
+from ..calibration.calibration_utils import band_variants
 import numpy as np
 
 class TXTrainRandomForestTomography(PipelineStage):

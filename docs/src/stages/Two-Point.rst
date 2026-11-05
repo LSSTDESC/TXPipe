@@ -3,31 +3,31 @@ Two-Point
 
 These stages deal with measuring or predicting two-point statistics.
 
-* :py:class:`~txpipe.random_cats.TXRandomCat` - Generate a catalog of randomly positioned points
+* :py:class:`~txpipe.randoms.random_cats.TXRandomCat` - Generate a catalog of randomly positioned points
 
-* :py:class:`~txpipe.random_cats.TXSubsampleRandoms` - Randomly subsample the binned random catalog and save catalog
+* :py:class:`~txpipe.randoms.random_cats.TXSubsampleRandoms` - Randomly subsample the binned random catalog and save catalog
 
-* :py:class:`~txpipe.twopoint_fourier.TXTwoPointFourier` - Make Fourier space 3x2pt measurements using NaMaster
+* :py:class:`~txpipe.twopoint.twopoint_fourier.TXTwoPointFourier` - Make Fourier space 3x2pt measurements using NaMaster
 
-* :py:class:`~txpipe.twopoint_fourier.TXTwoPointFourierCatalog` - Make Fourier space 3x2pt measurements directly from catalogues using NaMaster
+* :py:class:`~txpipe.twopoint.twopoint_fourier.TXTwoPointFourierCatalog` - Make Fourier space 3x2pt measurements directly from catalogues using NaMaster
 
-* :py:class:`~txpipe.twopoint.TXTwoPoint` - Make 2pt measurements using TreeCorr
+* :py:class:`~txpipe.twopoint.twopoint.TXTwoPoint` - Make 2pt measurements using TreeCorr
 
-* :py:class:`~txpipe.twopoint.TXTwoPointPixel` - This subclass of the standard TXTwoPoint uses maps to compute
+* :py:class:`~txpipe.twopoint.twopoint.TXTwoPointPixel` - This subclass of the standard TXTwoPoint uses maps to compute
 
-* :py:class:`~txpipe.twopoint.TXTwoPointPixelExtCross` - TXTwoPointPixel - External - Cross correlation
+* :py:class:`~txpipe.twopoint.twopoint.TXTwoPointPixelExtCross` - TXTwoPointPixel - External - Cross correlation
 
-* :py:class:`~txpipe.theory.TXTwoPointTheoryReal` - Compute theory predictions for real-space 3x2pt measurements.
+* :py:class:`~txpipe.theory.theory.TXTwoPointTheoryReal` - Compute theory predictions for real-space 3x2pt measurements.
 
-* :py:class:`~txpipe.theory.TXTwoPointTheoryFourier` - Compute theory predictions for Fourier-space 3x2pt measurements.
+* :py:class:`~txpipe.theory.theory.TXTwoPointTheoryFourier` - Compute theory predictions for Fourier-space 3x2pt measurements.
 
-* :py:class:`~txpipe.jackknife.TXJackknifeCenters` - Generate jack-knife centers from random catalogs.
+* :py:class:`~txpipe.twopoint.jackknife.TXJackknifeCenters` - Generate jack-knife centers from random catalogs.
 
-* :py:class:`~txpipe.jackknife.TXJackknifeCentersSource` - Generate jack-knife centers from a shear catalog.
+* :py:class:`~txpipe.twopoint.jackknife.TXJackknifeCentersSource` - Generate jack-knife centers from a shear catalog.
 
 
 
-.. autotxclass:: txpipe.random_cats.TXRandomCat
+.. autotxclass:: txpipe.randoms.random_cats.TXRandomCat
     :members:
     :exclude-members: run
 
@@ -63,7 +63,7 @@ These stages deal with measuring or predicting two-point statistics.
 
 
 
-.. autotxclass:: txpipe.random_cats.TXSubsampleRandoms
+.. autotxclass:: txpipe.randoms.random_cats.TXSubsampleRandoms
     :members:
     :exclude-members: run
 
@@ -89,7 +89,7 @@ These stages deal with measuring or predicting two-point statistics.
 
 
 
-.. autotxclass:: txpipe.twopoint_fourier.TXTwoPointFourier
+.. autotxclass:: txpipe.twopoint.twopoint_fourier.TXTwoPointFourier
     :members:
     :exclude-members: run
 
@@ -141,7 +141,7 @@ These stages deal with measuring or predicting two-point statistics.
 
 
 
-.. autotxclass:: txpipe.twopoint_fourier.TXTwoPointFourierCatalog
+.. autotxclass:: txpipe.twopoint.twopoint_fourier.TXTwoPointFourierCatalog
     :members:
     :exclude-members: run
 
@@ -196,7 +196,7 @@ These stages deal with measuring or predicting two-point statistics.
 
 
 
-.. autotxclass:: txpipe.twopoint.TXTwoPoint
+.. autotxclass:: txpipe.twopoint.twopoint.TXTwoPoint
     :members:
     :exclude-members: run
 
@@ -254,7 +254,7 @@ These stages deal with measuring or predicting two-point statistics.
 
 
 
-.. autotxclass:: txpipe.twopoint.TXTwoPointPixel
+.. autotxclass:: txpipe.twopoint.twopoint.TXTwoPointPixel
     :members:
     :exclude-members: run
 
@@ -314,7 +314,7 @@ These stages deal with measuring or predicting two-point statistics.
 
 
 
-.. autotxclass:: txpipe.twopoint.TXTwoPointPixelExtCross
+.. autotxclass:: txpipe.twopoint.twopoint.TXTwoPointPixelExtCross
     :members:
     :exclude-members: run
 
@@ -376,7 +376,7 @@ These stages deal with measuring or predicting two-point statistics.
 
 
 
-.. autotxclass:: txpipe.theory.TXTwoPointTheoryReal
+.. autotxclass:: txpipe.theory.theory.TXTwoPointTheoryReal
     :members:
     :exclude-members: run
 
@@ -403,7 +403,7 @@ These stages deal with measuring or predicting two-point statistics.
 
 
 
-.. autotxclass:: txpipe.theory.TXTwoPointTheoryFourier
+.. autotxclass:: txpipe.theory.theory.TXTwoPointTheoryFourier
     :members:
     :exclude-members: run
 
@@ -430,7 +430,7 @@ These stages deal with measuring or predicting two-point statistics.
 
 
 
-.. autotxclass:: txpipe.jackknife.TXJackknifeCenters
+.. autotxclass:: txpipe.twopoint.jackknife.TXJackknifeCenters
     :members:
     :exclude-members: run
 
@@ -457,7 +457,7 @@ These stages deal with measuring or predicting two-point statistics.
 
 
 
-.. autotxclass:: txpipe.jackknife.TXJackknifeCentersSource
+.. autotxclass:: txpipe.twopoint.jackknife.TXJackknifeCentersSource
     :members:
     :exclude-members: run
 

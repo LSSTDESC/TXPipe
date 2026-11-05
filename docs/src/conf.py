@@ -250,7 +250,7 @@ def preprocess_docstring(app, what, name, obj, options, lines):
 
     # Strip out the configuration parameters section
     bad = None
-    # if name == "txpipe.twopoint.TXTwoPoint":
+    # if name == "txpipe.twopoint.twopoint.TXTwoPoint":
     #     breakpoint()
     # The Napoleon extension has already parsed the docstring into lines
     # like this one

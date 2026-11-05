@@ -3,19 +3,19 @@ Covariance
 
 These stages compute covariances of measurements
 
-* :py:class:`~txpipe.covariance.TXFourierGaussianCovariance` - Compute a Gaussian Fourier-space covariance with TJPCov using f_sky only
+* :py:class:`~txpipe.covariance.covariance.TXFourierGaussianCovariance` - Compute a Gaussian Fourier-space covariance with TJPCov using f_sky only
 
-* :py:class:`~txpipe.covariance.TXRealGaussianCovariance` - Compute a Gaussian real-space covariance with TJPCov using f_sky only
+* :py:class:`~txpipe.covariance.covariance.TXRealGaussianCovariance` - Compute a Gaussian real-space covariance with TJPCov using f_sky only
 
-* :py:class:`~txpipe.covariance.TXFourierTJPCovariance` - Compute a Gaussian Fourier-space covariance with TJPCov using mask geometry
+* :py:class:`~txpipe.covariance.covariance.TXFourierTJPCovariance` - Compute a Gaussian Fourier-space covariance with TJPCov using mask geometry
 
-* :py:class:`~txpipe.covariance_nmt.TXFourierNamasterCovariance` - Compute a Gaussian Fourier-space covariance with NaMaster
+* :py:class:`~txpipe.covariance.covariance_nmt.TXFourierNamasterCovariance` - Compute a Gaussian Fourier-space covariance with NaMaster
 
-* :py:class:`~txpipe.covariance_nmt.TXRealNamasterCovariance` - Compute a Gaussian real-space covariance with NaMaster
+* :py:class:`~txpipe.covariance.covariance_nmt.TXRealNamasterCovariance` - Compute a Gaussian real-space covariance with NaMaster
 
 
 
-.. autotxclass:: txpipe.covariance.TXFourierGaussianCovariance
+.. autotxclass:: txpipe.covariance.covariance.TXFourierGaussianCovariance
     :members:
     :exclude-members: run
 
@@ -45,7 +45,7 @@ These stages compute covariances of measurements
 
 
 
-.. autotxclass:: txpipe.covariance.TXRealGaussianCovariance
+.. autotxclass:: txpipe.covariance.covariance.TXRealGaussianCovariance
     :members:
     :exclude-members: run
 
@@ -78,7 +78,7 @@ These stages compute covariances of measurements
 
 
 
-.. autotxclass:: txpipe.covariance.TXFourierTJPCovariance
+.. autotxclass:: txpipe.covariance.covariance.TXFourierTJPCovariance
     :members:
     :exclude-members: run
 
@@ -111,7 +111,7 @@ These stages compute covariances of measurements
 
 
 
-.. autotxclass:: txpipe.covariance_nmt.TXFourierNamasterCovariance
+.. autotxclass:: txpipe.covariance.covariance_nmt.TXFourierNamasterCovariance
     :members:
     :exclude-members: run
 
@@ -142,7 +142,7 @@ These stages compute covariances of measurements
 
 
 
-.. autotxclass:: txpipe.covariance_nmt.TXRealNamasterCovariance
+.. autotxclass:: txpipe.covariance.covariance_nmt.TXRealNamasterCovariance
     :members:
     :exclude-members: run
 

@@ -1,5 +1,5 @@
-from .base_stage import PipelineStage
-from .data_types import (
+from ..base_stage import PipelineStage
+from ..data_types import (
     HDFFile,
     TomographyCatalog,
     RandomsCatalog,
@@ -11,7 +11,7 @@ from .data_types import (
 )
 import numpy as np
 from .twopoint import TXTwoPoint, SHEAR_SHEAR, SHEAR_POS, POS_POS, TREECORR_CONFIG
-from .utils import DynamicSplitter
+from ..utils import DynamicSplitter
 from ceci.config import StageParameter
 
 

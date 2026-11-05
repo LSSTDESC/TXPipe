@@ -1,6 +1,6 @@
 import numpy as np
-from .base_stage import PipelineStage
-from .data_types import MapsFile, PNGFile
+from ..base_stage import PipelineStage
+from ..data_types import MapsFile, PNGFile
 from ceci.config import StageParameter
 
 

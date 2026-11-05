@@ -6,7 +6,7 @@ class MeanShearInBins:
         self, x_name, limits, delta_gamma, cut_source_bin=False, shear_catalog_type="metacal", psf_unit_conv=False
     ):
         from parallel_statistics import ParallelMeanVariance, ParallelMean
-        from ..data_types import class_for_shear_catalog_type
+        from ...data_types import class_for_shear_catalog_type
 
         self.x_name = x_name
         self.limits = limits

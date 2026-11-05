@@ -1,5 +1,5 @@
-from .base_stage import PipelineStage
-from .data_types import (
+from ..base_stage import PipelineStage
+from ..data_types import (
     TomographyCatalog,
     FiducialCosmology,
     SACCFile,
@@ -15,8 +15,8 @@ from .data_types import (
 from ceci.config import StageParameter
 import numpy as np
 import collections
-from .utils import choose_pixelization, array_hash
-from .utils.theory import theory_3x2pt
+from ..utils import choose_pixelization, array_hash
+from ..theory.theory_utils import theory_3x2pt
 import sys
 import warnings
 import pathlib
@@ -107,7 +107,7 @@ class TXTwoPointFourier(PipelineStage):
         import healpy
         import sacc
         import pyccl
-        from .utils.nmt_utils import choose_ell_bins
+        from ..theory.nmt_utils import choose_ell_bins
 
         config = self.config
         if self.comm:
@@ -385,7 +385,7 @@ class TXTwoPointFourier(PipelineStage):
     
     def make_workspaces(self, maps, calcs, ell_bins):
         import pymaster as nmt
-        from .utils.nmt_utils import WorkspaceCache
+        from ..theory.nmt_utils import WorkspaceCache
 
         # Make the field object
         if self.rank == 0:

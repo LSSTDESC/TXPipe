@@ -3,21 +3,21 @@ Weights
 
 These stages deal with weighting the lens sample
 
-* :py:class:`~txpipe.lssweights.TXLSSDensityBase` - Base class for LSS systematics
+* :py:class:`~txpipe.systematics.lssweights.TXLSSDensityBase` - Base class for LSS systematics
 
-* :py:class:`~txpipe.lssweights.TXLSSDensityNullTests` - Compute density correlations between lens sample density and survey property maps
+* :py:class:`~txpipe.systematics.lssweights.TXLSSDensityNullTests` - Compute density correlations between lens sample density and survey property maps
 
-* :py:class:`~txpipe.lssweights.TXLSSWeights` - Base class for LSS systematic weights
+* :py:class:`~txpipe.systematics.lssweights.TXLSSWeights` - Base class for LSS systematic weights
 
-* :py:class:`~txpipe.lssweights.TXLSSWeightsLinBinned` - Compute LSS systematic weights using simultanious linear regression on the binned
+* :py:class:`~txpipe.systematics.lssweights.TXLSSWeightsLinBinned` - Compute LSS systematic weights using simultanious linear regression on the binned
 
-* :py:class:`~txpipe.lssweights.TXLSSWeightsLinPix` - Compute LSS systematic weights using simultanious linear regression at the
+* :py:class:`~txpipe.systematics.lssweights.TXLSSWeightsLinPix` - Compute LSS systematic weights using simultanious linear regression at the
 
-* :py:class:`~txpipe.lssweights.TXLSSWeightsUnit` - Assign weight=1 to all lens objects
+* :py:class:`~txpipe.systematics.lssweights.TXLSSWeightsUnit` - Assign weight=1 to all lens objects
 
 
 
-.. autotxclass:: txpipe.lssweights.TXLSSDensityBase
+.. autotxclass:: txpipe.systematics.lssweights.TXLSSDensityBase
     :members:
     :exclude-members: run
 
@@ -51,7 +51,7 @@ These stages deal with weighting the lens sample
 
 
 
-.. autotxclass:: txpipe.lssweights.TXLSSDensityNullTests
+.. autotxclass:: txpipe.systematics.lssweights.TXLSSDensityNullTests
     :members:
     :exclude-members: run
 
@@ -89,7 +89,7 @@ These stages deal with weighting the lens sample
 
 
 
-.. autotxclass:: txpipe.lssweights.TXLSSWeights
+.. autotxclass:: txpipe.systematics.lssweights.TXLSSWeights
     :members:
     :exclude-members: run
 
@@ -127,7 +127,7 @@ These stages deal with weighting the lens sample
 
 
 
-.. autotxclass:: txpipe.lssweights.TXLSSWeightsLinBinned
+.. autotxclass:: txpipe.systematics.lssweights.TXLSSWeightsLinBinned
     :members:
     :exclude-members: run
 
@@ -166,7 +166,7 @@ These stages deal with weighting the lens sample
 
 
 
-.. autotxclass:: txpipe.lssweights.TXLSSWeightsLinPix
+.. autotxclass:: txpipe.systematics.lssweights.TXLSSWeightsLinPix
     :members:
     :exclude-members: run
 
@@ -206,7 +206,7 @@ These stages deal with weighting the lens sample
 
 
 
-.. autotxclass:: txpipe.lssweights.TXLSSWeightsUnit
+.. autotxclass:: txpipe.systematics.lssweights.TXLSSWeightsUnit
     :members:
     :exclude-members: run
 

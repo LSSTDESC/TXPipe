@@ -1,7 +1,7 @@
-from .base_stage import PipelineStage
-from .map_correlations import TXMapCorrelations
-from .utils import choose_pixelization
-from .data_types import (
+from ..base_stage import PipelineStage
+from ..maps.map_correlations import TXMapCorrelations
+from ..utils import choose_pixelization
+from ..data_types import (
     HDFFile,
     MapsFile,
     FileCollection,
@@ -13,7 +13,7 @@ from .data_types import (
 import numpy as np
 import glob
 import time
-from .utils.fitting import calc_chi2
+from ..utils.fitting import calc_chi2
 from ceci.config import StageParameter
 
 

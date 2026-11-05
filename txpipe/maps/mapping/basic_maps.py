@@ -1,4 +1,4 @@
-from ..utils import import_dask
+from ...utils import import_dask
 
 import numpy as np
 import healpy

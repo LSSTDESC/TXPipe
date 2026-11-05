@@ -3,41 +3,41 @@ Diagnostics
 
 These stages compute and/or plot diagnostics of catalogs or other data
 
-* :py:class:`~txpipe.diagnostics.TXDiagnosticQuantiles` - Measure quantiles of various values in the shear catalog.
+* :py:class:`~txpipe.diagnostics.diagnostics.TXDiagnosticQuantiles` - Measure quantiles of various values in the shear catalog.
 
-* :py:class:`~txpipe.diagnostics.TXSourceDiagnosticPlots` - Make diagnostic plots of the shear catalog
+* :py:class:`~txpipe.diagnostics.diagnostics.TXSourceDiagnosticPlots` - Make diagnostic plots of the shear catalog
 
-* :py:class:`~txpipe.diagnostics.TXResponseInBins` - Compute the shear response in bins of signal-to-noise and size.
+* :py:class:`~txpipe.diagnostics.diagnostics.TXResponseInBins` - Compute the shear response in bins of signal-to-noise and size.
 
-* :py:class:`~txpipe.diagnostics.TXLensDiagnosticPlots` - Make diagnostic plots of the lens catalog
+* :py:class:`~txpipe.diagnostics.diagnostics.TXLensDiagnosticPlots` - Make diagnostic plots of the lens catalog
 
-* :py:class:`~txpipe.psf_diagnostics.TXPSFDiagnostics` - Make histograms of PSF values
+* :py:class:`~txpipe.diagnostics.psf_diagnostics.TXPSFDiagnostics` - Make histograms of PSF values
 
-* :py:class:`~txpipe.psf_diagnostics.TXPSFMomentCorr` - Compute PSF Moments
+* :py:class:`~txpipe.diagnostics.psf_diagnostics.TXPSFMomentCorr` - Compute PSF Moments
 
-* :py:class:`~txpipe.psf_diagnostics.TXTauStatistics` - Compute and plot PSF Tau statistics where the definition of Tau stats are eq. 20-22
+* :py:class:`~txpipe.diagnostics.psf_diagnostics.TXTauStatistics` - Compute and plot PSF Tau statistics where the definition of Tau stats are eq. 20-22
 
-* :py:class:`~txpipe.psf_diagnostics.TXRoweStatistics` - Compute and plot PSF Rowe statistics
+* :py:class:`~txpipe.diagnostics.psf_diagnostics.TXRoweStatistics` - Compute and plot PSF Rowe statistics
 
-* :py:class:`~txpipe.psf_diagnostics.TXGalaxyStarShear` - Compute and plot star x galaxy and star x star correlations.
+* :py:class:`~txpipe.diagnostics.psf_diagnostics.TXGalaxyStarShear` - Compute and plot star x galaxy and star x star correlations.
 
-* :py:class:`~txpipe.psf_diagnostics.TXGalaxyStarDensity` - Compute and plot star x galaxy and star x star density correlations
+* :py:class:`~txpipe.diagnostics.psf_diagnostics.TXGalaxyStarDensity` - Compute and plot star x galaxy and star x star density correlations
 
-* :py:class:`~txpipe.psf_diagnostics.TXBrighterFatterPlot` - Compute and plot a diagnostic of the brighter-fatter effect
+* :py:class:`~txpipe.diagnostics.psf_diagnostics.TXBrighterFatterPlot` - Compute and plot a diagnostic of the brighter-fatter effect
 
-* :py:class:`~txpipe.twopoint_null_tests.TXGammaTFieldCenters` - Make diagnostic 2pt measurements of tangential shear around field centers
+* :py:class:`~txpipe.twopoint.twopoint_null_tests.TXGammaTFieldCenters` - Make diagnostic 2pt measurements of tangential shear around field centers
 
-* :py:class:`~txpipe.twopoint_null_tests.TXGammaTStars` - Make diagnostic 2pt measurements of tangential shear around stars
+* :py:class:`~txpipe.twopoint.twopoint_null_tests.TXGammaTStars` - Make diagnostic 2pt measurements of tangential shear around stars
 
-* :py:class:`~txpipe.twopoint_null_tests.TXGammaTRandoms` - Make diagnostic 2pt measurements of tangential shear around randoms
+* :py:class:`~txpipe.twopoint.twopoint_null_tests.TXGammaTRandoms` - Make diagnostic 2pt measurements of tangential shear around randoms
 
-* :py:class:`~txpipe.twopoint_null_tests.TXApertureMass` - Measure the aperture mass statistics with TreeCorr
+* :py:class:`~txpipe.twopoint.twopoint_null_tests.TXApertureMass` - Measure the aperture mass statistics with TreeCorr
 
-* :py:class:`~txpipe.spatial_diagnostics.TXFocalPlanePlot` - Make diagnostic plot of  mean measured ellipticity and residual ellipticity
+* :py:class:`~txpipe.diagnostics.spatial_diagnostics.TXFocalPlanePlot` - Make diagnostic plot of  mean measured ellipticity and residual ellipticity
 
 
 
-.. autotxclass:: txpipe.diagnostics.TXDiagnosticQuantiles
+.. autotxclass:: txpipe.diagnostics.diagnostics.TXDiagnosticQuantiles
     :members:
     :exclude-members: run
 
@@ -66,7 +66,7 @@ These stages compute and/or plot diagnostics of catalogs or other data
 
 
 
-.. autotxclass:: txpipe.diagnostics.TXSourceDiagnosticPlots
+.. autotxclass:: txpipe.diagnostics.diagnostics.TXSourceDiagnosticPlots
     :members:
     :exclude-members: run
 
@@ -119,7 +119,7 @@ These stages compute and/or plot diagnostics of catalogs or other data
 
 
 
-.. autotxclass:: txpipe.diagnostics.TXResponseInBins
+.. autotxclass:: txpipe.diagnostics.diagnostics.TXResponseInBins
     :members:
     :exclude-members: run
 
@@ -152,7 +152,7 @@ These stages compute and/or plot diagnostics of catalogs or other data
 
 
 
-.. autotxclass:: txpipe.diagnostics.TXLensDiagnosticPlots
+.. autotxclass:: txpipe.diagnostics.diagnostics.TXLensDiagnosticPlots
     :members:
     :exclude-members: run
 
@@ -185,7 +185,7 @@ These stages compute and/or plot diagnostics of catalogs or other data
 
 
 
-.. autotxclass:: txpipe.psf_diagnostics.TXPSFDiagnostics
+.. autotxclass:: txpipe.diagnostics.psf_diagnostics.TXPSFDiagnostics
     :members:
     :exclude-members: run
 
@@ -212,7 +212,7 @@ These stages compute and/or plot diagnostics of catalogs or other data
 
 
 
-.. autotxclass:: txpipe.psf_diagnostics.TXPSFMomentCorr
+.. autotxclass:: txpipe.diagnostics.psf_diagnostics.TXPSFMomentCorr
     :members:
     :exclude-members: run
 
@@ -242,7 +242,7 @@ These stages compute and/or plot diagnostics of catalogs or other data
 
 
 
-.. autotxclass:: txpipe.psf_diagnostics.TXTauStatistics
+.. autotxclass:: txpipe.diagnostics.psf_diagnostics.TXTauStatistics
     :members:
     :exclude-members: run
 
@@ -284,7 +284,7 @@ These stages compute and/or plot diagnostics of catalogs or other data
 
 
 
-.. autotxclass:: txpipe.psf_diagnostics.TXRoweStatistics
+.. autotxclass:: txpipe.diagnostics.psf_diagnostics.TXRoweStatistics
     :members:
     :exclude-members: run
 
@@ -323,7 +323,7 @@ These stages compute and/or plot diagnostics of catalogs or other data
 
 
 
-.. autotxclass:: txpipe.psf_diagnostics.TXGalaxyStarShear
+.. autotxclass:: txpipe.diagnostics.psf_diagnostics.TXGalaxyStarShear
     :members:
     :exclude-members: run
 
@@ -360,7 +360,7 @@ These stages compute and/or plot diagnostics of catalogs or other data
 
 
 
-.. autotxclass:: txpipe.psf_diagnostics.TXGalaxyStarDensity
+.. autotxclass:: txpipe.diagnostics.psf_diagnostics.TXGalaxyStarDensity
     :members:
     :exclude-members: run
 
@@ -396,7 +396,7 @@ These stages compute and/or plot diagnostics of catalogs or other data
 
 
 
-.. autotxclass:: txpipe.psf_diagnostics.TXBrighterFatterPlot
+.. autotxclass:: txpipe.diagnostics.psf_diagnostics.TXBrighterFatterPlot
     :members:
     :exclude-members: run
 
@@ -425,7 +425,7 @@ These stages compute and/or plot diagnostics of catalogs or other data
 
 
 
-.. autotxclass:: txpipe.twopoint_null_tests.TXGammaTFieldCenters
+.. autotxclass:: txpipe.twopoint.twopoint_null_tests.TXGammaTFieldCenters
     :members:
     :exclude-members: run
 
@@ -475,7 +475,7 @@ These stages compute and/or plot diagnostics of catalogs or other data
 
 
 
-.. autotxclass:: txpipe.twopoint_null_tests.TXGammaTStars
+.. autotxclass:: txpipe.twopoint.twopoint_null_tests.TXGammaTStars
     :members:
     :exclude-members: run
 
@@ -529,7 +529,7 @@ These stages compute and/or plot diagnostics of catalogs or other data
 
 
 
-.. autotxclass:: txpipe.twopoint_null_tests.TXGammaTRandoms
+.. autotxclass:: txpipe.twopoint.twopoint_null_tests.TXGammaTRandoms
     :members:
     :exclude-members: run
 
@@ -578,7 +578,7 @@ These stages compute and/or plot diagnostics of catalogs or other data
 
 
 
-.. autotxclass:: txpipe.twopoint_null_tests.TXApertureMass
+.. autotxclass:: txpipe.twopoint.twopoint_null_tests.TXApertureMass
     :members:
     :exclude-members: run
 
@@ -626,7 +626,7 @@ These stages compute and/or plot diagnostics of catalogs or other data
 
 
 
-.. autotxclass:: txpipe.spatial_diagnostics.TXFocalPlanePlot
+.. autotxclass:: txpipe.diagnostics.spatial_diagnostics.TXFocalPlanePlot
     :members:
     :exclude-members: run
 

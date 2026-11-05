@@ -1,6 +1,6 @@
 from .maps import TXBaseMaps, map_config_options
 import numpy as np
-from .base_stage import PipelineStage
+from ..base_stage import PipelineStage
 from .mapping import (
     make_coverage_map,
     make_dask_shear_maps,
@@ -9,8 +9,8 @@ from .mapping import (
     make_dask_depth_map,
     make_dask_depth_map_det_prob,
 )
-from .data_types import MapsFile, HDFFile, ShearCatalog
-from .utils import choose_pixelization, import_dask
+from ..data_types import MapsFile, HDFFile, ShearCatalog
+from ..utils import choose_pixelization, import_dask
 from ceci.config import StageParameter
 
 

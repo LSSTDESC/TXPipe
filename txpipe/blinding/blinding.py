@@ -1,5 +1,5 @@
-from .base_stage import PipelineStage
-from .data_types import SACCFile
+from ..base_stage import PipelineStage
+from ..data_types import SACCFile
 
 
 class TXNullBlinding(PipelineStage):

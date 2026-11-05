@@ -1,8 +1,8 @@
 import numpy as np
-from .calibration_utils.names import META_VARIANTS, SCALAR_META_VARIANTS, metacal_variants, band_variants
-from .data_types import ShearCatalog, CatalogSelection
-from .base_stage import PipelineStage
-from .calibration_utils.calibration_calculators import _DataWrapper
+from ..calibration.calibration_utils.names import META_VARIANTS, SCALAR_META_VARIANTS, metacal_variants, band_variants
+from ..data_types import ShearCatalog, CatalogSelection
+from ..base_stage import PipelineStage
+from ..calibration.calibration_utils.calibration_calculators import _DataWrapper
 from ceci.config import StageParameter
 
 class Cutter:

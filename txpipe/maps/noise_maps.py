@@ -1,6 +1,6 @@
-from .base_stage import PipelineStage
+from ..base_stage import PipelineStage
 from .maps import TXBaseMaps
-from .data_types import (
+from ..data_types import (
     ShearCatalog,
     TomographyCatalog,
     MapsFile,
@@ -9,13 +9,13 @@ from .data_types import (
     HDFFile,
 )
 import numpy as np
-from .utils.mpi_utils import mpi_reduce_large
-from .utils import (
+from ..utils.mpi_utils import mpi_reduce_large
+from ..utils import (
     choose_pixelization,
     read_shear_catalog_type,
     rename_iterated,
 )
-from .calibration_utils import Calibrator
+from ..calibration.calibration_utils import Calibrator
 from ceci.config import StageParameter
 
 
@@ -464,7 +464,7 @@ class TXNoiseMapsJax(PipelineStage):
         from jax import numpy as jnp
         from jax.ops import index
         from jax import random, jit, device_get, device_put
-        from .utils import choose_pixelization
+        from ..utils import choose_pixelization
 
         raise ValueError(
             "This code needs rewriting because source_bin and lens_bin now have the same name in the tomo files."

@@ -1,5 +1,5 @@
-from .base_stage import PipelineStage
-from .data_types import (
+from ..base_stage import PipelineStage
+from ..data_types import (
     MapsFile,
     YamlFile,
     RandomsCatalog,
@@ -8,7 +8,7 @@ from .data_types import (
     HDFFile,
     FiducialCosmology,
 )
-from .utils import choose_pixelization, Splitter
+from ..utils import choose_pixelization, Splitter
 import numpy as np
 from ceci.config import StageParameter
 
@@ -52,8 +52,8 @@ class TXRandomCat(PipelineStage):
         import scipy.stats
         import healpy
         import pyccl
-        from . import randoms
-        from .utils.hdf_tools import BatchWriter
+        from .. import randoms
+        from ..utils.hdf_tools import BatchWriter
         import healpix
 
         # Load the input depth map
@@ -317,7 +317,7 @@ class TXRandomCat(PipelineStage):
 
         Currently reloads the binned randoms and saves them
         """
-        from .utils.hdf_tools import BatchWriter
+        from ..utils.hdf_tools import BatchWriter
 
         sample_rate = self.config["sample_rate"]
 
@@ -402,8 +402,8 @@ class TXSubsampleRandoms(PipelineStage):
     }
 
     def run(self):
-        from . import randoms
-        from .utils.hdf_tools import BatchWriter
+        from .. import randoms
+        from ..utils.hdf_tools import BatchWriter
 
         sample_rate = self.config["sample_rate"]
 

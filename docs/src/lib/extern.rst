@@ -12,5 +12,5 @@ These tools help TXPipe interface with external libraries, including scipy, h5py
 .. automodule:: txpipe.utils.mpi_utils
     :members:
 
-.. automodule:: txpipe.utils.nmt_utils
+.. automodule:: txpipe.theory.nmt_utils
     :members:

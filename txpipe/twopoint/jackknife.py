@@ -1,5 +1,5 @@
-from .base_stage import PipelineStage
-from .data_types import RandomsCatalog, ShearCatalog, PNGFile, TextFile
+from ..base_stage import PipelineStage
+from ..data_types import RandomsCatalog, ShearCatalog, PNGFile, TextFile
 from ceci.config import StageParameter
 import numpy as np
 

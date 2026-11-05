@@ -1,6 +1,6 @@
 import numpy as np
 import healpy as hp
-from ..utils import import_dask
+from ...utils import import_dask
 from .basic_maps import pix2sparseindex
 
 

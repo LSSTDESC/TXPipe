@@ -1,5 +1,5 @@
-from .base_stage import PipelineStage
-from .data_types import SACCFile, PNGFile
+from ..base_stage import PipelineStage
+from ..data_types import SACCFile, PNGFile
 import numpy as np
 import os
 from ceci.config import StageParameter
@@ -34,7 +34,7 @@ class TXTwoPointPlots(PipelineStage):
         import sacc
         import matplotlib
         import pyccl
-        from .plotting import full_3x2pt_plots
+        from ..plotting import full_3x2pt_plots
 
         matplotlib.use("agg")
         matplotlib.rcParams["xtick.direction"] = "in"
@@ -152,7 +152,7 @@ class TXTwoPointPlotsFourier(PipelineStage):
         import sacc
         import matplotlib
         import pyccl
-        from .plotting import full_3x2pt_plots
+        from ..plotting import full_3x2pt_plots
 
         matplotlib.use("agg")
         matplotlib.rcParams["xtick.direction"] = "in"
@@ -262,7 +262,7 @@ class TXTwoPointPlotsTheory(TXTwoPointPlots):
         import sacc
         import matplotlib
         import pyccl
-        from .plotting import full_3x2pt_plots
+        from ..plotting import full_3x2pt_plots
 
         matplotlib.use("agg")
         matplotlib.rcParams["xtick.direction"] = "in"

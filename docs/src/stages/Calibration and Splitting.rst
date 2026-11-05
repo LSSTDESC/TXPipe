@@ -5,37 +5,37 @@ These stages compute the shear calibration of each tomographic bin from
 the source selection and bin assignments, apply it, and split up catalogs
 into sub-catalogs. See :ref:`Shear calibration guide`.
 
-* :py:class:`~txpipe.lens_selector.TXLensCatalogSplitter` - Split a lens catalog file into a new file with separate bins
+* :py:class:`~txpipe.selection.lens_selector.TXLensCatalogSplitter` - Split a lens catalog file into a new file with separate bins
 
-* :py:class:`~txpipe.lens_selector.TXTruthLensCatalogSplitter` - Split a lens catalog file into a new file with separate bins with true redshifts.
+* :py:class:`~txpipe.selection.lens_selector.TXTruthLensCatalogSplitter` - Split a lens catalog file into a new file with separate bins with true redshifts.
 
-* :py:class:`~txpipe.lens_selector.TXExternalLensCatalogSplitter` - Split an external lens catalog into bins
+* :py:class:`~txpipe.selection.lens_selector.TXExternalLensCatalogSplitter` - Split an external lens catalog into bins
 
-* :py:class:`~txpipe.lens_selector.TXTruthLensCatalogSplitterWeighted` - Split a lens catalog file into a new file with separate bins with true redshifts.
+* :py:class:`~txpipe.selection.lens_selector.TXTruthLensCatalogSplitterWeighted` - Split a lens catalog file into a new file with separate bins with true redshifts.
 
-* :py:class:`~txpipe.twopoint_null_tests.TXStarCatalogSplitter` - Split a star catalog into bright and dim stars
+* :py:class:`~txpipe.twopoint.twopoint_null_tests.TXStarCatalogSplitter` - Split a star catalog into bright and dim stars
 
-* :py:class:`~txpipe.calibrate.TXShearCalibration` - Split the shear catalog into calibrated bins
+* :py:class:`~txpipe.calibration.calibrate.TXShearCalibration` - Split the shear catalog into calibrated bins
 
-* :py:class:`~txpipe.shear_calibration.base.TXComputeShearCalibrationBase` - Base stage for source selection using S/N, size, and flag cuts and tomography
+* :py:class:`~txpipe.calibration.shear_calibration.base.TXComputeShearCalibrationBase` - Base stage for source selection using S/N, size, and flag cuts and tomography
 
-* :py:class:`~txpipe.shear_calibration.simple.TXComputeShearCalibrationSimple` - Source selection and tomography for mock catalogs that do not
+* :py:class:`~txpipe.calibration.shear_calibration.simple.TXComputeShearCalibrationSimple` - Source selection and tomography for mock catalogs that do not
 
-* :py:class:`~txpipe.shear_calibration.hsc.TXComputeShearCalibrationHSC` - Source selection and tomography for HSC catalogs
+* :py:class:`~txpipe.calibration.shear_calibration.hsc.TXComputeShearCalibrationHSC` - Source selection and tomography for HSC catalogs
 
-* :py:class:`~txpipe.shear_calibration.lensfit.TXComputeShearCalibrationLensfit` - Source selection and tomography for lensfit catalogs
+* :py:class:`~txpipe.calibration.shear_calibration.lensfit.TXComputeShearCalibrationLensfit` - Source selection and tomography for lensfit catalogs
 
-* :py:class:`~txpipe.shear_calibration.metacal.TXComputeShearCalibrationMetacal` - Source selection and tomography for metacal catalogs
+* :py:class:`~txpipe.calibration.shear_calibration.metacal.TXComputeShearCalibrationMetacal` - Source selection and tomography for metacal catalogs
 
-* :py:class:`~txpipe.shear_calibration.metacal.TXComputeShearCalibrationDESY3` - Source selection and tomography for DESY3 catalogs
+* :py:class:`~txpipe.calibration.shear_calibration.metacal.TXComputeShearCalibrationDESY3` - Source selection and tomography for DESY3 catalogs
 
-* :py:class:`~txpipe.shear_calibration.metadetect.TXComputeShearCalibrationMetadetect` - Source selection and tomography for metadetect catalogs
+* :py:class:`~txpipe.calibration.shear_calibration.metadetect.TXComputeShearCalibrationMetadetect` - Source selection and tomography for metadetect catalogs
 
-* :py:class:`~txpipe.shear_calibration.scalar_metadetect.TXComputeShearCalibrationScalarMetadetect` - Source selection and tomography for scalar metadetect catalogs.
+* :py:class:`~txpipe.calibration.shear_calibration.scalar_metadetect.TXComputeShearCalibrationScalarMetadetect` - Source selection and tomography for scalar metadetect catalogs.
 
 
 
-.. autotxclass:: txpipe.lens_selector.TXLensCatalogSplitter
+.. autotxclass:: txpipe.selection.lens_selector.TXLensCatalogSplitter
     :members:
     :exclude-members: run
 
@@ -66,7 +66,7 @@ into sub-catalogs. See :ref:`Shear calibration guide`.
 
 
 
-.. autotxclass:: txpipe.lens_selector.TXTruthLensCatalogSplitter
+.. autotxclass:: txpipe.selection.lens_selector.TXTruthLensCatalogSplitter
     :members:
     :exclude-members: run
 
@@ -96,7 +96,7 @@ into sub-catalogs. See :ref:`Shear calibration guide`.
 
 
 
-.. autotxclass:: txpipe.lens_selector.TXExternalLensCatalogSplitter
+.. autotxclass:: txpipe.selection.lens_selector.TXExternalLensCatalogSplitter
     :members:
     :exclude-members: run
 
@@ -126,7 +126,7 @@ into sub-catalogs. See :ref:`Shear calibration guide`.
 
 
 
-.. autotxclass:: txpipe.lens_selector.TXTruthLensCatalogSplitterWeighted
+.. autotxclass:: txpipe.selection.lens_selector.TXTruthLensCatalogSplitterWeighted
     :members:
     :exclude-members: run
 
@@ -156,7 +156,7 @@ into sub-catalogs. See :ref:`Shear calibration guide`.
 
 
 
-.. autotxclass:: txpipe.twopoint_null_tests.TXStarCatalogSplitter
+.. autotxclass:: txpipe.twopoint.twopoint_null_tests.TXStarCatalogSplitter
     :members:
     :exclude-members: run
 
@@ -182,7 +182,7 @@ into sub-catalogs. See :ref:`Shear calibration guide`.
 
 
 
-.. autotxclass:: txpipe.calibrate.TXShearCalibration
+.. autotxclass:: txpipe.calibration.calibrate.TXShearCalibration
     :members:
     :exclude-members: run
 
@@ -216,7 +216,7 @@ into sub-catalogs. See :ref:`Shear calibration guide`.
 
 
 
-.. autotxclass:: txpipe.shear_calibration.base.TXComputeShearCalibrationBase
+.. autotxclass:: txpipe.calibration.shear_calibration.base.TXComputeShearCalibrationBase
     :members:
     :exclude-members: run
 
@@ -244,7 +244,7 @@ into sub-catalogs. See :ref:`Shear calibration guide`.
 
 
 
-.. autotxclass:: txpipe.shear_calibration.simple.TXComputeShearCalibrationSimple
+.. autotxclass:: txpipe.calibration.shear_calibration.simple.TXComputeShearCalibrationSimple
     :members:
     :exclude-members: run
 
@@ -272,7 +272,7 @@ into sub-catalogs. See :ref:`Shear calibration guide`.
 
 
 
-.. autotxclass:: txpipe.shear_calibration.hsc.TXComputeShearCalibrationHSC
+.. autotxclass:: txpipe.calibration.shear_calibration.hsc.TXComputeShearCalibrationHSC
     :members:
     :exclude-members: run
 
@@ -301,7 +301,7 @@ into sub-catalogs. See :ref:`Shear calibration guide`.
 
 
 
-.. autotxclass:: txpipe.shear_calibration.lensfit.TXComputeShearCalibrationLensfit
+.. autotxclass:: txpipe.calibration.shear_calibration.lensfit.TXComputeShearCalibrationLensfit
     :members:
     :exclude-members: run
 
@@ -331,7 +331,7 @@ into sub-catalogs. See :ref:`Shear calibration guide`.
 
 
 
-.. autotxclass:: txpipe.shear_calibration.metacal.TXComputeShearCalibrationMetacal
+.. autotxclass:: txpipe.calibration.shear_calibration.metacal.TXComputeShearCalibrationMetacal
     :members:
     :exclude-members: run
 
@@ -361,7 +361,7 @@ into sub-catalogs. See :ref:`Shear calibration guide`.
 
 
 
-.. autotxclass:: txpipe.shear_calibration.metacal.TXComputeShearCalibrationDESY3
+.. autotxclass:: txpipe.calibration.shear_calibration.metacal.TXComputeShearCalibrationDESY3
     :members:
     :exclude-members: run
 
@@ -392,7 +392,7 @@ into sub-catalogs. See :ref:`Shear calibration guide`.
 
 
 
-.. autotxclass:: txpipe.shear_calibration.metadetect.TXComputeShearCalibrationMetadetect
+.. autotxclass:: txpipe.calibration.shear_calibration.metadetect.TXComputeShearCalibrationMetadetect
     :members:
     :exclude-members: run
 
@@ -421,7 +421,7 @@ into sub-catalogs. See :ref:`Shear calibration guide`.
 
 
 
-.. autotxclass:: txpipe.shear_calibration.scalar_metadetect.TXComputeShearCalibrationScalarMetadetect
+.. autotxclass:: txpipe.calibration.shear_calibration.scalar_metadetect.TXComputeShearCalibrationScalarMetadetect
     :members:
     :exclude-members: run
 

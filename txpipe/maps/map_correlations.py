@@ -1,5 +1,5 @@
-from .base_stage import PipelineStage
-from .data_types import MapsFile, FileCollection
+from ..base_stage import PipelineStage
+from ..data_types import MapsFile, FileCollection
 import pathlib
 import glob
 import numpy as np

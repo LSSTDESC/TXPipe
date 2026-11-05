@@ -1,8 +1,8 @@
-from .base_stage import PipelineStage
-from .data_types import TomographyCatalog, MapsFile, HDFFile, BinnedCatalog
+from ..base_stage import PipelineStage
+from ..data_types import TomographyCatalog, MapsFile, HDFFile, BinnedCatalog
 from ceci.config import StageParameter
 import numpy as np
-from .utils import unique_list, choose_pixelization, import_dask
+from ..utils import unique_list, choose_pixelization, import_dask
 from .mapping import make_dask_shear_maps, make_dask_lens_maps, make_coverage_map
 
 

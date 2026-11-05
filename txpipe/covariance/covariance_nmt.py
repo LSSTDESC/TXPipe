@@ -1,5 +1,5 @@
-from .base_stage import PipelineStage
-from .data_types import ShearCatalog, HDFFile, FiducialCosmology, SACCFile, MapsFile
+from ..base_stage import PipelineStage
+from ..data_types import ShearCatalog, HDFFile, FiducialCosmology, SACCFile, MapsFile
 import numpy as np
 import warnings
 import os

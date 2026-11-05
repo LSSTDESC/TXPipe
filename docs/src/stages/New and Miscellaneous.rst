@@ -6,7 +6,7 @@ assigned to one.
 
 * :py:class:`~txpipe.metadata.TXTracerMetadata` - Collate metadata from various other files
 
-* :py:class:`~txpipe.rail.conversions.TXParqetToHDF` - Generic stage to convert a Parquet File to HDF
+* :py:class:`~txpipe.photoz.rail.conversions.TXParqetToHDF` - Generic stage to convert a Parquet File to HDF
 
 
 
@@ -38,7 +38,7 @@ assigned to one.
 
 
 
-.. autotxclass:: txpipe.rail.conversions.TXParqetToHDF
+.. autotxclass:: txpipe.photoz.rail.conversions.TXParqetToHDF
     :members:
     :exclude-members: run
 

@@ -3,9 +3,9 @@ Source Injection
 
 These stages ingest and use synthetic source injection information
 
-* :py:class:`~txpipe.auxiliary_maps.TXAuxiliarySSIMaps` - Generate auxiliary maps from SSI catalogs
+* :py:class:`~txpipe.maps.auxiliary_maps.TXAuxiliarySSIMaps` - Generate auxiliary maps from SSI catalogs
 
-* :py:class:`~txpipe.map_plots.TXMapPlotsSSI` - Make plots of all the available maps that use SSI inputs
+* :py:class:`~txpipe.maps.map_plots.TXMapPlotsSSI` - Make plots of all the available maps that use SSI inputs
 
 * :py:class:`~txpipe.ingest.ssi.TXIngestSSIGCR` - Ingest SSI catalogs using GCR
 
@@ -17,11 +17,11 @@ These stages ingest and use synthetic source injection information
 
 * :py:class:`~txpipe.ingest.ssi.TXIngestSSIDetectionDESBalrog` - Ingest an "SSI" "detection" catalog from DES (AKA Balrog)
 
-* :py:class:`~txpipe.magnification.TXSSIMagnification` - Compute the magnification coefficients using SSI outputs
+* :py:class:`~txpipe.twopoint.magnification.TXSSIMagnification` - Compute the magnification coefficients using SSI outputs
 
 
 
-.. autotxclass:: txpipe.auxiliary_maps.TXAuxiliarySSIMaps
+.. autotxclass:: txpipe.maps.auxiliary_maps.TXAuxiliarySSIMaps
     :members:
     :exclude-members: run
 
@@ -57,7 +57,7 @@ These stages ingest and use synthetic source injection information
 
 
 
-.. autotxclass:: txpipe.map_plots.TXMapPlotsSSI
+.. autotxclass:: txpipe.maps.map_plots.TXMapPlotsSSI
     :members:
     :exclude-members: run
 
@@ -210,7 +210,7 @@ These stages ingest and use synthetic source injection information
 
 
 
-.. autotxclass:: txpipe.magnification.TXSSIMagnification
+.. autotxclass:: txpipe.twopoint.magnification.TXSSIMagnification
     :members:
     :exclude-members: run
 

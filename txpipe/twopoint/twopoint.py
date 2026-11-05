@@ -1,5 +1,5 @@
-from .base_stage import PipelineStage
-from .data_types import (
+from ..base_stage import PipelineStage
+from ..data_types import (
     HDFFile,
     SACCFile,
     TextFile,
@@ -7,7 +7,7 @@ from .data_types import (
     QPNOfZFile,
     BinnedCatalog,
 )
-from .utils.patches import PatchMaker
+from ..utils.patches import PatchMaker
 from ceci.config import StageParameter
 import numpy as np
 import collections
@@ -16,7 +16,7 @@ import os
 import pathlib
 from time import perf_counter
 import gc
-from .utils import choose_pixelization
+from ..utils import choose_pixelization
 
 # This creates a little mini-type, like a struct,
 # for holding individual measurements

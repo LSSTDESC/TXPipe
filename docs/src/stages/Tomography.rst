@@ -5,23 +5,23 @@ These stages assign objects in a shear catalog to tomographic bins,
 independently of the source selection. They write a bin assignments file.
 See :ref:`Source selection and tomography`.
 
-* :py:class:`~txpipe.rail.summarize.PZCollateRailAssignmentsMetadetect` - Collect RAIL tomographic bin assignments for the metadetect variants into one file.
+* :py:class:`~txpipe.photoz.rail.summarize.PZCollateRailAssignmentsMetadetect` - Collect RAIL tomographic bin assignments for the metadetect variants into one file.
 
-* :py:class:`~txpipe.rail.summarize.PZCollateRailAssignmentsScalarMetadetect` - Collect RAIL tomographic bin assignments for the scalar metadetect variants into one file.
+* :py:class:`~txpipe.photoz.rail.summarize.PZCollateRailAssignmentsScalarMetadetect` - Collect RAIL tomographic bin assignments for the scalar metadetect variants into one file.
 
-* :py:class:`~txpipe.rail.summarize.PZGenerateSOMInformerSubsample` - Make a random subsample of the selected shear catalog objects, to train a SOM.
+* :py:class:`~txpipe.photoz.rail.summarize.PZGenerateSOMInformerSubsample` - Make a random subsample of the selected shear catalog objects, to train a SOM.
 
-* :py:class:`~txpipe.tomography.TXTrainRandomForestTomography` - Train a random forest to assign source galaxies to tomographic bins based on photometry.
+* :py:class:`~txpipe.photoz.tomography.TXTrainRandomForestTomography` - Train a random forest to assign source galaxies to tomographic bins based on photometry.
 
-* :py:class:`~txpipe.tomography.TXComputeSourceTomography` - Base class for tomography.
+* :py:class:`~txpipe.photoz.tomography.TXComputeSourceTomography` - Base class for tomography.
 
-* :py:class:`~txpipe.tomography.TXApplyRandomForestSourceTomography` - Assign source galaxies to tomographic bins using a trained random forest.
+* :py:class:`~txpipe.photoz.tomography.TXApplyRandomForestSourceTomography` - Assign source galaxies to tomographic bins using a trained random forest.
 
-* :py:class:`~txpipe.tomography.TXSimpleRedshiftSourceTomography` - Assign source galaxies to tomographic bins by cutting on a redshift column.
+* :py:class:`~txpipe.photoz.tomography.TXSimpleRedshiftSourceTomography` - Assign source galaxies to tomographic bins by cutting on a redshift column.
 
 
 
-.. autotxclass:: txpipe.rail.summarize.PZCollateRailAssignmentsMetadetect
+.. autotxclass:: txpipe.photoz.rail.summarize.PZCollateRailAssignmentsMetadetect
     :members:
     :exclude-members: run
 
@@ -50,7 +50,7 @@ See :ref:`Source selection and tomography`.
 
 
 
-.. autotxclass:: txpipe.rail.summarize.PZCollateRailAssignmentsScalarMetadetect
+.. autotxclass:: txpipe.photoz.rail.summarize.PZCollateRailAssignmentsScalarMetadetect
     :members:
     :exclude-members: run
 
@@ -77,7 +77,7 @@ See :ref:`Source selection and tomography`.
 
 
 
-.. autotxclass:: txpipe.rail.summarize.PZGenerateSOMInformerSubsample
+.. autotxclass:: txpipe.photoz.rail.summarize.PZGenerateSOMInformerSubsample
     :members:
     :exclude-members: run
 
@@ -105,7 +105,7 @@ See :ref:`Source selection and tomography`.
 
 
 
-.. autotxclass:: txpipe.tomography.TXTrainRandomForestTomography
+.. autotxclass:: txpipe.photoz.tomography.TXTrainRandomForestTomography
     :members:
     :exclude-members: run
 
@@ -134,7 +134,7 @@ See :ref:`Source selection and tomography`.
 
 
 
-.. autotxclass:: txpipe.tomography.TXComputeSourceTomography
+.. autotxclass:: txpipe.photoz.tomography.TXComputeSourceTomography
     :members:
     :exclude-members: run
 
@@ -159,7 +159,7 @@ See :ref:`Source selection and tomography`.
 
 
 
-.. autotxclass:: txpipe.tomography.TXApplyRandomForestSourceTomography
+.. autotxclass:: txpipe.photoz.tomography.TXApplyRandomForestSourceTomography
     :members:
     :exclude-members: run
 
@@ -184,7 +184,7 @@ See :ref:`Source selection and tomography`.
 
 
 
-.. autotxclass:: txpipe.tomography.TXSimpleRedshiftSourceTomography
+.. autotxclass:: txpipe.photoz.tomography.TXSimpleRedshiftSourceTomography
     :members:
     :exclude-members: run
 

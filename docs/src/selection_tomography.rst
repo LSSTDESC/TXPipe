@@ -36,23 +36,23 @@ The selection and calibration stages you need depend on the type of shear catalo
       - Selection stage
       - Calibration stage
     * - Metadetect
-      - :py:class:`~txpipe.source_selection.TXMetaDetectSelection`
-      - :py:class:`~txpipe.shear_calibration.metadetect.TXComputeShearCalibrationMetadetect`
+      - :py:class:`~txpipe.selection.source_selection.TXMetaDetectSelection`
+      - :py:class:`~txpipe.calibration.shear_calibration.metadetect.TXComputeShearCalibrationMetadetect`
     * - Scalar metadetect
-      - :py:class:`~txpipe.source_selection.TXScalarMetaDetectSelection`
-      - :py:class:`~txpipe.shear_calibration.scalar_metadetect.TXComputeShearCalibrationScalarMetadetect`
+      - :py:class:`~txpipe.selection.source_selection.TXScalarMetaDetectSelection`
+      - :py:class:`~txpipe.calibration.shear_calibration.scalar_metadetect.TXComputeShearCalibrationScalarMetadetect`
     * - Metacal
-      - :py:class:`~txpipe.source_selection.TXMetacalSelection`
-      - :py:class:`~txpipe.shear_calibration.metacal.TXComputeShearCalibrationMetacal`
+      - :py:class:`~txpipe.selection.source_selection.TXMetacalSelection`
+      - :py:class:`~txpipe.calibration.shear_calibration.metacal.TXComputeShearCalibrationMetacal`
     * - Lensfit
-      - :py:class:`~txpipe.source_selection.TXLensfitSelection`
-      - :py:class:`~txpipe.shear_calibration.lensfit.TXComputeShearCalibrationLensfit`
+      - :py:class:`~txpipe.selection.source_selection.TXLensfitSelection`
+      - :py:class:`~txpipe.calibration.shear_calibration.lensfit.TXComputeShearCalibrationLensfit`
     * - HSC
-      - :py:class:`~txpipe.source_selection.TXHSCSelection`
-      - :py:class:`~txpipe.shear_calibration.hsc.TXComputeShearCalibrationHSC`
+      - :py:class:`~txpipe.selection.source_selection.TXHSCSelection`
+      - :py:class:`~txpipe.calibration.shear_calibration.hsc.TXComputeShearCalibrationHSC`
     * - Simple (no calibration needed)
-      - :py:class:`~txpipe.source_selection.TXSimpleSelection`
-      - :py:class:`~txpipe.shear_calibration.simple.TXComputeShearCalibrationSimple`
+      - :py:class:`~txpipe.selection.source_selection.TXSimpleSelection`
+      - :py:class:`~txpipe.calibration.shear_calibration.simple.TXComputeShearCalibrationSimple`
 
 The base class ``TXComputeShearCalibration`` cannot be used directly; use one of the subclasses.
 
@@ -60,7 +60,7 @@ The base class ``TXComputeShearCalibration`` cannot be used directly; use one of
 Step 1: selection
 -----------------
 
-:py:class:`~txpipe.source_selection.TXSimpleSelection` applies a flag cut, a minimum signal-to-noise cut ``s2n_min`` and a minimum size cut ``T_min`` on the ratio of the object size to the PSF size. The subclasses for each catalog type use the same cuts, applied to each variant of the catalog (see below).
+:py:class:`~txpipe.selection.source_selection.TXSimpleSelection` applies a flag cut, a minimum signal-to-noise cut ``s2n_min`` and a minimum size cut ``T_min`` on the ratio of the object size to the PSF size. The subclasses for each catalog type use the same cuts, applied to each variant of the catalog (see below).
 
 The result is a :ref:`catalog selection file<Catalog selections>`, ``shear_selection``, with one boolean value per object, per variant.
 
@@ -71,15 +71,15 @@ Survey-specific cuts
 
 Some surveys apply more cuts than the simple ones. These are implemented as subclasses that you choose in the pipeline instead of the generic selection stage:
 
-- :py:class:`~txpipe.source_selection.TXDP2RubinMetadetectSelection` applies the cuts for the Rubin metadetect catalogs of DP2: primary-object and mask-fraction cuts, signal-to-noise and size cuts, magnitude cuts in g, r and i, and colour sanity cuts. See ``examples/dp2/analysis_rubin_metadetect.yml``.
-- :py:class:`~txpipe.source_selection.TXDP2DESCSelection` applies a similar set for the DESC-run scalar metadetect catalogs of DP2, including a PSF-ellipticity cut. See ``examples/dp2/analysis_desc_metadetect_1.1.yml``.
+- :py:class:`~txpipe.selection.source_selection.TXDP2RubinMetadetectSelection` applies the cuts for the Rubin metadetect catalogs of DP2: primary-object and mask-fraction cuts, signal-to-noise and size cuts, magnitude cuts in g, r and i, and colour sanity cuts. See ``examples/dp2/analysis_rubin_metadetect.yml``.
+- :py:class:`~txpipe.selection.source_selection.TXDP2DESCSelection` applies a similar set for the DESC-run scalar metadetect catalogs of DP2, including a PSF-ellipticity cut. See ``examples/dp2/analysis_desc_metadetect_1.1.yml``.
 
 All the cuts can be changed in the configuration file; see the stage documentation in :ref:`Selection` for the options and their defaults.
 
 Writing your own selection
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-To make a new selection, subclass one of the selection stages and override ``compute_selection``, which is given a chunk of data (a dictionary of arrays) and returns a boolean array. Use the helper class ``Cutter`` to keep a running record of how many objects each cut removes. Set the class attribute ``columns`` to list the catalog columns that the cuts need. :py:class:`~txpipe.source_selection.TXDP2DESCSelection` is a good example to follow.
+To make a new selection, subclass one of the selection stages and override ``compute_selection``, which is given a chunk of data (a dictionary of arrays) and returns a boolean array. Use the helper class ``Cutter`` to keep a running record of how many objects each cut removes. Set the class attribute ``columns`` to list the catalog columns that the cuts need. :py:class:`~txpipe.selection.source_selection.TXDP2DESCSelection` is a good example to follow.
 
 
 Step 2: tomography
@@ -87,11 +87,11 @@ Step 2: tomography
 
 There are currently four ways to get tomographic bins.
 
-**Random forest.** A random-forest classifier is trained to predict redshift bins from magnitudes and colours using a spectroscopic or other training catalog (:py:class:`~txpipe.tomography.TXTrainRandomForestTomography`), and applied to the shear catalog (:py:class:`~txpipe.tomography.TXApplyRandomForestSourceTomography`). Training is a separate stage because it can be slow with a large training sample. This is what the ``examples/metadetect``, ``examples/metacal`` and ``examples/cosmodc2`` pipelines do. The training stage needs the bin edges ``source_zbin_edges`` and the bands to use in its configuration.
+**Random forest.** A random-forest classifier is trained to predict redshift bins from magnitudes and colours using a spectroscopic or other training catalog (:py:class:`~txpipe.photoz.tomography.TXTrainRandomForestTomography`), and applied to the shear catalog (:py:class:`~txpipe.photoz.tomography.TXApplyRandomForestSourceTomography`). Training is a separate stage because it can be slow with a large training sample. This is what the ``examples/metadetect``, ``examples/metacal`` and ``examples/cosmodc2`` pipelines do. The training stage needs the bin edges ``source_zbin_edges`` and the bands to use in its configuration.
 
-**Simple redshift cuts.** If the catalog contains true (or other estimated) redshifts, :py:class:`~txpipe.tomography.TXSimpleRedshiftSourceTomography` bins on the column ``redshift_col``. This is used for tests and for mocks, for example in ``examples/desy1`` and ``examples/kids-1000``.
+**Simple redshift cuts.** If the catalog contains true (or other estimated) redshifts, :py:class:`~txpipe.photoz.tomography.TXSimpleRedshiftSourceTomography` bins on the column ``redshift_col``. This is used for tests and for mocks, for example in ``examples/desy1`` and ``examples/kids-1000``.
 
-**RAIL** A RAIL tomography algorithm such as a SOM can be run on each variant of the catalog, and the results gathered into a single bin-assignments file by :py:class:`~txpipe.rail.summarize.PZCollateRailAssignmentsMetadetect` (or ``PZCollateRailAssignmentsScalarMetadetect`` for scalar metadetect catalogs). See ``examples/dp2/analysis_rubin_metadetect.yml`` for a complete pipeline, and :py:class:`~txpipe.rail.summarize.PZGenerateSOMInformerSubsample` for making a training sample from the selected objects.
+**RAIL** A RAIL tomography algorithm such as a SOM can be run on each variant of the catalog, and the results gathered into a single bin-assignments file by :py:class:`~txpipe.photoz.rail.summarize.PZCollateRailAssignmentsMetadetect` (or ``PZCollateRailAssignmentsScalarMetadetect`` for scalar metadetect catalogs). See ``examples/dp2/analysis_rubin_metadetect.yml`` for a complete pipeline, and :py:class:`~txpipe.photoz.rail.summarize.PZGenerateSOMInformerSubsample` for making a training sample from the selected objects.
 
 **External** You could simply ingest an existing tomography file, for example from an external tool. There are no examples of this yet but it should be straightforward.
 

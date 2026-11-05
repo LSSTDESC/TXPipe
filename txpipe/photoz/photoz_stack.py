@@ -1,7 +1,7 @@
-from .base_stage import PipelineStage
-from .data_types import TomographyCatalog, HDFFile, PNGFile, QPPDFFile, QPNOfZFile
-from .utils.mpi_utils import in_place_reduce
-from .utils import rename_iterated
+from ..base_stage import PipelineStage
+from ..data_types import TomographyCatalog, HDFFile, PNGFile, QPPDFFile, QPNOfZFile
+from ..utils.mpi_utils import in_place_reduce
+from ..utils import rename_iterated
 import numpy as np
 import warnings
 from ceci.config import StageParameter

@@ -1,12 +1,12 @@
 from ceci.config import StageParameter
-from .base_stage import PipelineStage
-from .data_types import Directory, ShearCatalog, HDFFile, PNGFile, TomographyCatalog, RandomsCatalog, YamlFile, TextFile, BinnedCatalog
+from ..base_stage import PipelineStage
+from ..data_types import Directory, ShearCatalog, HDFFile, PNGFile, TomographyCatalog, RandomsCatalog, YamlFile, TextFile, BinnedCatalog
 import numpy as np
 import sys
 import os
-from .utils import read_shear_catalog_type
-from .plotting import manual_step_histogram
-from .calibration_utils import Calibrator
+from ..utils import read_shear_catalog_type
+from ..plotting import manual_step_histogram
+from ..calibration.calibration_utils import Calibrator
 
 
 STAR_PSF_USED = 0

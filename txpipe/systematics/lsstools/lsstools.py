@@ -4,7 +4,7 @@ Classes and functions to help computing lss tools
 """
 
 import numpy as np
-from ..utils.fitting import calc_chi2
+from ...utils.fitting import calc_chi2
 
 
 class DensityCorrelation:
