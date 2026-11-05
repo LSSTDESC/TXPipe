@@ -3,6 +3,14 @@ Diagnostics
 
 These stages compute and/or plot diagnostics of catalogs or other data
 
+* :py:class:`~txpipe.twopoint.twopoint_null_tests.TXGammaTFieldCenters` - Make diagnostic 2pt measurements of tangential shear around field centers
+
+* :py:class:`~txpipe.twopoint.twopoint_null_tests.TXGammaTStars` - Make diagnostic 2pt measurements of tangential shear around stars
+
+* :py:class:`~txpipe.twopoint.twopoint_null_tests.TXGammaTRandoms` - Make diagnostic 2pt measurements of tangential shear around randoms
+
+* :py:class:`~txpipe.twopoint.twopoint_null_tests.TXApertureMass` - Measure the aperture mass statistics with TreeCorr
+
 * :py:class:`~txpipe.diagnostics.diagnostics.TXDiagnosticQuantiles` - Measure quantiles of various values in the shear catalog.
 
 * :py:class:`~txpipe.diagnostics.diagnostics.TXSourceDiagnosticPlots` - Make diagnostic plots of the shear catalog
@@ -25,15 +33,208 @@ These stages compute and/or plot diagnostics of catalogs or other data
 
 * :py:class:`~txpipe.diagnostics.psf_diagnostics.TXBrighterFatterPlot` - Compute and plot a diagnostic of the brighter-fatter effect
 
-* :py:class:`~txpipe.twopoint.twopoint_null_tests.TXGammaTFieldCenters` - Make diagnostic 2pt measurements of tangential shear around field centers
-
-* :py:class:`~txpipe.twopoint.twopoint_null_tests.TXGammaTStars` - Make diagnostic 2pt measurements of tangential shear around stars
-
-* :py:class:`~txpipe.twopoint.twopoint_null_tests.TXGammaTRandoms` - Make diagnostic 2pt measurements of tangential shear around randoms
-
-* :py:class:`~txpipe.twopoint.twopoint_null_tests.TXApertureMass` - Measure the aperture mass statistics with TreeCorr
-
 * :py:class:`~txpipe.diagnostics.spatial_diagnostics.TXFocalPlanePlot` - Make diagnostic plot of  mean measured ellipticity and residual ellipticity
+
+
+
+.. autotxclass:: txpipe.twopoint.twopoint_null_tests.TXGammaTFieldCenters
+    :members:
+    :exclude-members: run
+
+    Inputs: 
+
+    - binned_shear_catalog: BinnedCatalog
+    - random_cats: RandomsCatalog
+    - exposures: HDFFile
+    - patch_centers: TextFile
+    - tracer_metadata: HDFFile
+
+    Outputs: 
+
+    - gammat_field_center: SACCFile
+    - gammat_field_center_plot: PNGFile
+    
+    Parallel: Yes - MPI
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>min_sep</strong>: (float) Default=0.5. Minimum separation for correlation measurements</LI>
+            <LI><strong>max_sep</strong>: (float) Default=300.0. Maximum separation for correlation measurements</LI>
+            <LI><strong>nbins</strong>: (int) Default=9. Number of separation bins</LI>
+            <LI><strong>bin_slop</strong>: (float) Default=0.0. Tolerance for bin sloppiness in TreeCorr</LI>
+            <LI><strong>sep_units</strong>: (str) Default=arcmin. Units for separation (arcmin, degrees, etc.)</LI>
+            <LI><strong>flip_g1</strong>: (bool) Default=False. Whether to flip the sign of g1</LI>
+            <LI><strong>flip_g2</strong>: (bool) Default=True. Whether to flip the sign of g2</LI>
+            <LI><strong>cores_per_task</strong>: (int) Default=20. Number of CPU cores to use per task</LI>
+            <LI><strong>verbose</strong>: (int) Default=1. Verbosity level for TreeCorr output</LI>
+            <LI><strong>calcs</strong>: (list) Default=[0, 1, 2]. Which calculations to perform: 0=shear-shear, 1=shear-position, 2=position-position</LI>
+            <LI><strong>reduce_randoms_size</strong>: (float) Default=1.0. Factor to reduce the size of random catalogs.</LI>
+            <LI><strong>var_method</strong>: (str) Default=shot. Method for computing variance (shot, jackknife, etc.).</LI>
+            <LI><strong>npatch</strong>: (int) Default=5. Number of patches for null tests.</LI>
+            <LI><strong>use_true_shear</strong>: (bool) Default=False. Whether to use true shear values.</LI>
+            <LI><strong>subtract_mean_shear</strong>: (bool) Default=False. Whether to subtract mean shear.</LI>
+            <LI><strong>use_randoms</strong>: (bool) Default=True. Whether to use random catalogs.</LI>
+            <LI><strong>patch_dir</strong>: (str) Default=./cache/patches. Directory for storing patch files.</LI>
+            <LI><strong>low_mem</strong>: (bool) Default=False. Whether to use low memory mode.</LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=100000. Number of rows to process in each chunk.</LI>
+            <LI><strong>share_patch_files</strong>: (bool) Default=False. Whether to share patch files across processes.</LI>
+            <LI><strong>use_subsampled_randoms</strong>: (bool) Default=False. Use subsampled randoms file for RR calculation.</LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.twopoint.twopoint_null_tests.TXGammaTStars
+    :members:
+    :exclude-members: run
+
+    Inputs: 
+
+    - binned_shear_catalog: BinnedCatalog
+    - shear_tomography_catalog: TomographyCatalog
+    - random_cats: RandomsCatalog
+    - binned_star_catalog: BinnedCatalog
+    - patch_centers: TextFile
+    - tracer_metadata: HDFFile
+    - binned_random_catalog: HDFFile
+
+    Outputs: 
+
+    - gammat_bright_stars: SACCFile
+    - gammat_bright_stars_plot: PNGFile
+    - gammat_dim_stars: SACCFile
+    - gammat_dim_stars_plot: PNGFile
+    
+    Parallel: Yes - MPI
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>min_sep</strong>: (float) Default=0.5. Minimum separation for correlation measurements</LI>
+            <LI><strong>max_sep</strong>: (float) Default=300.0. Maximum separation for correlation measurements</LI>
+            <LI><strong>nbins</strong>: (int) Default=9. Number of separation bins</LI>
+            <LI><strong>bin_slop</strong>: (float) Default=0.0. Tolerance for bin sloppiness in TreeCorr</LI>
+            <LI><strong>sep_units</strong>: (str) Default=arcmin. Units for separation (arcmin, degrees, etc.)</LI>
+            <LI><strong>flip_g1</strong>: (bool) Default=False. Whether to flip the sign of g1</LI>
+            <LI><strong>flip_g2</strong>: (bool) Default=True. Whether to flip the sign of g2</LI>
+            <LI><strong>cores_per_task</strong>: (int) Default=20. Number of CPU cores to use per task</LI>
+            <LI><strong>verbose</strong>: (int) Default=1. Verbosity level for TreeCorr output</LI>
+            <LI><strong>calcs</strong>: (list) Default=[0, 1, 2]. Which calculations to perform: 0=shear-shear, 1=shear-position, 2=position-position</LI>
+            <LI><strong>reduce_randoms_size</strong>: (float) Default=1.0. Factor to reduce the size of random catalogs.</LI>
+            <LI><strong>var_method</strong>: (str) Default=shot. Method for computing variance (shot, jackknife, etc.).</LI>
+            <LI><strong>npatch</strong>: (int) Default=5. Number of patches for null tests.</LI>
+            <LI><strong>use_true_shear</strong>: (bool) Default=False. Whether to use true shear values.</LI>
+            <LI><strong>subtract_mean_shear</strong>: (bool) Default=False. Whether to subtract mean shear.</LI>
+            <LI><strong>use_randoms</strong>: (bool) Default=True. Whether to use random catalogs.</LI>
+            <LI><strong>patch_dir</strong>: (str) Default=./cache/patches. Directory for storing patch files.</LI>
+            <LI><strong>low_mem</strong>: (bool) Default=False. Whether to use low memory mode.</LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=100000. Number of rows to process in each chunk.</LI>
+            <LI><strong>share_patch_files</strong>: (bool) Default=False. Whether to share patch files across processes.</LI>
+            <LI><strong>use_subsampled_randoms</strong>: (bool) Default=False. Use subsampled randoms file for RR calculation.</LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.twopoint.twopoint_null_tests.TXGammaTRandoms
+    :members:
+    :exclude-members: run
+
+    Inputs: 
+
+    - binned_shear_catalog: BinnedCatalog
+    - random_cats: RandomsCatalog
+    - patch_centers: TextFile
+    - tracer_metadata: HDFFile
+
+    Outputs: 
+
+    - gammat_randoms: SACCFile
+    - gammat_randoms_plot: PNGFile
+    
+    Parallel: Yes - MPI
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>min_sep</strong>: (float) Default=0.5. Minimum separation for correlation measurements</LI>
+            <LI><strong>max_sep</strong>: (float) Default=300.0. Maximum separation for correlation measurements</LI>
+            <LI><strong>nbins</strong>: (int) Default=9. Number of separation bins</LI>
+            <LI><strong>bin_slop</strong>: (float) Default=0.0. Tolerance for bin sloppiness in TreeCorr</LI>
+            <LI><strong>sep_units</strong>: (str) Default=arcmin. Units for separation (arcmin, degrees, etc.)</LI>
+            <LI><strong>flip_g1</strong>: (bool) Default=False. Whether to flip the sign of g1</LI>
+            <LI><strong>flip_g2</strong>: (bool) Default=True. Whether to flip the sign of g2</LI>
+            <LI><strong>cores_per_task</strong>: (int) Default=20. Number of CPU cores to use per task</LI>
+            <LI><strong>verbose</strong>: (int) Default=1. Verbosity level for TreeCorr output</LI>
+            <LI><strong>calcs</strong>: (list) Default=[0, 1, 2]. Which calculations to perform: 0=shear-shear, 1=shear-position, 2=position-position</LI>
+            <LI><strong>reduce_randoms_size</strong>: (float) Default=1.0. Factor to reduce the size of random catalogs.</LI>
+            <LI><strong>var_method</strong>: (str) Default=shot. Method for computing variance (shot, jackknife, etc.).</LI>
+            <LI><strong>npatch</strong>: (int) Default=5. Number of patches for null tests.</LI>
+            <LI><strong>use_true_shear</strong>: (bool) Default=False. Whether to use true shear values.</LI>
+            <LI><strong>subtract_mean_shear</strong>: (bool) Default=False. Whether to subtract mean shear.</LI>
+            <LI><strong>use_randoms</strong>: (bool) Default=False. Whether to use random catalogs.</LI>
+            <LI><strong>patch_dir</strong>: (str) Default=./cache/patches. Directory for storing patch files.</LI>
+            <LI><strong>low_mem</strong>: (bool) Default=False. Whether to use low memory mode.</LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=100000. Number of rows to process in each chunk.</LI>
+            <LI><strong>share_patch_files</strong>: (bool) Default=False. Whether to share patch files across processes.</LI>
+            <LI><strong>use_subsampled_randoms</strong>: (bool) Default=False. Use subsampled randoms file for RR calculation.</LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.twopoint.twopoint_null_tests.TXApertureMass
+    :members:
+    :exclude-members: run
+
+    Inputs: 
+
+    - binned_shear_catalog: BinnedCatalog
+    - shear_photoz_stack: QPNOfZFile
+    - patch_centers: TextFile
+    - tracer_metadata: HDFFile
+
+    Outputs: 
+
+    - aperture_mass_data: SACCFile
+    
+    Parallel: Yes - MPI
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>min_sep</strong>: (float) Default=0.5. Minimum separation for correlation measurements</LI>
+            <LI><strong>max_sep</strong>: (float) Default=300.0. Maximum separation for correlation measurements</LI>
+            <LI><strong>nbins</strong>: (int) Default=9. Number of separation bins</LI>
+            <LI><strong>bin_slop</strong>: (float) Default=0.0. Tolerance for bin sloppiness in TreeCorr</LI>
+            <LI><strong>sep_units</strong>: (str) Default=arcmin. Units for separation (arcmin, degrees, etc.)</LI>
+            <LI><strong>flip_g1</strong>: (bool) Default=False. Whether to flip the sign of g1</LI>
+            <LI><strong>flip_g2</strong>: (bool) Default=True. Whether to flip the sign of g2</LI>
+            <LI><strong>cores_per_task</strong>: (int) Default=20. Number of CPU cores to use per task</LI>
+            <LI><strong>verbose</strong>: (int) Default=1. Verbosity level for TreeCorr output</LI>
+            <LI><strong>calcs</strong>: (list) Default=[0, 1, 2]. Which calculations to perform: 0=shear-shear, 1=shear-position, 2=position-position</LI>
+            <LI><strong>source_bins</strong>: (list) Default=[-1]. List of source bins to use (-1 means all).</LI>
+            <LI><strong>lens_bins</strong>: (list) Default=[-1]. List of lens bins to use (-1 means all).</LI>
+            <LI><strong>reduce_randoms_size</strong>: (float) Default=1.0. Factor to reduce the size of random catalogs.</LI>
+            <LI><strong>var_method</strong>: (str) Default=jackknife. Method for computing variance (jackknife, sample, etc.).</LI>
+            <LI><strong>use_true_shear</strong>: (bool) Default=False. Whether to use true shear values.</LI>
+            <LI><strong>subtract_mean_shear</strong>: (bool) Default=False. Whether to subtract mean shear.</LI>
+            <LI><strong>use_randoms</strong>: (bool) Default=False. Whether to use random catalogs.</LI>
+            <LI><strong>low_mem</strong>: (bool) Default=False. Whether to use low memory mode.</LI>
+            <LI><strong>patch_dir</strong>: (str) Default=./cache/patches. Directory for storing patch files.</LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=100000. Number of rows to process in each chunk.</LI>
+            <LI><strong>share_patch_files</strong>: (bool) Default=False. Whether to share patch files across processes.</LI>
+            </UL>
 
 
 
@@ -421,207 +622,6 @@ These stages compute and/or plot diagnostics of catalogs or other data
             <LI><strong>nbin</strong>: (int) Default=20. Number of magnitude bins.</LI>
             <LI><strong>mmin</strong>: (float) Default=18.5. Minimum magnitude.</LI>
             <LI><strong>mmax</strong>: (float) Default=23.5. Maximum magnitude.</LI>
-            </UL>
-
-
-
-.. autotxclass:: txpipe.twopoint.twopoint_null_tests.TXGammaTFieldCenters
-    :members:
-    :exclude-members: run
-
-    Inputs: 
-
-    - binned_shear_catalog: BinnedCatalog
-    - random_cats: RandomsCatalog
-    - exposures: HDFFile
-    - patch_centers: TextFile
-    - tracer_metadata: HDFFile
-
-    Outputs: 
-
-    - gammat_field_center: SACCFile
-    - gammat_field_center_plot: PNGFile
-    
-    Parallel: Yes - MPI
-
-
-    .. collapse:: Configuration
-
-        .. raw:: html
-
-            <UL>
-            <LI><strong>min_sep</strong>: (float) Default=0.5. Minimum separation for correlation measurements</LI>
-            <LI><strong>max_sep</strong>: (float) Default=300.0. Maximum separation for correlation measurements</LI>
-            <LI><strong>nbins</strong>: (int) Default=9. Number of separation bins</LI>
-            <LI><strong>bin_slop</strong>: (float) Default=0.0. Tolerance for bin sloppiness in TreeCorr</LI>
-            <LI><strong>sep_units</strong>: (str) Default=arcmin. Units for separation (arcmin, degrees, etc.)</LI>
-            <LI><strong>flip_g1</strong>: (bool) Default=False. Whether to flip the sign of g1</LI>
-            <LI><strong>flip_g2</strong>: (bool) Default=True. Whether to flip the sign of g2</LI>
-            <LI><strong>cores_per_task</strong>: (int) Default=20. Number of CPU cores to use per task</LI>
-            <LI><strong>verbose</strong>: (int) Default=1. Verbosity level for TreeCorr output</LI>
-            <LI><strong>calcs</strong>: (list) Default=[0, 1, 2]. Which calculations to perform: 0=shear-shear, 1=shear-position, 2=position-position</LI>
-            <LI><strong>reduce_randoms_size</strong>: (float) Default=1.0. Factor to reduce the size of random catalogs.</LI>
-            <LI><strong>var_method</strong>: (str) Default=shot. Method for computing variance (shot, jackknife, etc.).</LI>
-            <LI><strong>npatch</strong>: (int) Default=5. Number of patches for null tests.</LI>
-            <LI><strong>use_true_shear</strong>: (bool) Default=False. Whether to use true shear values.</LI>
-            <LI><strong>subtract_mean_shear</strong>: (bool) Default=False. Whether to subtract mean shear.</LI>
-            <LI><strong>use_randoms</strong>: (bool) Default=True. Whether to use random catalogs.</LI>
-            <LI><strong>patch_dir</strong>: (str) Default=./cache/patches. Directory for storing patch files.</LI>
-            <LI><strong>low_mem</strong>: (bool) Default=False. Whether to use low memory mode.</LI>
-            <LI><strong>chunk_rows</strong>: (int) Default=100000. Number of rows to process in each chunk.</LI>
-            <LI><strong>share_patch_files</strong>: (bool) Default=False. Whether to share patch files across processes.</LI>
-            <LI><strong>use_subsampled_randoms</strong>: (bool) Default=False. Use subsampled randoms file for RR calculation.</LI>
-            </UL>
-
-
-
-.. autotxclass:: txpipe.twopoint.twopoint_null_tests.TXGammaTStars
-    :members:
-    :exclude-members: run
-
-    Inputs: 
-
-    - binned_shear_catalog: BinnedCatalog
-    - shear_tomography_catalog: TomographyCatalog
-    - random_cats: RandomsCatalog
-    - binned_star_catalog: BinnedCatalog
-    - patch_centers: TextFile
-    - tracer_metadata: HDFFile
-    - binned_random_catalog: HDFFile
-
-    Outputs: 
-
-    - gammat_bright_stars: SACCFile
-    - gammat_bright_stars_plot: PNGFile
-    - gammat_dim_stars: SACCFile
-    - gammat_dim_stars_plot: PNGFile
-    
-    Parallel: Yes - MPI
-
-
-    .. collapse:: Configuration
-
-        .. raw:: html
-
-            <UL>
-            <LI><strong>min_sep</strong>: (float) Default=0.5. Minimum separation for correlation measurements</LI>
-            <LI><strong>max_sep</strong>: (float) Default=300.0. Maximum separation for correlation measurements</LI>
-            <LI><strong>nbins</strong>: (int) Default=9. Number of separation bins</LI>
-            <LI><strong>bin_slop</strong>: (float) Default=0.0. Tolerance for bin sloppiness in TreeCorr</LI>
-            <LI><strong>sep_units</strong>: (str) Default=arcmin. Units for separation (arcmin, degrees, etc.)</LI>
-            <LI><strong>flip_g1</strong>: (bool) Default=False. Whether to flip the sign of g1</LI>
-            <LI><strong>flip_g2</strong>: (bool) Default=True. Whether to flip the sign of g2</LI>
-            <LI><strong>cores_per_task</strong>: (int) Default=20. Number of CPU cores to use per task</LI>
-            <LI><strong>verbose</strong>: (int) Default=1. Verbosity level for TreeCorr output</LI>
-            <LI><strong>calcs</strong>: (list) Default=[0, 1, 2]. Which calculations to perform: 0=shear-shear, 1=shear-position, 2=position-position</LI>
-            <LI><strong>reduce_randoms_size</strong>: (float) Default=1.0. Factor to reduce the size of random catalogs.</LI>
-            <LI><strong>var_method</strong>: (str) Default=shot. Method for computing variance (shot, jackknife, etc.).</LI>
-            <LI><strong>npatch</strong>: (int) Default=5. Number of patches for null tests.</LI>
-            <LI><strong>use_true_shear</strong>: (bool) Default=False. Whether to use true shear values.</LI>
-            <LI><strong>subtract_mean_shear</strong>: (bool) Default=False. Whether to subtract mean shear.</LI>
-            <LI><strong>use_randoms</strong>: (bool) Default=True. Whether to use random catalogs.</LI>
-            <LI><strong>patch_dir</strong>: (str) Default=./cache/patches. Directory for storing patch files.</LI>
-            <LI><strong>low_mem</strong>: (bool) Default=False. Whether to use low memory mode.</LI>
-            <LI><strong>chunk_rows</strong>: (int) Default=100000. Number of rows to process in each chunk.</LI>
-            <LI><strong>share_patch_files</strong>: (bool) Default=False. Whether to share patch files across processes.</LI>
-            <LI><strong>use_subsampled_randoms</strong>: (bool) Default=False. Use subsampled randoms file for RR calculation.</LI>
-            </UL>
-
-
-
-.. autotxclass:: txpipe.twopoint.twopoint_null_tests.TXGammaTRandoms
-    :members:
-    :exclude-members: run
-
-    Inputs: 
-
-    - binned_shear_catalog: BinnedCatalog
-    - random_cats: RandomsCatalog
-    - patch_centers: TextFile
-    - tracer_metadata: HDFFile
-
-    Outputs: 
-
-    - gammat_randoms: SACCFile
-    - gammat_randoms_plot: PNGFile
-    
-    Parallel: Yes - MPI
-
-
-    .. collapse:: Configuration
-
-        .. raw:: html
-
-            <UL>
-            <LI><strong>min_sep</strong>: (float) Default=0.5. Minimum separation for correlation measurements</LI>
-            <LI><strong>max_sep</strong>: (float) Default=300.0. Maximum separation for correlation measurements</LI>
-            <LI><strong>nbins</strong>: (int) Default=9. Number of separation bins</LI>
-            <LI><strong>bin_slop</strong>: (float) Default=0.0. Tolerance for bin sloppiness in TreeCorr</LI>
-            <LI><strong>sep_units</strong>: (str) Default=arcmin. Units for separation (arcmin, degrees, etc.)</LI>
-            <LI><strong>flip_g1</strong>: (bool) Default=False. Whether to flip the sign of g1</LI>
-            <LI><strong>flip_g2</strong>: (bool) Default=True. Whether to flip the sign of g2</LI>
-            <LI><strong>cores_per_task</strong>: (int) Default=20. Number of CPU cores to use per task</LI>
-            <LI><strong>verbose</strong>: (int) Default=1. Verbosity level for TreeCorr output</LI>
-            <LI><strong>calcs</strong>: (list) Default=[0, 1, 2]. Which calculations to perform: 0=shear-shear, 1=shear-position, 2=position-position</LI>
-            <LI><strong>reduce_randoms_size</strong>: (float) Default=1.0. Factor to reduce the size of random catalogs.</LI>
-            <LI><strong>var_method</strong>: (str) Default=shot. Method for computing variance (shot, jackknife, etc.).</LI>
-            <LI><strong>npatch</strong>: (int) Default=5. Number of patches for null tests.</LI>
-            <LI><strong>use_true_shear</strong>: (bool) Default=False. Whether to use true shear values.</LI>
-            <LI><strong>subtract_mean_shear</strong>: (bool) Default=False. Whether to subtract mean shear.</LI>
-            <LI><strong>use_randoms</strong>: (bool) Default=False. Whether to use random catalogs.</LI>
-            <LI><strong>patch_dir</strong>: (str) Default=./cache/patches. Directory for storing patch files.</LI>
-            <LI><strong>low_mem</strong>: (bool) Default=False. Whether to use low memory mode.</LI>
-            <LI><strong>chunk_rows</strong>: (int) Default=100000. Number of rows to process in each chunk.</LI>
-            <LI><strong>share_patch_files</strong>: (bool) Default=False. Whether to share patch files across processes.</LI>
-            <LI><strong>use_subsampled_randoms</strong>: (bool) Default=False. Use subsampled randoms file for RR calculation.</LI>
-            </UL>
-
-
-
-.. autotxclass:: txpipe.twopoint.twopoint_null_tests.TXApertureMass
-    :members:
-    :exclude-members: run
-
-    Inputs: 
-
-    - binned_shear_catalog: BinnedCatalog
-    - shear_photoz_stack: QPNOfZFile
-    - patch_centers: TextFile
-    - tracer_metadata: HDFFile
-
-    Outputs: 
-
-    - aperture_mass_data: SACCFile
-    
-    Parallel: Yes - MPI
-
-
-    .. collapse:: Configuration
-
-        .. raw:: html
-
-            <UL>
-            <LI><strong>min_sep</strong>: (float) Default=0.5. Minimum separation for correlation measurements</LI>
-            <LI><strong>max_sep</strong>: (float) Default=300.0. Maximum separation for correlation measurements</LI>
-            <LI><strong>nbins</strong>: (int) Default=9. Number of separation bins</LI>
-            <LI><strong>bin_slop</strong>: (float) Default=0.0. Tolerance for bin sloppiness in TreeCorr</LI>
-            <LI><strong>sep_units</strong>: (str) Default=arcmin. Units for separation (arcmin, degrees, etc.)</LI>
-            <LI><strong>flip_g1</strong>: (bool) Default=False. Whether to flip the sign of g1</LI>
-            <LI><strong>flip_g2</strong>: (bool) Default=True. Whether to flip the sign of g2</LI>
-            <LI><strong>cores_per_task</strong>: (int) Default=20. Number of CPU cores to use per task</LI>
-            <LI><strong>verbose</strong>: (int) Default=1. Verbosity level for TreeCorr output</LI>
-            <LI><strong>calcs</strong>: (list) Default=[0, 1, 2]. Which calculations to perform: 0=shear-shear, 1=shear-position, 2=position-position</LI>
-            <LI><strong>source_bins</strong>: (list) Default=[-1]. List of source bins to use (-1 means all).</LI>
-            <LI><strong>lens_bins</strong>: (list) Default=[-1]. List of lens bins to use (-1 means all).</LI>
-            <LI><strong>reduce_randoms_size</strong>: (float) Default=1.0. Factor to reduce the size of random catalogs.</LI>
-            <LI><strong>var_method</strong>: (str) Default=jackknife. Method for computing variance (jackknife, sample, etc.).</LI>
-            <LI><strong>use_true_shear</strong>: (bool) Default=False. Whether to use true shear values.</LI>
-            <LI><strong>subtract_mean_shear</strong>: (bool) Default=False. Whether to subtract mean shear.</LI>
-            <LI><strong>use_randoms</strong>: (bool) Default=False. Whether to use random catalogs.</LI>
-            <LI><strong>low_mem</strong>: (bool) Default=False. Whether to use low memory mode.</LI>
-            <LI><strong>patch_dir</strong>: (str) Default=./cache/patches. Directory for storing patch files.</LI>
-            <LI><strong>chunk_rows</strong>: (int) Default=100000. Number of rows to process in each chunk.</LI>
-            <LI><strong>share_patch_files</strong>: (bool) Default=False. Whether to share patch files across processes.</LI>
             </UL>
 
 

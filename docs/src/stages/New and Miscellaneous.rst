@@ -4,9 +4,34 @@ New and Miscellaneous
 These stages either don't fit into a category above or have not yet been
 assigned to one.
 
+* :py:class:`~txpipe.photoz.rail.conversions.TXParqetToHDF` - Generic stage to convert a Parquet File to HDF
+
 * :py:class:`~txpipe.metadata.TXTracerMetadata` - Collate metadata from various other files
 
-* :py:class:`~txpipe.photoz.rail.conversions.TXParqetToHDF` - Generic stage to convert a Parquet File to HDF
+
+
+.. autotxclass:: txpipe.photoz.rail.conversions.TXParqetToHDF
+    :members:
+    :exclude-members: run
+
+    Inputs: 
+
+    - input: ParquetFile
+
+    Outputs: 
+
+    - output: HDFFile
+    
+    Parallel: No - Serial
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>hdf_group</strong>: (str) Default=/. HDF group path to write data to.</LI>
+            </UL>
 
 
 
@@ -34,31 +59,6 @@ assigned to one.
         .. raw:: html
 
             <UL>
-            </UL>
-
-
-
-.. autotxclass:: txpipe.photoz.rail.conversions.TXParqetToHDF
-    :members:
-    :exclude-members: run
-
-    Inputs: 
-
-    - input: ParquetFile
-
-    Outputs: 
-
-    - output: HDFFile
-    
-    Parallel: No - Serial
-
-
-    .. collapse:: Configuration
-
-        .. raw:: html
-
-            <UL>
-            <LI><strong>hdf_group</strong>: (str) Default=/. HDF group path to write data to.</LI>
             </UL>
 
 

@@ -5,11 +5,11 @@ These stages make plots out TXPipe output data
 
 * :py:class:`~txpipe.photoz.photoz_stack.TXPhotozPlot` - Make n(z) plots of source and lens galaxies
 
+* :py:class:`~txpipe.photoz.rail.summarize.PZRealizationsPlot` - Plot realizations of the tomographic n(z) distributions.
+
 * :py:class:`~txpipe.maps.map_plots.TXMapPlots` - Make plots of all the available maps
 
 * :py:class:`~txpipe.maps.convergence.TXConvergenceMapPlots` - Make plots convergence maps
-
-* :py:class:`~txpipe.photoz.rail.summarize.PZRealizationsPlot` - Plot realizations of the tomographic n(z) distributions.
 
 * :py:class:`~txpipe.twopoint.twopoint_plots.TXTwoPointPlots` - Make plots of the correlation functions and their ratios to theory
 
@@ -41,6 +41,32 @@ These stages make plots out TXPipe output data
             <UL>
             <LI><strong>label</strong>: (str) Default=. Label for the n(z) plot.</LI>
             <LI><strong>zmax</strong>: (float) Default=3.0. Maximum redshift for plotting.</LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.photoz.rail.summarize.PZRealizationsPlot
+    :members:
+    :exclude-members: run
+
+    Inputs: 
+
+    - photoz_realizations: QPMultiFile
+
+    Outputs: 
+
+    - photoz_realizations_plot: PNGFile
+    
+    Parallel: No - Serial
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>zmax</strong>: (float) Default=3.0. Maximum redshift for plotting.</LI>
+            <LI><strong>nz</strong>: (int) Default=301. Number of redshift bins for plotting.</LI>
             </UL>
 
 
@@ -102,32 +128,6 @@ These stages make plots out TXPipe output data
 
             <UL>
             <LI><strong>projection</strong>: (str) Default=McBryde. Skyproj projection type for convergence map plots (e.g., McBryde).</LI>
-            </UL>
-
-
-
-.. autotxclass:: txpipe.photoz.rail.summarize.PZRealizationsPlot
-    :members:
-    :exclude-members: run
-
-    Inputs: 
-
-    - photoz_realizations: QPMultiFile
-
-    Outputs: 
-
-    - photoz_realizations_plot: PNGFile
-    
-    Parallel: No - Serial
-
-
-    .. collapse:: Configuration
-
-        .. raw:: html
-
-            <UL>
-            <LI><strong>zmax</strong>: (float) Default=3.0. Maximum redshift for plotting.</LI>
-            <LI><strong>nz</strong>: (int) Default=301. Number of redshift bins for plotting.</LI>
             </UL>
 
 

@@ -5,12 +5,6 @@ These stages assign objects in a shear catalog to tomographic bins,
 independently of the source selection. They write a bin assignments file.
 See :ref:`Source selection and tomography`.
 
-* :py:class:`~txpipe.photoz.rail.summarize.PZCollateRailAssignmentsMetadetect` - Collect RAIL tomographic bin assignments for the metadetect variants into one file.
-
-* :py:class:`~txpipe.photoz.rail.summarize.PZCollateRailAssignmentsScalarMetadetect` - Collect RAIL tomographic bin assignments for the scalar metadetect variants into one file.
-
-* :py:class:`~txpipe.photoz.rail.summarize.PZGenerateSOMInformerSubsample` - Make a random subsample of the selected shear catalog objects, to train a SOM.
-
 * :py:class:`~txpipe.photoz.tomography.TXTrainRandomForestTomography` - Train a random forest to assign source galaxies to tomographic bins based on photometry.
 
 * :py:class:`~txpipe.photoz.tomography.TXComputeSourceTomography` - Base class for tomography.
@@ -19,89 +13,11 @@ See :ref:`Source selection and tomography`.
 
 * :py:class:`~txpipe.photoz.tomography.TXSimpleRedshiftSourceTomography` - Assign source galaxies to tomographic bins by cutting on a redshift column.
 
+* :py:class:`~txpipe.photoz.rail.summarize.PZCollateRailAssignmentsMetadetect` - Collect RAIL tomographic bin assignments for the metadetect variants into one file.
 
+* :py:class:`~txpipe.photoz.rail.summarize.PZCollateRailAssignmentsScalarMetadetect` - Collect RAIL tomographic bin assignments for the scalar metadetect variants into one file.
 
-.. autotxclass:: txpipe.photoz.rail.summarize.PZCollateRailAssignmentsMetadetect
-    :members:
-    :exclude-members: run
-
-    Inputs: 
-
-    - bhat_for_wide_data_ns: HDFFile
-    - bhat_for_wide_data_1p: HDFFile
-    - bhat_for_wide_data_1m: HDFFile
-    - bhat_for_wide_data_2p: HDFFile
-    - bhat_for_wide_data_2m: HDFFile
-
-    Outputs: 
-
-    - shear_bin_assignments: BinAssignments
-    
-    Parallel: Yes - MPI
-
-
-    .. collapse:: Configuration
-
-        .. raw:: html
-
-            <UL>
-            <LI><strong>source_zbin_edges</strong>: (list) Required. Redshift bin edges for source tomography</LI>
-            </UL>
-
-
-
-.. autotxclass:: txpipe.photoz.rail.summarize.PZCollateRailAssignmentsScalarMetadetect
-    :members:
-    :exclude-members: run
-
-    Inputs: 
-
-    - bhat_for_wide_data_ns: HDFFile
-    - bhat_for_wide_data_1p: HDFFile
-    - bhat_for_wide_data_1m: HDFFile
-
-    Outputs: 
-
-    - shear_bin_assignments: BinAssignments
-    
-    Parallel: Yes - MPI
-
-
-    .. collapse:: Configuration
-
-        .. raw:: html
-
-            <UL>
-            <LI><strong>source_zbin_edges</strong>: (list) Required. Redshift bin edges for source tomography</LI>
-            </UL>
-
-
-
-.. autotxclass:: txpipe.photoz.rail.summarize.PZGenerateSOMInformerSubsample
-    :members:
-    :exclude-members: run
-
-    Inputs: 
-
-    - shear_selection: CatalogSelection
-    - shear_catalog: ShearCatalog
-
-    Outputs: 
-
-    - sub_selected_shear_data: HDFFile
-    
-    Parallel: Yes - MPI
-
-
-    .. collapse:: Configuration
-
-        .. raw:: html
-
-            <UL>
-            <LI><strong>size</strong>: (int) Default=5000000. Approximate of selected objects to include.</LI>
-            <LI><strong>seed</strong>: (int) Default=7953. Random seed for sub-selection.</LI>
-            <LI><strong>chunk_rows</strong>: (int) Default=100000. Number of rows to process at once</LI>
-            </UL>
+* :py:class:`~txpipe.photoz.rail.summarize.PZGenerateSOMInformerSubsample` - Make a random subsample of the selected shear catalog objects, to train a SOM.
 
 
 
@@ -206,6 +122,90 @@ See :ref:`Source selection and tomography`.
             <UL>
             <LI><strong>redshift_col</strong>: (str) Default=redshift_true. Column name to use for simple redshift cut</LI>
             <LI><strong>source_zbin_edges</strong>: (list) Required. Redshift bin edges for source tomography</LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.photoz.rail.summarize.PZCollateRailAssignmentsMetadetect
+    :members:
+    :exclude-members: run
+
+    Inputs: 
+
+    - bhat_for_wide_data_ns: HDFFile
+    - bhat_for_wide_data_1p: HDFFile
+    - bhat_for_wide_data_1m: HDFFile
+    - bhat_for_wide_data_2p: HDFFile
+    - bhat_for_wide_data_2m: HDFFile
+
+    Outputs: 
+
+    - shear_bin_assignments: BinAssignments
+    
+    Parallel: Yes - MPI
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>source_zbin_edges</strong>: (list) Required. Redshift bin edges for source tomography</LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.photoz.rail.summarize.PZCollateRailAssignmentsScalarMetadetect
+    :members:
+    :exclude-members: run
+
+    Inputs: 
+
+    - bhat_for_wide_data_ns: HDFFile
+    - bhat_for_wide_data_1p: HDFFile
+    - bhat_for_wide_data_1m: HDFFile
+
+    Outputs: 
+
+    - shear_bin_assignments: BinAssignments
+    
+    Parallel: Yes - MPI
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>source_zbin_edges</strong>: (list) Required. Redshift bin edges for source tomography</LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.photoz.rail.summarize.PZGenerateSOMInformerSubsample
+    :members:
+    :exclude-members: run
+
+    Inputs: 
+
+    - shear_selection: CatalogSelection
+    - shear_catalog: ShearCatalog
+
+    Outputs: 
+
+    - sub_selected_shear_data: HDFFile
+    
+    Parallel: Yes - MPI
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>size</strong>: (int) Default=5000000. Approximate of selected objects to include.</LI>
+            <LI><strong>seed</strong>: (int) Default=7953. Random seed for sub-selection.</LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=100000. Number of rows to process at once</LI>
             </UL>
 
 

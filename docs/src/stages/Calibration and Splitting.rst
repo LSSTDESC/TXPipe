@@ -13,8 +13,6 @@ into sub-catalogs. See :ref:`Shear calibration guide`.
 
 * :py:class:`~txpipe.selection.lens_selector.TXTruthLensCatalogSplitterWeighted` - Split a lens catalog file into a new file with separate bins with true redshifts.
 
-* :py:class:`~txpipe.twopoint.twopoint_null_tests.TXStarCatalogSplitter` - Split a star catalog into bright and dim stars
-
 * :py:class:`~txpipe.calibration.calibrate.TXShearCalibration` - Split the shear catalog into calibrated bins
 
 * :py:class:`~txpipe.calibration.shear_calibration.base.TXComputeShearCalibrationBase` - Base stage for source selection using S/N, size, and flag cuts and tomography
@@ -32,6 +30,8 @@ into sub-catalogs. See :ref:`Shear calibration guide`.
 * :py:class:`~txpipe.calibration.shear_calibration.metadetect.TXComputeShearCalibrationMetadetect` - Source selection and tomography for metadetect catalogs
 
 * :py:class:`~txpipe.calibration.shear_calibration.scalar_metadetect.TXComputeShearCalibrationScalarMetadetect` - Source selection and tomography for scalar metadetect catalogs.
+
+* :py:class:`~txpipe.twopoint.twopoint_null_tests.TXStarCatalogSplitter` - Split a star catalog into bright and dim stars
 
 
 
@@ -152,32 +152,6 @@ into sub-catalogs. See :ref:`Shear calibration guide`.
             <LI><strong>chunk_rows</strong>: (int) Default=100000. Number of rows to process in each chunk.</LI>
             <LI><strong>extra_cols</strong>: (list) Default=[&#x27;&#x27;]. Extra columns to include in output.</LI>
             <LI><strong>redshift_column</strong>: (str) Default=redshift_true. Column name for true redshift.</LI>
-            </UL>
-
-
-
-.. autotxclass:: txpipe.twopoint.twopoint_null_tests.TXStarCatalogSplitter
-    :members:
-    :exclude-members: run
-
-    Inputs: 
-
-    - star_catalog: HDFFile
-
-    Outputs: 
-
-    - binned_star_catalog: HDFFile
-    
-    Parallel: No - Serial
-
-
-    .. collapse:: Configuration
-
-        .. raw:: html
-
-            <UL>
-            <LI><strong>chunk_rows</strong>: (int) Default=100000. Number of rows to process in each chunk.</LI>
-            <LI><strong>initial_size</strong>: (int) Default=100000. Initial size for star catalog bins.</LI>
             </UL>
 
 
@@ -446,6 +420,32 @@ into sub-catalogs. See :ref:`Shear calibration guide`.
             <LI><strong>verbose</strong>: (bool) Default=False. Whether to print verbose output</LI>
             <LI><strong>chunk_rows</strong>: (int) Default=10000. Number of rows to process in each chunk</LI>
             <LI><strong>delta_gamma</strong>: (float) Required. Delta gamma value for metadetect response calculation</LI>
+            </UL>
+
+
+
+.. autotxclass:: txpipe.twopoint.twopoint_null_tests.TXStarCatalogSplitter
+    :members:
+    :exclude-members: run
+
+    Inputs: 
+
+    - star_catalog: HDFFile
+
+    Outputs: 
+
+    - binned_star_catalog: HDFFile
+    
+    Parallel: No - Serial
+
+
+    .. collapse:: Configuration
+
+        .. raw:: html
+
+            <UL>
+            <LI><strong>chunk_rows</strong>: (int) Default=100000. Number of rows to process in each chunk.</LI>
+            <LI><strong>initial_size</strong>: (int) Default=100000. Initial size for star catalog bins.</LI>
             </UL>
 
 
