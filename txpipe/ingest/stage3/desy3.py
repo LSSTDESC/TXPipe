@@ -337,7 +337,7 @@ class TXIngestDESY3Selection(PipelineStage):
     name = "TXIngestDESY3Selection"
     parallel = False
     inputs = [
-        ("des_index_catalog", HDFFile),
+        ("desy3_index_catalog", HDFFile),
     ]
 
     outputs = [

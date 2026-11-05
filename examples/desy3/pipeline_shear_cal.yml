@@ -1,0 +1,47 @@
+
+# Stages to run
+stages:
+  # INGESTION
+  - name: TXIngestDESY3Shear
+  - name: TXComputeShearCalibrationMetacal
+  - name: TXIngestDESY3Selection
+  - name: TXShearCalibration
+    nprocess: 8
+
+launcher:
+    name: mini
+    interval: 1.0
+    
+site:
+    name: nersc-interactive
+    max_threads: 128
+
+modules: >
+    txpipe
+
+
+# where to find any modules that are not in this repo,
+# and any other code we need.
+python_paths: []
+
+# where to put outputs
+output_dir: data/desy3/outputs
+
+# configuration settings
+config: examples/desy3/config.yml
+
+# These are overall inputs to the whole pipeline, not generated within it
+inputs:
+    des_shear_catalog: data/desy3/inputs/DESY3_metacal_v03-004.h5
+    fiducial_cosmology: data/fiducial_cosmology.yml
+    desy3_index_catalog: data/desy3/inputs/DESY3_indexcat.h5
+
+# if supported by the launcher, restart the pipeline where it left off
+# if interrupted
+resume: resume
+
+# where to put output logs for individual stages
+log_dir: data/desy3/logs
+
+# where to put an overall parsl pipeline log
+pipeline_log: data/desy3/log.txt
