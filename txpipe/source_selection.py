@@ -220,9 +220,8 @@ class TXAnacalSelection(TXSimpleSelection):
             if self.config[f"{b}_flux_err_cut"] < 1e30:
                 self.columns.append(self.config["flux_err_column"].format(band=b))
 
-        fin = self.open_input("shear_catalog")
-        n = fin["shear/ra"].size
-        fin.close()
+        with self.open_input("shear_catalog") as fin:
+            n = fin["shear/ra"].size
 
         fout = self.open_output("shear_selection", parallel=True)
         g_out = fout.create_group("shear")
