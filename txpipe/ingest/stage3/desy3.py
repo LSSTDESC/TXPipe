@@ -354,7 +354,7 @@ class TXIngestDESY3Selection(PipelineStage):
     def run(self):
         nbin = self.config["nbin"]
 
-        with self.open_input("des_index_catalog") as f_in, \
+        with self.open_input("desy3_index_catalog") as f_in, \
              self.open_output("shear_selection") as f_sel, \
              self.open_output("shear_bin_assignments") as f_bin:
 
