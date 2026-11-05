@@ -1072,10 +1072,7 @@ class TXResponseInBins(PipelineStage):
                 T[nbin] = t1
 
             cal = bin_stats.calibrator
-            if hasattr(cal, "get_total_response"):
-                R[i, j] = cal.get_total_response()
-            else:
-                R[i, j] = cal.R * np.eye(2)
+            R[i, j] = cal.get_total_response()
             count[i, j] = bin_stats.source_count
             neff[i, j] = bin_stats.N_eff
         

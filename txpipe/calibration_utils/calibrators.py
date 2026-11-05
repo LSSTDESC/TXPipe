@@ -765,6 +765,8 @@ class AnaCalibrator(MetaCalibrator):
             g2 = g2 - self.mu[1]
         return g1, g2
 
+    def get_total_response(self):
+        return self.R * np.eye(2)
     
     def calibrate_variance_to_sigma_e(self, var_e):
         return np.sqrt(0.5 *np.sum(var_e)) / self.R

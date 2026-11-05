@@ -8,7 +8,9 @@ from ceci.config import StageParameter
 class TXComputeShearCalibrationAnacal(TXComputeShearCalibrationBase):
     """
     Source selection and tomography for anacal catalogs
-    
+
+    This subclass selects for AnaCal catalogs, which is expected to be used for
+    Rubin data as an alternative to MetaDetect. It is an analytical extension to the ideas of MetaCal.
     """
 
     name = "TXComputeShearCalibrationAnacal"
