@@ -409,6 +409,27 @@ class AnacalShearCatalog(ShearCatalog):
     def get_classifier_output_columns():
         return ["bin", "bin_1p", "bin_1m", "bin_2p", "bin_2m"]
 
+    @staticmethod
+    def get_column_name_variants(*columns):
+        # AnaCal stores its shapes as e1/e2 (= wsel * e_raw), and AnaCalCalculator
+        # reads them under those names, so we translate rather than rename.
+        aliases = {"g1": "e1", "g2": "e2"}
+        # Only s2n has shifted variants, used for the S/N binning's R_sel.
+        shifted = {"s2n"}
+
+        cols = []
+        for col in columns:
+            col = aliases.get(col, col)
+            cols.append(col)
+            if col in shifted:
+                cols += [f"{col}{s}" for s in ("_1p", "_1m", "_2p", "_2m")]
+
+        # Per-object columns AnaCalCalculator needs for R_shape and R_detect.
+        return cols + [
+            "e1_raw", "e2_raw", "wsel",
+            "weight_dg1", "weight_dg2", "de1_dg1", "de2_dg2",
+        ]
+
 
 class LensfitShearCatalog(ShearCatalog):
     def get_primary_catalog_names(self, true_shear=False):
