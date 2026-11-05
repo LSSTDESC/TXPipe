@@ -32,9 +32,9 @@ config: examples/desy3/config.yml
 
 # These are overall inputs to the whole pipeline, not generated within it
 inputs:
-    des_shear_catalog: data/desy3/inputs/DESY3_metacal_v03-004.h5
+    des_shear_catalog: /ceph/cephfs/jzuntz/ridges/des-data/DESY3_metacal_v03-004.h5
     fiducial_cosmology: data/fiducial_cosmology.yml
-    desy3_index_catalog: data/desy3/inputs/DESY3_indexcat.h5
+    desy3_index_catalog: /ceph/cephfs/jzuntz/ridges/des-data/DESY3_indexcat.h5
 
 # if supported by the launcher, restart the pipeline where it left off
 # if interrupted
