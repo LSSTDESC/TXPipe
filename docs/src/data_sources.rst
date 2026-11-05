@@ -16,26 +16,25 @@ As described in :ref:`Running an example pipeline`, you can access a simulated 1
     curl -O https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz
     tar -zxvf example.tar.gz
 
-Then the data files will be stored in `data/examples/inputs`.
+Then the data files will be stored in `data/example/inputs`.
 
 Mini Testing Data Set
 ---------------------
 
 A 20 square degree data set for slightly more interesting tests is available on NERSC either to copy, or via the `DESC data registry <https://lsstdesc.org/dataregistry/index.html>`_.
 
-You can access them directly in: `/global/cfs/cdirs/lsst/utilities/data-registry/lsst_desc_working/user/zuntz` or see how to access them using the registry by looking in the file `examples/cosmodc2/pipeline-20deg2-nersc.yml`. In that file the registry is searched by name for a dataset using this syntax:
+You can access them directly in: `/global/cfs/cdirs/lsst/utilities/data-registry/lsst_desc_working/user/zuntz`.
 
 
-.. code-block:: yml
-    shear_catalog:
-        name: txpipe_cosmodc2_20deg2_shear_catalog.hdf5
+Rubin Data Preview data
+-----------------------
 
+TXPipe has ingestion stages for Rubin Data Preview 1 (:py:class:`~txpipe.ingest.dp1.TXIngestDataPreview1`) and Data Preview 2, and the DESC-processed versions of DP2 metadetect catalogs. See :ref:`Rubin DP2 data`.
 
+Other surveys
+-------------
 
-Forthcoming Data Sets
----------------------
-
-We will add files for data preview 1 and larger CosmoDC2 data to the registry and will update these docs as they become available.
+There are example pipelines, and ingestion stages for the input data, for DES Y1 and Y3 (``examples/desy1``, ``examples/desy3``), KiDS-1000 (``examples/kids-1000``), HSC Y1 and Y3 (``examples/hscy1``, ``examples/hscy3``), DESI (``examples/desi_dr1_stage3``, ``examples/desi_mocks``), and simulations. See :ref:`Example pipelines`.
 
 
 Ingestion stages

@@ -6,17 +6,13 @@ Pipeline modules for the 3x2pt (TX) project.
 # Make sure any stages you want to use in a pipeline
 # are imported here.
 from .base_stage import PipelineStage
-from .source_selection import (
-    TXSourceSelectorMetacal,
-    TXSourceSelectorLensfit,
-    TXSourceSelectorMetadetect,
-)
-from .lens_selector import TXMeanLensSelector
+from .lens_selector import TXMeanLensSelector, TXDESISelector, TXDESIMockSelector
 from .photoz_stack import TXPhotozStack, TXPhotozPlot, TXTruePhotozStack
 from .random_cats import TXRandomCat
 from .twopoint_fourier import TXTwoPointFourier
 from .twopoint import TXTwoPoint
-from .blinding import TXBlinding
+from .blinding import TXNullBlinding
+from .smokescreen_blinding import TXSmokescreenBlinding
 from .covariance import TXFourierGaussianCovariance, TXRealGaussianCovariance
 from .diagnostics import TXSourceDiagnosticPlots, TXLensDiagnosticPlots
 from .exposure_info import TXExposureInfo
@@ -47,6 +43,10 @@ from .lssweights import TXLSSWeights
 from .simulation import TXLogNormalGlass
 from .magnification import TXSSIMagnification
 from .covariance_nmt import TXFourierNamasterCovariance, TXRealNamasterCovariance
+from .delta_sigma import TXDeltaSigma
+from .tomography import TXTrainRandomForestTomography, TXComputeSourceTomography, TXApplyRandomForestSourceTomography, TXSimpleRedshiftSourceTomography
+from .source_selection import TXSimpleSelection, TXMetaDetectSelection, TXScalarMetaDetectSelection, TXMetacalSelection, TXLensfitSelection, TXHSCSelection
+from .shear_calibration import TXComputeShearCalibrationSimple, TXComputeShearCalibrationHSC, TXComputeShearCalibrationLensfit, TXComputeShearCalibrationMetacal, TXComputeShearCalibrationMetadetect, TXComputeShearCalibrationScalarMetadetect
 
 # We no longer import all the extensions automatically here to avoid
 # some dependency problems when running under the LSST environment on NERSC.

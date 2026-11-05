@@ -15,6 +15,10 @@ from ceci.config import StageParameter
 
 
 class TXSourceAuxMapsBase(PipelineStage):
+    """Base class for stages that make auxiliary maps of the source catalog.
+
+    Not run directly; it supplies the pixelization, which is copied from the source maps.
+    """
     name = "TXSourceAuxMapsBase"
     def choose_pixel_scheme(self):
         with self.open_input("source_maps", wrapper=True) as maps_file:
@@ -23,6 +27,12 @@ class TXSourceAuxMapsBase(PipelineStage):
 
 
 class TXPSFMaps(TXSourceAuxMapsBase):
+    """Make maps of the mean PSF ellipticity in each tomographic bin.
+
+    Uses the PSF values in the shear catalog, weighted by the shear weights, and the same
+    pixelization as the source maps. With use_psf_originals the original (rather than
+    reconvolved) PSF columns are used.
+    """
     name = "TXPSFMaps"
     dask_parallel = True
 
@@ -34,6 +44,7 @@ class TXPSFMaps(TXSourceAuxMapsBase):
     outputs = [("psf_maps", MapsFile)]
     config_options = {
         "block_size": StageParameter(int, 0, msg="Block size for dask processing (0 means auto)."),
+        "use_psf_originals": StageParameter(bool, False, msg="Whether to add _original to the psf col"),
         **map_config_options,
     }
 
@@ -62,8 +73,9 @@ class TXPSFMaps(TXSourceAuxMapsBase):
         # force all columns to use the same block size
         block_size = ra.chunksize
         dec = da.from_array(shear_cat.file[f"{group}/dec"], block_size)
-        psf_g1 = da.from_array(shear_cat.file[f"{group}/g1"], block_size)
-        psf_g2 = da.from_array(shear_cat.file[f"{group}/g2"], block_size)
+        suffix = "_original" if self.config["use_psf_originals"] else ""
+        psf_g1 = da.from_array(shear_cat.file[f"{group}/psf_g1{suffix}"], block_size)
+        psf_g2 = da.from_array(shear_cat.file[f"{group}/psf_g2{suffix}"], block_size)
         weight = da.from_array(shear_cat.file[f"{group}/weight"], block_size)
         b = da.from_array(shear_tomo.file["tomography/bin"], block_size)
 
@@ -114,6 +126,11 @@ class TXPSFMaps(TXSourceAuxMapsBase):
 
 
 class TXFlagMaps(TXSourceAuxMapsBase):
+    """Make maps of how often each shear catalog flag bit is set.
+
+    For each bit up to flag_exponent_max, makes a map of the number of objects that have
+    that bit set in the flags column of the shear catalog. These maps are not tomographic.
+    """
     name = "TXFlagMaps"
     dask_parallel = True
 

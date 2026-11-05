@@ -20,9 +20,11 @@ modules: >
 python_paths: []
 
 stages:
-  - name: TXSourceSelectorMetadetect
+  - name: TXComputeShearCalibrationMetadetect
     nprocess: 30
-  - name: TXSourceTomography
+  - name: TXMetaDetectSelection
+  - name: TXApplyRandomForestSourceTomography
+  - name: TXTrainRandomForestTomography
     threads_per_process: 4
   - name: BPZliteInformer
     nprocess: 1
