@@ -1,6 +1,6 @@
-from .base_stage import PipelineStage
-from .utils import choose_pixelization
-from .data_types import (
+from ..base_stage import PipelineStage
+from ..utils import choose_pixelization
+from ..data_types import (
     HDFFile,
     ShearCatalog,
     TextFile,

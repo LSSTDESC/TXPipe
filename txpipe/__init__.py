@@ -84,7 +84,6 @@ from .diagnostics import (
 )
 from .systematics import TXLSSWeights
 from .metadata import TXTracerMetadata
-from .simulation import TXLogNormalGlass
 from .ingest import *
 
 # We no longer import all the extensions automatically here to avoid
