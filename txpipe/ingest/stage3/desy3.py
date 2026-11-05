@@ -364,6 +364,7 @@ class TXIngestDESY3Selection(PipelineStage):
             f_bin.attrs["nbin_source"] = self.config["nbin"]
 
             for v in self.variants:
+                print("Reading selection for variant", v)
                 selected = index[f"select{v}"][:]
                 sel = np.zeros(n, dtype=bool)
                 sel[selected] = True
@@ -371,6 +372,7 @@ class TXIngestDESY3Selection(PipelineStage):
 
                 bins = np.full(n, -1, dtype=np.int16)
                 for i in range(1, nbin + 1):
+                    print("Reading tomography for bin", i)
                     # DES bins are numbered from 1; TXPipe from 0
                     idx = index[f"select{v}_bin{i}"][:]
                     bins[idx] = i - 1
