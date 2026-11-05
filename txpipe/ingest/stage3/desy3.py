@@ -361,6 +361,7 @@ class TXIngestDESY3Selection(PipelineStage):
             index = f_in["index"]
             n = index["coadd_object_id"].shape[0]
             sel_group = f_sel.create_group("shear")
+            f_bin.attrs["nbin_source"] = self.config["nbin"]
 
             for v in self.variants:
                 selected = index[f"select{v}"][:]
