@@ -10,7 +10,6 @@ from ..utils.mpi_utils import in_place_reduce
 from ..calibration_utils.names import META_VARIANTS, SCALAR_META_VARIANTS
 import numpy as np
 import os
-import pyarrow.parquet as pq
 import sys
 import glob
 
