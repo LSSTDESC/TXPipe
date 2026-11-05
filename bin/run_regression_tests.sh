@@ -114,10 +114,6 @@ while [ $# -gt 0 ]; do
             usage
             exit 0
             ;;
-        --)
-            shift
-            break
-            ;;
         -*)
             echo "Unknown option: $1" >&2
             usage >&2
@@ -150,23 +146,12 @@ if [ "${#REQUESTED[@]}" -gt 0 ]; then
     done
 fi
 
-# Make sure ceci is actually available, and warn (but don't hard-fail) if
-# it's not coming from this repo's own conda environment.
+# Make sure ceci is actually available.
 if ! command -v ceci >/dev/null 2>&1; then
     echo "error: 'ceci' was not found on PATH." >&2
     echo "Activate the project conda environment first: conda activate ./conda" >&2
     exit 1
 fi
-
-CECI_PATH="$(command -v ceci)"
-case "$CECI_PATH" in
-    "$REPO_ROOT"/conda/*)
-        ;;
-    *)
-        echo "warning: using 'ceci' from $CECI_PATH, not this repo's ./conda environment." >&2
-        echo "If that's unexpected, run: conda activate ./conda" >&2
-        ;;
-esac
 
 mkdir -p cache/workspaces
 
@@ -207,6 +192,22 @@ for i in "${!PIPELINE_NAMES[@]}"; do
             fi
             cmd+=("$arg")
         done
+    fi
+
+    # When restarting (either via --restart or because the pipeline always
+    # restarts), clear out leftovers from any earlier interrupted run.
+    # The output directory is taken to be the directory of the check file.
+    restarting=0
+    for arg in "${cmd[@]}"; do
+        [ "$arg" = "resume=restart" ] && restarting=1
+    done
+    if [ "$restarting" -eq 1 ]; then
+        out_dir="$(dirname "$check")"
+        echo "+ removing inprogress* from $out_dir and clearing cache/workspaces"
+        if [ -d "$out_dir" ]; then
+            rm -rf "${out_dir}"/inprogress*
+        fi
+        rm -rf cache/workspaces/*
     fi
 
     if [ -n "$envvar" ]; then
