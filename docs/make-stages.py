@@ -226,9 +226,11 @@ Covariance:
 
 Blinding:
     blurb: |
-        These stages deal with blinding measurements
+        These stages deal with blinding measurements. TXSmokescreenBlinding blinds
+        data with the DESC Smokescreen library, and TXNullBlinding copies data
+        without blinding it. See :doc:`/blinding` for how to use them.
     stages:
-        - TXBlinding
+        - TXSmokescreenBlinding
         - TXNullBlinding
 
 Plots:
@@ -341,7 +343,10 @@ def describe_config(cls):
         if isinstance(val, ceci.config.StageParameter):
             req = val.required
             default = val.default
-            dt = "any" if val.dtype is None else val.dtype.__name__
+            if val.dtype is None:
+                dt = "any"
+            else:
+                dt = val.dtype.__name__
             help = val._help
         else:
             help = ""

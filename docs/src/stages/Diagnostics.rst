@@ -50,7 +50,7 @@ These stages compute and/or plot diagnostics of catalogs or other data
 
     - shear_catalog_quantiles: HDFFile
     
-    Parallel: Yes - Dask
+    Parallel: Yes - MPI
 
 
     .. collapse:: Configuration

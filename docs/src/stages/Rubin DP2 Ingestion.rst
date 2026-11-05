@@ -98,7 +98,7 @@ versions of it, into TXPipe formats.
             <LI><strong>butler_repository_index</strong>: (str) Default=/global/cfs/cdirs/lsst/production/gen3/shared/data-repos.yaml. Path to repository index</LI>
             <LI><strong>butler_config_file</strong>: (str) Default=dp2. Path to the LSST butler config file, or code name for it in the repo index</LI>
             <LI><strong>collections</strong>: (str) Default=dp2. Butler collections to use.</LI>
-            <LI><strong>nside_low</strong>: (int) Default=512. The nside resolution for finding tracts from </LI>
+            <LI><strong>nside_low</strong>: (int) Default=512. The nside resolution for finding tracts from ra/dec</LI>
             <LI><strong>dec_min</strong>: (float) Default=-40.0. Minimum declination to keep. Designed to cut out a little island from a deep field that snuck through</LI>
             </UL>
 
