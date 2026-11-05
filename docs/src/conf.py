@@ -236,6 +236,23 @@ autodoc_mock_imports = ['cmake','camb', 'cosmosis-standalone', 'firecrown',
 
 
 
+# Generate the stage listing rst files (src/stages.rst and src/stages/*.rst).
+# These are not kept in version control; they are rebuilt on every docs build,
+# both locally and on ReadTheDocs. Heavy dependencies are mocked, as for autodoc.
+def generate_stage_docs():
+    from sphinx.ext.autodoc.mock import mock
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "make_stages", pjoin(root_path1, "make-stages.py")
+    )
+    make_stages = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(make_stages)
+    with mock(autodoc_mock_imports):
+        make_stages.generate()
+
+generate_stage_docs()
+
+
 def preprocess_docstring(app, what, name, obj, options, lines):
     """
     Cut out the final lines from the docstring that are the configuration parameters,
