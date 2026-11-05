@@ -347,6 +347,7 @@ class TXIngestDESY3Selection(PipelineStage):
 
     config_options = {
         "nbin": StageParameter(int, 4, msg="Number of tomographic bins"),
+        "bin_edges": StageParameter(list, [0.0, 0.358, 0.631, 0.872, 2.0], msg="Target bin edges"),
     }
 
     variants = ["", "_1p", "_1m", "_2p", "_2m"]
@@ -362,6 +363,7 @@ class TXIngestDESY3Selection(PipelineStage):
             n = index["coadd_object_id"].shape[0]
             sel_group = f_sel.create_group("shear")
             f_bin.attrs["nbin_source"] = self.config["nbin"]
+            f_bin.attrs["bin_edges"] = self.config["bin_edges"]
 
             for v in self.variants:
                 print("Reading selection for variant", v)
