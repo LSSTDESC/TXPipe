@@ -41,7 +41,7 @@ class TXIngestAnacal(TXIngestCatalogFits):
         ),
         "butler_config_file": StageParameter(
             str,
-            "/global/cfs/cdirs/lsst/production/gen3/rubin/DP1/repo/butler.yaml",
+            "/global/cfs/cdirs/lsst/production/gen3/rubin/DP2/repo/butler.yaml",
             msg="Path to the LSST butler config file.",
         ),
         "butler_object_name": StageParameter(
@@ -60,7 +60,7 @@ class TXIngestAnacal(TXIngestCatalogFits):
                 "not select_field).",
         ),
         "collections": StageParameter(
-            str, "LSSTComCam/DP1", msg="Butler collections to use.",
+            str, "u/xiangchl/anacal-v0/", msg="Butler collections to use.",
         ),
         "tracts": StageParameter(
             str, "",
@@ -68,14 +68,14 @@ class TXIngestAnacal(TXIngestCatalogFits):
         ),
         "prefix": StageParameter(
             str, "fpfs",
-            msg="prefix indicating the method used to calculate the ",
+            msg="prefix indicating the method used to calculate the moments.",
         ),
         "bands": StageParameter(
             list, ["g", "r", "i", "z", "y"], msg="string of flux bands",
         ),
-        "scale": StageParameter(
+        "mag_scale": StageParameter(
             str, "gauss2",
-            msg="scale radius for the convolution with Gaussian PSF",
+            msg="name of fixed apperture scale used for magnitudes and colors",
         ),
         "delta_gamma": StageParameter(
             float, 0.01,
@@ -95,9 +95,6 @@ class TXIngestAnacal(TXIngestCatalogFits):
     def run(self):
         if self.config["use_butler"]:
             self.butler_run()
-        else:
-            warnings.warn("File run is a depricated method and might not function correctly.")
-            self.file_run()
 
         print("repacking files")
         repack(self.get_output("shear_catalog"))
@@ -196,38 +193,9 @@ class TXIngestAnacal(TXIngestCatalogFits):
         self.aliasing(shear_outfile)
         shear_outfile.close()
 
-    def file_run(self):
-        n, dtypes = self.get_meta("anacal_catalog")
-
-        prefix = self.config["prefix"]
-
-        file = self.open_input("anacal_catalog")
-        data = file[1]
-        if not hasattr(data, "colnames"):
-            warnings.warn(
-                f"file_run's input ({type(data)}) has no `.colnames` attribute;"
-                "process_anacal_shear_data exp[ects an astropy Table like butler_run "
-                "provides, so this will likely fail."
-            )
-
-        shear_data = self.process_anacal_shear_data(data)
-
-        shear_outfile = self.setup_output(
-            "shear_catalog", "shear", shear_data, n,
-        )
-        shear_outfile["shear"].attrs["catalog_type"] = "anacal"
-
-        print("Trimming shear columns:")
-        for col in shear_data.keys():
-            print("    ", col)
-            h5py_shorten(shear_outfile["shear"], col, len(shear_data["ra"]))
-
-        self.aliasing(shear_outfile)
-        shear_outfile.close()
-
     def setup_input(self):
         prefix = self.config["prefix"]
-        scale = self.config["scale"]
+        mag_scale = self.config["mag_scale"]
         cols = [
             "ra",
             "dec",
@@ -246,7 +214,7 @@ class TXIngestAnacal(TXIngestCatalogFits):
         ]
         bands = self.config["bands"]
         # i-band S/N + shear response, always from the fpfs1 family.
-        # ``scale`` below only picks the flux used for magnitudes; the
+        # ``mag_scale`` below only picks the flux used for magnitudes; the
         # brightness cut consumes the pre-computed fpfs1 S/N so it is
         # consistent regardless of the mag scale.
         cols += [
@@ -261,12 +229,12 @@ class TXIngestAnacal(TXIngestCatalogFits):
         # Both ``mag`` and its error ``mag_err`` carry shear responses.
         for b in bands:
             cols += [
-                f"lsst_{b}_mag_{scale}",
-                f"lsst_{b}_dmag_{scale}_dg1",
-                f"lsst_{b}_dmag_{scale}_dg2",
-                f"lsst_{b}_mag_{scale}_err",
-                f"lsst_{b}_dmag_{scale}_err_dg1",
-                f"lsst_{b}_dmag_{scale}_err_dg2",
+                f"lsst_{b}_mag_{mag_scale}",
+                f"lsst_{b}_dmag_{mag_scale}_dg1",
+                f"lsst_{b}_dmag_{mag_scale}_dg2",
+                f"lsst_{b}_mag_{mag_scale}_err",
+                f"lsst_{b}_dmag_{mag_scale}_err_dg1",
+                f"lsst_{b}_dmag_{mag_scale}_err_dg2",
             ]
         # Band-combined shape magnitude ``esq = e1^2 + e2^2`` and its
         # shear derivatives, emitted by xlens.MergePipe on the
@@ -299,7 +267,7 @@ class TXIngestAnacal(TXIngestCatalogFits):
 
     def process_anacal_shear_data(self, data):
         bands = self.config["bands"]
-        s = self.config["scale"]
+        s = self.config["mag_scale"]
         output = {name: data[name][:] for name in data.colnames}
 
         prefix = self.config["prefix"]
@@ -478,8 +446,7 @@ class TXIngestAnacal(TXIngestCatalogFits):
         prefix = self.config["prefix"]
         g = outfile["shear"]
         bands = self.config["bands"]
-        s = self.config["scale"]
-        #g["weight"] = g["wsel"]
+        s = self.config["mag_scale"]
         g["weight_dg1"] = g["dwsel_dg1"]
         g["weight_dg2"] = g["dwsel_dg2"]
         g["e1_raw"] = g[f"{prefix}_e1"]
