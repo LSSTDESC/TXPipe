@@ -1,7 +1,7 @@
 Tomographic bin assignments
 ===========================
 
-A bin assignment file records the tomographic bin that an external method (a random forest classifier, a simple cut on true redshift, or a RAIL photo-z or SOM algorithm) assigns to each object of a shear catalog, *before* the source selection is applied. It is the output of the tomography stages (:py:class:`~txpipe.tomography.TXSimpleRedshiftSourceTomography`, :py:class:`~txpipe.tomography.TXApplyRandomForestSourceTomography`, and :py:class:`~txpipe.rail.summarize.PZCollateRailAssignmentsMetadetect` and its scalar version). In pipelines it is called ``shear_bin_assignments``, and it is read with the ``BinAssignments`` class. See :ref:`Source selection and tomography`.
+A bin assignment file records the tomographic bin that an external method (a random forest classifier, a simple cut on true redshift, or a RAIL photo-z or SOM algorithm) assigns to each object of a shear catalog, *before* the source selection is applied. It is the output of the tomography stages (:py:class:`~txpipe.photoz.tomography.TXSimpleRedshiftSourceTomography`, :py:class:`~txpipe.photoz.tomography.TXApplyRandomForestSourceTomography`, and :py:class:`~txpipe.photoz.rail.summarize.PZCollateRailAssignmentsMetadetect` and its scalar version). In pipelines it is called ``shear_bin_assignments``, and it is read with the ``BinAssignments`` class. See :ref:`Source selection and tomography`.
 
 The bin assignments are kept separate from the selection so that either can be changed without repeating the other, and so that tomography from different sources can be combined with any selection. The two are brought together by the ``TXComputeShearCalibration*`` stages, which write the :ref:`Shear tomography catalogs`.
 

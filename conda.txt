@@ -22,6 +22,7 @@ pyccl
 sacc
 scikit-learn
 scipy
+lsstdesc-smokescreen
 tables-io-full
 threadpoolctl
 treecorr>=4.2.2

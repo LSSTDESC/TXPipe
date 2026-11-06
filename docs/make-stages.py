@@ -1,12 +1,17 @@
+"""
+Generate the stage-listing rst files (src/stages.rst and src/stages/*.rst).
+
+This is run automatically from src/conf.py whenever the docs are built (locally
+or on ReadTheDocs), so the generated files are not kept in version control.
+It can also be run by hand from anywhere: python docs/make-stages.py
+"""
+import os
 import sys
-sys.path.append('..')
-import txpipe
-# The extension stages are not imported by default, but we want to document them
-import txpipe.extensions
 import yaml
 import collections
 import html
-import ceci
+
+DOCS_DIR = os.path.dirname(os.path.abspath(__file__))
 
 sections = yaml.safe_load("""
 Ingestion:
@@ -226,9 +231,11 @@ Covariance:
 
 Blinding:
     blurb: |
-        These stages deal with blinding measurements
+        These stages deal with blinding measurements. TXSmokescreenBlinding blinds
+        data with the DESC Smokescreen library, and TXNullBlinding copies data
+        without blinding it. See :doc:`/blinding` for how to use them.
     stages:
-        - TXBlinding
+        - TXSmokescreenBlinding
         - TXNullBlinding
 
 Plots:
@@ -307,111 +314,124 @@ New and Miscellaneous:
 
 """)
 
-stages = {}
-files = {}
+def generate():
+    # Imported here so that callers (e.g. conf.py) can mock heavy dependencies first.
+    root = os.path.dirname(DOCS_DIR)
+    if root not in sys.path:
+        sys.path.append(root)
+    import txpipe
+    # The extension stages are not imported by default, but we want to document them
+    import txpipe.extensions
+    import ceci
 
-for name, section_data in sections.items():
-    stages_in_section = section_data["stages"]
-    for stage in stages_in_section:
-        stages[stage] = name
+    stages = {}
+    files = {}
 
-def get_doc_line(stage):
-    # find the first non-empty doc line, if there is one.
-    try:
-        doc_lines = [s.strip() for s in stage.__doc__.split("\n")]
-        doc_lines = [d for d in doc_lines if d]
-        doc = doc_lines[0]
-    except (AttributeError, IndexError):
-        doc = ""
-    if len(doc) > 100:
-        doc = doc[:96] + " ..."
-    return doc
+    for name, section_data in sections.items():
+        stages_in_section = section_data["stages"]
+        for stage in stages_in_section:
+            stages[stage] = name
 
-def get_name(cls):
-    module = cls.__module__
-    if module is None or module == str.__class__.__module__:
-        return cls.__name__
-    return module + '.' + cls.__name__
+    def get_doc_line(stage):
+        # find the first non-empty doc line, if there is one.
+        try:
+            doc_lines = [s.strip() for s in stage.__doc__.split("\n")]
+            doc_lines = [d for d in doc_lines if d]
+            doc = doc_lines[0]
+        except (AttributeError, IndexError):
+            doc = ""
+        if len(doc) > 100:
+            doc = doc[:96] + " ..."
+        return doc
 
-qual_names = collections.defaultdict(list)
+    def get_name(cls):
+        module = cls.__module__
+        if module is None or module == str.__class__.__module__:
+            return cls.__name__
+        return module + '.' + cls.__name__
 
-def describe_config(cls):
-    lines = ["            <UL>"]
-    for name, val in cls.config_options.items():
-        if isinstance(val, ceci.config.StageParameter):
-            req = val.required
-            default = val.default
-            dt = "any" if val.dtype is None else val.dtype.__name__
-            help = val._help
-        else:
-            help = ""
-            if isinstance(val, type):
-                dt = val.__name__
-                req = True
-                default = None
+    qual_names = collections.defaultdict(list)
+
+    def describe_config(cls):
+        lines = ["            <UL>"]
+        for name, val in cls.config_options.items():
+            if isinstance(val, ceci.config.StageParameter):
+                req = val.required
+                default = val.default
+                if val.dtype is None:
+                    dt = "any"
+                else:
+                    dt = val.dtype.__name__
+                help = val._help
             else:
-                dt = type(val).__name__
-                req = False
-                default = val
-        # The help text can contain characters that are special in HTML
-        help = html.escape(str(help)) if help else ""
-        if req:
-            lines.append(f"            <LI><strong>{name}</strong>: ({dt}) Required. {help}</LI>")
-        else:
-            lines.append(f"            <LI><strong>{name}</strong>: ({dt}) Default={html.escape(str(default))}. {help}</LI>")
-    lines.append("            </UL>")
-    return "\n".join(lines)
-
-
-def describe_inputs_or_outputs(d):
-    if not d:
-        return "None"
-    out = ["\n"]
-    for tag, ftype in d:
-        out.append(f"    - {tag}: {ftype.__name__}")
-    return "\n".join(out)
-
-
-
-for class_name, (cls, path) in txpipe.PipelineStage.pipeline_stages.items():
-    if class_name == "BaseStageDoNotRunDirectly":
-        continue
-    if class_name not in stages:
-        print("Warning - update the section list for ", class_name)
-
-    qual_name = get_name(cls)
-    section = stages.get(class_name, "New and Miscellaneous")
-    doc = get_doc_line(cls)
-    qual_names[section].append((qual_name, doc, cls))
-
-
-for name, section_data in sections.items():
-    with open(f"src/stages/{name}.rst", "w") as f:
-        f.write(name + "\n")
-        f.write(("=" * len(name)) + "\n\n")
-        f.write(section_data["blurb"] + "\n")
-        files[name] = f
-
-        for qual_name, doc, _ in qual_names[name]:
-            f.write(f"* :py:class:`~{qual_name}` - {doc}\n\n")
-        f.write("\n")
-
-        for qual_name, _, cls in qual_names[name]:
-            if cls.dask_parallel:
-                par_text = "Yes - Dask"
-            elif cls.parallel:
-                par_text = "Yes - MPI"
+                help = ""
+                if isinstance(val, type):
+                    dt = val.__name__
+                    req = True
+                    default = None
+                else:
+                    dt = type(val).__name__
+                    req = False
+                    default = val
+            # The help text can contain characters that are special in HTML
+            help = html.escape(str(help)) if help else ""
+            if req:
+                lines.append(f"            <LI><strong>{name}</strong>: ({dt}) Required. {help}</LI>")
             else:
-                par_text = "No - Serial"
-
-            config_text = describe_config(cls)
-
-            inputs_text = describe_inputs_or_outputs(cls.inputs)
-            outputs_text = describe_inputs_or_outputs(cls.outputs)
+                lines.append(f"            <LI><strong>{name}</strong>: ({dt}) Default={html.escape(str(default))}. {help}</LI>")
+        lines.append("            </UL>")
+        return "\n".join(lines)
 
 
+    def describe_inputs_or_outputs(d):
+        if not d:
+            return "None"
+        out = ["\n"]
+        for tag, ftype in d:
+            out.append(f"    - {tag}: {ftype.__name__}")
+        return "\n".join(out)
 
-            f.write(f"""
+
+
+    for class_name, (cls, path) in txpipe.PipelineStage.pipeline_stages.items():
+        if class_name == "BaseStageDoNotRunDirectly":
+            continue
+        if class_name not in stages:
+            print("Warning - update the section list for ", class_name)
+
+        qual_name = get_name(cls)
+        section = stages.get(class_name, "New and Miscellaneous")
+        doc = get_doc_line(cls)
+        qual_names[section].append((qual_name, doc, cls))
+
+
+    for name, section_data in sections.items():
+        with open(os.path.join(DOCS_DIR, "src", "stages", f"{name}.rst"), "w") as f:
+            f.write(name + "\n")
+            f.write(("=" * len(name)) + "\n\n")
+            f.write(section_data["blurb"] + "\n")
+            files[name] = f
+
+            for qual_name, doc, _ in qual_names[name]:
+                f.write(f"* :py:class:`~{qual_name}` - {doc}\n\n")
+            f.write("\n")
+
+            for qual_name, _, cls in qual_names[name]:
+                if cls.dask_parallel:
+                    par_text = "Yes - Dask"
+                elif cls.parallel:
+                    par_text = "Yes - MPI"
+                else:
+                    par_text = "No - Serial"
+
+                config_text = describe_config(cls)
+
+                inputs_text = describe_inputs_or_outputs(cls.inputs)
+                outputs_text = describe_inputs_or_outputs(cls.outputs)
+
+
+
+                f.write(f"""
 .. autotxclass:: {qual_name}
     :members:
     :exclude-members: run
@@ -419,7 +439,7 @@ for name, section_data in sections.items():
     Inputs: {inputs_text}
 
     Outputs: {outputs_text}
-    
+
     Parallel: {par_text}
 
 
@@ -434,8 +454,8 @@ for name, section_data in sections.items():
 
 
 
-with open ("src/stages.rst", "w") as f:
-    f.write(""".. Autogenerated by make-stages.py
+    with open(os.path.join(DOCS_DIR, "src", "stages.rst"), "w") as f:
+        f.write(""".. Autogenerated by make-stages.py
 
 TXPipe Stage Listing
 ====================
@@ -445,7 +465,10 @@ TXPipe Stage Listing
    :caption: Contents:
 
 """)
-    f.write("   stages/base\n")
-    for s, sd in sections.items():
-        f.write("   stages/" + s + "\n")
-    f.write("\n")
+        f.write("   stages/base\n")
+        for s, sd in sections.items():
+            f.write("   stages/" + s + "\n")
+        f.write("\n")
+
+if __name__ == "__main__":
+    generate()

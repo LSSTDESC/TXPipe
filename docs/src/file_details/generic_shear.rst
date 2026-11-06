@@ -5,7 +5,7 @@ Generic shear catalogs are a type of shear catalog that require no calibration. 
 
 Everything is stored in a single "shear" group, which should have the attribute ``catalog_type = "simple"``; TXPipe cannot identify this type of catalog from its columns alone, so the attribute is needed.
 
-The selection stage is :py:class:`~txpipe.source_selection.TXSimpleSelection` and the calibration stage is :py:class:`~txpipe.shear_calibration.simple.TXComputeShearCalibrationSimple`; the latter just counts objects and does not compute any response.
+The selection stage is :py:class:`~txpipe.selection.source_selection.TXSimpleSelection` and the calibration stage is :py:class:`~txpipe.calibration.shear_calibration.simple.TXComputeShearCalibrationSimple`; the latter just counts objects and does not compute any response.
 
 The columns in a generic shear catalog are:
 

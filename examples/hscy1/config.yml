@@ -28,7 +28,7 @@ global:
 # TXTracerMetadata     
 # TXJackknifeCenters   
 # TXTwoPoint           
-# TXBlinding           
+# TXSmokescreenBlinding
 # TXTwoPointTheoryReal 
 # TXTwoPointPlots      
 # TXSourceDiagnosticPlots    
@@ -121,15 +121,25 @@ TXTwoPoint:
     source_bins: [0]
     lens_bins: [0]
 
-TXBlinding:
-    seed: 1972  ## seed uniquely specifies the shift in parameters
-    Omega_b: [0.0485, 0.001] ## fiducial_model_value, shift_sigma
-    Omega_c: [0.2545, 0.01]
-    w0: [-1.0, 0.1]
-    h: [0.682, 0.02]
-    sigma8: [0.801, 0.01]
-    n_s: [0.971, 0.03]
-    b0: 0.95  ## we use bias of the form b0/g
+TXSmokescreenBlinding:
+    # Draw each shifted parameter from a Gaussian N(mean, sigma), using the seed
+    reference_cosmology:
+        Omega_b: 0.0485
+        Omega_c: 0.2545
+        w0: -1.0
+        h: 0.682
+        sigma8: 0.801
+        n_s: 0.971
+    shifts_dict:
+        Omega_b: [0.0485, 0.001]
+        Omega_c: [0.2545, 0.01]
+        w0: [-1.0, 0.1]
+        h: [0.682, 0.02]
+        sigma8: [0.801, 0.01]
+        n_s: [0.971, 0.03]
+    shift_distribution: gaussian
+    b0: 0.95  ## TXPipe theory model lens bias, of the form b0/growth
+    seed: "Boitata was here"
     delete_unblinded: True
     
 TXTwoPointTheoryReal: {}

@@ -1,5 +1,6 @@
 from .dp02 import TXIngestDataPreview02
 from .mocks import TXCosmoDC2Mock, TXGaussianSimsMock
+from .glass_mocks import TXLogNormalGlass
 from .gcr import TXMetacalGCRInput, TXIngestStars
 from .redmagic import TXIngestRedmagic
 from .desi import TXIngestDESI
