@@ -1066,7 +1066,7 @@ class TXResponseInBins(PipelineStage):
         # for the plot directly.
         with self.open_output("response_in_bins_plot", wrapper=True, figsize=(8, 8)) as f:
             fig = f.file
-            axes = fig.file.subplots(3, 2, sharex=True, sharey=True)
+            axes = fig.subplots(3, 2, sharex=True, sharey=True)
             R_diag = 0.5 * (R[:, :, 0, 0] + R[:, :, 1, 1])
 
             def plot_r(ax, R):
