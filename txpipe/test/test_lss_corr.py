@@ -1,4 +1,4 @@
-from ..lsstools import (
+from ..systematics.lsstools import (
     DensityCorrelation,
     linear_model_from_maps,
 )

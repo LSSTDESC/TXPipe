@@ -1,0 +1,464 @@
+from ...base_stage import PipelineStage
+from ...data_types import HDFFile, PickleFile, PNGFile, QPMultiFile, QPNOfZFile, BinnedCatalog, TomographyCatalog, BinAssignments, CatalogSelection, ShearCatalog
+from ...calibration.calibration_utils import META_VARIANTS, SCALAR_META_VARIANTS
+import numpy as np
+import os
+import h5py
+from ceci.config import StageParameter
+
+
+class PZRailSummarizeBase(PipelineStage):
+    """
+    Base class to build the n(z) from some tomographic bins and collate the results from all the bins into a single file
+
+    "CatSummarizer" expects a catalog input (e.g. magnitudes)
+    "PZSummarizer" expects a photo-z input (e.g. point estimates or pdfs)
+    """
+
+    name = "PZRailSummarizeBase"
+    outputs = [
+        ("photoz_stack", QPNOfZFile),
+        ("photoz_realizations", QPMultiFile),
+    ]
+
+    def run(self):
+        import rail.estimation
+        import pickle
+        from rail.core.data import TableHandle
+        from rail.core.data import DataStore
+        import qp
+        import importlib
+
+        summarize_module = importlib.import_module(self.config["module"])
+
+        # Get the list of bins from the input
+        # Mostly these are numbered, bin_0, bin_1, etc.
+        # But there is also often a special bin_all
+        # that is non-tomographic
+        bins = self.get_bin_list()
+        print("Summarizing the following bins: ", bins)
+
+        # These parameters are common to all the bins runs
+        if "binned_catalog" in self.input_tags():
+            input_name = self.get_input("binned_catalog")
+        elif "photoz_pdfs" in self.input_tags():
+            input_name = self.get_input("photoz_pdfs")
+        else:
+            raise RuntimeError("class inputs should contain either binned_catalog or photoz_pdfs")
+
+        model = self.get_input("model")
+
+        # We will run the ensemble estimation for each bin, so we want a separate output file for each
+        # we use the main file name as the base name for this, but add the bin name to the end.
+        # So to do this we split up the file name into root and extension, and then add the bin name
+        # to the root.
+        out1_root, out1_ext = os.path.splitext(self.get_output("photoz_realizations", final_name=True))
+        out2_root, out2_ext = os.path.splitext(self.get_output("photoz_stack", final_name=True))
+
+        # Configuration options that will be needed by the sub-stage
+        sub_config = {
+            "model": model,
+            "usecols": [f"mag_{b}" for b in self.config["bands"]],
+            "phot_weightcol": "weight",
+            "output_mode": "none",
+            "comm": self.comm,
+            "input": input_name,
+            "output_mode": "default",  # only some summarizer classes need this it seems
+        }
+
+        # This is the requested RAIL Summarizer class
+        substage_class = getattr(summarize_module, self.config["summarizer"])
+
+        # Move relevant configuration items from the config
+        # for this stage into the substage config
+        for k, v in self.config.items():
+            if k in substage_class.config_options:
+                sub_config[k] = v
+
+        # We collate ensemble results for both a single primary n(z) estimate,
+        # and for a suite of realizations, both for each bin.
+        main_ensemble_results = []
+        realizations_results = []
+
+        for b in bins:
+            print("Running ensemble estimation for bin: ", b)
+
+            # Make the file names for this bin
+            realizations_output = "{}_{}{}".format(out1_root, b, out1_ext)
+            stack_output = "{}_{}{}".format(out2_root, b, out2_ext)
+
+            extra_sub_config = self.get_extra_sub_config(b)
+
+            # Create the sub-stage.
+            run_nzdir = substage_class.make_stage(
+                output=realizations_output,
+                single_NZ=stack_output,
+                **sub_config,
+                **extra_sub_config,
+            )
+            # I have never really understood the RAIL DataStore.
+            # But if I don't do this the system complains that there is already an
+            # output with the name we have given when we get to the second iteration
+            ds = DataStore()
+            run_nzdir.data_store = ds
+
+            # actually run and finalize the stage
+            run_nzdir.run()
+            run_nzdir.finalize()
+
+            if self.comm is not None:
+                self.comm.Barrier()
+
+            # read the result. This is small so can stay in memory.
+            main_ensemble_results.append(qp.read(stack_output))
+            realizations_results.append(qp.read(realizations_output))
+
+        # Only the root process writes the data, so the others are done now.
+        if self.rank != 0:
+            return
+
+        # Collate the results from all the bins into a single file
+        # and write to the main output file.
+        combined_qp = qp.concatenate(main_ensemble_results)
+        with self.open_output("photoz_stack", wrapper=True) as f:
+            f.write_ensemble(combined_qp)
+
+        # Write the realizations to the its file, again, collating all the bins
+        with self.open_output("photoz_realizations", wrapper=True) as f:
+            for b, realizations in zip(bins, realizations_results):
+                f.write_ensemble(realizations, b)
+
+
+class PZRailSummarize(PZRailSummarizeBase):
+    """
+    Runs a specified RAIL "CatSummarizer" on each tomographic bin and collate the results from all the bins into a single file
+
+    "CatSummarizer" expects a catalog input, rather than a PZ input
+    """
+
+    name = "PZRailSummarize"
+    inputs = [
+        ("binned_catalog", BinnedCatalog),
+        ("model", PickleFile),
+    ]
+
+    # pull these out automatically
+    config_options = {
+        "catalog_group": StageParameter(str, "", msg="Group name in the catalog file for tomographic bins."),
+        "mag_prefix": StageParameter(str, "photometry/mag_", msg="Prefix for magnitude columns in the catalog."),
+        "tomography_name": StageParameter(str, "", msg="Name of the tomography scheme."),
+        "bands": StageParameter(list, ["u", "g", "r", "i", "z", "y"], msg="Bands to use for summarization."),
+        "summarizer": StageParameter(str, "NZDirSummarizer", msg="Name of the RAIL summarizer class to use."),
+        "module": StageParameter(
+            str, "rail.estimation.algos.nz_dir", msg="Python module path for the summarizer class."
+        ),
+    }
+
+    def get_bin_list(self):
+        """
+        Returns a list of bins in the binned catalog file
+        """
+        group_name = self.config["catalog_group"]
+        with self.open_input("binned_catalog", wrapper=True) as f:
+            bins = f.get_bins(group_name)
+        return bins
+
+    def get_extra_sub_config(self, bin):
+        """
+        Additional config options needed by the CatSummarizers
+        """
+        group_name = self.config["catalog_group"]
+        return {"hdf5_groupname": f"/{group_name}/{bin}"}
+
+
+class PZRailPZSummarize(PZRailSummarizeBase):
+    """
+    Runs a specified RAIL *masked* "PZSummarizer" on each tomographic bin and collate the results from all the bins into a single file
+
+    "PZSummarizer" expects a photoz pdf input, rather than a catalog
+    """
+
+    name = "PZRailPZSummarize"
+    inputs = [
+        ("photoz_pdfs", HDFFile),
+        ("tomography_catalog", TomographyCatalog),
+        ("model", PickleFile),
+    ]
+
+    # pull these out automatically
+    config_options = {
+        "catalog_group": StageParameter(str, "", msg="Group name in the catalog file for tomographic bins."),
+        "mag_prefix": StageParameter(str, "photometry/mag_", msg="Prefix for magnitude columns in the catalog."),
+        "tomography_name": StageParameter(str, "", msg="Name of the tomography scheme."),
+        "bands": StageParameter(list, ["u", "g", "r", "i", "z", "y"], msg="Bands to use for summarization."),
+        "summarizer": StageParameter(
+            str, "PointEstHistMaskedSummarizer", msg="Name of the RAIL summarizer class to use."
+        ),
+        "module": StageParameter(
+            str, "rail.estimation.algos.point_est_hist", msg="Python module path for the summarizer class."
+        ),
+    }
+
+    def get_bin_list(self):
+        """
+        Returns a list of bins in the binned catalog file
+        """
+        group_name = self.config["hdf5_groupname"]
+        bins = []
+        with self.open_input("tomography_catalog") as f:
+            unique_bins = np.unique(f[f"{group_name}/class_id"][:])
+            bins = [
+                f"bin_{bin_index}" for bin_index in unique_bins[unique_bins != -1]
+            ]  # do not include the "unselected" bin, -1
+        bins.append("bin_all")  # add the non-tomographic bin at the end
+        return bins
+
+    def get_extra_sub_config(self, bin):
+        """
+        Additional config options needed by the PZSummarizers
+        """
+        from rail.core.common_params import TOMOGRAPHY_ALL
+        tomo_path = self.get_input("tomography_catalog")
+        if bin == "bin_all":
+            bin_index = TOMOGRAPHY_ALL
+        else:
+            bin_index = int(bin.split("_")[-1])
+
+        extra_sub_config = {
+            "selected_bin": bin_index,
+            "tomography_bins": tomo_path,
+            "hdf5_groupname": self.config["hdf5_groupname"],
+        }
+        print(extra_sub_config)
+        return extra_sub_config
+
+
+class PZRealizationsPlot(PipelineStage):
+    """Plot realizations of the tomographic n(z) distributions.
+
+    Reads the ensemble of n(z) realizations made by a RAIL summarization stage and, for
+    each tomographic bin, plots the mean n(z) and the range spanned by the realizations.
+    """
+    name = "PZRealizationsPlot"
+    parallel = False
+
+    inputs = [
+        ("photoz_realizations", QPMultiFile),
+    ]
+
+    outputs = [
+        ("photoz_realizations_plot", PNGFile),
+    ]
+
+    config_options = {
+        "zmax": StageParameter(float, 3.0, msg="Maximum redshift for plotting."),
+        "nz": StageParameter(int, 301, msg="Number of redshift bins for plotting."),
+    }
+
+    def run(self):
+        import h5py
+        import matplotlib.pyplot as plt
+
+        zmax = self.config["zmax"]
+        nz = self.config["nz"]
+        z = np.linspace(0, zmax, nz)
+
+        with self.open_input("photoz_realizations", wrapper=True) as f:
+            names = f.get_names()
+            pdfs = {}
+            for tomo_bin in names:
+                realizations = f.read_ensemble(tomo_bin)
+                pdfs[tomo_bin] = realizations.pdf(z)
+
+        # Here nbin includes the 2D bin
+        nbin = len(names)
+        with self.open_output("photoz_realizations_plot", wrapper=True, figsize=(6, 4 * nbin)) as fig:
+            axes = fig.file.subplots(len(names), 1)
+            for i, tomo_bin in enumerate(names):
+                ax = axes[i]
+                pdfs_i = pdfs[tomo_bin]
+                print(pdfs_i.shape)
+                ax.plot(z, pdfs_i.mean(0))
+                ax.fill_between(z, pdfs_i.min(0), pdfs_i.max(0), alpha=0.2)
+
+                ax.set_xlabel("z")
+                ax.set_ylabel(f"{tomo_bin} n(z)")
+
+
+
+class PZCollateRailAssignmentsMetadetect(PipelineStage):
+    """Collect RAIL tomographic bin assignments for the metadetect variants into one file.
+
+    Each of the five variants (ns, 1p, 1m, 2p, 2m) has been run through a RAIL
+    classifier separately, giving one file per variant. This stage copies them into
+    a single bin assignments file in the layout that the
+    TXComputeShearCalibration stages expect, and records the number of bins and bin edges.
+    """
+    name = "PZCollateRailAssignmentsMetadetect"
+    inputs = [
+        ("bhat_for_wide_data_ns", HDFFile),
+        ("bhat_for_wide_data_1p", HDFFile),
+        ("bhat_for_wide_data_1m", HDFFile),
+        ("bhat_for_wide_data_2p", HDFFile),
+        ("bhat_for_wide_data_2m", HDFFile),
+    ]
+    outputs = [
+        ("shear_bin_assignments", BinAssignments)
+    ]
+    config_options = {
+        "source_zbin_edges": StageParameter(list, required=True, msg="Redshift bin edges for source tomography"),
+    }
+    variants = META_VARIANTS
+    def run(self):
+        with self.open_output("shear_bin_assignments") as f_out:
+            for i, v in enumerate(self.variants):
+                with self.open_input(f"bhat_for_wide_data_{v}") as f_in:
+                    g_out = f_out.create_group(v)
+                    f_in.copy("/bhat_for_wide_data", g_out, name="bin")
+                    if i == 0:
+                        bin_max = f_in["bhat_for_wide_data"][:].max()
+            f_out.attrs["nbin_source"] = bin_max + 1
+            f_out.attrs["bin_edges"] = np.array(self.config["source_zbin_edges"])
+
+class PZCollateRailAssignmentsScalarMetadetect(PZCollateRailAssignmentsMetadetect):
+    """Collect RAIL tomographic bin assignments for the scalar metadetect variants into one file.
+
+    As PZCollateRailAssignmentsMetadetect but for the three variants ns, 1p, 1m.
+    """
+    name = "PZCollateRailAssignmentsScalarMetadetect"
+    inputs = [
+        ("bhat_for_wide_data_ns", HDFFile),
+        ("bhat_for_wide_data_1p", HDFFile),
+        ("bhat_for_wide_data_1m", HDFFile),
+    ]
+    outputs = [
+        ("shear_bin_assignments", BinAssignments)
+    ]
+    config_options = {
+        "source_zbin_edges": StageParameter(list, required=True, msg="Redshift bin edges for source tomography"),
+    }
+    variants = SCALAR_META_VARIANTS
+
+
+class PZGenerateSOMInformerSubsample(PipelineStage):
+    """Make a random subsample of the selected shear catalog objects, to train a SOM.
+
+    Reads the catalog selection and keeps each selected object with the probability needed
+    to leave approximately size objects, using a seed chosen so that the result does not
+    depend on the number of processes. All the columns of the shear catalog are copied for
+    the kept objects.
+    """
+    parallel = True
+    name = "PZGenerateSOMInformerSubsample"
+    inputs = [
+        ("shear_selection", CatalogSelection),
+        ("shear_catalog", ShearCatalog),
+    ]
+    outputs = [
+        ("sub_selected_shear_data", HDFFile),
+    ]
+    config_options = {
+        "size": StageParameter(int, 5_000_000, msg="Approximate of selected objects to include."),
+        "seed": StageParameter(int, 7953, msg="Random seed for sub-selection."),
+        "chunk_rows": StageParameter(int, 100_000, msg="Number of rows to process at once"),
+    }
+
+    def run(self):
+        with self.open_input("shear_catalog", wrapper=True) as f:
+            group = f.get_primary_catalog_group()
+            cols = [col for col in f.file[group].keys() if isinstance(f.file[group][col], h5py.Dataset)]
+            dtypes = {col: f.file[group][col].dtype for col in cols}
+
+        with self.open_input("shear_selection") as f:
+            # the number selected in the primary group.
+            n_sel = int(f[group].attrs["n_selected"])
+
+        target_size = self.config["size"]
+        chunk_rows = self.config["chunk_rows"]
+        seed = self.config["seed"]
+
+        # Each selected object is kept with this probability, so the final
+        # size is approximately target_size.
+        selection_fraction = min(target_size / n_sel, 1.0) if n_sel > 0 else 1.0
+        if target_size >= n_sel:
+            print("Warning: requested size >= number selected. Just copying everything selected")
+
+        # Each process keeps its sub-selected chunks in memory. We cannot do any
+        # collective MPI calls inside this loop, because different processes
+        # may have different numbers of chunks.
+        kept = {col: [] for col in cols}
+        for (s, e, data) in self.combined_iterators(
+            chunk_rows,
+            "shear_catalog",
+            group,
+            cols,
+            "shear_selection",
+            group,
+            ["selection"],
+        ):
+            # seeded by chunk start so results do not depend on the number of processes
+            rng = np.random.default_rng(seed=[seed, s])
+            selected = data["selection"].astype(bool)
+            n_sel_chunk = selected.sum()
+            sub_selected = rng.uniform(0, 1, size=n_sel_chunk) < selection_fraction
+            n_subsel_chunk = sub_selected.sum()
+            print(f"Rank {self.rank} processing rows {s:,} - {e:,} and sub-selected {n_subsel_chunk} from {n_sel_chunk} selected objects")
+            for col in cols:
+                kept[col].append(data[col][selected][sub_selected])
+
+        # This is a small dataset, by design, so it's not a problem
+        # to store it all in memory. It's split up across the processes.
+        sub_catalog = {
+            col: np.concatenate(chunks) if chunks else np.empty(0, dtype=dtypes[col])
+            for col, chunks in kept.items()
+        }
+        n_my_sub_catalog = sub_catalog[cols[0]].size
+
+        # Single collective call, made by every process exactly once.
+        if self.comm is not None:
+            all_sizes = np.array(self.comm.allgather(n_my_sub_catalog), dtype=int)
+        else:
+            all_sizes = np.array([n_my_sub_catalog], dtype=int)
+
+        my_start = all_sizes[: self.rank].sum()
+        my_end = my_start + n_my_sub_catalog
+        total = all_sizes.sum()
+
+        if self.rank == 0:
+            print(f"Sub-selected {total:,} of {n_sel:,} selected objects")
+
+        # Actually output the reduced catalog
+        with self.open_output("sub_selected_shear_data", parallel=True) as f:
+            for col in cols:
+                f.create_dataset(col, dtype=dtypes[col], shape=(total,))
+            for col in cols:
+                if n_my_sub_catalog > 0:
+                    f[col][my_start:my_end] = sub_catalog[col]
+
+class PZAddNonTomographicNZ(PipelineStage):
+    """Sum up tomographic n(z)s in a file and append the non-tomographic one.
+    """
+    name = "PZAddNonTomographicNZ"
+    inputs = [
+        ("input_photoz_stack", QPNOfZFile),
+    ]
+
+    outputs = [
+        ("output_photoz_stack", QPNOfZFile),
+    ]
+    parallel = False
+
+    def run(self):
+        import qp
+        with self.open_input("input_photoz_stack", wrapper=True) as f:
+            ens = f.read_ensemble()
+        # TODO: Max this work for the histogram form too. Will crash here currently:
+        pdf_in = ens.dist.yvals
+        nbin, nz = pdf_in.shape
+        pdf_out = np.zeros((nbin + 1, nz))
+        pdf_out[:-1, :] = pdf_in
+        pdf_out[-1] = pdf_in.sum(axis=0)
+
+        q = qp.Ensemble(qp.interp, data={"xvals": ens.dist.xvals, "yvals": pdf_out})
+        with self.open_output("output_photoz_stack", wrapper=True) as f:
+            f.write_ensemble(q)

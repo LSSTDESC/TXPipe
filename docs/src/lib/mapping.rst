@@ -1,7 +1,7 @@
 Mapping Utilities
 =================
 
-.. automodule:: txpipe.mapping
+.. automodule:: txpipe.maps.mapping
    :members:
 
 .. automodule:: txpipe.utils.healpix

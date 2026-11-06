@@ -1,4 +1,4 @@
-from ..shear_calibration import MeanShearInBins, HSCCalculator, HSCCalibrator
+from ..calibration.calibration_utils import MeanShearInBins, HSCCalculator, HSCCalibrator
 import numpy as np
 import mockmpi
 

@@ -3,11 +3,11 @@ Source Injection
 
 These stages ingest and use synthetic source injection information
 
-* :py:class:`~txpipe.auxiliary_maps.TXAuxiliarySSIMaps` - Generate auxiliary maps from SSI catalogs
+* :py:class:`~txpipe.maps.auxiliary_maps.TXAuxiliarySSIMaps` - Generate auxiliary maps from SSI catalogs
 
-* :py:class:`~txpipe.map_plots.TXMapPlotsSSI` - Make plots of all the available maps that use SSI inputs
+* :py:class:`~txpipe.maps.map_plots.TXMapPlotsSSI` - Make plots of all the available maps that use SSI inputs
 
-* :py:class:`~txpipe.ingest.ssi.TXIngestSSI` - Base-Class for ingesting SSI catalogs
+* :py:class:`~txpipe.twopoint.magnification.TXSSIMagnification` - Compute the magnification coefficients using SSI outputs
 
 * :py:class:`~txpipe.ingest.ssi.TXIngestSSIGCR` - Ingest SSI catalogs using GCR
 
@@ -19,18 +19,17 @@ These stages ingest and use synthetic source injection information
 
 * :py:class:`~txpipe.ingest.ssi.TXIngestSSIDetectionDESBalrog` - Ingest an "SSI" "detection" catalog from DES (AKA Balrog)
 
-* :py:class:`~txpipe.magnification.TXSSIMagnification` - Compute the magnification coefficients using SSI outputs
 
 
-
-.. autotxclass:: txpipe.auxiliary_maps.TXAuxiliarySSIMaps
+.. autotxclass:: txpipe.maps.auxiliary_maps.TXAuxiliarySSIMaps
     :members:
     :exclude-members: run
 
     Inputs: 
 
-    - injection_catalog: HDFFile
     - matched_ssi_photometry_catalog: HDFFile
+    - injection_catalog: HDFFile
+    - ssi_detection_catalog: HDFFile
 
     Outputs: 
 
@@ -44,15 +43,21 @@ These stages ingest and use synthetic source injection information
         .. raw:: html
 
             <UL>
-            <LI><strong>block_size</strong>: (int) Default=0. </LI>
-            <LI><strong>depth_band</strong>: (str) Default=i. </LI>
-            <LI><strong>snr_threshold</strong>: (float) Default=10.0. </LI>
-            <LI><strong>snr_delta</strong>: (float) Default=1.0. </LI>
+            <LI><strong>block_size</strong>: (int) Default=0. Block size for dask processing (0 means auto).</LI>
+            <LI><strong>depth_band</strong>: (str) Default=i. Band for depth maps.</LI>
+            <LI><strong>snr_threshold</strong>: (float) Default=10.0. S/N value for depth maps.</LI>
+            <LI><strong>snr_delta</strong>: (float) Default=1.0. Delta for S/N thresholding.</LI>
+            <LI><strong>det_prob_threshold</strong>: (float) Default=0.8. Detection probability threshold for SSI depth.</LI>
+            <LI><strong>mag_delta</strong>: (float) Default=0.01. Magnitude bin size for detection probability depth.</LI>
+            <LI><strong>min_depth</strong>: (float) Default=18. Minimum magnitude for detection probability depth.</LI>
+            <LI><strong>max_depth</strong>: (float) Default=26. Maximum magnitude for detection probability depth.</LI>
+            <LI><strong>smooth_det_frac</strong>: (bool) Default=True. Apply smoothing to detection fraction vs magnitude.</LI>
+            <LI><strong>smooth_window</strong>: (float) Default=0.5. Smoothing window size in magnitudes.</LI>
             </UL>
 
 
 
-.. autotxclass:: txpipe.map_plots.TXMapPlotsSSI
+.. autotxclass:: txpipe.maps.map_plots.TXMapPlotsSSI
     :members:
     :exclude-members: run
 
@@ -62,8 +67,9 @@ These stages ingest and use synthetic source injection information
 
     Outputs: 
 
-    - depth_ssi_meas_map: PNGFile
-    - depth_ssi_true_map: PNGFile
+    - depth_ssi_meas_map_plot: PNGFile
+    - depth_ssi_true_map_plot: PNGFile
+    - depth_ssi_det_prob_map_plot: PNGFile
     
     Parallel: No - Serial
 
@@ -73,22 +79,26 @@ These stages ingest and use synthetic source injection information
         .. raw:: html
 
             <UL>
-            <LI><strong>projection</strong>: (str) Default=cart. </LI>
-            <LI><strong>rot180</strong>: (bool) Default=False. </LI>
-            <LI><strong>debug</strong>: (bool) Default=False. </LI>
+            <LI><strong>projection</strong>: (str) Default=McBryde. Skyproj projection type for map plots (e.g., McBryde, Mollweide)</LI>
             </UL>
 
 
 
-.. autotxclass:: txpipe.ingest.ssi.TXIngestSSI
+.. autotxclass:: txpipe.twopoint.magnification.TXSSIMagnification
     :members:
     :exclude-members: run
 
-    Inputs: None
+    Inputs: 
 
-    Outputs: None
+    - binned_lens_catalog_nomag: BinnedCatalog
+    - binned_lens_catalog_mag: BinnedCatalog
+
+    Outputs: 
+
+    - magnification_coefficients: HDFFile
+    - magnification_plot: PNGFile
     
-    Parallel: Yes - MPI
+    Parallel: No - Serial
 
 
     .. collapse:: Configuration
@@ -96,6 +106,10 @@ These stages ingest and use synthetic source injection information
         .. raw:: html
 
             <UL>
+            <LI><strong>chunk_rows</strong>: (int) Default=10000. Number of rows to process in each chunk.</LI>
+            <LI><strong>applied_magnification</strong>: (float) Default=1.02. Magnification applied to the &#x27;magnified&#x27; SSI catalog.</LI>
+            <LI><strong>n_patches</strong>: (int) Default=20. Number of patches for bootstrap error estimation.</LI>
+            <LI><strong>bootstrap_error</strong>: (bool) Default=True. Whether to compute bootstrap errors.</LI>
             </UL>
 
 
@@ -120,11 +134,11 @@ These stages ingest and use synthetic source injection information
         .. raw:: html
 
             <UL>
-            <LI><strong>injection_catalog_name</strong>: (str) Default=. </LI>
-            <LI><strong>ssi_photometry_catalog_name</strong>: (str) Default=. </LI>
-            <LI><strong>ssi_uninjected_photometry_catalog_name</strong>: (str) Default=. </LI>
-            <LI><strong>GCRcatalog_path</strong>: (str) Default=. </LI>
-            <LI><strong>flux_name</strong>: (str) Default=gaap3p0Flux. </LI>
+            <LI><strong>injection_catalog_name</strong>: (str) Default=. Catalog of objects manually injected.</LI>
+            <LI><strong>ssi_photometry_catalog_name</strong>: (str) Default=. Catalog of objects from real data with no injections.</LI>
+            <LI><strong>ssi_uninjected_photometry_catalog_name</strong>: (str) Default=. Catalog of objects from real data with no injections.</LI>
+            <LI><strong>GCRcatalog_path</strong>: (str) Default=. Path to GCRCatalogs for SSI runs.</LI>
+            <LI><strong>flux_name</strong>: (str) Default=gaap3p0Flux. Flux column name to use.</LI>
             </UL>
 
 
@@ -150,9 +164,9 @@ These stages ingest and use synthetic source injection information
         .. raw:: html
 
             <UL>
-            <LI><strong>chunk_rows</strong>: (int) Default=100000. </LI>
-            <LI><strong>match_radius</strong>: (float) Default=0.5. </LI>
-            <LI><strong>magnification</strong>: (int) Default=0. </LI>
+            <LI><strong>chunk_rows</strong>: (int) Default=100000. Number of rows to process in each chunk.</LI>
+            <LI><strong>match_radius</strong>: (float) Default=0.5. Matching radius in arcseconds.</LI>
+            <LI><strong>magnification</strong>: (int) Default=0. Magnification label.</LI>
             </UL>
 
 
@@ -222,36 +236,6 @@ These stages ingest and use synthetic source injection information
         .. raw:: html
 
             <UL>
-            </UL>
-
-
-
-.. autotxclass:: txpipe.magnification.TXSSIMagnification
-    :members:
-    :exclude-members: run
-
-    Inputs: 
-
-    - binned_lens_catalog_nomag: HDFFile
-    - binned_lens_catalog_mag: HDFFile
-
-    Outputs: 
-
-    - magnification_coefficients: HDFFile
-    - magnification_plot: PNGFile
-    
-    Parallel: No - Serial
-
-
-    .. collapse:: Configuration
-
-        .. raw:: html
-
-            <UL>
-            <LI><strong>chunk_rows</strong>: (int) Default=10000. </LI>
-            <LI><strong>applied_magnification</strong>: (float) Default=1.02. </LI>
-            <LI><strong>n_patches</strong>: (int) Default=20. </LI>
-            <LI><strong>bootstrap_error</strong>: (bool) Default=True. </LI>
             </UL>
 
 

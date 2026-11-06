@@ -22,7 +22,7 @@ modules: >
 python_paths: []
 
 stages:
-#    - name: TXSourceSelectorMetadetect
+#    - name: TXComputeShearCalibrationMetadetect
 #      nprocess: 1
 #    - name: Inform_BPZ_lite
 #      nprocess: 1

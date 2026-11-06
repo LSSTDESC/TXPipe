@@ -61,7 +61,7 @@ BPZliteEstimator:
 
 
 
-TXSourceSelectorSimple:
+TXComputeShearCalibrationSimple:
     input_pz: false
     true_z: false
     bands: [u, g, r, i, z, "y"]
