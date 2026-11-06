@@ -800,7 +800,7 @@ class AnaCalibrator(MetaCalibrator):
             mu1 = f["counts/mean_e1"][:]
             mu2 = f["counts/mean_e2"][:]
             n = len(mu1)
-            R = f["response/R"][:n]
+            R = f["response/R"]
             R_2d = f["response/R_2d"][0]
             mu1_2d = f["counts/mean_e1_2d"][0]
             mu2_2d = f["counts/mean_e2_2d"][0]

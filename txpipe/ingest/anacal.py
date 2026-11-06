@@ -1,6 +1,6 @@
 from .base import TXIngestCatalogFits
 from ..data_types import ShearCatalog, FitsFile, TextFile
-from .dp1_details import (
+from .dp_info import (
     DP1_TRACTS,
     DP1_COSMOLOGY_TRACTS,
 )
