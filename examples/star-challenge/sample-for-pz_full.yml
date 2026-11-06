@@ -14,7 +14,7 @@ python_paths:
     - submodules/WLMassMap/python/desc/
 
 stages:
-    - name: TXSourceSelectorMetadetect
+    - name: TXComputeShearCalibrationMetadetect
       nprocess: 32
     - name: TXRandomForestLensSelector
       nprocess: 32

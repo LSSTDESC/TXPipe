@@ -3,19 +3,19 @@ Covariance
 
 These stages compute covariances of measurements
 
-* :py:class:`~txpipe.covariance.TXFourierGaussianCovariance` - Compute a Gaussian Fourier-space covariance with TJPCov using f_sky only
+* :py:class:`~txpipe.covariance.covariance.TXFourierGaussianCovariance` - Compute a Gaussian Fourier-space covariance with TJPCov using f_sky only
 
-* :py:class:`~txpipe.covariance.TXRealGaussianCovariance` - Compute a Gaussian real-space covariance with TJPCov using f_sky only
+* :py:class:`~txpipe.covariance.covariance.TXRealGaussianCovariance` - Compute a Gaussian real-space covariance with TJPCov using f_sky only
 
-* :py:class:`~txpipe.covariance.TXFourierTJPCovariance` - Compute a Gaussian Fourier-space covariance with TJPCov using mask geometry
+* :py:class:`~txpipe.covariance.covariance.TXFourierTJPCovariance` - Compute a Gaussian Fourier-space covariance with TJPCov using mask geometry
 
-* :py:class:`~txpipe.covariance_nmt.TXFourierNamasterCovariance` - Compute a Gaussian Fourier-space covariance with NaMaster
+* :py:class:`~txpipe.covariance.covariance_nmt.TXFourierNamasterCovariance` - Compute a Gaussian Fourier-space covariance with NaMaster
 
-* :py:class:`~txpipe.covariance_nmt.TXRealNamasterCovariance` - Compute a Gaussian real-space covariance with NaMaster
+* :py:class:`~txpipe.covariance.covariance_nmt.TXRealNamasterCovariance` - Compute a Gaussian real-space covariance with NaMaster
 
 
 
-.. autotxclass:: txpipe.covariance.TXFourierGaussianCovariance
+.. autotxclass:: txpipe.covariance.covariance.TXFourierGaussianCovariance
     :members:
     :exclude-members: run
 
@@ -37,15 +37,15 @@ These stages compute covariances of measurements
         .. raw:: html
 
             <UL>
-            <LI><strong>pickled_wigner_transform</strong>: (str) Default=. </LI>
-            <LI><strong>use_true_shear</strong>: (bool) Default=False. </LI>
-            <LI><strong>galaxy_bias</strong>: (list) Default=[0.0]. </LI>
-            <LI><strong>gaussian_sims_factor</strong>: (list) Default=[1.0]. </LI>
+            <LI><strong>pickled_wigner_transform</strong>: (str) Default=. Path to pickled Wigner transform.</LI>
+            <LI><strong>use_true_shear</strong>: (bool) Default=False. Use true shear values.</LI>
+            <LI><strong>galaxy_bias</strong>: (list) Default=[0.0]. Galaxy bias values, or one zero for unit bias.</LI>
+            <LI><strong>gaussian_sims_factor</strong>: (list) Default=[1.0]. Factor by which to decrease lens density to account for increased density contrast.</LI>
             </UL>
 
 
 
-.. autotxclass:: txpipe.covariance.TXRealGaussianCovariance
+.. autotxclass:: txpipe.covariance.covariance.TXRealGaussianCovariance
     :members:
     :exclude-members: run
 
@@ -67,18 +67,18 @@ These stages compute covariances of measurements
         .. raw:: html
 
             <UL>
-            <LI><strong>min_sep</strong>: (float) Default=2.5. </LI>
-            <LI><strong>max_sep</strong>: (int) Default=250. </LI>
-            <LI><strong>nbins</strong>: (int) Default=20. </LI>
-            <LI><strong>pickled_wigner_transform</strong>: (str) Default=. </LI>
-            <LI><strong>use_true_shear</strong>: (bool) Default=False. </LI>
-            <LI><strong>galaxy_bias</strong>: (list) Default=[0.0]. </LI>
-            <LI><strong>gaussian_sims_factor</strong>: (list) Default=[1.0]. </LI>
+            <LI><strong>min_sep</strong>: (float) Default=2.5. Minimum separation in arcmin.</LI>
+            <LI><strong>max_sep</strong>: (float) Default=250. Maximum separation in arcmin.</LI>
+            <LI><strong>nbins</strong>: (int) Default=20. Number of bins.</LI>
+            <LI><strong>pickled_wigner_transform</strong>: (str) Default=. Path to pickled Wigner transform.</LI>
+            <LI><strong>use_true_shear</strong>: (bool) Default=False. Use true shear values.</LI>
+            <LI><strong>galaxy_bias</strong>: (list) Default=[0.0]. Galaxy bias values.</LI>
+            <LI><strong>gaussian_sims_factor</strong>: (list) Default=[1.0]. Gaussian simulation factor.</LI>
             </UL>
 
 
 
-.. autotxclass:: txpipe.covariance.TXFourierTJPCovariance
+.. autotxclass:: txpipe.covariance.covariance.TXFourierTJPCovariance
     :members:
     :exclude-members: run
 
@@ -103,15 +103,15 @@ These stages compute covariances of measurements
         .. raw:: html
 
             <UL>
-            <LI><strong>galaxy_bias</strong>: (list) Default=[0.0]. </LI>
-            <LI><strong>IA</strong>: (float) Default=0.5. </LI>
-            <LI><strong>cache_dir</strong>: (str) Default=. </LI>
-            <LI><strong>cov_type</strong>: (list) Default=['FourierGaussianNmt', 'FourierSSCHaloModel']. </LI>
+            <LI><strong>galaxy_bias</strong>: (list) Default=[0.0]. Galaxy bias values, or one zero for unit bias.</LI>
+            <LI><strong>IA</strong>: (float) Default=0.5. Intrinsic alignment parameter.</LI>
+            <LI><strong>cache_dir</strong>: (str) Default=. Cache directory.</LI>
+            <LI><strong>cov_type</strong>: (list) Default=[&#x27;FourierGaussianNmt&#x27;, &#x27;FourierSSCHaloModel&#x27;]. Covariance types to use.</LI>
             </UL>
 
 
 
-.. autotxclass:: txpipe.covariance_nmt.TXFourierNamasterCovariance
+.. autotxclass:: txpipe.covariance.covariance_nmt.TXFourierNamasterCovariance
     :members:
     :exclude-members: run
 
@@ -134,15 +134,15 @@ These stages compute covariances of measurements
         .. raw:: html
 
             <UL>
-            <LI><strong>pickled_wigner_transform</strong>: (str) Default=. </LI>
-            <LI><strong>use_true_shear</strong>: (bool) Default=False. </LI>
-            <LI><strong>scratch_dir</strong>: (str) Default=temp. </LI>
-            <LI><strong>nside</strong>: (int) Default=1024. </LI>
+            <LI><strong>pickled_wigner_transform</strong>: (str) Default=. Path to pickled Wigner transform file.</LI>
+            <LI><strong>use_true_shear</strong>: (bool) Default=False. Whether to use true shear values.</LI>
+            <LI><strong>scratch_dir</strong>: (str) Default=temp. Directory for temporary files.</LI>
+            <LI><strong>nside</strong>: (int) Default=1024. HEALPix nside parameter.</LI>
             </UL>
 
 
 
-.. autotxclass:: txpipe.covariance_nmt.TXRealNamasterCovariance
+.. autotxclass:: txpipe.covariance.covariance_nmt.TXRealNamasterCovariance
     :members:
     :exclude-members: run
 
@@ -165,12 +165,10 @@ These stages compute covariances of measurements
         .. raw:: html
 
             <UL>
-            <LI><strong>min_sep</strong>: (float) Default=2.5. </LI>
-            <LI><strong>max_sep</strong>: (int) Default=250. </LI>
-            <LI><strong>nbins</strong>: (int) Default=20. </LI>
-            <LI><strong>pickled_wigner_transform</strong>: (str) Default=. </LI>
-            <LI><strong>use_true_shear</strong>: (bool) Default=False. </LI>
-            <LI><strong>galaxy_bias</strong>: (list) Default=[0.0]. </LI>
+            <LI><strong>pickled_wigner_transform</strong>: (str) Default=. Path to pickled Wigner transform file.</LI>
+            <LI><strong>use_true_shear</strong>: (bool) Default=False. Whether to use true shear values.</LI>
+            <LI><strong>galaxy_bias</strong>: (list) Default=[0.0]. Galaxy bias values.</LI>
+            <LI><strong>scratch_dir</strong>: (str) Default=temp. Directory for temporary files.</LI>
             </UL>
 
 

@@ -1,9 +1,11 @@
 # Stages to run
 stages:
-    - name: TXSourceSelectorHSC     # select and split objects into source bins
+    - name: TXComputeShearCalibrationHSC     # select and split objects into source bins
   #  - name: TXShearCalibration
   #  - name: TXSourceDiagnosticPlots
-    - name: TXRoweStatistics  
+    - name: TXHSCSelection
+    - name: TXSimpleRedshiftSourceTomography
+    - name: TXRoweStatistics
     - name: TXTauStatistics
       #- name: TXPSFDiagnostics
 # modules and packages to import that have pipeline

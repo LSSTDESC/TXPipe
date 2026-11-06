@@ -1,6 +1,6 @@
 from ..base_stage import PipelineStage
 from ..data_types import ShearCatalog, HDFFile, TextFile, QPPDFFile
-from ..shear_calibration import band_variants, metacal_variants, metadetect_variants
+from ..calibration.calibration_utils import band_variants, metacal_variants, metadetect_variants
 from ceci.config import StageParameter
 import numpy as np
 
@@ -1211,6 +1211,10 @@ class TXSimpleMock(PipelineStage):
 
 
 class TXMockTruthPZ(PipelineStage):
+    """Make mock photo-z PDFs from the true redshifts in a shear catalog.
+
+    Each PDF is a narrow Gaussian, with width mock_sigma_z, centred on the true redshift.
+    """
     name = "TXMockTruthPZ"
     parallel = False
     inputs = [("shear_catalog", ShearCatalog)]
