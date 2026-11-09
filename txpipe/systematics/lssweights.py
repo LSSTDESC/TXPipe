@@ -281,9 +281,7 @@ class TXLSSDensityBase(TXMapCorrelations):
             else:
                 frac = mask[hp.nest2ring(nside, vpix)]
 
-            # I don't think there's any reason for sys_name to be None in the current implementation.
-            # Have removed the if statement here accordingly.
-            sys_name = self.sys_names[imap] + suffix
+            sys_name = None if self.sys_names is None else self.sys_names[imap]
 
             edges = self.sys_meta[f"edges_{imap}"]
 
