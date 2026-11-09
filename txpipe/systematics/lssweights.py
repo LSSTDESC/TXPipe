@@ -898,7 +898,7 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
             n_iter = 0
             while chi2_red > self.chisq_max:
                 # Keep track of pixels to keep after fitting to all SP maps
-                vpix_common = []
+                keep = np.ones(len(vpix), dtype=bool)
                 for imap in range(nsysmaps):
                     sys_map = self.sys_maps[imap]
                     sys_vals = sys_map[vpix]
@@ -910,11 +910,10 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
                     self.sys_meta[f"edges_{imap}"] = edges
 
                     # Identify and remove outlier pixels
-                    keep = (sys_vals >= edges.min()) * (sys_vals <= edges.max())
-                    vpix_common.append(set(vpix[keep]))
+                    keep &= (sys_vals >= edges.min()) & (sys_vals <= edges.max())
 
                 # Construct binary version of the mask showing which pixels are valid
-                vpix_common = sorted(list(set.intersection(*vpix_common)))
+                vpix_common = vpix[keep]
                 # Check area loss is below threshold
                 area_new = mask[vpix_common].sum() * area_pix
                 f_loss = 1. - area_new / area_init
