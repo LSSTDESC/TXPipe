@@ -845,7 +845,13 @@ class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
             mask = map_file.read_map("mask")
             mask_meta = map_file.read_map_info("mask")
         mask_nside = mask_meta["nside"]
-        assert self.pixel_metadata["nside"] == mask_nside
+        if self.pixel_metadata["nside"] < mask_nside:
+            from ..maps.mapping import degrade_healsparse
+            mask = degrade_healsparse(
+                mask,
+                self.pixel_metadata["nside"],
+                reduction="mask",
+            )
 
         # Retrieve unmasked pixels from mask
         vpix = mask.valid_pixels
