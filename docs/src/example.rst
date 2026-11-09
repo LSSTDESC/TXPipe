@@ -15,7 +15,7 @@ This creates a ``data/example`` directory containing the input files in ``data/e
 
 .. code-block:: bash
 
-    ceci examples/metadetect/pipeline.yml
+    ceci examples/test/metadetect/pipeline.yml
 
 
 
@@ -45,13 +45,13 @@ You can make charts like this using:
 
 .. code-block:: bash
 
-    ceci --flow-chart metadetect.png examples/metadetect/pipeline.yml
+    ceci --flow-chart metadetect.png examples/test/metadetect/pipeline.yml
 
 
 Results
 -------
 
-Once the pipeline is complete, the results will be stored in ``data/example/outputs_metadetect``. Some are PNG images you can look at directly. Others are HDF5 files - see :ref:`Reading HDF5 Files`.
+Once the pipeline is complete, the results will be stored in ``data/test/metadetect/outputs_metadetect``. Some are PNG images you can look at directly. Others are HDF5 files - see :ref:`Reading HDF5 Files`.
 
 
 Under the hood
@@ -63,6 +63,6 @@ When you do this, the following things are happening under the hood:
 
 #. ``ceci`` runs the stages one by one, printing out the command line it uses. The outputs and logs of the tasks are put in locations defines in the pipeline yml.
 
-#. When each stage is run, it is passed inputs, outputs, and the path to a configuration file, in this case ``examples/metadetect/config.yml``. This is searched for configuration information for the stage, which is stored in a dictionary attribute on the stage, ``stage.config``.
+#. When each stage is run, it is passed inputs, outputs, and the path to a configuration file, in this case ``examples/test/metadetect/config.yml``. This is searched for configuration information for the stage, which is stored in a dictionary attribute on the stage, ``stage.config``.
 
 #. The ``run`` method on the stage is called to do the actual work of the stage. This method calls other methods to find the paths to its inputs and outputs, but otherwise can perform the calculation however it wishes.

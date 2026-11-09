@@ -48,7 +48,7 @@ To run the stage more than once, give each copy its own name and set ``classname
             twopoint_data_raw: twopoint_data_fourier_raw
             twopoint_data_blinded: twopoint_data_fourier
 
-The full example is ``examples/metadetect/pipeline_smokescreen.yml``.
+The full example is ``examples/test/metadetect/pipeline_smokescreen.yml``.
 
 
 Configuration
@@ -98,7 +98,7 @@ Any firecrown likelihood file with a ``build_likelihood`` function can be used. 
 
 With the TXPipe theory model, each lens bin ``lens_i`` needs ``lens_i_bias``, ``lens_i_alphag``, ``lens_i_alphaz`` and ``lens_i_z_piv``; setting ``alphag`` to zero gives a constant bias in each bin. The simpler option is to set ``b0`` instead.
 
-``examples/desy3_smokescreen`` has a complete example: a firecrown likelihood following the DES Y3 MagLim 3x2pt model, a script that converts the public DES Y3 data to sacc, and a pipeline that blinds it in σ8 and w0. Its ``README.md`` explains each step.
+``examples/stage3/desy3_smokescreen`` has a complete example: a firecrown likelihood following the DES Y3 MagLim 3x2pt model, a script that converts the public DES Y3 data to sacc, and a pipeline that blinds it in σ8 and w0. Its ``README.md`` explains each step.
 
 
 Keeping and recovering the unblinded data

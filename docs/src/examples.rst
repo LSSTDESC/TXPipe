@@ -5,9 +5,11 @@ The ``examples`` directory contains pipeline files (``pipeline.yml`` or similar)
 
 .. code-block:: bash
 
-    ceci examples/<name>/pipeline.yml
+    ceci examples/<group>/<name>/pipeline.yml
 
 ``ceci --dry-run`` prints the command for each stage instead of running anything, and is a quick way to check that a pipeline and its configuration are valid. See :ref:`Configuration Files` for the pipeline and configuration file formats.
+
+The examples are grouped into subdirectories of ``examples``: ``stage3`` (DES, HSC and KiDS Stage-III data), ``desi``, ``dp2``, ``mocks``, ``test`` (the small example-data pipelines used for CI and development), ``other`` and ``legacy``. The directory names in the table below are relative to these groups. Outputs and logs are written to the matching ``data/<group>/<name>`` directory.
 
 The pipelines marked "CI" below are run end to end on every pull request, on the example data described in :ref:`Running an example pipeline`. The others need other data sets, which are mostly available to DESC members at NERSC.
 

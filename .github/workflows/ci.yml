@@ -172,7 +172,7 @@ jobs:
       if: always()
       run: |
         # always run
-        cat data/cmb/logs_quaia/*
+        cat data/test/cmb/logs_quaia/*
 
         
   Pipelines:
@@ -258,7 +258,7 @@ jobs:
     - name: Dry run DP1
       run: |
         source ./conda/bin/activate
-        ceci --dry-run examples/dp1/pipeline-edfs.yml
+        ceci --dry-run examples/legacy/dp1/pipeline-edfs.yml
 
 
     - name: Show logs
@@ -267,7 +267,7 @@ jobs:
         # always run
         # the multi-length test reuses the metadetect example's log directory
         if [ "${{ matrix.pipeline }}" == "metadetect_different_lengths" ]; then
-          cat data/example/logs_metadetect/*
+          cat data/test/metadetect/logs_metadetect/*
         else
-          cat data/example/logs_${{ matrix.pipeline }}/*
+          cat data/test/${{ matrix.pipeline }}/logs_${{ matrix.pipeline }}/*
         fi
