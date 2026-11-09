@@ -25,8 +25,12 @@ stages:
     threads_per_process: 128
     nprocess: 1
     nodes: 1
-  - name: TXBlinding             # Blind the data following Muir et al
+  - name: TXSmokescreenBlinding             # Blind the data following Muir et al
     threads_per_process: 4
+    aliases:
+      twopoint_data_raw: twopoint_data_real_raw
+      twopoint_data_blinded: twopoint_data_real
+
   - name: TXTwoPointPlots        # Make plots of 2pt correlations
     aliases:
       twopoint_data_real: summary_statistics_real
