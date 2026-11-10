@@ -7,7 +7,7 @@ from ..utils.hdf_tools import h5py_shorten, repack
 from ..utils.splitters import MetaDetectSplitter
 from ..utils import nanojansky_err_to_mag_ab, nanojansky_to_mag_ab, moments_to_shear, mag_ab_to_nanojansky
 from ..utils.mpi_utils import in_place_reduce
-from ..calibration_utils.names import META_VARIANTS, SCALAR_META_VARIANTS
+from ..calibration.calibration_utils.names import META_VARIANTS, SCALAR_META_VARIANTS
 import numpy as np
 import os
 import sys
@@ -678,3 +678,36 @@ def process_metadetect_data_v1_1(data, tract, patch, flag_exclusion, shape_noise
         output[variant] = var_output
 
     return output
+
+class TXCombineTractLists(PipelineStage):
+    """
+    Combine the per-field tract lists into a single list of unique tracts.
+    """
+    name = "TXCombineTractLists"
+    inputs = [
+        ("tract_list_wide", TextFile),
+        ("tract_list_edfs", TextFile),
+        ("tract_list_cosmos", TextFile),
+        ("tract_list_ecdfs", TextFile),
+        ("tract_list_elais_s1", TextFile),
+    ]
+    outputs = [
+        ("tract_list", TextFile),
+    ]
+    config_options = {}
+
+    def run(self):
+        all_tracts = []
+        for tag, _ in self.inputs:
+            path = self.get_input(tag)
+            tracts = np.loadtxt(path, dtype=int, ndmin=1)
+            print(f"Loaded {len(tracts)} tracts from {tag}")
+            all_tracts.append(tracts)
+
+        combined = np.unique(np.concatenate(all_tracts))
+        print(f"Combined list has {len(combined)} unique tracts")
+
+        with self.open_output("tract_list") as f:
+            np.savetxt(f, combined, fmt="%i")
+
+

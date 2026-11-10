@@ -19,7 +19,7 @@ Inform_BPZ_lite:
     zmax: 3.0
     nzbins: 301
     columns_file: ./data/bpz_riz.columns
-    data_path: ./data/example/rail-bpz-inputs
+    bpz_ref_bpz_ref_data_path: ./data/example/rail-bpz-inputs
     spectra_file: CWWSB4.list
     prior_band: i
     ref_band: i
@@ -41,7 +41,7 @@ BPZ_lite:
     zmax: 3.0
     dz: 0.01
     nzbins: 301
-    data_path: ./data/example/rail-bpz-inputs
+    bpz_ref_data_path: ./data/example/rail-bpz-inputs
     bands: [mag_r, mag_i, mag_z]
     err_bands: [mag_err_r, mag_err_i, mag_err_z]
     hdf5_groupname: shear/00
