@@ -389,7 +389,11 @@ class TXFourierGaussianCovariance(PipelineStage):
     def get_angular_bins(self, cl_sacc):
         from ..theory.nmt_utils import choose_ell_bins
 
-        return choose_ell_bins(**cl_sacc.metadata)
+        ell_bins = choose_ell_bins(**cl_sacc.metadata)
+        nband = ell_bins.get_n_bands()
+        ell_edges = [ell_bins.get_ell_min(b) for b in range(nband)]
+        ell_edges.append(ell_bins.get_ell_max(nband - 1))
+        return np.array(ell_edges)
 
     def make_wigner_transform(self, meta):
         import threadpoolctl
@@ -664,8 +668,8 @@ class TXFourierTJPCovariance(PipelineStage):
         assert meta["density_unit"] == "arcmin^{-2}"
 
         # get the number of bins from metadata
-        nbin_lens = meta["nbin_lens"]
-        nbin_source = meta["nbin_source"]
+        nbin_lens = meta.get("nbin_lens", 0)
+        nbin_source = meta.get("nbin_source", 0)
 
         # set up some config options for TJPCov
         # tjp_config corresponds to the "tjpcov" section of the input config
