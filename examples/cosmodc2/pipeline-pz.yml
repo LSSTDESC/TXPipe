@@ -30,9 +30,11 @@ stages:
     aliases:
         input: specz_catalog_pq
         output: spectroscopic_catalog
-  - name: TXSourceSelectorMetacal
+  - name: TXComputeShearCalibrationMetacal
     nprocess: 32
-  - name: TXSourceTomography
+  - name: TXMetacalSelection
+  - name: TXApplyRandomForestSourceTomography
+  - name: TXTrainRandomForestTomography
     threads_per_process: 4
   - name: TXShearCalibration
     nprocess: 8
@@ -100,7 +102,9 @@ stages:
   - name: TXLensCatalogSplitter
     nprocess: 6
   - name: TXSimpleMask
-  - name: TXAuxiliaryLensMaps
+  - name: TXDepthMaps
+    nprocess: 8
+  - name: TXBrightObjectMaps
     nprocess: 8
 
 output_dir: data/cosmodc2/outputs

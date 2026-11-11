@@ -36,5 +36,5 @@ They will normally have a form something like this at NERSC:
 
 .. code:: bash
 
-    srun -u --ntasks=4 --cpus-per-task=2 --nodes=1 tx python -m txpipe TXSourceSelector ...
+    srun -u --ntasks=4 --cpus-per-task=2 --nodes=1 tx python -m txpipe TXMetaDetectSelection ...
 

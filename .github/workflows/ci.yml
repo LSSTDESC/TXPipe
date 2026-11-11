@@ -4,14 +4,22 @@ on:
   push:
     branches: [ master ]
   pull_request:
-    branches: [ master ]
+    branches: [ "**" ]
   schedule:
     # run this every week at 12 noon on Monday
     - cron: '0 12 * * 1'
 
 env:
-  EXAMPLE_DATA_FILE_VERSION: v9
-
+  EXAMPLE_DATA_FILE_VERSION: v10
+  # Hopefully these will fix occasional crashes
+  # when the network adapter on github actions doesn't
+  # fully implement something called RDMA-capable NIC.
+  UCX_TLS: tcp,sm,self
+  UCX_NET_DEVICES: all
+  OMPI_MCA_pml: ob1
+  OMPI_MCA_btl: tcp,self,vader
+  # This should help with Illegal Instruction diagnosis
+  PYTHONFAULTHANDLER: "1"
 jobs:
   # Run a download step first so that it is in
   # the cache, because all the other jobs will be running
@@ -31,6 +39,8 @@ jobs:
         # update this when we change package contents and want
         # to force an update
         key: example-data-${{ env.EXAMPLE_DATA_FILE_VERSION }}
+        # If the data is already cached, there is no need to retrieve it.
+        lookup-only: true
 
     - name: Download test data
       if: steps.cache-example.outputs.cache-hit != 'true'
@@ -40,61 +50,45 @@ jobs:
         wget -O example-cmb-lensing.tar.gz "https://portal.nersc.gov/cfs/lsst/txpipe/data/example-cmb-lensing.tar.gz"
 
         
-  Run_Installer:
+  Unit_Tests:
     runs-on: ${{ matrix.os }}
+    needs: Download_Data
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-14]
-        include:
-          - os: ubuntu-latest
-            INSTALL_DEPS: sudo apt-get update && sudo apt-get -y install wget
-          - os: macos-14
-            INSTALL_DEPS: echo nothing to do
+        os: [ubuntu-latest, macos-latest]
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
         submodules: true
 
-    - name: Install wget
-      run: |
-        ${{ matrix.INSTALL_DEPS }}
-
-    - name: Cache conda environment
-      id: cache-conda
+    - name: Cache conda packages
       uses: actions/cache@v4
-      env:
-        cache-name: cache-conda-environment
       with:
-        path: ./conda
-        key: ${{ matrix.os }}-conda-${{ hashFiles('bin/install.sh','bin/environment*.yml' ) }}
-        fail-on-cache-miss: false
+        # Only the downloaded packages are cached, not the environment itself.
+        # This lives outside ./conda so that it is independent of the install.
+        path: ~/conda-pkgs
+        key: ${{ matrix.os }}-conda-pkgs-${{ hashFiles('bin/install.sh','bin/environment*.yml') }}
+        restore-keys: |
+          ${{ matrix.os }}-conda-pkgs-
 
-    - name: Run installer
-      if: steps.cache-conda.outputs.cache-hit != 'true'
+    - name: Cache pip packages
+      uses: actions/cache@v4
+      with:
+        path: ~/pip-cache
+        key: ${{ matrix.os }}-pip-${{ hashFiles('bin/install.sh','bin/environment*.yml') }}
+        restore-keys: |
+          ${{ matrix.os }}-pip-
+
+    - name: Set pip cache location
+      run: echo "PIP_CACHE_DIR=$HOME/pip-cache" >> "$GITHUB_ENV"
+
+    - name: Install conda environment
       run: |
+        export CONDA_PKGS_DIRS="$HOME/conda-pkgs"
         ./bin/install.sh
-
-  Notebook:
-    runs-on: ubuntu-latest
-    needs: [Run_Installer, Download_Data]
-
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        submodules: true
-
-    - name: Restore conda environment
-      id: restore-conda
-      uses: actions/cache@v4
-      env:
-        cache-name: cache-conda-environment
-      with:
-        path: ./conda
-        key: ubuntu-latest-conda-${{ hashFiles('bin/install.sh','bin/environment*.yml' ) }}
-        fail-on-cache-miss: true
 
     - name: Restore example data
       uses: actions/cache@v4
@@ -109,66 +103,49 @@ jobs:
       run: |
         tar -zxvf example.tar.gz
 
-    - name: Execute notebook
-      run: |
-        source conda/bin/activate
-        jupyter execute notebooks/Welcome\ to\ TXPipe.ipynb
-
-    - name: Show logs
-      if: always()
-      run: |
-        # always run
-        cat data/example/logs_metadetect/*
-
-
-  Unit_Tests:
-    runs-on: ${{ matrix.os }}
-    needs: Run_Installer
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-14]
-
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        submodules: true
-
-    - name: Restore conda environment
-      id: restore-conda
-      uses: actions/cache@v4
-      env:
-        cache-name: cache-conda-environment
-      with:
-        path: ./conda
-        key: ${{ matrix.os }}-conda-${{ hashFiles('bin/install.sh','bin/environment*.yml' ) }}
-        fail-on-cache-miss: true
-
     - name: Test with pytest
       run: |
         source conda/bin/activate
+        python -m pip install -v --no-cache-dir --no-binary=ducc0 --force-reinstall --no-deps  ducc0
+        python bin/make_metadetect_file_different_lengths.py
+        python bin/metadetect_to_scalar_metadetect.py data/example/inputs/metadetect_shear_catalog_different_lengths.hdf5 data/example/inputs/scalar_metadetect_shear_catalog.hdf5
         ceci --version
         pytest txpipe
 
   CMB_Lensing_Pipeline:
     runs-on: ubuntu-latest
-    needs: [Run_Installer, Download_Data]
+    needs: Download_Data
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
         submodules: true
 
-    - name: Restore conda environment
-      id: restore-conda
+    - name: Cache conda packages
       uses: actions/cache@v4
-      env:
-        cache-name: cache-conda-environment
       with:
-        path: ./conda
-        key: ubuntu-latest-conda-${{ hashFiles('bin/install.sh','bin/environment*.yml' ) }}
-        fail-on-cache-miss: true
+        # Only the downloaded packages are cached, not the environment itself.
+        # This lives outside ./conda so that it is independent of the install.
+        path: ~/conda-pkgs
+        key: ubuntu-latest-conda-pkgs-${{ hashFiles('bin/install.sh','bin/environment*.yml') }}
+        restore-keys: |
+          ubuntu-latest-conda-pkgs-
+
+    - name: Cache pip packages
+      uses: actions/cache@v4
+      with:
+        path: ~/pip-cache
+        key: ubuntu-latest-pip-${{ hashFiles('bin/install.sh','bin/environment*.yml') }}
+        restore-keys: |
+          ubuntu-latest-pip-
+
+    - name: Set pip cache location
+      run: echo "PIP_CACHE_DIR=$HOME/pip-cache" >> "$GITHUB_ENV"
+
+    - name: Install conda environment
+      run: |
+        export CONDA_PKGS_DIRS="$HOME/conda-pkgs"
+        ./bin/install.sh
 
     - name: Restore example data
       uses: actions/cache@v4
@@ -187,8 +164,9 @@ jobs:
       run: |
         mkdir -p cache/workspaces
         source ./conda/bin/activate
-        ceci examples/cmb/quaia.yml
-        test -f data/cmb/outputs_quaia/twopoint_data_fourier_cmb_cross_density_plot.png
+        # Manually re-install ducc0 to try and avoid illegal instruction crashes
+        python -m pip install -v --no-cache-dir --no-binary=ducc0 --force-reinstall --no-deps  ducc0
+        bin/run_regression_tests.sh cmb
 
     - name: Show logs
       if: always()
@@ -196,16 +174,19 @@ jobs:
         # always run
         cat data/cmb/logs_quaia/*
 
-        
+
+      
   Pipelines:
     runs-on: ${{ matrix.os }}
-    needs: [Run_Installer, Download_Data]
+    needs: Download_Data
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
             pipeline: metadetect
+          - os: ubuntu-latest
+            pipeline: scalar_metadetect
           - os: ubuntu-latest
             pipeline: metacal
           - os: ubuntu-latest
@@ -216,7 +197,9 @@ jobs:
             pipeline: metadetect_source_only
           - os: ubuntu-latest
             pipeline: mock_shear
-          - os: macos-14
+          - os: ubuntu-latest
+            pipeline: metadetect_different_lengths
+          - os: macos-latest
             pipeline: metadetect
 
     steps:
@@ -225,15 +208,31 @@ jobs:
       with:
         submodules: true
 
-    - name: Restore conda environment
-      id: restore-conda
+    - name: Cache conda packages
       uses: actions/cache@v4
-      env:
-        cache-name: cache-conda-environment
       with:
-        path: ./conda
-        key: ${{ matrix.os }}-conda-${{ hashFiles('bin/install.sh','bin/environment*.yml' ) }}
-        fail-on-cache-miss: true
+        # Only the downloaded packages are cached, not the environment itself.
+        # This lives outside ./conda so that it is independent of the install.
+        path: ~/conda-pkgs
+        key: ${{ matrix.os }}-conda-pkgs-${{ hashFiles('bin/install.sh','bin/environment*.yml') }}
+        restore-keys: |
+          ${{ matrix.os }}-conda-pkgs-
+
+    - name: Cache pip packages
+      uses: actions/cache@v4
+      with:
+        path: ~/pip-cache
+        key: ${{ matrix.os }}-pip-${{ hashFiles('bin/install.sh','bin/environment*.yml') }}
+        restore-keys: |
+          ${{ matrix.os }}-pip-
+
+    - name: Set pip cache location
+      run: echo "PIP_CACHE_DIR=$HOME/pip-cache" >> "$GITHUB_ENV"
+
+    - name: Install conda environment
+      run: |
+        export CONDA_PKGS_DIRS="$HOME/conda-pkgs"
+        ./bin/install.sh
 
     - name: Restore example data
       uses: actions/cache@v4
@@ -252,36 +251,17 @@ jobs:
       run: |
         mkdir -p cache/workspaces
         source ./conda/bin/activate
-        # Just for the metadetect source pipeline
-        # we activate the debug mode with an env var
-        if [ "${{ matrix.pipeline }}" == "metadetect_source_only" ]; then
-          export TX_DASK_DEBUG=1
-        fi
-        ceci examples/${{ matrix.pipeline }}/pipeline.yml
+        python -m pip install -v --no-cache-dir --no-binary=ducc0 --force-reinstall --no-deps  ducc0
+        # The script handles per-pipeline env vars (e.g. TX_DASK_DEBUG)
+        # and checks that the expected output file was produced.
+        bin/run_regression_tests.sh ${{ matrix.pipeline }}
 
-        if [ "${{ matrix.pipeline }}" == "mock_shear" ]; then
-          test -f data/example/outputs_mock_shear/binned_shear_catalog.hdf5
-        else
-          test -f data/example/outputs_${{ matrix.pipeline }}/shear_xi_plus.png
-        fi
-
-    - name: Run metadetect with multi-length data
+    - name: Execute Welcome Notebook
       if: ${{ matrix.pipeline == 'metadetect' && matrix.os == 'ubuntu-latest' }}
       run: |
         source ./conda/bin/activate
-
-        # remove the old target file
-        rm -f data/example/outputs_${{ matrix.pipeline }}/shear_xi_plus.png
-
-        # Generate the new data file
-        python bin/make_metadetect_file_different_lengths.py
-
-        # Run the pipeline with the new file
-        ceci examples/metadetect/pipeline.yml resume=restart inputs.shear_catalog=data/example/inputs/metadetect_shear_catalog_different_lengths.hdf5
-
-        test -f data/example/outputs_${{ matrix.pipeline }}/shear_xi_plus.png
-
-
+        jupyter execute notebooks/Welcome\ to\ TXPipe.ipynb
+        
     - name: Dry run DP1
       run: |
         source ./conda/bin/activate
@@ -292,4 +272,9 @@ jobs:
       if: always()
       run: |
         # always run
-        cat data/example/logs_${{ matrix.pipeline }}/*
+        # the multi-length test reuses the metadetect example's log directory
+        if [ "${{ matrix.pipeline }}" == "metadetect_different_lengths" ]; then
+          cat data/example/logs_metadetect/*
+        else
+          cat data/example/logs_${{ matrix.pipeline }}/*
+        fi

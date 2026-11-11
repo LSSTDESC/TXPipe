@@ -8,22 +8,25 @@ dependencies:
   - cosmosis=3.24.*
   - dask=2024.5.*
   - dm-tree=0.1.9
-  # Firecrown is here in the regular env file, but not perlmutter, where we have to hack later 
+  - firecrown=1.15.*
   - fitsio=1.3.*
   - h5py=3.15.*=mpi_mpich_*
-  - healpy=1.18.*
-  - healsparse=1.12.1
+  - healpy=1.20.*
+  - healsparse=1.15.*
   - jax=0.7.*
   - jaxlib=0.7.*
   - jupyter=1.1.*
-  - lsstdesc-ceci=2.4.*
+  - lsstdesc-ceci=2.6.*
+  - lsstdesc-crow=1.0.*
+  - lsstdesc-smokescreen=1.5.*
   - matplotlib=3.10.*
   - mockmpi=0.8.*
   - mpi4py=4.1.*
   - mpich=4.3.*=external_*
-  - namaster=2.5.*
+  - namaster=3.0.*
   - numpy=2.3.*
   - pandas=2.3.*
+  - photerr=1.5.*
   - pip=25.*
   - psutil=7.1.*
   - pyccl=3.2.*
@@ -32,6 +35,7 @@ dependencies:
   - qp-prob=1.0.*
   - scikit-learn=1.7.*
   - scipy=1.16.*
+  - skyproj=2.5.*
   - somoclu=1.7.*
   - tables-io-full=1.0.*
   - tabulate=0.9.*
@@ -44,6 +48,8 @@ dependencies:
   - lsstdesc-gcr-catalogs
   - lsstdesc-dc2-dm-data
   - psycopg2
+  # SQLAlchemy>=2.1 defaults postgresql:// to psycopg v3 (needed by dataregistry)
+  - psycopg
   - pyarrow
   - pytables
   - pip:
@@ -57,11 +63,14 @@ dependencies:
     - glass==2023.7
     - git+https://github.com/beckermr/hybrideb@a3198ea5bc8175542b058e5c1289d910f05fd99d
     - pz-rail[algos] @ git+https://github.com/LSSTDESC/RAIL@v1.1.2
-    # RAIL is not yet updated for PZFLOW 4 and dependencies
-    # are not yet corrected either so we do it here.
+    - git+https://github.com/LSSTDESC/rail_base@u/jzuntz/fix-mpi-warning
+    - git+https://github.com/LSSTDESC/rail_sompz@u/jzuntz/iterate-tomobin-nz-onesom
     - pzflow>=4
     # Numpy has to be here to make sure that pypi doesn't
     # try to install a different version
     - numpy==2.3.*
     # NERSC-specific
     - git+https://github.com/LSSTDESC/dataregistry.git
+    - dsigma==1.2.*
+    - git+https://github.com/LSSTDESC/dsf.git@792d08e443d8242bbe3ff6c68275e550c1bd8849
+  

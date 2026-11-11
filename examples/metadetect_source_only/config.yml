@@ -23,7 +23,7 @@ TXExposureInfo:
 
 TXCosmoDC2Mock:
     cat_name: cosmoDC2_v1.1.4_image
-    visits_per_band: 16
+    years: 1.0
     extra_cols: redshift_true size_true shear_1 shear_2
     flip_g2: true # to match metacal
 
@@ -43,7 +43,7 @@ PZPrepareEstimatorSource:
     zmax: 3.0
     nzbins: 301
     columns_file: ./data/bpz_ugrizy.columns
-    data_path: ./data/example/rail-bpz-inputs
+    bpz_ref_data_path: ./data/example/rail-bpz-inputs
     spectra_file: CWWSB4.list
     prior_band: i
     # This is the new name for prior_band I think
@@ -66,7 +66,7 @@ TXSourceTrueNumberDensity:
     zmax: 3.0
 
 
-TXSourceSelectorMetadetect:
+TXComputeShearCalibrationMetadetect:
     input_pz: false
     true_z: true
     bands: [r, i, z] #used for selection
@@ -74,10 +74,6 @@ TXSourceSelectorMetadetect:
     s2n_cut: 10.0
     max_rows: 1000
     delta_gamma: 0.02
-    source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
-
-TXSourceTomography:
-    bands: [r, i, z] #used for selection
     source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
 
 TXRandomCat:
@@ -104,15 +100,25 @@ TXGammaTRandoms: {}
 
 TXGammaTFieldCenters: {}
 
-TXBlinding:
-    seed: 1972  ## seed uniquely specifies the shift in parameters
-    Omega_b: [0.0485, 0.001] ## fiducial_model_value, shift_sigma
-    Omega_c: [0.2545, 0.01]
-    w0: [-1.0, 0.1]
-    h: [0.682, 0.02]
-    sigma8: [0.801, 0.01]
-    n_s: [0.971, 0.03]
-    b0: 0.95  ## we use bias of the form b0/g
+TXSmokescreenBlinding:
+    # Draw each shifted parameter from a Gaussian N(mean, sigma), using the seed
+    reference_cosmology:
+        Omega_b: 0.0485
+        Omega_c: 0.2545
+        w0: -1.0
+        h: 0.682
+        sigma8: 0.801
+        n_s: 0.971
+    shifts_dict:
+        Omega_b: [0.0485, 0.001]
+        Omega_c: [0.2545, 0.01]
+        w0: [-1.0, 0.1]
+        h: [0.682, 0.02]
+        sigma8: [0.801, 0.01]
+        n_s: [0.971, 0.03]
+    shift_distribution: gaussian
+    b0: 0.95  ## TXPipe theory model lens bias, of the form b0/growth
+    seed: "Boitata was here"
     delete_unblinded: true
 
 TXDiagnosticQuantiles:
@@ -149,9 +155,10 @@ TXSourceMaps:
 
 TXMainMaps: {}
 
-TXAuxiliarySourceMaps:
-    flag_exponent_max: 8
+TXPSFMaps: {}
 
+TXFlagMaps:
+    flag_exponent_max: 8
 TXRealGaussianCovariance:
     min_sep: 2.5
     max_sep: 60.
@@ -189,7 +196,7 @@ PZRailSummarizeSource:
     zmin: 0.0
     zmax: 3.0
     nzbins: 50
-    mag_prefix: /shear/00/mag_
+    mag_prefix: /shear/ns/mag_
     catalog_group: shear
     tomography_name: source
     bands: [r, i, z]
@@ -220,3 +227,25 @@ PZRealizationsPlotSource:
     name: PZRealizationsPlotSource
 TXPhotozPlotSource:
     name: TXPhotozPlotSource
+TXTrainRandomForestTomography:
+    bands: [r, i, z] #used for selection
+    source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
+TXMetaDetectSelection:
+    input_pz: false
+    true_z: true
+    bands: [r, i, z] #used for selection
+    T_min: 0.5
+    s2n_min: 10.0
+    max_rows: 1000
+    delta_gamma: 0.02
+    source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
+TXSimpleRedshiftSourceTomography:
+    input_pz: false
+    true_z: true
+    bands: [r, i, z] #used for selection
+    max_rows: 1000
+    delta_gamma: 0.02
+    source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
+    T_min: 0.5
+    s2n_min: 10.0
+    redshift_col: redshift_true

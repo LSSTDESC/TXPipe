@@ -128,7 +128,6 @@ TXLSSWeightsLinBinned:
 
 TXMapPlots:
     name: TXMapPlots
-    rot180: True
 
 TXPhotozPlotLens:
     name: TXPhotozPlotLens

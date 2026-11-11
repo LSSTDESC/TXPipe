@@ -19,8 +19,10 @@ stages:
       classname: PZRailSummarize  
     - name: PZRailSummarizeSource  # Run the DIR method on the lens sample to find n(z)
       classname: PZRailSummarize
-    - name: TXSourceSelectorMetadetect  # select and split objects into source bins
-    - name: TXSourceTomography
+    - name: TXComputeShearCalibrationMetadetect  # select and split objects into source bins
+    - name: TXMetaDetectSelection
+    - name: TXSimpleRedshiftSourceTomography
+    - name: TXTrainRandomForestTomography
     - name: NZDirInformerSource     # Prepare the DIR method inputs for the source sample
       classname: NZDirInformer
     - name: TXShearCalibration     # Calibrate and split the source sample tomographically
@@ -28,8 +30,10 @@ stages:
     - name: TXLSSWeightsUnit       # add systematic weights to the lens sample (weight=1 for this example)
     - name: TXSourceMaps           # make source g1 and g2 maps
     - name: TXLensMaps             # make source lens and n_gal maps
-    - name: TXAuxiliarySourceMaps  # make PSF and flag maps
-    - name: TXAuxiliaryLensMaps    # make depth and bright object maps
+    - name: TXPSFMaps  # make PSF maps
+    - name: TXFlagMaps
+    - name: TXDepthMaps    # make depth and bright object maps
+    - name: TXBrightObjectMaps    # make depth and bright object maps
     - name: TXSimpleMaskFrac     # combine maps to make a simple mask
     - name: TXSourceNoiseMaps    # Compute shear noise using rotations
     - name: TXLensNoiseMaps      # Compute lens noise using half-splits
