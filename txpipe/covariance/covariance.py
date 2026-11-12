@@ -714,9 +714,9 @@ class TXFourierTJPCovariance(PipelineStage):
             nbin_lens = f.file["maps"].attrs["nbin_lens"]
             d_maps = [f.read_map_healpix(f"delta_{b}") for b in range(nbin_lens)]
             print(f"Loaded {nbin_lens} overdensity maps")
-            dmap_nside = healpy.npix2nside(d_maps[0].size)
-        
-        mask = healpy.ud_grade(mask, nside_out=dmap_nside, order_in="nest", order_out="nest")
+            if nbin_lens:
+                dmap_nside = healpy.npix2nside(d_maps[0].size)
+                mask = healpy.ud_grade(mask, nside_out=dmap_nside, order_in="nest", order_out="nest")
 
         # twopoint_fourier.py:219
         for d in d_maps:
