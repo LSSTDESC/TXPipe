@@ -4,7 +4,7 @@ camb
 cosmosis
 dask
 dm-tree
-firecrown>=1.4.0
+firecrown>=1.15
 fitsio
 h5py
 healpix
@@ -35,4 +35,7 @@ git+https://github.com/LSSTDESC/gcr-catalogs#egg=GCRCatalogs
 parallel_statistics
 pz-rail[dev]==0.99.1
 tjpcov
+smokescreen>=1.5
 glass
+# SQLAlchemy>=2.1 defaults postgresql:// to psycopg v3 (needed by dataregistry)
+psycopg[binary]

@@ -45,7 +45,7 @@ PZPrepareEstimatorLens:
     zmax: 3.0
     nzbins: 301
     columns_file: ./data/bpz_ugrizy.columns
-    data_path: ./data/example/rail-bpz-inputs
+    bpz_ref_data_path: ./data/example/rail-bpz-inputs
     spectra_file: CWWSB4.list
     prior_band: i
     ref_band: i
@@ -70,7 +70,7 @@ PZPrepareEstimatorSource:
     zmax: 3.0
     nzbins: 301
     columns_file: ./data/bpz_ugrizy.columns
-    data_path: ./data/example/rail-bpz-inputs
+    bpz_ref_data_path: ./data/example/rail-bpz-inputs
     spectra_file: CWWSB4.list
     prior_band: i
     ref_band: i
@@ -99,7 +99,7 @@ PZEstimatorLens:
     hdf5_groupname: photometry
     nondetect_val: .inf
     columns_file: ./data/bpz_ugrizy.columns
-    data_path: ./data/example/rail-bpz-inputs
+    bpz_ref_data_path: ./data/example/rail-bpz-inputs
     spectra_file: CWWSB4.list
     prior_band: mag_i
     ref_band: mag_i
@@ -128,7 +128,7 @@ TXSourceTrueNumberDensity:
 TXShearCalibration:
     extra_cols: [redshift_true]
 
-TXSourceSelectorMetacal:
+TXComputeShearCalibrationMetacal:
     input_pz: false
     true_z: true
     bands: [r, i, z] #used for selection
@@ -136,10 +136,6 @@ TXSourceSelectorMetacal:
     s2n_cut: 10.0
     max_rows: 1000
     delta_gamma: 0.02
-    source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
-
-TXSourceTomography:
-    bands: [r, i, z] #used for selection
     source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
 
 TXTruthLensSelector:
@@ -202,15 +198,25 @@ TXGammaTRandoms: {}
 
 TXGammaTFieldCenters: {}
 
-TXBlinding:
-    seed: 1972  ## seed uniquely specifies the shift in parameters
-    Omega_b: [0.0485, 0.001] ## fiducial_model_value, shift_sigma
-    Omega_c: [0.2545, 0.01]
-    w0: [-1.0, 0.1]
-    h: [0.682, 0.02]
-    sigma8: [0.801, 0.01]
-    n_s: [0.971, 0.03]
-    b0: 0.95  ## we use bias of the form b0/g
+TXSmokescreenBlinding:
+    # Draw each shifted parameter from a Gaussian N(mean, sigma), using the seed
+    reference_cosmology:
+        Omega_b: 0.0485
+        Omega_c: 0.2545
+        w0: -1.0
+        h: 0.682
+        sigma8: 0.801
+        n_s: 0.971
+    shifts_dict:
+        Omega_b: [0.0485, 0.001]
+        Omega_c: [0.2545, 0.01]
+        w0: [-1.0, 0.1]
+        h: [0.682, 0.02]
+        sigma8: [0.801, 0.01]
+        n_s: [0.971, 0.03]
+    shift_distribution: gaussian
+    b0: 0.95  ## TXPipe theory model lens bias, of the form b0/growth
+    seed: "Boitata was here"
     delete_unblinded: true
 
 TXSourceDiagnosticPlots:
@@ -354,3 +360,25 @@ NZDirInformerLens:
 
 TXDensityMaps:
     nside: 512
+TXTrainRandomForestTomography:
+    bands: [r, i, z] #used for selection
+    source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
+TXMetacalSelection:
+    input_pz: false
+    true_z: true
+    bands: [r, i, z] #used for selection
+    T_min: 0.5
+    s2n_min: 10.0
+    max_rows: 1000
+    delta_gamma: 0.02
+    source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
+TXSimpleRedshiftSourceTomography:
+    input_pz: false
+    true_z: true
+    bands: [r, i, z] #used for selection
+    max_rows: 1000
+    delta_gamma: 0.02
+    source_zbin_edges: [0.5, 0.7, 0.9, 1.1, 2.0]
+    T_min: 0.5
+    s2n_min: 10.0
+    redshift_col: redshift_true

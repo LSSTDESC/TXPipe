@@ -4,14 +4,20 @@ import numpy as np
 from ...base_stage import PipelineStage
 from .sources_select_compute import CLClusterShearCatalogs, CombinedClusterCatalog
 from ...data_types import ShearCatalog, HDFFile, PhotozPDFFile, FiducialCosmology, TomographyCatalog, PickleFile
-from ...shear_calibration import Calibrator
 from .utils import iterate_source_catalog
+from ...calibration.calibration_utils import Calibrator
 from collections import defaultdict
 import yaml
 import ceci
 import pickle
 
 class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
+    """Compute stacked radial shear profiles of ensembles of clusters.
+
+    For each redshift/richness bin of clusters, computes the tangential and cross shear profile
+    of each cluster, using CLMM, and stacks them. Clusters with no background sources are
+    skipped, and ensembles with fewer than two usable clusters are not stacked.
+    """
     name = "CLClusterEnsembleProfiles"
     inputs = [
         #("cluster_catalog", HDFFile),
@@ -265,25 +271,19 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         ncluster = len(cluster_list)
         print('Ncluster', ncluster)
 
-        # Extract cluster list from cluster_shears_cat
-        #cluster_shear_list = self.cluster_shears_cat["cluster_id"].tolist()
+        # Number of clusters skipped because they have no background sources
+        n_skipped = 0
 
-        #########################################################
-        #profile_group_name = "reduced_shear"
-        #if self.config['delta_sigma'] == True:
-        #    profile_group_name = "delta_sigma"
-        #index_group.attrs["profile_type"] = profile_group_name
-        #########################################################
-
-        
         for cluster_index in range(ncluster) :
 
             # Select subset of background shear information for this particular cluster
-            
-            #print("-> cluster id ",id_cl,"  ",cluster_cat_index," ",cluster_cat_indices,"  ",cluster_cat_indices[0]+cluster_cat_indices[1])
-            #print(self.profile_type) 
-            #print('For cluster', id_cl, 'at z=',z_cl,'with n_source = ',len(galcat["source_index"]) , 'theta_max is', np.max(galcat["distance_arcmin"]), ' arcmin =', clmm.utils.convert_units(np.max(galcat["distance_arcmin"]), 'arcmin', 'Mpc', z_cl, self.clmm_cosmo), 'Mpc')
-            
+
+            # Clusters outside the shear footprint (or in masked regions) have no
+            # background sources -- skip them rather than failing on empty arrays
+            if len(sources_lists[cluster_index]) == 0:
+                n_skipped += 1
+                continue
+
             # To use CLMM, need to have galaxy table in clmm.GCData type
             #print(sources_lists[cluster_index][0])
             distance, weights, tangential_comp, cross_comp, g1, g2 = sources_lists[cluster_index][0]
@@ -352,6 +352,12 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
                     cross_component="cross_comp",
                     weights="W_l")
         print("cluster ensemble created")
+
+        n_used = ncluster - n_skipped
+        print(f"Skipped {n_skipped} of {ncluster} clusters with no background sources in {cluster_ensemble_id}")
+        if n_used < 2:
+            print(f"Only {n_used} cluster(s) with sources in {cluster_ensemble_id}; not stacking")
+            return None
 
         # Individual profile for all cluster of the ensemble have been computed in the loop above
         # Now, compute the stacked profile of the ensemble

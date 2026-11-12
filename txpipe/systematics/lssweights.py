@@ -1,0 +1,1785 @@
+from ..base_stage import PipelineStage
+from ..maps.map_correlations import TXMapCorrelations
+from ..utils import choose_pixelization
+from ..data_types import (
+    HDFFile,
+    MapsFile,
+    FileCollection,
+    FiducialCosmology,
+    TomographyCatalog,
+    QPNOfZFile,
+    BinnedCatalog,
+)
+import numpy as np
+import glob
+import time
+from ..utils.fitting import calc_chi2
+from ceci.config import StageParameter
+
+
+class TXLSSDensityBase(TXMapCorrelations):
+    """
+    Base class for LSS systematics
+
+    Not to be run directly. This is an abstract base class,
+    which other subclasses inherit from
+    """
+
+    name = "TXLSSDensityBase"
+    parallel = False
+
+    config_options = {
+        "supreme_path_root": StageParameter(str, "", msg="Root path for supreme files."),
+        "nbin": StageParameter(int, 20, msg="Number of tomographic bins."),
+        "outlier_fraction": StageParameter(float, 0.01, msg="Fraction of outliers to exclude."),
+        "allow_weighted_input": StageParameter(bool, False, msg="Allow weighted input catalogs."),
+        "nside_coverage": StageParameter(int, 32, msg="HEALPix nside for coverage maps."),
+        "fill_missing_pix": StageParameter(
+            bool,
+            False,
+            msg="If True will fill any pixels that are in the mask but dont have SP maps with teh mean SP map value (use with care)",
+        ),
+        "equal_area_bins": StageParameter(
+            bool, True, msg="Use equal area bins in 1d correlations, instead of equal spacing"
+        ),
+    }
+
+    def read_healsparse(self, map_path, nside):
+        """
+        returns a healsparse object degraded to nside
+        """
+        import healsparse
+        import os
+
+        # if this is a symlink, use the real path to access the file
+        if os.path.islink(map_path):
+            real_map_path = os.path.realpath(map_path)
+            print(f"{map_path} is a link, we will use the real path {real_map_path}")
+        else:
+            real_map_path = map_path
+
+        # Convert to correct res healpix map
+        m = healsparse.HealSparseMap.read(map_path)
+        return m.degrade(nside)
+
+    def prepare_sys_maps(self):
+        """
+        For this method we need sys maps to be normalized to mean 0
+        """
+
+        self.verify_config()
+
+        sys_maps, sys_names = self.load_and_mask_sysmaps()
+
+        # normalize sysmaps (and keep track of the normalization factors)
+        mean, std = self.normalize_sysmaps(sys_maps)
+        sys_meta = {"masked": True, "normed": True, "mean": mean, "std": std}
+
+        for imap, sys_map in enumerate(sys_maps):
+            sys_meta[f"edges_{imap}"] = self.compute_bin_edges(sys_map)
+
+        return sys_maps, sys_names, sys_meta
+
+    @staticmethod
+    def normalize_sysmaps(sys_maps):
+        """
+        Normalize a list of healsparse maps to mean=0, std=1
+        """
+
+        means = []
+        stds = []
+        for sys_map in sys_maps:
+            vpix = sys_map.valid_pixels
+            sys_vals = sys_map[vpix]
+            mean = np.mean(sys_vals)
+            std = np.std(sys_vals)
+            sys_map.update_values_pix(vpix, (sys_vals - mean) / std)
+            means.append(mean)
+            stds.append(std)
+
+        return np.array(means), np.array(stds)  # return means and stds to help reconstruct the original maps later
+
+    def get_deltag(self, tomobin):
+        """
+        convert the ra, dec of the lens sample to pixel number counts
+        """
+        import healpy as hp
+        import healsparse as hsp
+
+        nside = self.config["nside"]
+        
+        with self.open_input("mask", wrapper=True) as map_file:
+            mask_map_info = map_file.read_map_info("mask")
+            mask = map_file.read_mask("mask", degrade_nside=self.config["nside"])
+
+        maskpix = mask.valid_pixels
+
+        # TO DO: Parallelize this
+        # load the ra and dec of this lens bins
+        with self.open_input("binned_lens_catalog_unweighted", wrapper=False) as f:
+            ra = f[f"lens/bin_{tomobin}/ra"][:]
+            dec = f[f"lens/bin_{tomobin}/dec"][:]
+            weight = f[f"lens/bin_{tomobin}/weight"][:]
+
+        # pixel ID for each lens galaxy
+        obj_pix = hp.ang2pix(nside, ra, dec, lonlat=True, nest=True)
+
+        #this is not healsparsed yet
+        Ncounts_bincount = np.bincount(obj_pix, weights=weight)
+        pixels_bincount = np.arange(len(Ncounts_bincount))
+
+        #only select the occupied pixels
+        pixel = pixels_bincount[Ncounts_bincount != 0.0]
+        Ncounts = Ncounts_bincount[Ncounts_bincount != 0.0]
+
+        deltag = hsp.HealSparseMap.make_empty(self.config["nside_coverage"], nside, dtype=np.float64)
+        deltag.update_values_pix(maskpix, 0.0) #initially set all valid pixels to 0
+        deltag.update_values_pix(pixel, Ncounts) #then set the occupied values to their ncount
+        n = deltag[maskpix] / mask[maskpix]
+        nmean = np.average(n, weights=mask[maskpix])
+        deltag.update_values_pix(maskpix, n / nmean - 1.0)  # overdenity map
+
+        return deltag, mask
+
+    def load_and_mask_sysmaps(self):
+        """
+        load the SP maps and mask them
+        """
+        import healpy as hp
+        import healsparse as hsp
+
+        s = time.time()
+
+        root = self.config["supreme_path_root"]
+        sys_files = glob.glob(f"{root}*.hs")
+        sys_files = np.sort(sys_files)
+        nsys = len(sys_files)
+        print(f"Found {nsys} total systematic maps")
+
+        if nsys == 0:
+            raise ValueError(f"No systematic maps found in {root} with extension .hs. "
+                             "Please check your config supreme_path_root setting and "
+                             "make sure it points to the right location")
+
+        with self.open_input("mask", wrapper=True) as map_file:
+            # load *boolean* mask
+            mask = map_file.read_mask(
+                "mask", degrade_nside=self.config["nside"], returnbool=True
+            )
+
+        nside = mask.nside_sparse
+
+        sys_maps = []
+        sys_names = []
+        for i, map_path in enumerate(sys_files):
+            # strip root, .hs, and underscores to get friendly name
+            sys_name = map_path[len(root) : -3].strip("_")
+            sys_names.append(sys_name)
+
+            # get actual data for this map
+            sys_map = self.read_healsparse(map_path, nside)
+
+            # insist all "good" pixels in the mask have an SP map value for this map
+            n_missing = np.sum(sys_map[mask.valid_pixels] == hp.UNSEEN)
+            if self.config["fill_missing_pix"]:
+                if n_missing != 0:
+                    print(f"Found {n_missing}/{mask.n_valid} mask pixels with missing {sys_name} values", end="")
+                    missing_pix = mask.valid_pixels[sys_map[mask.valid_pixels] == hp.UNSEEN]
+                    mean_sys = np.mean(sys_map.get_values_pix(sys_map.valid_pixels))
+                    print(f", filling with mean value {mean_sys}")
+                    sys_map.update_values_pix(missing_pix, mean_sys)
+            else:
+                assert n_missing == 0, (
+                    f"Found {n_missing}/{mask.n_valid} mask pixels with missing {sys_name} values, and fill_missing_pix was False"
+                )
+
+            # mask is boolean so this should return a map with just the valid sys_map pixels
+            sys_map = hsp.operations.product_intersection([sys_map, mask])
+            sys_maps.append(sys_map)
+
+        f = time.time()
+        print("load_and_mask_sp_maps took {0}s".format(f - s))
+
+        return np.array(sys_maps), np.array(sys_names)
+
+    def calculate_1d_density_correlations(self, tomobin, mean_density_map=None, pixels=None, galaxy_info=None, suffix=""):
+        """
+        compute the binned 1d density correlations for a single tomographic lens bin
+
+        Parameters
+        ----------
+        tomobin: Integer
+            index for the tomographic lens bin
+        mean_density_map: healsparse map (None)
+            map of inverse weight to be applied to the galaxies
+            if None, will use unweighted lens catalog
+        pixels: list[int] (None)
+            list of pixels to include when computing the correlations
+            if None, will use the valid pixels from each survey property map
+        galaxy_info: np.ndarray (None)
+            2D array (dimensions 3 x N_gal) containing pre-loaded RA, Dec and weights for each galaxy.
+            If None, will read these from the input catalog.
+        suffix: str ("")
+            suffix to be included when labelling survey property maps
+
+        Returns
+        -------
+        density_corrs: lsstools.DensityCorrelation
+            DensityCorrelation instance containing the number
+            counts/density vs sysmap for all sysmaps
+        """
+        import healpy as hp
+        from . import lsstools
+
+        s = time.time()
+
+        with self.open_input("mask", wrapper=True) as map_file:
+            mask_map_info = map_file.read_map_info("mask")
+            mask = map_file.read_map("mask")
+        nside = mask_map_info["nside"]
+        nest = mask_map_info["nest"]
+
+        if galaxy_info is None:
+            # load the ra and dec of this lens bins
+            with self.open_input("binned_lens_catalog_unweighted", wrapper=False) as f:
+                ra = f[f"lens/bin_{tomobin}/ra"][:]
+                dec = f[f"lens/bin_{tomobin}/dec"][:]
+                weight = f[f"lens/bin_{tomobin}/weight"][:]  # input object weights
+        else:
+            # use preloaded data
+            ra, dec, weight = galaxy_info
+
+        if self.config["allow_weighted_input"] == False:
+            assert (weight == 1.0).all()  # Lets assume the input weights have to be 1 by default
+        else:
+            if (weight == 1.0).all() == False:
+                print("WARNING: Your input lens catalog has weights != 1")
+                print("You have set allow_weighted_input==True so I will allow this")
+                print("Output weight=input_weight*sys_weight")
+
+        # pixel ID for each lens galaxy
+        obj_pix = hp.ang2pix(nside, ra, dec, lonlat=True, nest=True)
+        
+        if mean_density_map is not None:
+            weight = weight * 1.0 / mean_density_map[obj_pix]
+
+        density_corrs = lsstools.DensityCorrelation(tomobin=tomobin)  # keeps track of the 1d plots
+        for imap, sys_map in enumerate(self.sys_maps):
+            if pixels is None:
+                vpix = sys_map.valid_pixels
+            else:
+                vpix = pixels
+            # Only include sources within the valid pixels
+            valid = np.isin(obj_pix, vpix)
+            vobj_pix = obj_pix[valid]
+
+            sys_vals = sys_map[vpix]  # SP value in each valid pixel
+            sys_obj = sys_map[vobj_pix]  # SP value for each object in catalog within valid pixels
+
+            if nest:  # ideally we dont want if statements like this....
+                frac = mask[vpix]
+            else:
+                frac = mask[hp.nest2ring(nside, vpix)]
+
+            sys_name = None if self.sys_names is None else self.sys_names[imap]
+
+            edges = self.sys_meta[f"edges_{imap}"]
+
+            density_corrs.add_correlation(
+                imap,
+                edges,
+                sys_vals,
+                sys_obj,
+                frac=frac,
+                weight=weight[valid],
+                sys_name=sys_name,
+            )
+
+            # also precompute the SP bined arrays and pixel counts
+            density_corrs.precompute(imap, edges, sys_vals, frac=frac)
+
+        density_corrs.sys_meta.update(self.sys_meta)
+
+        f = time.time()
+        print("calculate_1d_density_correlations took {0}s".format(f - s))
+
+        return density_corrs
+
+    def compute_bin_edges(self, sys_map):
+        import scipy.stats
+
+        nsysbins = self.config[
+            "nbin"
+        ]  # nominal number of SP bins (this can change if too many pixels have the same value)
+        f = 0.5 * self.config["outlier_fraction"]
+        percentiles = np.linspace(f, 1 - f, nsysbins + 1)
+
+        sys_vals = sys_map[sys_map.valid_pixels]  # SP value in each valid pixel
+
+        if self.config["equal_area_bins"]:
+            edges = scipy.stats.mstats.mquantiles(sys_vals, percentiles)
+        else:
+            edges = np.linspace(
+                np.percentile(sys_vals, 100.0 * percentiles[0]),
+                np.percentile(sys_vals, 100.0 * percentiles[-1]),
+                nsysbins + 1,
+            )
+
+        # Remove any duplciates from the edges array
+        # This can occur when a large fraction of the survey has the same value in the SP map
+        u_edges, idx = self.unique_tol(
+            edges, tol=10 * np.finfo(edges.dtype).eps * np.abs(edges).max(), return_index=True
+        )
+        if len(u_edges) != len(edges):
+            edges = edges[np.sort(idx)]
+
+        # remove empty bins
+        counts, _ = np.histogram(sys_vals, bins=edges)
+        nonempty = counts > 0
+        keep = np.concatenate(([True], nonempty))  # always keep 1st and last bin edge
+        edges = edges[keep]
+
+        return edges
+
+    @staticmethod
+    def unique_tol(arr, tol=1e-8, return_index=False):
+        """
+        Simple replacement for np.unique that allows for a small tolerance
+        Useful when SP map values differ only by machine precision
+        """
+        out = []
+        idx = []
+        for i, x in enumerate(arr):
+            if not any(np.isclose(x, y, atol=tol, rtol=0) for y in out):
+                out.append(x)
+                idx.append(i)
+        out = np.array(out, dtype=arr.dtype)
+        idx = np.array(idx, dtype=int)
+
+        if return_index:
+            return out, idx
+        return out
+
+
+class TXLSSDensityNullTests(TXLSSDensityBase):
+    """
+    Compute density correlations between lens sample density and survey property maps
+    and its covariance
+    """
+
+    name = "TXLSSDensityNullTests"
+    parallel = True
+    inputs = [
+        (
+            "binned_lens_catalog_unweighted",
+            TomographyCatalog,
+        ),  # this file is used by the stage to compute density correlations
+        ("mask", MapsFile),
+        ("lens_photoz_stack", QPNOfZFile),  # Photoz stack (need if using theory curve in covariance)
+        (
+            "fiducial_cosmology",
+            FiducialCosmology,
+        ),  # Needed for the sample variance term if using full covariance calculation
+    ]
+
+    outputs = [
+        ("lss_density_plots", FileCollection),  # output files and summary statistics will go here
+        ("unweighted_density_correlation", HDFFile),
+    ]
+
+    config_options = {
+        **TXLSSDensityBase.config_options,
+        "simple_cov": StageParameter(
+            bool, False, msg="if True will use a diagonal shot noise only covariance for the 1d relations"
+        ),
+        "diag_blocks_only": StageParameter(
+            bool,
+            True,
+            msg="If True, will compute only the diagonal blocks of the 1D covariance matrix (no correlation between SP maps)",
+        ),
+        "b0": StageParameter(list, [1.0], msg="Galaxy bias values."),
+    }
+
+    def run(self):
+        """
+        Run the stage
+
+        Steps
+        (1) Prepare survey properties (SP maps) load, degrade, normalize, etc
+        (2) Compute 1d density trends Ngal vs SP
+        (3) Compute the covariance matrix of the density trends
+        (4) Summarize (save plots, data points and covariance, etc)
+
+        Each step can be overwritten in sub-classes
+        """
+        import sacc
+        import healsparse
+
+        pixel_scheme = choose_pixelization(**self.config)
+        self.pixel_metadata = pixel_scheme.metadata
+        self.pixel_metadata["nest"] = True #This stage uses healsparse maps which always use nested ordering
+
+        # check the metadata nside matches the mask (might not be true if you use an external mask)
+        with self.open_input("mask", wrapper=True) as map_file:
+            mask_nside = map_file.read_map_info("mask")["nside"]
+        assert self.pixel_metadata["nside"] == mask_nside
+
+        # get number of tomographic lens bins
+        with self.open_input("binned_lens_catalog_unweighted", wrapper=False) as f:
+            self.Ntomo = f["lens"].attrs["nbin_lens"]
+
+        # output directory for the plots and summary stats
+        # open in parallel so that each process can write to it as needed.
+        output_dir = self.open_output("lss_density_plots", wrapper=True, parallel=True)
+
+
+        # load the SP maps, apply the mask, normalize the maps (as needed by the method)
+        self.sys_maps, self.sys_names, self.sys_meta = self.prepare_sys_maps()
+
+        results = []
+        for ibin in self.split_tasks_by_rank(range(self.Ntomo)):
+            print("Computing density correlations for lens bin {0}/{1}".format(ibin + 1, self.Ntomo))
+            # compute density vs SP map data vector
+            density_corrs = self.calculate_1d_density_correlations(ibin)
+
+            # compute covariance of data vector and add to DensityCorrelation object
+            self.calc_covariance(density_corrs)
+
+            # Add the null model n_dens/<n_dens> = 1 to the
+            # DensityCorrelation object and compute its chi2
+            density_corrs.add_null_model()
+            results.append(density_corrs)
+
+        # gather all results on root process
+        if self.comm is not None:
+            results = self.comm.gather(results, root=0)
+
+        if self.rank == 0:
+            # flatten list of lists
+            if self.comm is not None:
+                results = [result for sublist in results for result in sublist]
+            # open outdir density correlation file.
+            # only the root process does any writing.
+            with self.open_output("unweighted_density_correlation", wrapper=False) as dens_output:
+                for density_corrs in results:
+                    self.summarize_density(output_dir, dens_output, density_corrs)
+
+    def summarize_density(
+            self,
+            output_dir,
+            dens_output,
+            density_correlation,
+            save_1d_plots=True,
+            save_chi2_hist=True,
+            suffix=""
+        ):
+        """
+        make 1d density plots and other summary statistics and save them
+
+        Parameters
+        ----------
+        output_dir: string
+
+        density_correlation: lsstools.DensityCorrelation
+
+        save_1d_plots: bool (True)
+            If True, will produce and save plots of the correlations between galaxy
+            density and each survey property map.
+
+        save_chi2_hist: bool (True)
+            If will produce and save a histogram of the chi-squared values for each
+            survey property map (one plot per tomographic bin).
+        """
+        import scipy.stats
+
+        ibin = density_correlation.tomobin
+
+        # save the 1D density trends
+        # tomo bin label is taken from density_correlation
+        density_correlation.save_to_group(dens_output, suffix=suffix)
+
+        if save_1d_plots:
+            # plot 1d density trends
+            for imap in np.unique(density_correlation.map_index):
+                try:
+                    splabel = density_correlation.mapnames[imap]
+                except KeyError:
+                    splabel = imap
+                filepath = output_dir.path_for_file(f"sys1D_lens{ibin}_SP{splabel}.png")
+                density_correlation.plot1d_singlemap(
+                    filepath,
+                    imap,
+                    plot_hist=True,
+                )
+
+        if save_chi2_hist:
+            filepath = output_dir.path_for_file(f"chi2_hist_lens{ibin}.png")
+            density_correlation.plot_chi2_hist(filepath, chi2_threshold=None)
+
+    def calc_covariance(self, density_correlation, mask=None):
+        """
+        Construct the covariance matrix of the ndens vs SP data-vector
+
+        Parameters
+        ----------
+        density_correlation: lsstools.DensityCorrelation
+
+        mask: hsp.HealSparseMap or None
+            Mask for identifying which pixels to include when computing the sample variance
+            component of the covariance. This is useful e.g. in TXLSSDensitySkyCuts, where
+            the covariance needs to be computed repeatedly with updated masks. If None, will
+            use the valid pixels of each survey property map instead.
+        """
+        s = time.time()
+
+        # add diagonal shot noise
+        density_correlation.add_diagonal_shot_noise_covariance(assert_empty=True)
+
+        if self.config["simple_cov"] == False:
+            if self.config["diag_blocks_only"] == False:
+                # add off-diagonal shot noise
+                cov_shot_noise_full = self.calc_covariance_shot_noise_offdiag(density_correlation, self.sys_maps)
+                density_correlation.add_external_covariance(cov_shot_noise_full, assert_empty=False)
+
+            # add clustering Sample Variance
+            cov_sample_variance_full = self.calc_covariance_sample_variance(
+                density_correlation,
+                self.sys_maps,
+                diag_blocks_only=self.config["diag_blocks_only"],
+                mask=mask
+            )
+            density_correlation.add_external_covariance(cov_sample_variance_full, assert_empty=False)
+
+        f = time.time()
+        print("calc_covariance took {0}s".format(f - s))
+
+        return
+
+    def calc_covariance_shot_noise_offdiag(self, density_correlation, sys_maps):
+        """
+        Shot noise-only covariance (off-diagonal blocks only)
+        Does not include sample variance terms
+        Off-diagonal terms are between different SP maps
+        see https://github.com/elvinpoole/1dcov/blob/main/notes/1d_covariance_notes.pdf
+
+        Parameters
+        ----------
+
+        density_correlation: lsstools.DensityCorrelation
+
+        sys_maps: array of healsparse maps
+
+        """
+        import healpy as hp
+
+        # get nside from the mask
+        with self.open_input("mask", wrapper=True) as map_file:
+            nside = map_file.read_map_info("mask")["nside"]
+
+        # load the galaxy ra and dec of this lens bins
+        # TODO: load lens sample in chunks if needed for memory
+        tomobin = density_correlation.tomobin
+        with self.open_input("binned_lens_catalog_unweighted", wrapper=False) as f:
+            ra = f[f"lens/bin_{tomobin}/ra"][:]
+            dec = f[f"lens/bin_{tomobin}/dec"][:]
+            weight = f[f"lens/bin_{tomobin}/weight"][:]
+
+        # pixel ID for each lens galaxy
+        obj_pix = hp.ang2pix(nside, ra, dec, lonlat=True, nest=True)
+
+        # Covariance matrix on number *counts*
+        nbinstotal = len(density_correlation.map_index)
+        covmat_N = np.zeros((nbinstotal, nbinstotal))
+
+        # loop over each pair of maps to get 2d histograms
+        # and fill in the Nobj covarianace matrix blocks
+        map_list = np.unique(density_correlation.map_index).astype("int")
+        n2d = {}
+        for imap in map_list:
+            sys_map_i = sys_maps[imap]
+            sys_obj_i = sys_map_i[obj_pix]
+            edgesi = density_correlation.get_edges(imap)
+            maski = np.where(density_correlation.map_index.astype("int") == imap)[0]
+            starti = maski[0]
+            finishi = maski[-1] + 1
+            for jmap in map_list:
+                if jmap <= imap:
+                    continue
+                sys_map_j = sys_maps[jmap]
+                sys_obj_j = sys_map_j[obj_pix]
+                edgesj = density_correlation.get_edges(jmap)
+                maskj = np.where(density_correlation.map_index.astype("int") == jmap)[0]
+                startj = maskj[0]
+                finishj = maskj[-1] + 1
+
+                n2d_pair, _, _ = np.histogram2d(sys_obj_i, sys_obj_j, bins=(edgesi, edgesj), weights=weight)
+                n2d[imap, jmap] = n2d_pair
+
+                covmat_N[starti:finishi, startj:finishj] = n2d_pair
+                covmat_N[startj:finishj, starti:finishi] = n2d_pair.T
+
+        # convert N (number count) covariance into n (normalized number density) covariance
+        # cov(n1,n2) = cov(N1,N2)*norm**2/(Npix1*Npix2)
+        # TODO: replace np.matrix with @ operator
+        npix1npix2 = np.matrix(density_correlation.npix).T * np.matrix(density_correlation.npix)
+        norm2 = np.matrix(density_correlation.norm).T * np.matrix(density_correlation.norm)
+        covmat_ndens = covmat_N * np.array(norm2) / np.array(npix1npix2)
+
+        return covmat_ndens
+
+    def calc_covariance_sample_variance(self, density_correlation, sys_maps, diag_blocks_only=False, mask=None):
+        """
+        Sample variance term in 1d binned covariance
+
+        uses treecorr to compute the two point function between pixel positions in different SP bins
+        see https://github.com/elvinpoole/1dcov/blob/main/notes/1d_covariance_notes.pdf
+
+        Parameters
+        ----------
+        density_correlation: lsstools.DensityCorrelation
+
+        sys_maps: array of healsparse maps
+
+        mask: hsp.HealSparseMap or None
+            Mask for identifying which pixels to include. If None, will use the valid pixels of each
+            survey property map instead.
+        """
+        import treecorr
+        import healpy as hp
+        import pyccl
+        from scipy.interpolate import interp1d
+
+        nbinstotal = len(density_correlation.map_index)
+
+        # generate theory wtheta
+        mintheta = hp.nside2resol(sys_maps[0].nside_sparse, arcmin=True)
+        maxtheta = 250.0  # in arcmin
+        theta = np.linspace(mintheta, maxtheta, 100)
+        with self.open_input("fiducial_cosmology", wrapper=True) as f:
+            cosmo = f.to_ccl()
+        z_n, nz = self.load_tracer(density_correlation.tomobin)
+        theory_ell = np.unique(np.geomspace(1, 3000, 100).astype(int))
+        if isinstance(self.config["b0"], list):
+            if len(self.config["b0"]) == 1 and self.Ntomo != 1:
+                print(
+                    "Recieved one linear galaxy bias b0, but you have more than one tomographic bin. Using single value for all bins"
+                )
+                b0 = self.config["b0"][0]
+            else:
+                assert len(self.config["b0"]) == self.Ntomo
+                b0 = self.config["b0"][density_correlation.tomobin]
+        else:
+            b0 = self.config["b0"]
+        bias = b0 * np.ones(len(z_n))
+        gal_tracer = pyccl.NumberCountsTracer(cosmo, dndz=(z_n, nz), bias=(z_n, bias), has_rsd=True)
+        C_l = cosmo.angular_cl(gal_tracer, gal_tracer, theory_ell)
+        wtheta = cosmo.correlation(
+            ell=theory_ell,
+            C_ell=C_l,
+            theta=theta / 60.0,
+            type="NN",
+        )
+        wtheta_interp = interp1d(theta, wtheta)
+
+        map_list = np.unique(density_correlation.map_index).astype("int")
+
+        # make a dict of treecorr Catalog objects
+        # TODO: test how the memory use scales with NSIDE
+        cats = {}
+        for imap in map_list:
+            if mask is None:
+                ra_i, dec_i = sys_maps[imap].valid_pixels_pos(lonlat=True)
+            else:
+                ra_i, dec_i = mask.valid_pixels_pos(lonlat=True)
+            edges_i = density_correlation.get_edges(imap)
+            for isp in range(len(edges_i) - 1):
+                selecti = density_correlation.precomputed_array[imap][isp]
+                cat_i = treecorr.Catalog(
+                    ra=ra_i[selecti],
+                    dec=dec_i[selecti],
+                    ra_units="degrees",
+                    dec_units="degrees",
+                )
+                cats[imap, isp] = cat_i
+
+        # Compute 2point function of the SP map pixel centres
+        # This should be the same for all lens bins so only compute it if this is the first bin
+        if "sp_pixel_twopoint" not in self.sys_meta.keys():
+            self.sys_meta["sp_pixel_twopoint"] = {}
+            for imap in map_list:
+                edges_i = density_correlation.get_edges(imap)
+                print("SV covariance for map", imap)
+                for isp in range(len(edges_i) - 1):
+                    cat_i = cats[imap, isp]
+                    indexi = np.where(density_correlation.map_index == imap)[0][isp]
+
+                    for jmap in map_list:
+                        edges_j = density_correlation.get_edges(jmap)
+                        for jsp in range(len(edges_j) - 1):
+                            indexj = np.where(density_correlation.map_index == jmap)[0][jsp]
+                            if indexi > indexj:
+                                continue
+                            if diag_blocks_only and imap != jmap:  # sometimes we dont need the covariance between maps
+                                continue
+                            cat_j = cats[jmap, jsp]
+
+                            nn = treecorr.NNCorrelation(
+                                max_sep=maxtheta,
+                                min_sep=mintheta,
+                                nbins=20,
+                                sep_units="arcmin",
+                            )
+                            nn.process(cat_i, cat_j)
+                            self.sys_meta["sp_pixel_twopoint"][indexi, indexj] = nn
+                            self.sys_meta["sp_pixel_twopoint"][indexj, indexi] = nn
+
+        # now construct the covariance from the Npairs and theory curve
+        # Covariance matrix on number *counts*
+        covmat_N = np.zeros((nbinstotal, nbinstotal))
+        for imap in map_list:
+            edges_i = density_correlation.get_edges(imap)
+            for isp in range(len(edges_i) - 1):
+                indexi = np.where(density_correlation.map_index == imap)[0][isp]
+                for jmap in map_list:
+                    edges_j = density_correlation.get_edges(jmap)
+                    for jsp in range(len(edges_j) - 1):
+                        indexj = np.where(density_correlation.map_index == jmap)[0][jsp]
+                        if indexi > indexj:
+                            continue
+                        if diag_blocks_only and imap != jmap:  # sometimes we dont need the covarinace between maps
+                            continue
+                        nn = self.sys_meta["sp_pixel_twopoint"][indexi, indexj]
+                        covmat_N[indexi, indexj] = np.sum(nn.npairs * wtheta_interp(nn.meanr))
+                        covmat_N[indexj, indexi] = covmat_N[indexi, indexj]
+
+        # I did not include nbar in covmat_N because this would get divided out here
+        npix1npix2 = np.matrix(density_correlation.npix).T * np.matrix(density_correlation.npix)
+        covmat_ndens = covmat_N / np.array(npix1npix2)
+
+        return covmat_ndens
+
+    def load_tracer(self, tomobin):
+        """
+        Load the N(z) (lenses only)
+        We need this to compute the theory estimate
+        in the SV term in the 1d covariance
+        """
+        with self.open_input("lens_photoz_stack", wrapper=True) as f_lens:
+            z, nz = f_lens.get_bin_n_of_z(tomobin)
+        return z, nz
+
+    def verify_config(self):
+        """
+        Nothing to verify for the null tests
+        """
+        pass
+
+
+class TXLSSDensitySkyCuts(TXLSSDensityNullTests):
+    """
+    Use correlations between lens sample density and survey property maps to define cuts on the sky.
+    
+    Fits a multilinear relation between the lens sample density and survey property values and
+    iteratively trims the mask until the reduced chi-squared of the fit falls below a user-defined
+    threshold. 
+    """
+
+    name = "TXLSSDensitySkyCuts"
+    parallel = True
+
+    outputs = [
+        ("lss_density_plots_sky_cuts", FileCollection),  # output files and summary statistics will go here
+        ("unweighted_density_correlation_sky_cuts", HDFFile),
+        ("cut_mask", MapsFile)
+    ]
+
+    config_options = {
+        **TXLSSDensityNullTests.config_options,
+        "chisq_max" : StageParameter(
+            float,
+            2.,
+            msg="Threshold reduced chi-squared used to assess goodness of fit for linear model."
+        ),
+        "outlier_frac_step": StageParameter(
+            float,
+            0.01,
+            msg="Increment by which the outlier fraction will be raised in the case of a bad linear fit."
+        ),
+        "max_frac_area_loss": StageParameter(
+            float,
+            1.0,
+            msg="Maximum fractional area loss allowed."
+        )
+    }
+
+    def run(self):
+        """
+        Run the stage
+
+        Steps
+        (1) Prepare survey properties (SP maps) load, degrade, normalize, etc
+        (2) Compute 1d density trends Ngal vs SP, without excluding any outliers
+        (3) Compute the covariance matrix of the density trends
+        (4) Fit a multilinear model of galaxy density w.r.t. SP maps and compute chi-squared.
+        (5) If reduced chi-squared is above threshold, exclude an outlying fraction of pixels
+            from the SP map which deviates most from the model.
+        (6) Repeat steps 3-5 until reduced chi-squared is below the threshold, or until the
+            fractional area loss exceeds the threshold.
+        (7) Construct a final mask as the intersection of the masks produced by this procedure
+            for each tomographic bin.
+        (8) Summarize (save plots, data points and covariance, etc)
+        """
+        import healsparse as hsp
+
+        pixel_scheme = choose_pixelization(**self.config)
+        self.pixel_metadata = pixel_scheme.metadata
+        self.pixel_metadata["nest"] = True #This stage uses healsparse maps which always use nested ordering
+
+        # Max reduced chi^2 allowed for a multilinear fit to be considered valid
+        self.chisq_max = self.config["chisq_max"]
+        # Max allowed fractional area loss
+        self.f_loss_max = self.config["max_frac_area_loss"]
+
+        # check the metadata nside matches the mask (might not be true if you use an external mask)
+        with self.open_input("mask", wrapper=True) as map_file:
+            mask = map_file.read_map("mask")
+            mask_meta = map_file.read_map_info("mask")
+        mask_nside = mask_meta["nside"]
+        if self.pixel_metadata["nside"] < mask_nside:
+            from ..maps.mapping import degrade_healsparse
+            mask = degrade_healsparse(
+                mask,
+                self.pixel_metadata["nside"],
+                reduction="mask",
+            )
+
+        # Retrieve unmasked pixels from mask
+        vpix = mask.valid_pixels
+        # Initialise binary mask here (avoids error if the current mask already satisfies the
+        # reduced chi-squared constraint)
+        mask_bin = hsp.HealSparseMap.make_empty_like(mask, dtype=bool, sentinel=False)
+        mask_bin[vpix] = True
+
+        # Compute initial coverage area
+        # NOTE: the area calculation in the TXBaseMask class assumes a binary mask, whereas
+        # here the mask is assumed to be a fractional detection map, hence we recalculate area
+        # for the initial mask here
+        area_sky = 4 * (180 ** 2) / np.pi
+        area_pix = pixel_scheme.pixel_area(degrees=True)
+        area_init = mask[vpix].sum() * area_pix
+        
+        # get number of tomographic lens bins
+        with self.open_input("binned_lens_catalog_unweighted", wrapper=False) as f:
+            self.Ntomo = f["lens"].attrs["nbin_lens"]
+
+        # output directory for the plots and summary stats
+        # open in parallel so that each process can write to it as needed.
+        output_dir = self.open_output("lss_density_plots_sky_cuts", wrapper=True, parallel=True)
+
+        # load the SP maps, apply the mask, normalize the maps (as needed by the method)
+        self.sys_maps, self.sys_names, self.sys_meta = self.prepare_sys_maps()
+        nsysmaps = len(self.sys_maps)
+        print(f'Sys maps: {self.sys_names}')
+
+        # Construct mask for each tomographic bin; the final mask will be a intersection of all of them
+        mask_inter = []  # for masks from each iteration
+        results = []     # for DensityCorrelation objects containing 1D correlation data
+        tags = []        # for labels to give the results from each iteration
+        for ibin in self.split_tasks_by_rank(range(self.Ntomo)):
+            print("Computing density correlations for lens bin {0}/{1}".format(ibin + 1, self.Ntomo))
+
+            # Initialise outlier fraction at zero for all survey property maps
+            outfrac = np.zeros(nsysmaps)          
+    
+            # Perform multilinear fit of galaxy density vs SP maps and iteratively increase outlier
+            # fraction for the SP map with the highest chi^2 value if the reduced chi^2 for the
+            # multilinear is above the threshold value
+            chi2_red = np.inf
+            n_iter = 0
+            while chi2_red > self.chisq_max:
+                # Keep track of pixels to keep after fitting to all SP maps
+                keep = np.ones(len(vpix), dtype=bool)
+                for imap in range(nsysmaps):
+                    sys_map = self.sys_maps[imap]
+                    sys_vals = sys_map[vpix]
+
+                    # Update outlier fraction in config to value for current SP map
+                    self.config["outlier_fraction"] = outfrac[imap]
+                    # Compute SP bin edges
+                    edges = self.compute_bin_edges(sys_map)
+                    self.sys_meta[f"edges_{imap}"] = edges
+
+                    # Identify and remove outlier pixels
+                    keep &= (sys_vals >= edges.min()) & (sys_vals <= edges.max())
+
+                # Construct binary version of the mask showing which pixels are valid
+                vpix_common = vpix[keep]
+                # Check area loss is below threshold
+                area_new = mask[vpix_common].sum() * area_pix
+                f_loss = 1. - area_new / area_init
+                if f_loss > self.f_loss_max:
+                    print(
+                        f"!!! WARNING !!!: fractional area loss ({f_loss:.4f}) for current outlier "
+                        f"fractions will exceed threshold ({self.f_loss_max:.4f}). Stopping "
+                        f"iterations here for tomographic bin {ibin}."
+                    )
+                    break
+
+                print(f'Outlier fractions: {outfrac}')
+                
+                mask_bin = hsp.HealSparseMap.make_empty_like(mask, dtype=bool, sentinel=False)
+                mask_bin[vpix_common] = True
+
+                # Retrieve RA, Dec and weights for current tomographic bin
+                with self.open_input("binned_lens_catalog_unweighted", wrapper=False) as f:
+                    ra = f[f"lens/bin_{ibin}/ra"][:]
+                    dec = f[f"lens/bin_{ibin}/dec"][:]
+                    weight = f[f"lens/bin_{ibin}/weight"][:]
+                galaxy_info = np.array([ra, dec, weight])
+
+                # Compute binned 1D density correlations
+                suffix = f'_iter{n_iter}'
+                density_corrs = self.calculate_1d_density_correlations(
+                    ibin,
+                    mean_density_map=None,
+                    pixels=vpix_common,
+                    galaxy_info=galaxy_info,
+                    suffix=suffix
+                )
+
+                # compute covariance of data vector and add to DensityCorrelation object
+                self.calc_covariance(density_corrs, mask_bin)
+
+                # perform linear regression
+                sys_map_table = np.array([s[vpix_common] for s in self.sys_maps])
+                chi2 = self.multilinear_fit(density_corrs, sys_map_table, mask[vpix_common])
+
+                # Degrees of freedom for reduced chi^2 calculation; this can change with each
+                # iteration if the number of bins decreases (possible if many pixels in the SP
+                # map have similar values)
+                ndata, nparams = density_corrs.design_matrix.shape
+                dof = ndata - nparams
+                # Check degrees of freedom is at least 1
+                if dof <= 0:
+                    raise ValueError(
+                        f"Degrees of freedom for tomographic bin {ibin} is either zero or negative. "
+                        "Try increasing the number of bins and/or switching binning scheme via the "
+                        "`equal_area_bins` config option."
+                    )
+                chi2_red = chi2 / dof
+
+                print(f'Reduced chi^2 = {chi2_red}')
+                # Increase the outlier fraction for the SP with the highest individual chi^2
+                imax = np.argmax([density_corrs.chi2["multilinear"][imap] for imap in range(nsysmaps)])
+                outfrac[imax] += self.config["outlier_frac_step"]
+                n_iter += 1
+
+                results.append(density_corrs)
+                tags.append(suffix)
+
+                # Break here if the newly increased outlier fraction >= 1 for any SP map
+                if (outfrac >= 0.9999999).any():
+                    print(
+                        f"!!! WARNING !!!: Reduced chi^2 is still above threshold value of {self.chisq_max}, "
+                        "but any further iteration will result in complete loss of available pixels. Stopping "
+                        "iterations here."
+                    )
+                    break
+
+            # Append the cut mask to the list
+            mask_inter.append(mask_bin)
+
+        # gather all results on root process
+        if self.comm is not None:
+            results = self.comm.gather(results, root=0)
+            mask_inter = self.comm.gather(mask_inter, root=0)
+            tags = self.comm.gather(tags, root=0)
+        # Compute the intersection of masks from all tomographic bins
+        if self.rank == 0:
+            # Flatten list of lists
+            if self.comm is not None:
+                results = [result for sublist in results for result in sublist]
+                mask_inter = [result for sublist in mask_inter for result in sublist]
+                tags = [result for sublist in tags for result in sublist]
+            mask_inter = hsp.operations.and_intersection(mask_inter)
+
+            # Get valid pixels from intersection and construct final mask with only these pixels
+            vpix_final = mask_inter.valid_pixels
+            mask_final = hsp.HealSparseMap.make_empty_like(mask)
+            mask_final[vpix_final] = mask[vpix_final]
+
+            # Compare initial and final f_sky
+            f_sky_init = area_init / area_sky
+            area_final = mask_final[vpix_final].sum() * area_pix
+            f_sky_final = area_final / area_sky
+
+            print(f'Initial f_sky: {f_sky_init}')
+            print(f'Final f_sky: {f_sky_final}')
+
+            # Update mask metadata
+            mask_meta["area"] = area_final
+            mask_meta["f_sky"] = f_sky_final
+
+            # Save mask
+            with self.open_output("cut_mask", wrapper=True) as f:
+                f.file.create_group("maps")
+                f.write_map("mask", mask_final, mask_meta)
+
+            with self.open_output("unweighted_density_correlation_sky_cuts", wrapper=False) as dens_output:
+                for density_corrs, tag in zip(results, tags):
+                    self.summarize_density(
+                        output_dir,
+                        dens_output,
+                        density_corrs,
+                        save_chi2_hist=False,
+                        suffix=tag
+                    )
+
+    def multilinear_fit(self, density_corrs, sys_map_table, frac):
+        """
+        Performs a multilinear fit of galaxy density with respect to survey property maps.
+
+        Parameters
+        ----------
+        density_corrs : DensityCorrelation
+            Object containing the binned galaxy density information.
+        
+        sysmap_table_all : np.ndarray
+            Array of shape (N_maps, N_pix) containing systematic map values,
+            where the row index matches those in self.map_index
+
+        frac: np.ndarray
+            Fractional pixel coverage, length N_pix.
+        
+        Returns
+        -------
+        chi2: float
+            Chi-squared of the fit.
+        """
+        # construct the design matrix for the fit
+        A = density_corrs.precompute_design_matrix(sys_map_table, frac)
+
+        # linear model predictions
+        icov = np.linalg.inv(density_corrs.covmat)
+        ATCA = A.T @ icov @ A
+        ATCy = A.T @ icov @ density_corrs.ndens
+        alphas = np.linalg.solve(ATCA, ATCy)
+        
+        # add model predictions and compute reduced chi^2
+        ndens_pred = density_corrs.linear_model(alphas)
+        density_corrs.add_model(ndens_pred, "multilinear")
+        chi2 = calc_chi2(
+            density_corrs.ndens,
+            density_corrs.covmat,
+            ndens_pred
+        )
+
+        return chi2
+
+class TXLSSWeights(TXLSSDensityBase):
+    """
+    Base class for LSS systematic weights
+
+    Not to be run directly.
+
+    This is an abstract base class, which other subclasses
+    inherit from to use the same basic structure, which is:
+
+    - load and process sytematic (survey property) maps
+    - compute 1d density correlations+covariance
+    - compute weights with a regression method
+    """
+
+    name = "TXLSSWeights"
+    parallel = False
+    inputs = [
+        ("binned_lens_catalog_unweighted", BinnedCatalog),  # this file is used by the stage to compute weights
+        (
+            "lens_tomography_catalog_unweighted",
+            TomographyCatalog,
+        ),  # this file is copied at the end and a weighted version is made (for stages that use this instead of the binned catalogs)
+        ("mask", MapsFile),
+        ("unweighted_density_correlation", HDFFile),
+    ]
+
+    outputs = [
+        ("lss_weight_summary", FileCollection),  # output files and summary statistics will go here
+        ("weighted_density_correlation", HDFFile),
+        ("lss_weight_maps", MapsFile),  # the systematic weight maps to be applied to the lens galaxies
+        ("binned_lens_catalog", BinnedCatalog),  # the lens catalog with weights added
+        ("lens_tomography_catalog", HDFFile),  # the tomography file with weights added
+    ]
+
+    config_options = {
+        **TXLSSDensityBase.config_options,
+    }
+
+    def run(self):
+        """
+        Follows the basic stucture of a regression based weights pipeline:
+
+        (1) Prepare survey properties (SP maps) load, degrade, normalize, etc
+        (2) Load 1d density trends Ngal vs SP
+        (3) Compute the covariance matrix of the density trends
+        (4) Compute the weights using a given model
+        (5) Summarize (save plots, regression params, etc)
+        (6) Save the weighted catalog and weight maps
+
+        Each step can be overwritten in sub-classes
+        """
+        import sacc
+        import healsparse
+
+        pixel_scheme = choose_pixelization(**self.config)
+        self.pixel_metadata = pixel_scheme.metadata
+        self.pixel_metadata["nest"] = True #This stage uses healsparse maps which always use nested ordering
+
+
+        # check the metadata nside matches the mask (might not be true of you use an external mask)
+        with self.open_input("mask", wrapper=True) as map_file:
+            mask_nside = map_file.read_map_info("mask")["nside"]
+        assert self.pixel_metadata["nside"] == mask_nside
+
+        # get number of tomographic lens bins
+        with self.open_input("binned_lens_catalog_unweighted", wrapper=False) as f:
+            self.Ntomo = f["lens"].attrs["nbin_lens"]
+
+        # output directory for the plots and summary stats
+        output_dir = self.open_output("lss_weight_summary", wrapper=True)
+
+        # open density corr file
+        dens_output = self.open_output("weighted_density_correlation", wrapper=False)
+
+        # load the SP maps, apply the mask, normalize the maps (as needed by the method)
+        self.sys_maps, self.sys_names, self.sys_meta = self.prepare_sys_maps()
+
+        mean_density_map_list = []
+        for ibin in range(self.Ntomo):
+            # load density vs SP map data vector
+            density_corrs = self.load_density_corr(ibin)
+
+            # compute the weights
+            mean_density_map, fit_output = self.compute_weights(density_corrs)
+            mean_density_map_list.append(mean_density_map)
+
+            # Calculate the weighted version of the same thing.
+            weighted_density_corrs = self.calculate_1d_density_correlations(ibin, mean_density_map=mean_density_map)
+            # add info from unweighted density_corrs to weighted
+            if weighted_density_corrs is not None:
+                weighted_density_corrs.postprocess(density_corrs)
+
+            # make summary stats and plots
+            self.summarize_weights(output_dir, dens_output, density_corrs, weighted_density_corrs, fit_output)
+        dens_output.close()
+
+        # save object weights and weight maps
+        self.save_weights(output_dir, mean_density_map_list)
+
+    def verify_config(self):
+        """
+        Checks the SP map config being used for this stage matches that of the input density null tests 
+        """
+
+        #these config options current have to be the same between density Null calls and LSS weights calls
+        config_asserts = [
+            "equal_area_bins",
+            "fill_missing_pix",
+            "nbin",
+            "nside",
+            "nside_coverage",
+            "outlier_fraction",
+            "pixelization",
+            "supreme_path_root",
+        ]
+
+        with self.open_input("unweighted_density_correlation") as f:
+            for c in config_asserts:
+                c_input = str(f["provenance"].attrs[f"config/{c}"])
+                c_stage = str(self.config[c])
+                assert c_input == c_stage
+
+    def load_density_corr(self, ibin):
+        """
+        Load some 1d density trends from a TXDensityNull-like stage
+        """
+        from . import lsstools
+
+        with self.open_input("unweighted_density_correlation", wrapper=False) as f:
+            return lsstools.DensityCorrelation.load_from_group(f[f"density_{ibin}"])
+
+    def save_weights(self, output_dir, mean_density_map_list):
+        """
+        Save the weights maps and galaxy weights
+
+        Parameters
+        ----------
+        mean_density_map_list: list of Healsparse maps
+            list of the F(s) maps. one for each tomo bin
+            F(s) = 1/weight
+
+        """
+        import healpy as hp
+        import matplotlib.pyplot as plt
+
+        #### save the weights maps
+        map_output_file = self.open_output("lss_weight_maps", wrapper=True)
+        map_output_file.file.create_group("maps")
+        map_output_file.file["maps"].attrs.update(self.config)
+
+        for ibin, mean_density_map in enumerate(mean_density_map_list):
+            weight_map = mean_density_map**-1
+            map_output_file.write_map(
+                f"weight_map_bin_{ibin}", weight_map, self.pixel_metadata
+            )
+
+        #### save the binned lens samples
+        # There is probably a better way to do this using the batch writer
+        binned_output = self.open_output("binned_lens_catalog", parallel=True)
+        with self.open_input("binned_lens_catalog_unweighted") as binned_input:
+            binned_output.copy(binned_input["lens"], "lens")
+
+        # Plot a histogram of the weights
+        fig, axs = plt.subplots(1, self.Ntomo, figsize=(3 * self.Ntomo, 3), squeeze=False)
+        for ibin in range(self.Ntomo):
+            # get weight per lens object
+            subgroup = binned_output[f"lens/bin_{ibin}/"]
+            ra = subgroup["ra"][:]
+            dec = subgroup["dec"][:]
+
+            # Get the pixel index for each galaxy in our density map.
+            # could switch to using txpipe tools for this?
+            pix = hp.ang2pix(self.pixel_metadata["nside"], ra, dec, lonlat=True, nest=True)
+
+            # Compute the weight corresponding to each object
+            w = mean_density_map_list[ibin][pix]
+            obj_weight = 1.0 / w
+            obj_weight[w == hp.UNSEEN] = 0.0
+
+            subgroup["weight"][:] *= obj_weight
+
+            # Draw the histogram for this tomographic bin in the correct
+            # panel of the figure
+            axs[0][ibin].hist(obj_weight[obj_weight != 0], bins=100)
+            axs[0][ibin].set_xlabel("weight")
+            axs[0][ibin].set_yticks([])
+            axs[0][ibin].set_title(f"lens {ibin}")
+
+        filepath = output_dir.path_for_file(f"weights_hist.png")
+        fig.tight_layout()
+        fig.savefig(filepath)
+        fig.clear()
+        plt.close()
+
+        #### save the tomography file
+        tomo_output = self.open_output("lens_tomography_catalog", parallel=True)
+        with self.open_input("lens_tomography_catalog_unweighted") as tomo_input:
+            tomo_output.copy(tomo_input["tomography"], "tomography")
+            tomo_output.copy(tomo_input["counts"], "counts")
+
+        lens_weight = tomo_output["tomography/lens_weight"][:]
+        for ibin in range(self.Ntomo):
+            binned_subgroup = binned_output[f"lens/bin_{ibin}/"]
+            mask = tomo_output["tomography/bin"][:] == ibin
+            lens_weight[mask] *= binned_subgroup["weight"][:]
+        tomo_output["tomography/lens_weight"][:] = lens_weight
+
+        #### close the outputs
+        map_output_file.close()
+        tomo_output.close()
+        binned_output.close()
+
+    def summarize_weights(self, output_dir, dens_output, density_correlation, weighted_density_correlation, fit_output):
+        """
+        make 1d density plots and other summary statistics and save them
+
+        Parameters
+        ----------
+        output_dir: string
+
+        density_correlation: lsstools.DensityCorrelation
+
+        weighted_density_correlation: lsstools.DensityCorrelation
+
+        fit_output: dict
+        """
+        import h5py
+        import scipy.stats
+
+        ibin = density_correlation.tomobin
+
+        # make 1d density plots
+        for imap in np.unique(density_correlation.map_index):
+            try:
+                splabel = density_correlation.mapnames[imap]
+            except KeyError:
+                splabel = imap
+
+            filepath = output_dir.path_for_file(f"sys1D_lens{ibin}_SP{splabel}.png")
+            density_correlation.plot1d_singlemap(
+                filepath,
+                imap,
+                label=None,
+                extra_density_correlations=[weighted_density_correlation],
+                extra_density_labels=["weighted"],
+            )
+
+        # save the weighted 1D density trends
+        weighted_density_correlation.save_to_group(dens_output)  # tomo bin label is taken from density_correlation
+
+        # save map names, coefficients and chi2 from the fit into an hdf5 file
+        fit_summary_file_name = output_dir.path_for_file(f"fit_summary_lens{ibin}.hdf5")
+        fit_summary_file = h5py.File(fit_summary_file_name, "w")
+        fit_summary_file.file.create_group("fit_summary")
+        summary_group = fit_summary_file["fit_summary"]
+        if len(fit_output["sig_map_index"]) != 0:
+            summary_group.create_dataset("fitted_map_id", data=fit_output["sig_map_index"])
+            fitted_maps_names = np.array([density_correlation.mapnames[i] for i in fit_output["sig_map_index"]])
+            summary_group.create_dataset("fitted_map_names", data=fitted_maps_names.astype(np.bytes_))
+            summary_group.create_dataset("all_map_names", data=self.sys_names.astype(np.bytes_))
+            summary_group.create_dataset("coeff", data=fit_output["coeff"])
+            if fit_output["coeff_cov"] is not None:
+                summary_group.create_dataset("coeff_cov", data=fit_output["coeff_cov"])
+            for model in density_correlation.chi2.keys():
+                summary_group.create_dataset(
+                    f"chi2_{model}",
+                    data=np.array(list(density_correlation.chi2[model].items())).T,
+                )
+            fit_summary_file.close()
+
+        # plot the un-weighted and weighted chi2 distribution
+        filepath = output_dir.path_for_file(f"chi2_hist_lens{ibin}.png")
+        if "pvalue_threshold" in self.config.keys():
+            chi2_threshold = scipy.stats.chi2(self.config["nbin"]).isf(self.config["pvalue_threshold"])
+        else:
+            chi2_threshold = None
+        density_correlation.plot_chi2_hist(
+            filepath,
+            extra_density_correlations=[weighted_density_correlation],
+            chi2_threshold=chi2_threshold,
+        )
+
+
+class TXLSSWeightsLinBinned(TXLSSWeights):
+    """
+    Compute LSS systematic weights using simultanious linear regression on the binned
+    1D correlations
+
+    Model: Linear
+    Covariance: Shot noise (for now), no correlation between 1d correlations
+    Fit: Simultaniously fits all sysmaps. By calculating a total  weight map and calculating Ndens vs sysmap directly
+
+    """
+
+    name = "TXLSSWeightsLinBinned"
+    parallel = False
+
+    config_options = {
+        **TXLSSWeights.config_options,
+        "pvalue_threshold": StageParameter(
+            float,
+            0.05,
+            msg="max p-value for maps to be included in the corrected (a very simple form of regularization)",
+        ),
+    }
+
+    def select_maps(self, density_correlation):
+        """
+        Returns the map indices that have small null p-values (large chi2)
+        Threshold p-value set in config
+
+        Parameters
+        ----------
+        density_correlation: lsstools.DensityCorrelation
+
+        """
+        import scipy.stats
+
+        chi2_null = density_correlation.chi2["null"]
+        nbins_per_map = self.config["nbin"]
+        map_index_array = np.array(list(chi2_null.keys()))
+        chi2_array = np.array(list(chi2_null.values()))
+
+        # pvalues of the null signal for each map
+        p = 1.0 - scipy.stats.chi2(nbins_per_map).cdf(chi2_array)
+
+        sig_maps = map_index_array[p < self.config["pvalue_threshold"]]
+
+        return sig_maps
+
+    def compute_weights(self, density_correlation):
+        """
+        Least square fit to a simple linear model
+
+        The function being optimized is a sum of the F(s) maps for each sys map plus a constant
+
+        Parameters
+        ----------
+        density_correlation: lsstools.DensityCorrelation
+
+        Returns
+        ------
+        mean_density_map: Healsparse map
+            Map of the fitted function F(s)
+            where F(s) = 1/weight
+        coeff_output: (sig_map_index, coeff, coeff_cov)
+            sig_map_index: 1D array
+                index of each map considered significant
+            coeff: 1D array
+                best fit parameters
+                coeff=[beta, alpha1, alpha2, etc]
+            coeff_cov: 2D array
+                covariance matrix of coeff from fit
+
+        """
+        import scipy.optimize
+        import healsparse as hsp
+        import healpy as hp
+        from . import lsstools
+
+        s = time.time()
+
+        # first add the null signal as the first model
+        # null_model = np.ones(len(density_correlation.ndens))
+        # density_correlation.add_model(null_model, "null")
+
+        # select only the significant trends
+        sig_map_index = self.select_maps(density_correlation)
+        sysmap_table_all = hsplist2array(self.sys_maps)
+
+        if len(sig_map_index) == 0:  # there are no maps to correct
+            print("No maps selected for correction")
+
+            # mean_density_map is all ones
+            mean_density_map_bf = hsp.HealSparseMap.make_empty(
+                self.sys_maps[0].nside_coverage,
+                self.sys_maps[0].nside_sparse,
+                dtype=np.float64,
+                sentinel=hp.UNSEEN,
+            )
+            mean_density_map_bf.update_values_pix(
+                self.sys_maps[0].valid_pixels,
+                np.ones(len(self.sys_maps[0].valid_pixels)).astype(np.float64),
+            )
+
+            fit_output = {}
+            fit_output["sig_map_index"] = sig_map_index
+            fit_output["coeff"] = None
+            fit_output["coeff_cov"] = None
+        else:
+            print("{0} map(s) selected for correction".format(len(sig_map_index)))
+
+            # get the frac det (TO DO: get frac only, dont need deltag)
+            _, frac_map = self.get_deltag(density_correlation.tomobin)
+            frac = frac_map[self.sys_maps[0].valid_pixels]
+
+            # initial parameters
+            p0 = np.array([1.0] + [0.0] * len(sig_map_index))
+
+            # we need to mask the density correlation to only use the selected maps
+            dc_mask = np.in1d(density_correlation.map_index, sig_map_index)
+            dc_covmat_masked = density_correlation.covmat[dc_mask].T[dc_mask].T
+            dc_ndens_masked = density_correlation.ndens[dc_mask]
+
+            density_correlation.precompute_design_matrix(
+                sysmap_table_all, frac=frac, corr_map_indices=sig_map_index
+                )
+
+            # negative log likelihood to be minimized
+            def neg_log_like(params):
+                Fdc_ndens = density_correlation.linear_model(params)
+                chi2 = calc_chi2(dc_ndens_masked, dc_covmat_masked, Fdc_ndens)
+                return chi2 / 2.0
+
+            minimize_output = scipy.optimize.minimize(neg_log_like, p0, method="Nelder-Mead")
+            coeff = minimize_output.x
+            coeff_cov = None
+
+            # Check the fast linear_model output from the likelihood matches 
+            # the one from computing the maps
+            beta = coeff[0]
+            alphas = coeff[1:]
+            _, Fdc = lsstools.lsstools.linear_model_from_maps(
+                beta,
+                *alphas,
+                density_correlation=density_correlation,
+                sys_maps=self.sys_maps,
+                sysmap_table=sysmap_table_all,
+                map_index=sig_map_index,
+                frac=frac_map,
+                do_grid_hist=False
+            )
+            assert np.allclose(
+                Fdc.ndens,
+                density_correlation.linear_model(coeff),
+                rtol=1e-10,
+                atol=1e-12,), "linear model output ndens differs between design_matrix computation computing from the maps directly"
+
+            # make best fit model (including the maps that were not selected)
+            # and add this best fit model to the DensityCorrelation instance
+            best_fit = np.array([1.0] + [0.0] * len(self.sys_maps))
+            best_fit[0] = coeff[0]
+            best_fit[sig_map_index + 1] = coeff[1:]
+            mean_density_map_bf, Fdc_bf = lsstools.lsstools.linear_model_from_maps(
+                best_fit[0],
+                *best_fit[1:],
+                density_correlation=density_correlation,
+                sys_maps=self.sys_maps,
+                sysmap_table=sysmap_table_all,
+                frac=frac_map,
+            )
+            density_correlation.add_model(Fdc_bf.ndens, "linear")
+
+            # assemble the fitting outputs (chi2, values, coefficents, )
+            fit_output = {}
+            fit_output["sig_map_index"] = sig_map_index
+            fit_output["coeff"] = coeff
+            fit_output["coeff_cov"] = coeff_cov
+
+        f = time.time()
+        print("compute_weights took {0}s".format(f - s))
+
+        return mean_density_map_bf, fit_output
+
+
+class TXLSSWeightsLinPix(TXLSSWeightsLinBinned):
+    """
+    Compute LSS systematic weights using simultanious linear regression at the
+    pixel level using scikitlearn simple linear regression
+
+    Model:                Linear
+    1D Covarinace:        Shot noise (for now), no correlation between 1d correlations
+    Pixel Covarinace:    Shot noise, no correlation between pixels
+    Fit:                Simultaniously fits all sysmaps using sklearn
+
+    """
+
+    name = "TXLSSWeightsLinPix"
+    parallel = False
+
+    config_options = {
+        **TXLSSWeights.config_options,
+        "pvalue_threshold": StageParameter(float, 0.05, msg="max p-value for maps to be corrected"),
+        "regression_class": StageParameter(
+            str, "LinearRegression", msg="sklearn.linear_model class to use in regression"
+        ),
+    }
+
+    def compute_weights(self, density_correlation):
+        """
+        Least square fit to a simple linear model at pixel level
+
+        using p-value of binned 1d trends for regularisation
+
+        Parameters
+        ----------
+        density_correlation: lsstools.DensityCorrelation
+
+        Returns
+        ------
+        mean_density_map: Healsparse map
+            Map of the fitted function F(s)
+            where F(s) = 1/weight
+        coeff_output: (sig_map_index, coeff, coeff_cov)
+            sig_map_index: 1D array
+                index of each map considered significant
+            coeff: 1D array
+                best fit parameters
+                coeff=[beta, alpha1, alpha2, etc]
+            coeff_cov: 2D array
+                covariance matrix of coeff from fit
+
+        """
+        import scipy.optimize
+        import healpy as hp
+        import healsparse as hsp
+        from . import lsstools
+        from sklearn import linear_model as sk_linear_model
+
+        s = time.time()
+
+        # first add the null signal as the first model
+        null_model = np.ones(len(density_correlation.ndens))
+        density_correlation.add_model(null_model, "null")
+
+        # select only the significant trends
+        sig_map_index = self.select_maps(density_correlation)
+        sysmap_table_all = hsplist2array(self.sys_maps)
+
+        if len(sig_map_index) == 0:  # there are no maps to correct
+            print("0 maps selected for correction")
+
+            # mean_density_map is all ones
+            mean_density_map_bf = hsp.HealSparseMap.make_empty(
+                self.sys_maps[0].nside_coverage,
+                self.sys_maps[0].nside_sparse,
+                dtype=np.float64,
+                sentinel=hp.UNSEEN,
+            )
+            mean_density_map_bf.update_values_pix(
+                self.sys_maps[0].valid_pixels,
+                np.ones(len(self.sys_maps[0].valid_pixels)).astype(np.float64),
+            )
+
+            fit_output = {}
+            fit_output["sig_map_index"] = sig_map_index
+            fit_output["coeff"] = None
+            fit_output["coeff_cov"] = None
+
+        else:  # there are maps to correct
+            print("{0} map(s) selected for correction".format(len(sig_map_index)))
+            sysmap_table_selected = sysmap_table_all[sig_map_index]
+
+            # make the delta_g map and fracdet weights
+            deltag, frac = self.get_deltag(density_correlation.tomobin)
+            dg1 = deltag[self.sys_maps[0].valid_pixels] + 1.0  # deltag+1 for valid pixels
+            weight = frac[self.sys_maps[0].valid_pixels]  # weight for samples (prop to 1/sigma^2)
+
+            # do linear regression
+            if self.config["regression_class"].lower() == "linearregression":
+                reg = sk_linear_model.LinearRegression()
+                reg.fit(sysmap_table_selected.T, dg1, sample_weight=weight)
+            elif self.config["regression_class"].lower() == "elasticnetcv":
+                reg = sk_linear_model.ElasticNetCV()
+                reg.fit(sysmap_table_selected.T, dg1, sample_weight=weight)
+            else:
+                raise IOError("regression method {0} not yet implemented".format(self.config["regression_class"]))
+
+            # get output of regression
+            Fvals = reg.predict(sysmap_table_selected.T)
+            mean_density_map_bf = hsp.HealSparseMap.make_empty(
+                self.sys_maps[0].nside_coverage,
+                self.sys_maps[0].nside_sparse,
+                dtype=np.float64,
+                sentinel=hp.UNSEEN,
+            )
+            mean_density_map_bf.update_values_pix(self.sys_maps[0].valid_pixels, Fvals.astype(np.float64))
+            coeff = np.append(reg.intercept_, reg.coef_)
+            coeff_cov = None
+
+            # make the 1d trends for the regression output
+            Fdc_bf = lsstools.DensityCorrelation()
+            Fdc_bf.set_precompute(density_correlation)
+            for imap, sys_vals in enumerate(sysmap_table_all):
+                edges = density_correlation.get_edges(imap)
+                Fdc_bf.add_correlation(
+                    imap,
+                    edges,
+                    sys_vals,
+                    mean_density_map_bf[mean_density_map_bf.valid_pixels],
+                    frac=frac[mean_density_map_bf.valid_pixels],
+                    map_input=True,
+                    use_precompute=True,
+                )
+            density_correlation.add_model(Fdc_bf.ndens, "linear")
+
+            # assemble the fitting outputs (chi2, values, coefficents, )
+            fit_output = {}
+            fit_output["sig_map_index"] = sig_map_index
+            fit_output["coeff"] = coeff
+            fit_output["coeff_cov"] = coeff_cov
+
+        f = time.time()
+        print("compute_weights took {0}s".format(f - s))
+
+        return mean_density_map_bf, fit_output
+
+
+def hsplist2array(hsp_list):
+    """
+    Convert a list of healsparse maps to a 2d array of the valid pixels
+    Assume all maps have the same mask
+    """
+
+    validpixels = hsp_list[0].valid_pixels
+    out_array = []
+    for i in range(len(hsp_list)):
+        out_array.append(hsp_list[i][validpixels])
+    return np.array(out_array)
+
+
+class TXLSSWeightsUnit(TXLSSWeights):
+    """
+    Assign weight=1 to all lens objects
+
+    """
+
+    name = "TXLSSWeightsUnit"
+    parallel = False
+
+    inputs = [
+        ("binned_lens_catalog_unweighted", BinnedCatalog),  # this file is used by the stage to compute weights
+        (
+            "lens_tomography_catalog_unweighted",
+            TomographyCatalog,
+        ),  # this file is copied at the end and a weighted version is made (for stages that use this instead of the binned catalogs)
+        ("mask", MapsFile),
+    ]
+
+    outputs = [
+        ("lss_weight_summary", FileCollection),  # output files and summary statistics will go here
+        ("weighted_density_correlation", HDFFile),
+        ("lss_weight_maps", MapsFile),  # the systematic weight maps to be applied to the lens galaxies
+        ("binned_lens_catalog", BinnedCatalog),  # the lens catalog with weights added
+        ("lens_tomography_catalog", BinnedCatalog),  # the tomography file with weights added
+    ]
+
+    config_options = {
+        "nside_coverage": StageParameter(int, 32, msg="HEALPix nside for coverage maps."),
+    }
+
+    def prepare_sys_maps(self):
+        """
+        For unit weights we dont need to load anything
+        """
+        sys_maps = sys_names = sys_meta = None
+        return sys_maps, sys_names, sys_meta
+
+    def calculate_1d_density_correlations(self, tomobin, mean_density_map=None):
+        """
+        For unit weights we dont need 1d density trends
+        """
+        return None
+
+    def calc_covariance(self, density_correlation):
+        """
+        For unit weights we dont need 1d density trends
+        """
+        return None
+
+    def load_density_corr(self, ibin):
+        """
+        For unit weights we dont need 1d density trends
+        """
+        return None
+
+    def summarize_weights(self, output_dir, dens_output, density_correlation, weighted_density_correlation, fit_output):
+        """
+        For unit weights we have nothing to summarize
+        """
+        pass
+
+    def compute_weights(self, density_correlation):
+        """
+        Creates a healsparse map of unit weights
+        Uses the mask directly
+        """
+        import healpy as hp
+        import healsparse as hsp
+
+        with self.open_input("mask", wrapper=True) as map_file:
+            mask = map_file.read_map("mask")
+            metadata = map_file.read_map_info("mask")
+            nside = metadata["nside"]
+
+        nside_coverage = self.config["nside_coverage"]
+        nside_sparse = nside
+
+        validpixels = mask.valid_pixels
+
+        mean_density_map = hsp.HealSparseMap.make_empty(
+            nside_coverage, nside_sparse, dtype=np.float64, sentinel=hp.UNSEEN
+        )
+        mean_density_map.update_values_pix(validpixels, 1.0)
+
+        fit_output = None
+        return mean_density_map, fit_output

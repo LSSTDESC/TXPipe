@@ -18,6 +18,7 @@ data/*.sacc
 data/2.2i-t3828/
 data/2.2i/
 data/cosmodc2/
+data/desy3/
 data/supreme
 dask-worker-space/
 example.tar.gz
