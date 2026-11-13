@@ -1,0 +1,133 @@
+# =============================================================================
+# TXPipe configuration – Flagship DP2 248* tiles
+# =============================================================================
+
+global:
+  chunk_rows: 100000
+  pixelization: healpix
+  nside: 512
+  sparse: True
+
+
+# =============================================================================
+# Stage-specific configuration
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# TXMaskFromParquet
+# Builds a binary HEALPix footprint mask directly from galaxy positions.
+# -----------------------------------------------------------------------------
+TXMaskFromParquet:
+  parquet_paths:
+    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/24811.parquet
+    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/24812.parquet
+    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/24813.parquet
+    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/24814.parquet
+    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/24815.parquet
+    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/24816.parquet
+    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/24817.parquet
+    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/24818.parquet
+  nside: 512
+  chunk_rows: 100000
+
+
+# -----------------------------------------------------------------------------
+# TXIngestFlagshipCatalog
+# Reads flagship 248* columns, converts fluxes to AB mags.
+# -----------------------------------------------------------------------------
+TXIngestFlagshipCatalog:
+  parquet_paths:
+    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/24811.parquet
+    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/24812.parquet
+    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/24813.parquet
+    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/24814.parquet
+    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/24815.parquet
+    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/24816.parquet
+    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/24817.parquet
+    - /global/cfs/cdirs/lsst/groups/PZ/users/qhang/flagship_dp2/flagship_mock/Flagship/24818.parquet
+  chunk_rows: 100000
+  nside: 512
+
+
+# -----------------------------------------------------------------------------
+# TXTruthLensSelector
+# Selects lens galaxies by true redshift with a magnitude cut.
+# maglim_limit: 23.5 is consistent with previous dp2 runs; the fluxes have
+# been converted to AB mag by TXIngestFlagshipCatalog so this cut is valid.
+# -----------------------------------------------------------------------------
+TXTruthLensSelector:
+  lens_zbin_edges: [0.2, 0.4, 0.6, 0.8]
+  redshift_column: redshift_true
+  selection_type: maglim
+  maglim_band: r
+  maglim_limit: 23.5
+
+
+# -----------------------------------------------------------------------------
+# TXLensMaps
+# -----------------------------------------------------------------------------
+TXLensMaps:
+  chunk_rows: 100000
+
+
+# -----------------------------------------------------------------------------
+# TXDensityMaps
+# -----------------------------------------------------------------------------
+TXDensityMaps: {}
+
+
+# -----------------------------------------------------------------------------
+# TXTracerMetadata
+# -----------------------------------------------------------------------------
+TXTracerMetadata:
+  true_nz: False
+
+
+# -----------------------------------------------------------------------------
+# TXLSSDensityNullTests
+# -----------------------------------------------------------------------------
+TXLSSDensityNullTests:
+  ell_min: 10
+  ell_max: 1000
+  n_ell: 15
+  ell_spacing: log
+  null_test_threshold: 3.0
+  supreme_path_root: /pscratch/sd/a/anicola/DP2/data/sysmaps/
+  fill_missing_pix: True
+
+
+# -----------------------------------------------------------------------------
+# TXLensNoiseMaps
+# -----------------------------------------------------------------------------
+TXLensNoiseMaps:
+  chunk_rows: 100000
+  clustering_realizations: 30
+
+
+# -----------------------------------------------------------------------------
+# TXTwoPointFourier
+# -----------------------------------------------------------------------------
+TXTwoPointFourier:
+  ell_min: 10
+  ell_max: 1500
+  n_ell: 20
+  ell_spacing: log
+  mask_threshold: 0.0
+  flip_g1: False
+  flip_g2: False
+  do_pos_pos: True
+  do_shear_pos: False
+  do_shear_shear: False
+  true_shear: False
+  deproject_syst_clustering: False
+  systmaps_clustering_dir: /pscratch/sd/a/anicola/DP2/data/sysmaps/
+  cache_dir: data/cache
+  analytic_noise: True
+
+
+# -----------------------------------------------------------------------------
+# TXFourierNamasterCovariance
+# -----------------------------------------------------------------------------
+TXFourierNamasterCovariance:
+  use_true_shear: False
+  scratch_dir: data/temp

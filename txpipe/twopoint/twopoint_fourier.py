@@ -19,7 +19,6 @@ from ..utils import choose_pixelization, array_hash
 from ..theory.theory_utils import theory_3x2pt
 import sys
 import warnings
-import pathlib
 
 # Using the same convention as in twopoint.py
 SHEAR_SHEAR = 0
@@ -72,7 +71,10 @@ class TXTwoPointFourier(PipelineStage):
         ("lens_noise_maps", ClusteringNoiseMaps),
     ]
     output_main = "twopoint_data_fourier"
-    outputs = [(output_main, SACCFile)]
+    outputs = [
+        (output_main, SACCFile),
+        ("twopoint_data_fourier_no_deproj", SACCFile),
+    ]
 
     config_options = {
         "mask_threshold": StageParameter(float, 0.0, msg="Threshold for masking pixels"),
@@ -83,11 +85,21 @@ class TXTwoPointFourier(PipelineStage):
         "deproject_syst_clustering": StageParameter(
             bool, False, msg="Whether to deproject systematic modes from clustering"
         ),
-        "systmaps_clustering_dir": StageParameter(str, "", msg="Directory containing systematic maps for clustering"),
+        "also_compute_no_deproj": StageParameter(
+            bool, False,
+            msg="When deproject_syst_clustering=True, also compute and save power spectra without deprojection to twopoint_data_fourier_no_deproj"
+        ),
+        "systmaps_clustering_dir": StageParameter(str, "", msg="Systematics maps for clustering: a directory, glob pattern or path prefix (HEALPix or HealSparse files)"),
+        "systmaps_healsparse_reduction": StageParameter(
+            str, "mean", msg="Reduction method when degrading a HealSparse systematics map to a lower nside ('mean', 'median', 'std', 'max', 'min', 'sum', 'prod')"
+        ),
         "ell_min": StageParameter(int, 100, msg="Minimum ell value for power spectra"),
         "ell_max": StageParameter(int, 1500, msg="Maximum ell value for power spectra"),
         "n_ell": StageParameter(int, 20, msg="Number of ell bins"),
         "ell_spacing": StageParameter(str, "log", msg="Spacing of ell bins (log or linear)"),
+        "ell_edges": StageParameter(
+            list, [], msg="Explicit ell bin edges (bin i = [e_i, e_i+1)); overrides ell_min/n_ell/ell_spacing if non-empty"
+        ),
         "true_shear": StageParameter(bool, False, msg="Whether to use true shear values"),
         "analytic_noise": StageParameter(bool, False, msg="Whether to use analytic noise estimates"),
         "gaussian_sims_factor": StageParameter(
@@ -170,6 +182,17 @@ class TXTwoPointFourier(PipelineStage):
         for i, j, k in calcs:
             self.compute_power_spectra(pixel_scheme, i, j, k, maps, workspace_cache, ell_bins, theory_sacc, f_sky)
 
+        # Save shear-shear results locally before MPI gather so they can be
+        # seeded into the no-deproj second pass (shear-shear is mask-only and
+        # does not involve density fields, so it is identical in both passes).
+        shear_shear_results_local = [
+            r for r in self.results if r.corr_type not in (
+                sacc.standard_types.galaxy_shearDensity_cl_e,
+                sacc.standard_types.galaxy_shearDensity_cl_b,
+                sacc.standard_types.galaxy_density_cl,
+            )
+        ]
+
         if self.rank == 0:
             print(f"Collecting results together")
         # Pull all the results together to the master process.
@@ -179,6 +202,40 @@ class TXTwoPointFourier(PipelineStage):
         if self.rank == 0:
             self.save_power_spectra(tracer_sacc, nbin_source, nbin_lens)
             print("Saved power spectra")
+
+        # ------------------------------------------------------------------
+        # Optional second pass: power spectra WITHOUT systematics deprojection
+        # Only shear-pos and pos-pos need to be recomputed; shear-shear results
+        # are identical (no density fields) and are carried over from the first pass.
+        # ------------------------------------------------------------------
+        if (self.config["deproject_syst_clustering"]
+                and self.config["also_compute_no_deproj"]
+                and maps["df_no_deproj"] is not None):
+
+            if self.rank == 0:
+                print("Computing no-deprojection power spectra (second pass) ...")
+
+            # Seed second pass with the per-rank shear-shear results from pass 1
+            self.results = list(shear_shear_results_local)
+
+            # Swap density fields to the no-deproj variants
+            maps["df"] = maps["df_no_deproj"]
+
+            # Only recompute density-involving calculations
+            calcs_no_ss = [c for c in calcs if c[2] != SHEAR_SHEAR]
+            for i, j, k in calcs_no_ss:
+                self.compute_power_spectra(pixel_scheme, i, j, k, maps, workspace_cache, ell_bins, theory_sacc, f_sky)
+
+            if self.rank == 0:
+                print("Collecting no-deprojection results together")
+            self.collect_results()
+
+            if self.rank == 0:
+                self.save_power_spectra(
+                    tracer_sacc, nbin_source, nbin_lens,
+                    output_name="twopoint_data_fourier_no_deproj",
+                )
+                print("Saved no-deprojection power spectra")
 
     def load_maps(self):
         import pymaster as nmt
@@ -286,10 +343,18 @@ class TXTwoPointFourier(PipelineStage):
                 density_fields = [
                     (nmt.NmtField(clustering_weight, [d], templates=s_maps, n_iter=0, lmax=lmax1)) for d in d_maps
                 ]
+                if self.config["also_compute_no_deproj"]:
+                    density_fields_no_deproj = [
+                        (nmt.NmtField(clustering_weight, [d], n_iter=0, lmax=lmax1)) for d in d_maps
+                    ]
+                else:
+                    density_fields_no_deproj = None
             else:
                 density_fields = [(nmt.NmtField(clustering_weight, [d], n_iter=0, lmax=lmax1)) for d in d_maps]
+                density_fields_no_deproj = None
         else:
             density_fields = []
+            density_fields_no_deproj = None
 
         if self.config["do_shear_pos"] or self.config["do_shear_shear"]:
             lensing_fields = [
@@ -307,6 +372,7 @@ class TXTwoPointFourier(PipelineStage):
             "d": d_maps,
             "lf": lensing_fields,
             "df": density_fields,
+            "df_no_deproj": density_fields_no_deproj,
             "nbin_source": nbin_source,
             "nbin_lens": nbin_lens,
         }
@@ -314,58 +380,31 @@ class TXTwoPointFourier(PipelineStage):
         return pixel_scheme, maps, f_sky
     
     def read_systematics_maps(self, mask_gc):
+        """Read the survey-property maps in systmaps_clustering_dir as NaMaster templates.
+
+        Uses the shared reader in txpipe.utils.systematics_maps. Returns
+        (s_maps, nside), or (None, None) and switches deprojection off if no
+        maps could be read.
+        """
         import healpy as hp
+        from .utils.systematics_maps import read_systematics_maps
 
         print("Deprojecting systematics maps for number counts")
-        n_systmaps = 0
-        s_maps = []
-        systmaps_clustering_dir = self.config["systmaps_clustering_dir"]
-        systmaps_path = pathlib.Path(systmaps_clustering_dir)
-        for systmap in systmaps_path.iterdir():
-            try:
-                if systmap.is_file():
-                    if pathlib.Path(systmap).suffix != ".fits":
-                        print(
-                            "Warning: Problem reading systematics map file",
-                            systmap,
-                            "Not a HEALPix .fits file.",
-                        )
-                        warnings.warn("Systematics map file must be a HEALPix .fits file.")
-                        print("Ignoring", systmap)
-                    else:
-                        systmap_file = str(systmap)
-                        self.config[f"clustering_deproject_{n_systmaps}"] = systmap_file  # for provenance
-                        print("Reading clustering systematics map file:", systmap_file)
-                        syst_map = hp.read_map(systmap_file, verbose=False)
+        s_maps, names = read_systematics_maps(
+            self.config["systmaps_clustering_dir"],
+            mask_gc,
+            reduction=self.config["systmaps_healsparse_reduction"],
+        )
+        for i, name in enumerate(names):
+            self.config[f"clustering_deproject_{i}"] = name  # for provenance
 
-                        # normalize map for Namaster
-                        # calculate the mean, accounting for case where mask isn't binary
-                        unmasked = mask_gc > 0.0
-                        mean = (syst_map[unmasked] * mask_gc[unmasked]).sum() / mask_gc[unmasked].sum()
-                        print("Syst map: mean value = ", mean)
-                        # subtract the mean rather than normalise by it, as some systematics will have ~0 mean
-                        # (other pixels can stay as hp.UNSEEN since they are masked anyway)
-                        syst_map[unmasked] -= mean
-
-                        s_maps.append(syst_map)
-                        n_systmaps += 1
-            except:
-                print("Warning: Problem with systematics map file", systmap)
-                print("Ignoring", systmap)
-
-        print("Number of systematics maps read: ", n_systmaps)
-        if n_systmaps == 0:
+        if not s_maps:
             print("No systematics maps found. Skipping deprojection.")
-            s_maps = None
-            nside = None
             self.config["deproject_syst_clustering"] = False
-        else:
-            print("Using systematics maps for galaxy number counts.")
-            # We assume all systematics maps have the same nside
-            nside = hp.pixelfunc.get_nside(syst_map)
-            # needed for NaMaster:
-            s_maps = np.array(s_maps)
-        return s_maps, nside
+            return None, None
+
+        print("Using systematics maps for galaxy number counts.")
+        return np.array(s_maps), hp.get_nside(mask_gc)
 
     def populate_hash_metadata(self, maps, ell_bins):
         # Make a hash for the ell binning
@@ -745,17 +784,17 @@ class TXTwoPointFourier(PipelineStage):
             with self.open_input("shear_photoz_stack", wrapper=True) as f:
                 for i in range(nbin_source):
                     z, Nz = f.get_bin_n_of_z(i)
-                    sacc_data.add_tracer("NZ", f"source_{i}", z, Nz)
+                    sacc_data.add_tracer("NZ", f"source_{i}", z, Nz, quantity="galaxy_shear")
 
         if nbin_lens > 0:
             with self.open_input("lens_photoz_stack", wrapper=True) as f:
                 for i in range(nbin_lens):
                     z, Nz = f.get_bin_n_of_z(i)
-                    sacc_data.add_tracer("NZ", f"lens_{i}", z, Nz)
+                    sacc_data.add_tracer("NZ", f"lens_{i}", z, Nz, quantity="galaxy_density")
 
         return sacc_data
 
-    def save_power_spectra(self, tracer_sacc, nbin_source, nbin_lens):
+    def save_power_spectra(self, tracer_sacc, nbin_source, nbin_lens, output_name=None):
         import sacc
         from sacc.windows import BandpowerWindow
 
@@ -768,6 +807,10 @@ class TXTwoPointFourier(PipelineStage):
         Cdd = sacc.standard_types.galaxy_density_cl
 
         S = tracer_sacc.copy()
+        # Companion noise SACC: same structure as S but stores the noise N_ell
+        # that was subtracted from each raw bandpower.  Saved as *_noise.sacc
+        # alongside the main output so it can be loaded and inspected directly.
+        S_noise = tracer_sacc.copy()
 
         # We have saved the results in a big list.  Each entry contains a single
         # bin pair and spectrum type, but many data points at different angles.
@@ -811,19 +854,35 @@ class TXTwoPointFourier(PipelineStage):
                     n_ell=noise[i],
                     window_ind=i,
                 )
+                # Mirror into the noise SACC so it can be loaded independently
+                S_noise.add_data_point(
+                    d.corr_type,
+                    (tracer1, tracer2),
+                    noise[i],
+                    ell=d.l[i],
+                    window=win,
+                    i=d.i,
+                    j=d.j,
+                    window_ind=i,
+                )
 
             # Add n_ell_coupled to tracer metadata. This will work as far as
             # the coupled noise is constant
             tr = S.tracers[tracer1]
+            tr_noise = S_noise.tracers[tracer1]
             if (tracer1 == tracer2) and ("n_ell_coupled" not in tr.metadata):
                 if self.config["analytic_noise"]:
                     # Save the last element because the first one is zero for
                     # shear
-                    tr.metadata["n_ell_coupled"] = d.noise_coupled[-1]
+                    n_ell_coupled_val = d.noise_coupled[-1]
                 else:
                     # If computed through simulations, it might be better to
                     # take the mean since, for now, only a float can be passed
-                    tr.metadata["n_ell_coupled"] = np.mean(d.noise_coupled)
+                    i = 0 if "lens" in tracer1 else 2
+                    n_ell_coupled_val = np.mean(d.noise_coupled)
+
+                tr.metadata["n_ell_coupled"] = n_ell_coupled_val
+                tr_noise.metadata["n_ell_coupled"] = n_ell_coupled_val
 
                 if self.config["gaussian_sims_factor"] != [1.0] and "lens" in tracer1:
                     print(tracer1)
@@ -831,7 +890,9 @@ class TXTwoPointFourier(PipelineStage):
                         "ATTENTION: We are multiplying the coupled noise saved in the sacc file by the gaussian sims factor."
                     )
                     print("Original noise:", d.noise_coupled)
-                    tr.metadata["n_ell_coupled"] *= self.config["gaussian_sims_factor"][int(tracer1[-1])] ** 2
+                    factor2 = self.config["gaussian_sims_factor"][int(tracer1[-1])] ** 2
+                    tr.metadata["n_ell_coupled"] *= factor2
+                    tr_noise.metadata["n_ell_coupled"] *= factor2
 
         # Save provenance information
         provenance = self.gather_provenance()
@@ -858,11 +919,20 @@ class TXTwoPointFourier(PipelineStage):
         S.metadata["binning/ell_spacing"] = self.config["ell_spacing"]
         S.metadata["binning/n_ell"] = self.config["n_ell"]
 
-        # Get output name (will be different if subclass used)
-        output = self.output_main
-        # And we're all done!
+        # Get output name (overridable for no-deproj second pass or subclass)
+        output = output_name if output_name is not None else self.output_main
         output_filename = self.get_output(output)
         S.save_fits(output_filename, overwrite=True)
+
+        # Save companion noise SACC alongside the signal SACC.
+        # The noise values (decoupled N_ell per bandpower) are also stored as
+        # the 'n_ell' tag on each data point in the main SACC, but this
+        # companion file makes them directly loadable as a stand-alone spectrum.
+        noise_filename = output_filename.replace(".sacc", "_noise.sacc")
+        S_noise.metadata["description"] = "Noise N_ell subtracted from raw Cls (same bandpower grid as signal SACC)"
+        S_noise.metadata["analytic_noise"] = self.config["analytic_noise"]
+        S_noise.save_fits(noise_filename, overwrite=True)
+        print(f"Saved noise spectra to {noise_filename}")
 
 
 class TXTwoPointFourierCatalog(TXTwoPointFourier):

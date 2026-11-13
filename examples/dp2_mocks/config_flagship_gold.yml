@@ -1,0 +1,178 @@
+# =============================================================================
+# TXPipe configuration — Flagship Gold (24-pixel) run, i-band SNR > 5 cut
+#
+# Differences from config_lens.yml:
+#   - TXIngestParquetCatalog.parquet_paths → 24 new pixels (0–23)
+#   - TXTruthLensSelector.snr_i_cut: 5.0 (new i-band SNR cut)
+#   - TXSystematicsTwoPointFourier section added
+# =============================================================================
+
+global:
+  chunk_rows: 100000
+  pixelization: healpix
+  nside: 512
+  sparse: True
+
+
+# -----------------------------------------------------------------------------
+# TXIngestParquetCatalog
+# -----------------------------------------------------------------------------
+TXIngestParquetCatalog:
+  parquet_paths:
+    - /global/cfs/cdirs/lsst/groups/PZ/Flagship/dp2_mock_run_flagship_gold_test/0/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Flagship/dp2_mock_run_flagship_gold_test/1/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Flagship/dp2_mock_run_flagship_gold_test/2/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Flagship/dp2_mock_run_flagship_gold_test/3/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Flagship/dp2_mock_run_flagship_gold_test/4/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Flagship/dp2_mock_run_flagship_gold_test/5/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Flagship/dp2_mock_run_flagship_gold_test/6/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Flagship/dp2_mock_run_flagship_gold_test/7/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Flagship/dp2_mock_run_flagship_gold_test/8/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Flagship/dp2_mock_run_flagship_gold_test/9/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Flagship/dp2_mock_run_flagship_gold_test/10/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Flagship/dp2_mock_run_flagship_gold_test/11/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Flagship/dp2_mock_run_flagship_gold_test/12/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Flagship/dp2_mock_run_flagship_gold_test/13/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Flagship/dp2_mock_run_flagship_gold_test/14/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Flagship/dp2_mock_run_flagship_gold_test/15/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Flagship/dp2_mock_run_flagship_gold_test/16/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Flagship/dp2_mock_run_flagship_gold_test/17/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Flagship/dp2_mock_run_flagship_gold_test/18/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Flagship/dp2_mock_run_flagship_gold_test/19/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Flagship/dp2_mock_run_flagship_gold_test/20/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Flagship/dp2_mock_run_flagship_gold_test/21/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Flagship/dp2_mock_run_flagship_gold_test/22/output_deredden_lsst_obs_cond_dp2.pq
+    - /global/cfs/cdirs/lsst/groups/PZ/Flagship/dp2_mock_run_flagship_gold_test/23/output_deredden_lsst_obs_cond_dp2.pq
+  chunk_rows: 100000
+
+
+# -----------------------------------------------------------------------------
+# TXTruthLensSelector
+# -----------------------------------------------------------------------------
+TXTruthLensSelector:
+  lens_zbin_edges: [0.4, 0.6, 0.8, 1.0]
+  redshift_column: redshift_true
+  selection_type: maglim
+  maglim_band: r
+  maglim_limit: 23.5
+  snr_i_cut: 5.0   # require i-band SNR > 5 (cuts objects with mag_i_err > ~0.217)
+
+
+# -----------------------------------------------------------------------------
+# TXLensMaps
+# -----------------------------------------------------------------------------
+TXLensMaps:
+  chunk_rows: 100000
+
+
+# -----------------------------------------------------------------------------
+# TXSimpleMask  (not run by default; uncomment in pipeline if needed)
+# -----------------------------------------------------------------------------
+TXSimpleMask:
+  min_counts: 1
+
+
+# -----------------------------------------------------------------------------
+# TXDensityMaps
+# -----------------------------------------------------------------------------
+TXDensityMaps: {}
+
+
+# -----------------------------------------------------------------------------
+# TXTracerMetadata
+# -----------------------------------------------------------------------------
+TXTracerMetadata:
+  true_nz: False
+
+
+# -----------------------------------------------------------------------------
+# TXLSSDensityNullTests
+# -----------------------------------------------------------------------------
+TXLSSDensityNullTests:
+  ell_min: 10
+  ell_max: 1000
+  n_ell: 15
+  ell_spacing: log
+  null_test_threshold: 3.0
+  supreme_path_root: /global/cfs/cdirs/lsst/groups/PZ/users/qhang/dp2_maps_may/
+  fill_missing_pix: True
+
+
+# -----------------------------------------------------------------------------
+# TXSystematicsTwoPointFourier
+# Cross-correlates galaxy density maps with all systematics maps,
+# both with and without mode deprojection, and computes Gaussian covariance.
+# -----------------------------------------------------------------------------
+TXSystematicsTwoPointFourier:
+  systmaps_clustering_dir: /global/cfs/cdirs/lsst/groups/PZ/users/qhang/dp2_maps_may/
+  systmaps_healsparse_reduction: mean
+  mask_threshold: 0.0
+  ell_min: 10
+  ell_max: 1500
+  n_ell: 20
+  ell_spacing: log
+  cache_dir: data/cache/systematics_twopoint_fourier
+
+
+# -----------------------------------------------------------------------------
+# TXLensNoiseMaps  (not run by default)
+# -----------------------------------------------------------------------------
+TXLensNoiseMaps:
+  chunk_rows: 100000
+  clustering_realizations: 30
+
+
+# -----------------------------------------------------------------------------
+# TXTwoPointFourier
+# -----------------------------------------------------------------------------
+TXTwoPointFourier:
+  ell_min: 10
+  ell_max: 1500
+  n_ell: 20
+  ell_spacing: log
+  mask_threshold: 0.0
+  flip_g1: False
+  flip_g2: False
+  do_pos_pos: True
+  do_shear_pos: False
+  do_shear_shear: False
+  true_shear: False
+  deproject_syst_clustering: True
+  also_compute_no_deproj: True
+  systmaps_clustering_dir: /global/cfs/cdirs/lsst/groups/PZ/users/qhang/dp2_maps_may/
+  cache_dir: data/cache
+  analytic_noise: True
+
+
+# -----------------------------------------------------------------------------
+# TXFourierNamasterCovariance
+# -----------------------------------------------------------------------------
+TXFourierNamasterCovariance:
+  use_true_shear: False
+  scratch_dir: data/temp
+
+
+# -----------------------------------------------------------------------------
+# CMB lensing stages (commented out; copy from config_lens.yml when needed)
+# -----------------------------------------------------------------------------
+TXIngestPlanckLensingMaps:
+  kappa_file: "/global/cfs/cdirs/cmb/data/planck2020/PR4_lensing/PR4_klm_dat_p.fits"
+  mask_file: "/global/cfs/cdirs/cmb/data/planck2020/PR4_lensing/mask.fits.gz"
+  experiment: "Planck"
+
+TXCMBLensingCrossMonteCarloCorrection:
+  nside: 512
+  nsim: 400
+  bandpower_width: 30
+  mask_threshold: 0.0
+  lmax: 0
+  experiment: "ACT_DR6"
+  sim_index_start: 0
+  ffp10_offset: 0
+  input_alm_template: /global/cfs/projectdirs/act/www/dr6_lensing_v1/sim_inputs/kappa_alm/input_kappa_alm_sim_{i:04d}.fits
+  input_alm_hdu: 1
+  recon_alm_template: /global/cfs/projectdirs/act/www/dr6_lensing_v1/maps/baseline/simulations/kappa_alm_sim_act_dr6_lensing_v1_baseline_{i:04d}.fits
+
+TXTwoPointFourierCMBLensingCrossDensity:
+  bandpower_width: 30
+  mask_threshold: 0.0
