@@ -3,7 +3,6 @@ import ceci
 pipeline_files = [
     "examples/legacy/2.2i/pipeline.yml",
     "examples/mocks/buzzard/pipeline.yml",
-    "examples/clmm/pipeline.yml",
     "examples/mocks/cosmodc2/pipeline.yml",
     "examples/stage3/desy1/pipeline.yml",
     "examples/stage3/desy3/pipeline.yml",

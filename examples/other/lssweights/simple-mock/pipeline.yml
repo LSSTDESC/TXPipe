@@ -22,7 +22,7 @@ stages:
 modules: txpipe 
 
 # Where to put outputs
-output_dir: data/example/outputs_density_sky_cuts/
+output_dir: data/other/lssweights/simple-mock/output/
 
 # How to run the pipeline: mini, parsl, or cwl
 launcher:
@@ -34,7 +34,7 @@ site:
     name: local
 
 # configuration settings
-config: examples/lssweights/simple-mock/config.yml
+config: examples/other/lssweights/simple-mock/config.yml
 
 inputs:
     # See README for paths to download these files
@@ -52,6 +52,6 @@ inputs:
 # if interrupted
 resume: False
 # where to put output logs for individual stages
-log_dir: data/example/outputs_density_sky_cuts/logs/
+log_dir: data/other/lssweights/simple-mock/logs/
 # where to put an overall parsl pipeline log
-pipeline_log: /log.txt
+pipeline_log: data/other/lssweights/simple-mock/log.txt

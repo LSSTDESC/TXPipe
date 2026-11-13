@@ -263,6 +263,7 @@ jobs:
         jupyter execute notebooks/Welcome\ to\ TXPipe.ipynb
         
     - name: DP2 And Other Flow Charts
+      if: ${{ matrix.pipeline == 'metadetect' && matrix.os == 'ubuntu-latest' }}
       run: |
         source ./conda/bin/activate
         # Make flow charts from the DP2 pipelines. Unlike the --dry-run approach this doesn't

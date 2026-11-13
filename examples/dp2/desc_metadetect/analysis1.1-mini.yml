@@ -2,6 +2,8 @@
 # Processors for PZ stages. There's a bug in rail_base logging
 # that crashes if you use too many. PR in progress.
 
+{% set pipe_name = "desc_metadetect_1.1" %}
+
 stages:
   - name: TXDP2DESCSelection
     nprocess: 8
@@ -23,6 +25,7 @@ stages:
     aliases:
         twopoint_data_raw: twopoint_data_real_raw
         twopoint_data_blinded: twopoint_data_real
+    threads_per_process: 4
   - name: TXTwoPointPlots        # Make plots of 2pt correlations
     aliases:
       twopoint_data_real: summary_statistics_real
@@ -173,7 +176,7 @@ inputs:
 # if interrupted
 resume: true
 # where to put output logs for individual stages
-log_dir: data/dp2/desc_metadetect/metadetect_dp2/logs
+log_dir: data/dp2/desc_metadetect/metadetect_desc_dp2_mini/logs
 # where to put an overall parsl pipeline log
-pipeline_log: data/dp2/desc_metadetect/metadetect_dp2/log.txt
+pipeline_log: data/dp2/desc_metadetect/metadetect_desc_dp2_mini/log.txt
 #registry: {}
