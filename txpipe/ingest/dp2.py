@@ -42,12 +42,34 @@ photometry (see `catalog.bands_keep` in params.yml), but
 TXBaseLensSelector subclasses unconditionally request a "mag_g" column
 regardless of `selection_type`, even though the maglim selection this
 pipeline uses never actually reads it.
+
+The input can also be a flat HDF5 catalog (one top-level dataset per
+column, same column names as the FITS table), e.g. the maglim_for_sompz.hdf5
+copy of the catalog that the SOMPZ photo-z were run on. Ingesting that file
+keeps the photometry catalog in the same row order as the SOMPZ per-object
+bin assignments read by TXSOMPZLensSelector.
 """
 
 from ..base_stage import PipelineStage
 from ..data_types import HDFFile
 from ceci.config import StageParameter
 import numpy as np
+
+
+class _HDF5Columns:
+    """Read-only, column-on-demand view of a flat HDF5 catalog (one top-level
+    dataset per column), so that run() can index it like an astropy Table."""
+
+    def __init__(self, path):
+        import h5py
+
+        self.file = h5py.File(path, "r")
+
+    def __getitem__(self, name):
+        return self.file[name][:]
+
+    def __len__(self):
+        return self.file["coord_ra"].shape[0]
 
 
 class TXIngestDP2Catalog(PipelineStage):
@@ -62,7 +84,8 @@ class TXIngestDP2Catalog(PipelineStage):
     Parameters
     ----------
     fits_path : str
-        Path to cat_basic.fits produced by dp2_preproc.py.
+        Path to cat_basic.fits produced by dp2_preproc.py, or to a flat HDF5
+        catalog with the same columns (read if it ends in .hdf5/.h5).
     bands : list[str]
         Bands to carry over (must match dp2_preproc.py's catalog.bands_keep).
     nside : int
@@ -86,7 +109,7 @@ class TXIngestDP2Catalog(PipelineStage):
 
     config_options = {
         "fits_path": StageParameter(
-            str, msg="Path to cat_basic.fits produced by dp2_preproc.py."
+            str, msg="Path to cat_basic.fits produced by dp2_preproc.py (or a flat .hdf5 catalog)."
         ),
         "bands": StageParameter(
             list, ["r", "i", "z"],
@@ -112,7 +135,10 @@ class TXIngestDP2Catalog(PipelineStage):
         chunk_rows = self.config["chunk_rows"]
 
         print(f"TXIngestDP2Catalog: reading {fits_path}", flush=True)
-        cat = Table.read(fits_path, format="fits")
+        if fits_path.endswith((".hdf5", ".h5")):
+            cat = _HDF5Columns(fits_path)
+        else:
+            cat = Table.read(fits_path, format="fits")
         nobj = len(cat)
         print(f"  {nobj:,} objects", flush=True)
 

@@ -39,6 +39,15 @@ class TXFourierNamasterCovariance(PipelineStage):
         "pickled_wigner_transform": StageParameter(str, "", msg="Path to pickled Wigner transform file."),
         "use_true_shear": StageParameter(bool, False, msg="Whether to use true shear values."),
         "scratch_dir": StageParameter(str, "temp", msg="Directory for temporary files."),
+        "ell_edges": StageParameter(
+            list,
+            [],
+            msg=(
+                "ell bin edges of the data vector (bin i = [e_i, e_i+1)), as given to TXTwoPointFourier. "
+                "If empty, the edges are reconstructed from the effective ells as geometric midpoints, "
+                "which is only approximate, and wrong for linear bins."
+            ),
+        ),
         "nside": StageParameter(int, 1024, msg="HEALPix nside parameter."),
         "apodize_mask": StageParameter(bool, False, msg="Apply smooth apodization to the mask before computing the covariance."),
         "apodization_scale": StageParameter(float, 1.0, msg="Apodization scale in degrees (only used when apodize_mask=True)."),
@@ -48,13 +57,27 @@ class TXFourierNamasterCovariance(PipelineStage):
             "theory",
             msg=(
                 "Which C_ell the Gaussian covariance is built from. 'theory': CCL predictions from "
-                "the fiducial cosmology and the tracers' n(z), with galaxy bias 1. 'measured': the "
+                "the fiducial cosmology and the tracers' n(z), with galaxy_bias (default 1). 'measured': the "
                 "measured (noise-subtracted) bandpowers in twopoint_data_fourier, each integer ell "
                 "taking its bandpower's value, negative values set to 0; use this when theory "
                 "predictions are not available yet (e.g. no reliable n(z) or bias). Noise is added "
                 "to the auto-spectra in both cases: 1/n_bar (or sigma_e^2/n_eff) with 'theory', and "
                 "the noise TXTwoPointFourier subtracted from each bandpower (its n_ell tag, which "
                 "accounts for non-binary mask weights) with 'measured'. Fourier-space only."
+            ),
+        ),
+        "galaxy_bias": StageParameter(
+            list,
+            [0.0],
+            msg="Linear galaxy bias per lens bin for the 'theory' C_ell; [0.0] means unit bias.",
+        ),
+        "covariance_noise": StageParameter(
+            str,
+            "nbar",
+            msg=(
+                "Lens noise added with covariance_input_cls='theory': 'nbar' (1/n_bar) or "
+                "'measured' (the n_ell noise TXTwoPointFourier subtracted, which accounts for "
+                "non-binary mask weights). 'measured' input C_ell always use the measured noise."
             ),
         ),
     }
@@ -75,12 +98,17 @@ class TXFourierNamasterCovariance(PipelineStage):
         rank = self.rank
 
         self.use_measured_cls = False
+        self.use_measured_noise = False
         if not self.do_xi:
             input_cls = self.config["covariance_input_cls"]
             if input_cls not in ("theory", "measured"):
                 raise ValueError(f"covariance_input_cls must be 'theory' or 'measured', not {input_cls!r}")
             self.use_measured_cls = input_cls == "measured"
             print(f"Building the covariance from {input_cls} C_ell")
+            noise_option = self.config["covariance_noise"]
+            if noise_option not in ("nbar", "measured"):
+                raise ValueError(f"covariance_noise must be 'nbar' or 'measured', not {noise_option!r}")
+            self.use_measured_noise = self.use_measured_cls or noise_option == "measured"
 
         self.scratch_dir = self.config["scratch_dir"]
         if rank == 0:
@@ -434,7 +462,9 @@ class TXFourierNamasterCovariance(PipelineStage):
             # or if it is a lens bin then generaete the corresponding
             # CCL tracer class
             elif "lens" in tracer:
-                b = 1.0 * np.ones(len(z))  # place holder
+                bias = self.config["galaxy_bias"]
+                b = (1.0 if bias == [0.0] else bias[nbin]) * np.ones(len(z))
+                print(f"Using linear bias {b[0]} for {tracer}")
                 n_gal = meta["n_lens"][nbin]
                 tracer_noise[tracer] = 1 / n_gal
                 ccl_tracers[tracer] = ccl.NumberCountsTracer(cosmo, has_rsd=False, dndz=(z, nz), bias=(z, b))
@@ -532,7 +562,7 @@ class TXFourierNamasterCovariance(PipelineStage):
         # These are zero for cross bins and as computed earlier for auto bins; with
         # covariance_input_cls='measured', the noise TXTwoPointFourier subtracted instead
         # (per ell, on NaMaster's input grid), so it matches the measured C_ell.
-        if self.use_measured_cls:
+        if self.use_measured_noise:
             def noise(t):
                 key = ("noise", t)
                 if key not in cache:
@@ -869,6 +899,17 @@ class TXFourierNamasterCovariance(PipelineStage):
             raise ValueError(
                 f"No ell values found for data type {dt}, tracers {t1}, {t2}"
             )
+
+        # Explicit edges (the same list given to TXTwoPointFourier) take precedence
+        if self.config.get("ell_edges"):
+            ell_edges = np.asarray(self.config["ell_edges"], dtype=float)
+            if len(ell_edges) - 1 != len(ell):
+                raise ValueError(f"ell_edges gives {len(ell_edges) - 1} bins but the data have {len(ell)} ell bins")
+            inside = (ell >= ell_edges[:-1]) & (ell < ell_edges[1:])
+            if not inside.all():
+                raise ValueError(f"effective ells {ell[~inside]} are outside their ell_edges bins")
+            print(f"Using the configured ell_edges ({len(ell)} bins): {ell_edges.astype(int).tolist()}")
+            return ell_edges
 
         # Reconstruct bin edges as geometric midpoints between consecutive
         # effective ell values, with the first and last edges extrapolated.

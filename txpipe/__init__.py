@@ -30,7 +30,7 @@ from .metadata import TXTracerMetadata
 from .convergence import TXConvergenceMaps
 from .map_correlations import TXMapCorrelations
 from .rail import PZRailSummarize, PZRealizationsPlot, TXParqetToHDF
-from .theory import TXTwoPointTheoryReal, TXTwoPointTheoryFourier
+from .theory import TXTwoPointTheoryReal, TXTwoPointTheoryFourier, TXTwoPointTheoryFourierCCL
 from .jackknife import TXJackknifeCenters
 from .twopoint_null_tests import TXGammaTFieldCenters
 from .twopoint_plots import TXTwoPointPlots, TXTwoPointPlotsFourier, TXTwoPointPlotsTheory
