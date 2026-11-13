@@ -1,7 +1,7 @@
 Rubin DP2 data
 ==============
 
-TXPipe can analyse the metadetect shear catalogs from Rubin Data Preview 2 (DP2), both as released by Rubin and as re-processed by DESC. The example pipelines are in ``examples/dp2``. The workflow has two parts: ingestion, which reads the Rubin/DESC data products and makes TXPipe-format files, and analysis.
+TXPipe can analyse the metadetect shear catalogs from Rubin Data Preview 2 (DP2), both as released by Rubin and as re-processed by DESC. The example pipelines are in ``examples/dp2`` (subdirectories ``rubin_metadetect``, ``desc_metadetect``, ``anacal`` and ``star_catalog``). The workflow has two parts: ingestion, which reads the Rubin/DESC data products and makes TXPipe-format files, and analysis.
 
 DP2 ingestion
 -------------
@@ -15,7 +15,7 @@ Ingestion converts the DP2 products into the TXPipe formats described in :ref:`F
 - :py:class:`~txpipe.ingest.metaDetect.TXIngestHealsparseMask` converts a healsparse mask file to a TXPipe mask.
 - :py:class:`~txpipe.maps.masks.TXCutShearCatalog` can cut the ingested catalog down to a smaller region, to make test data sets.
 
-The pipelines for these are ``examples/dp2/ingestion.yml`` (Rubin) and ``examples/dp2/ingestion1.1.yml`` (DESC version 1.1). They are marked as drafts in the files. The ingestion can be run in parallel with MPI, and the ``nprocess`` setting for each stage in the pipeline file controls this.
+The pipelines for these are ``examples/dp2/rubin_metadetect/ingestion.yml`` (Rubin) and ``examples/dp2/desc_metadetect/ingestion1.1.yml`` (DESC version 1.1). They are marked as drafts in the files. The ingestion can be run in parallel with MPI, and the ``nprocess`` setting for each stage in the pipeline file controls this.
 
 Analysis
 --------
@@ -51,4 +51,4 @@ The tomography in these pipelines uses a self-organizing map (SOM) in RAIL. In o
 
 The RAIL stages need the RAIL packages listed in ``bin/environment-local.yml``. See :ref:`Source selection and tomography` for the general structure.
 
-Outputs from the example pipelines for the Rubin and DESC catalogs are shown in ``examples/dp2/dp2-shear.png`` and ``examples/dp2/dp2-shear-and-pz.png``.
+Outputs from the example pipelines for the Rubin and DESC catalogs are shown in ``examples/dp2/rubin_metadetect/dp2-shear.png`` and ``examples/dp2/rubin_metadetect/dp2-shear-and-pz.png``.

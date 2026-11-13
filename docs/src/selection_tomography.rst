@@ -71,8 +71,8 @@ Survey-specific cuts
 
 Some surveys apply more cuts than the simple ones. These are implemented as subclasses that you choose in the pipeline instead of the generic selection stage:
 
-- :py:class:`~txpipe.selection.source_selection.TXDP2RubinMetadetectSelection` applies the cuts for the Rubin metadetect catalogs of DP2: primary-object and mask-fraction cuts, signal-to-noise and size cuts, magnitude cuts in g, r and i, and colour sanity cuts. See ``examples/dp2/analysis_rubin_metadetect.yml``.
-- :py:class:`~txpipe.selection.source_selection.TXDP2DESCSelection` applies a similar set for the DESC-run scalar metadetect catalogs of DP2, including a PSF-ellipticity cut. See ``examples/dp2/analysis_desc_metadetect_1.1.yml``.
+- :py:class:`~txpipe.selection.source_selection.TXDP2RubinMetadetectSelection` applies the cuts for the Rubin metadetect catalogs of DP2: primary-object and mask-fraction cuts, signal-to-noise and size cuts, magnitude cuts in g, r and i, and colour sanity cuts. See ``examples/dp2/rubin_metadetect/analysis_rubin_metadetect.yml``.
+- :py:class:`~txpipe.selection.source_selection.TXDP2DESCSelection` applies a similar set for the DESC-run scalar metadetect catalogs of DP2, including a PSF-ellipticity cut. See ``examples/dp2/desc_metadetect/analysis_desc_metadetect_1.1.yml``.
 
 All the cuts can be changed in the configuration file; see the stage documentation in :ref:`Selection` for the options and their defaults.
 
@@ -87,11 +87,11 @@ Step 2: tomography
 
 There are currently four ways to get tomographic bins.
 
-**Random forest.** A random-forest classifier is trained to predict redshift bins from magnitudes and colours using a spectroscopic or other training catalog (:py:class:`~txpipe.photoz.tomography.TXTrainRandomForestTomography`), and applied to the shear catalog (:py:class:`~txpipe.photoz.tomography.TXApplyRandomForestSourceTomography`). Training is a separate stage because it can be slow with a large training sample. This is what the ``examples/metadetect``, ``examples/metacal`` and ``examples/cosmodc2`` pipelines do. The training stage needs the bin edges ``source_zbin_edges`` and the bands to use in its configuration.
+**Random forest.** A random-forest classifier is trained to predict redshift bins from magnitudes and colours using a spectroscopic or other training catalog (:py:class:`~txpipe.photoz.tomography.TXTrainRandomForestTomography`), and applied to the shear catalog (:py:class:`~txpipe.photoz.tomography.TXApplyRandomForestSourceTomography`). Training is a separate stage because it can be slow with a large training sample. This is what the ``examples/test/metadetect``, ``examples/test/metacal`` and ``examples/mocks/cosmodc2`` pipelines do. The training stage needs the bin edges ``source_zbin_edges`` and the bands to use in its configuration.
 
-**Simple redshift cuts.** If the catalog contains true (or other estimated) redshifts, :py:class:`~txpipe.photoz.tomography.TXSimpleRedshiftSourceTomography` bins on the column ``redshift_col``. This is used for tests and for mocks, for example in ``examples/desy1`` and ``examples/kids-1000``.
+**Simple redshift cuts.** If the catalog contains true (or other estimated) redshifts, :py:class:`~txpipe.photoz.tomography.TXSimpleRedshiftSourceTomography` bins on the column ``redshift_col``. This is used for tests and for mocks, for example in ``examples/stage3/desy1`` and ``examples/stage3/kids-1000``.
 
-**RAIL** A RAIL tomography algorithm such as a SOM can be run on each variant of the catalog, and the results gathered into a single bin-assignments file by :py:class:`~txpipe.photoz.rail.summarize.PZCollateRailAssignmentsMetadetect` (or ``PZCollateRailAssignmentsScalarMetadetect`` for scalar metadetect catalogs). See ``examples/dp2/analysis_rubin_metadetect.yml`` for a complete pipeline, and :py:class:`~txpipe.photoz.rail.summarize.PZGenerateSOMInformerSubsample` for making a training sample from the selected objects.
+**RAIL** A RAIL tomography algorithm such as a SOM can be run on each variant of the catalog, and the results gathered into a single bin-assignments file by :py:class:`~txpipe.photoz.rail.summarize.PZCollateRailAssignmentsMetadetect` (or ``PZCollateRailAssignmentsScalarMetadetect`` for scalar metadetect catalogs). See ``examples/dp2/rubin_metadetect/analysis_rubin_metadetect.yml`` for a complete pipeline, and :py:class:`~txpipe.photoz.rail.summarize.PZGenerateSOMInformerSubsample` for making a training sample from the selected objects.
 
 **External** You could simply ingest an existing tomography file, for example from an external tool. There are no examples of this yet but it should be straightforward.
 
@@ -114,7 +114,7 @@ The calibration stages combine the cuts, so that the sample used for calibration
 Examples of the stage chain
 ---------------------------
 
-A metadetect pipeline with random-forest tomography (``examples/metadetect/pipeline.yml``):
+A metadetect pipeline with random-forest tomography (``examples/test/metadetect/pipeline.yml``):
 
 .. code-block:: yaml
 

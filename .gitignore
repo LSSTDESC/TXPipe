@@ -7,6 +7,14 @@ runinfo/
 test/logs/
 ipengine.json
 data/example
+# Example pipeline outputs, written to data/<group>/<name>/
+data/desi/
+data/dp2/
+data/legacy/
+data/mocks/
+data/other/
+data/stage3/
+data/test/
 www/
 htmlcov/
 txpipe.sublime*

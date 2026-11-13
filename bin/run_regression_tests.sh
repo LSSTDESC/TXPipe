@@ -76,17 +76,17 @@ add_pipeline() {
 # Optional 6th arg: a shell command run before the pipeline (failure = test failure).
 # Optional 7th arg: extra arguments appended to the ceci command line.
 #            name                     pipeline yml                                    file that should exist if the run succeeded                              log dir                                         extra env var (NAME=VALUE), or ""
-add_pipeline metadetect               examples/metadetect/pipeline.yml               data/example/outputs_metadetect/shear_xi_plus.png                         data/example/logs_metadetect                    ""
-add_pipeline scalar_metadetect        examples/scalar_metadetect/pipeline.yml        data/example/outputs_scalar_metadetect/shear_xi_plus.png                  data/example/logs_scalar_metadetect             "" \
+add_pipeline metadetect               examples/test/metadetect/pipeline.yml               data/test/metadetect/outputs_metadetect/shear_xi_plus.png                         data/test/metadetect/logs_metadetect                    ""
+add_pipeline scalar_metadetect        examples/test/scalar_metadetect/pipeline.yml        data/test/scalar_metadetect/outputs_scalar_metadetect/shear_xi_plus.png                  data/test/scalar_metadetect/logs_scalar_metadetect             "" \
     "python bin/make_scalar_metadetect.py"
-add_pipeline metacal                examples/metacal/pipeline.yml                  data/example/outputs_metacal/shear_xi_plus.png                            data/example/logs_metacal                       ""
-add_pipeline redmagic                 examples/redmagic/pipeline.yml                 data/example/outputs_redmagic/shear_xi_plus.png                           data/example/logs_redmagic                      ""
-add_pipeline lensfit                  examples/lensfit/pipeline.yml                  data/example/outputs_lensfit/shear_xi_plus.png                            data/example/logs_lensfit                       ""
-add_pipeline metadetect_source_only   examples/metadetect_source_only/pipeline.yml   data/example/outputs_metadetect_source_only/shear_xi_plus.png             data/example/logs_metadetect_source_only        "TX_DASK_DEBUG=1"
-add_pipeline mock_shear               examples/mock_shear/pipeline.yml               data/example/outputs_mock_shear/binned_shear_catalog.hdf5                 data/example/logs_mock_shear                    ""
-add_pipeline cmb                      examples/cmb/quaia.yml                         data/cmb/outputs_quaia/twopoint_data_fourier_cmb_cross_density_plot.png  data/cmb/logs_quaia                             ""
-add_pipeline metadetect_different_lengths examples/metadetect/pipeline.yml            data/example/outputs_metadetect/shear_xi_plus.png                         data/example/logs_metadetect                    "" \
-    "rm -f data/example/outputs_metadetect/shear_xi_plus.png && python bin/make_metadetect_file_different_lengths.py" \
+add_pipeline metacal                examples/test/metacal/pipeline.yml                  data/test/metacal/outputs_metacal/shear_xi_plus.png                            data/test/metacal/logs_metacal                       ""
+add_pipeline redmagic                 examples/test/redmagic/pipeline.yml                 data/test/redmagic/outputs_redmagic/shear_xi_plus.png                           data/test/redmagic/logs_redmagic                      ""
+add_pipeline lensfit                  examples/test/lensfit/pipeline.yml                  data/test/lensfit/outputs_lensfit/shear_xi_plus.png                            data/test/lensfit/logs_lensfit                       ""
+add_pipeline metadetect_source_only   examples/test/metadetect_source_only/pipeline.yml   data/test/metadetect_source_only/outputs_metadetect_source_only/shear_xi_plus.png             data/test/metadetect_source_only/logs_metadetect_source_only        "TX_DASK_DEBUG=1"
+add_pipeline mock_shear               examples/test/mock_shear/pipeline.yml               data/test/mock_shear/outputs_mock_shear/binned_shear_catalog.hdf5                 data/test/mock_shear/logs_mock_shear                    ""
+add_pipeline cmb                      examples/test/cmb/quaia.yml                         data/test/cmb/outputs_quaia/twopoint_data_fourier_cmb_cross_density_plot.png  data/test/cmb/logs_quaia                             ""
+add_pipeline metadetect_different_lengths examples/test/metadetect/pipeline.yml            data/test/metadetect/outputs_metadetect/shear_xi_plus.png                         data/test/metadetect/logs_metadetect                    "" \
+    "rm -f data/test/metadetect/outputs_metadetect/shear_xi_plus.png && python bin/make_metadetect_file_different_lengths.py" \
     "resume=restart inputs.shear_catalog=data/example/inputs/metadetect_shear_catalog_different_lengths.hdf5"
 
 list_pipelines() {
