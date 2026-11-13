@@ -8,7 +8,7 @@ from .data_types import (
     QPNOfZFile,
 )
 from ceci.config import StageParameter
-from .utils.nmt_utils import choose_ell_bins
+from .theory.nmt_utils import choose_ell_bins
 
 
 class TXSystematicsTwoPointFourier(PipelineStage):
