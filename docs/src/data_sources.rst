@@ -34,7 +34,7 @@ TXPipe has ingestion stages for Rubin Data Preview 1 (:py:class:`~txpipe.ingest.
 Other surveys
 -------------
 
-There are example pipelines, and ingestion stages for the input data, for DES Y1 and Y3 (``examples/desy1``, ``examples/desy3``), KiDS-1000 (``examples/kids-1000``), HSC Y1 and Y3 (``examples/hscy1``, ``examples/hscy3``), DESI (``examples/desi_dr1_stage3``, ``examples/desi_mocks``), and simulations. See :ref:`Example pipelines`.
+There are example pipelines, and ingestion stages for the input data, for DES Y1 and Y3 (``examples/stage3/desy1``, ``examples/stage3/desy3``), KiDS-1000 (``examples/stage3/kids-1000``), HSC Y1 and Y3 (``examples/stage3/hscy1``, ``examples/stage3/hscy3``), DESI (``examples/desi/desi_dr1_stage3``, ``examples/desi/desi_mocks``), and simulations. See :ref:`Example pipelines`.
 
 
 Ingestion stages

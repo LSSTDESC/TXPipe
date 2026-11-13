@@ -1,0 +1,195 @@
+
+# Stages to run
+stages:
+  # INGESTION
+  - name: TXIngestDESY3Gold
+  - name: TXIngestDESY3Footprint
+  - name: TXIngestDESY3SpeczCat
+  - name: TXIngestDESY3Shear
+  - name: TXCustomMask
+    aliases:
+      footprint_maps: des_footprint_maps
+  - name: TXIngestDESY3SourceRedshift
+
+  # PER-OBJECT PHOTO-Z
+
+  # Train the DNF model on the spectroscopic sample
+  - name: PZPrepareEstimatorLens 
+    classname: DNFInformer 
+    aliases:
+        input: spectroscopic_catalog
+        model: lens_photoz_model
+
+  # Apply the trained DNF model to the photometric sample to get lens photo-z
+  - name: PZEstimatorLens 
+    classname: DNFEstimator
+    nprocess: 64
+    threads_per_process: 1
+    aliases:
+        model: lens_photoz_model
+        input: photometry_catalog
+        output: lens_photoz_pdfs
+
+  # Train the DNF model on the spectroscopic sample. This uses a restricted set of bands
+  # measured under metacalibration
+  - name: PZPrepareEstimatorSource
+    classname: DNFInformer 
+    aliases:
+        input: spectroscopic_catalog
+        model: source_photoz_model
+
+
+  # SELECTION & CALIBRATION
+
+  # DES-Y3 maglim selection
+  - name: TXCustomLensSelector
+    nprocess: 32
+
+  # Split the lens catalog into tomographic bins
+  - name: TXLensCatalogSplitter
+    nprocess: 8
+
+  # Compute correlations between survey properties and lens density
+  - name: TXLSSDensityNullTests
+    threads_per_process: 8
+
+  # Compute weights that mitigate correlations between survey properties and lens density
+  - name: TXLSSWeightsLinBinned
+    threads_per_process: 8
+
+  # Train a tomography model from the spectroscopic sample for the sources
+  - name: TXTrainRandomForestTomography
+    threads_per_process: 8
+
+  # Compute metacalibration shear response and selection bias corrections
+  - name: TXComputeShearCalibrationDESY3
+    nprocess: 32
+    threads_per_process: 4
+
+  # Generate calibrated tomographic source catalogs
+  - name: TXDESY3Selection
+  - name: TXApplyRandomForestSourceTomography
+  - name: TXShearCalibration
+    nprocess: 8
+    threads_per_process: 4
+
+  # PHOTO-Z SUMMARIZATION
+
+  # Compute the ensemble n(z) for the lens bins using point estimate histograms
+  - name: PZRailSummarizeLens
+    classname: PZRailPZSummarize
+    nprocess: 32
+    threads_per_process: 4
+    aliases:
+        tomography_catalog: lens_tomography_catalog_unweighted
+        photoz_pdfs: lens_photoz_pdfs
+        model: lens_photoz_model
+        photoz_stack: lens_photoz_stack
+        photoz_realizations: lens_photoz_realizations
+
+
+  # Plot the source n(z) distribution
+  - name: TXPhotozPlotSource
+    classname: TXPhotozPlot
+    aliases:
+        photoz_stack: shear_photoz_stack
+        nz_plot: nz_source
+
+  # Plot the lens n(z) distribution
+  - name: TXPhotozPlotLens
+    classname: TXPhotozPlot
+    aliases:
+        photoz_stack: lens_photoz_stack
+        nz_plot: nz_lens
+
+
+  # TWO-POINT ESTIMATION
+
+  # Generate random catalogs for the lens sample, for use in two-point estimation
+  - name: TXRandomCat
+    nprocess: 32
+    threads_per_process: 4
+
+  # Collate metadata for the samples
+  - name: TXTracerMetadata
+
+  # Choose jackknife centers for two-point estimation speed from randoms
+  - name: TXJackknifeCenters
+
+  # Measure the real-space two-point correlation functions
+  - name: TXTwoPoint
+    threads_per_process: 128
+
+  # Plot the correlations functions
+  - name: TXTwoPointPlotsTheory
+  - name: TXTwoPointTheoryReal   # compute theory using CCL to save in sacc file and plot later
+
+  # Pretend to blind the two-point functions
+  - name: TXNullBlinding
+  # - name: TXRealGaussianCovariance
+
+  # MAPPING
+  
+  # Make PSF and similar maps for the sources
+  - name: TXPSFMaps
+  - name: TXFlagMaps
+
+  # Make maps of the lens counts
+  - name: TXLensMaps
+
+  # Make maps of the lens over-density
+  - name: TXDensityMaps
+
+  # Make maps of the shear field
+  - name: TXSourceMaps
+
+  # Plot all the maps
+  - name: TXMapPlots  
+
+
+launcher:
+    name: mini
+    interval: 1.0
+    
+site:
+    name: nersc-interactive
+    max_threads: 128
+
+modules: >
+    txpipe
+    rail.estimation.algos.dnf
+    rail.estimation.algos.naive_stack
+    rail.estimation.algos.point_est_hist
+    rail.estimation.algos.uniform_binning 
+
+
+# where to find any modules that are not in this repo,
+# and any other code we need.
+python_paths:
+    - submodules/WLMassMap/python/desc/
+    - submodules/TJPCov
+
+# where to put outputs
+output_dir: data/stage3/desy3/outputs
+
+# configuration settings
+config: examples/stage3/desy3/config.yml
+
+# These are overall inputs to the whole pipeline, not generated within it
+inputs:
+    des_photometry_catalog: data/desy3/inputs/DESY3_GOLD_2_2.1.h5
+    des_shear_catalog: data/desy3/inputs/DESY3_metacal_v03-004.h5
+    des_specz_catalog: data/desy3/inputs/y6gold22_trainnov20_matchedtoy3.fits
+    des_datavector_file: data/desy3/inputs/2pt_NG_final_2ptunblind_02_26_21_wnz_maglim_covupdate.fits
+    fiducial_cosmology: data/fiducial_cosmology.yml
+    desy3_index_catalog: data/desy3/inputs/DESY3_indexcat.h5
+
+# if supported by the launcher, restart the pipeline where it left off
+# if interrupted
+resume: resume
+
+# where to put output logs for individual stages
+log_dir: data/stage3/desy3/logs
+
+# where to put an overall parsl pipeline log
+pipeline_log: data/stage3/desy3/log.txt
