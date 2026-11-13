@@ -174,7 +174,8 @@ jobs:
         # always run
         cat data/cmb/logs_quaia/*
 
-        
+
+      
   Pipelines:
     runs-on: ${{ matrix.os }}
     needs: Download_Data
@@ -255,6 +256,12 @@ jobs:
         # and checks that the expected output file was produced.
         bin/run_regression_tests.sh ${{ matrix.pipeline }}
 
+    - name: Execute Welcome Notebook
+      if: ${{ matrix.pipeline == 'metadetect' && matrix.os == 'ubuntu-latest' }}
+      run: |
+        source ./conda/bin/activate
+        jupyter execute notebooks/Welcome\ to\ TXPipe.ipynb
+        
     - name: Dry run DP1
       run: |
         source ./conda/bin/activate
