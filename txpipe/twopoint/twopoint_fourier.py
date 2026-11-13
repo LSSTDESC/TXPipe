@@ -97,6 +97,9 @@ class TXTwoPointFourier(PipelineStage):
         "ell_max": StageParameter(int, 1500, msg="Maximum ell value for power spectra"),
         "n_ell": StageParameter(int, 20, msg="Number of ell bins"),
         "ell_spacing": StageParameter(str, "log", msg="Spacing of ell bins (log or linear)"),
+        "ell_edges": StageParameter(
+            list, [], msg="Explicit ell bin edges (bin i = [e_i, e_i+1)); overrides ell_min/n_ell/ell_spacing if non-empty"
+        ),
         "true_shear": StageParameter(bool, False, msg="Whether to use true shear values"),
         "analytic_noise": StageParameter(bool, False, msg="Whether to use analytic noise estimates"),
         "gaussian_sims_factor": StageParameter(

@@ -72,7 +72,7 @@ from .covariance import (
     TXFourierNamasterCovariance,
     TXRealNamasterCovariance,
 )
-from .theory import TXTwoPointTheoryReal, TXTwoPointTheoryFourier
+from .theory import TXTwoPointTheoryReal, TXTwoPointTheoryFourier, TXTwoPointTheoryFourierCCL
 from .blinding import TXNullBlinding, TXSmokescreenBlinding
 from .diagnostics import (
     TXSourceDiagnosticPlots,

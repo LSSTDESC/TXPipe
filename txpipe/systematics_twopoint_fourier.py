@@ -67,6 +67,9 @@ class TXSystematicsTwoPointFourier(PipelineStage):
         "ell_max": StageParameter(int, 1500, msg="Maximum ell"),
         "n_ell": StageParameter(int, 20, msg="Number of ell bins"),
         "ell_spacing": StageParameter(str, "log", msg="Ell spacing: log or linear"),
+        "ell_edges": StageParameter(
+            list, [], msg="Explicit ell bin edges (bin i = [e_i, e_i+1)); overrides ell_min/n_ell/ell_spacing if non-empty"
+        ),
         "cache_dir": StageParameter(
             str, "./cache/systematics_twopoint_fourier", msg="Directory for cached NaMaster workspaces"
         ),

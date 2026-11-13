@@ -58,10 +58,14 @@ TXTracerMetadata:
 
 
 TXTwoPointFourier:
-  ell_min: 10
+  # the theory it would compute is never used (the deprojection-bias guess is the measured
+  # pseudo-C_ell), and it goes through the buggy Firecrown path
+  compute_theory: False
+  # 6 linear bins of width 20 from ell = 2 to 122, then 14 logarithmic bins to 1500 (2026-11-04; was
+  # 19 log bins from ell = 10, whose narrow low-ell bins were ill-conditioned)
+  ell_min: 2
   ell_max: 1500
-  n_ell: 20
-  ell_spacing: log
+  ell_edges: [2, 22, 42, 62, 82, 102, 122, 145, 174, 208, 249, 298, 357, 427, 511, 612, 732, 876, 1048, 1253, 1500]
   mask_threshold: 0.0
 
   do_pos_pos: True
@@ -90,14 +94,17 @@ TXSystematicsTwoPointFourier:
   systmaps_healsparse_reduction: mean
   # same mask threshold and ell binning as TXTwoPointFourier
   mask_threshold: 0.0
-  ell_min: 10
+  # 6 linear bins of width 20 from ell = 2 to 122, then 14 logarithmic bins to 1500 (2026-11-04; was
+  # 19 log bins from ell = 10, whose narrow low-ell bins were ill-conditioned)
+  ell_min: 2
   ell_max: 1500
-  n_ell: 20
-  ell_spacing: log
+  ell_edges: [2, 22, 42, 62, 82, 102, 122, 145, 174, 208, 249, 298, 357, 427, 511, 612, 732, 876, 1048, 1253, 1500]
   # own cache per mask variant (NaMaster workspaces depend on the mask)
   cache_dir: data/cache_systematics_dp2_snri5_f99csfd_nexp3riz
 
 TXFourierNamasterCovariance:
+  # same edges as TXTwoPointFourier (otherwise reconstructed from the effective ells)
+  ell_edges: [2, 22, 42, 62, 82, 102, 122, 145, 174, 208, 249, 298, 357, 427, 511, 612, 732, 876, 1048, 1253, 1500]
   use_true_shear: False
   # same as TXTwoPointFourier.mask_threshold, so both use the same weight map
   mask_threshold: 0.0
