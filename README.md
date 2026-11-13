@@ -44,10 +44,12 @@ tar -zxvf example.tar.gz
 Then run a pipeline on that data:
 
 ```bash
-ceci examples/metadetect/pipeline.yml
+ceci examples/test/metadetect/pipeline.yml
 ```
 
-You can find the outputs in the directory `data/example/outputs_metadetect`
+You can find the outputs in the directory `data/test/metadetect/outputs_metadetect`
+
+Example pipelines are grouped under `examples/` into `stage3`, `desi`, `dp2`, `mocks`, `test`, `other` and `legacy`; each writes its outputs and logs to `data/<group>/<name>/`.
 
 
 Learning more
@@ -66,4 +68,3 @@ Continuous Integration
 ----------------------
 
 Github actions is set up to run unit tests several pipelines whenever commits are pushed to an open pull request.  We need to keep these pipelines up to date: https://github.com/LSSTDESC/TXPipe/actions
-

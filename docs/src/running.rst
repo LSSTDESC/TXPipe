@@ -7,7 +7,7 @@ Examples of both can be found in the `examples folder <https://github.com/LSSTDE
 
 .. code-block:: bash
 
-    ceci examples/metacal/pipeline.yml
+    ceci examples/test/metacal/pipeline.yml
 
 
 Pipeline files
@@ -23,7 +23,7 @@ The ``stages`` list describes which stages to run, e.g.:
 .. code-block:: yaml
 
     stages:
-    - name: TXSourceSelector
+    - name: TXMetaDetectSelection
     ...
     - name: TXTwoPoint
       nodes: 1

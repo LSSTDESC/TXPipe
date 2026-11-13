@@ -10,15 +10,6 @@ module load cray-mpich
 mamba env  create --yes -f bin/environment-perlmutter.yml -p ${ENV_PATH}
 mamba activate ./conda
 
-# we manually install firecrown as we have to remove numcosmo to avoid clashes
-FIRECROWN_DIR=firecrown-tmp-${RANDOM}
-git clone --branch v1.7.5 https://github.com/LSSTDESC/firecrown  ${FIRECROWN_DIR}
-cd ${FIRECROWN_DIR}
-sed -i '/numcosmo/d' setup.cfg
-pip install .
-cd ..
-rm -rf ${FIRECROWN_DIR}
-
 # Now we remove the installed mpi4py version and replace it with our own.
 # We also remove libfabric which is installed as a dependency of mpich
 # despite us asking for the external version
@@ -43,6 +34,7 @@ cat >  ./conda/etc/conda/activate.d/activate-txpipe.sh <<EOF
     export MPI4PY_RC_RECV_MPROBE='False'
     export HDF5_USE_FILE_LOCKING=FALSE
     export LD_LIBRARY_PATH=${MPICH_DIR}/lib-abi-mpich:${LD_LIBRARY_PATH}
+    export MPICH_GPU_SUPPORT_ENABLED=0
 EOF
 
 echo ""

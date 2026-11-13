@@ -4,7 +4,6 @@ import gc
 import numpy as np
 from ...base_stage import PipelineStage
 from ...data_types import ShearCatalog, HDFFile, PhotozPDFFile, FiducialCosmology, TomographyCatalog, ShearCatalog
-from ...utils.calibrators import Calibrator
 from ...utils import DynamicSplitter
 from collections import defaultdict
 import yaml
@@ -13,6 +12,11 @@ import itertools
 
 
 class CLClusterBinningRedshiftRichness(PipelineStage):
+    """Divide a cluster catalog into bins of redshift and richness.
+
+    The bin edges are set with zedge and richedge. Objects outside the edges go in extra
+    bins at each end.
+    """
     name = "CLClusterBinningRedshiftRichness"
     parallel = False
     inputs = [("cluster_catalog", HDFFile)]

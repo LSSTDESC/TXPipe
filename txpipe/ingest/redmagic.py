@@ -29,7 +29,7 @@ class TXIngestRedmagic(PipelineStage):
         "zmin": StageParameter(float, 0.0, msg="Minimum redshift for binning."),
         "zmax": StageParameter(float, 3.0, msg="Maximum redshift for binning."),
         "dz": StageParameter(float, 0.01, msg="Redshift bin width."),
-        "bands": StageParameter(str, "grizy", msg="Bands to use for redmagic selection."),
+        "bands": StageParameter(list, ["g", "r", "i", "z", "y"], msg="Bands to use for redmagic selection."),
     }
 
     def run(self):

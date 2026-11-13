@@ -24,6 +24,9 @@ class MockDaskArray(np.ndarray):
             return
         self.chunksize = getattr(obj, "chunksize", None)
 
+    def compute_chunk_sizes(self):
+        return self
+
 
 def from_array(arr, chunks=None):
     arr = MockDaskArray(arr)
@@ -33,6 +36,8 @@ def from_array(arr, chunks=None):
 
 def compute(anything):
     return (anything,)
+
+
 
 
 def import_dask(actually_numpy=False):

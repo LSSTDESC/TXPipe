@@ -1,0 +1,324 @@
+from ...data_types import HDFFile, MapsFile, FitsFile, ShearCatalog, QPNOfZFile
+from ..base import TXIngestCatalogH5, TXIngestMapsHsp, TXIngestCatalogFits, PipelineStage
+from ceci.config import StageParameter
+import numpy as np
+
+def to_native_endian(arr: np.ndarray) -> np.ndarray:
+    """
+    Convert a NumPy array to the machine's native byte order.
+
+    Various downstream stages use NUMBA, which doesn't like
+    non-native endianness, and some of the DES Y3 data files seem
+    to be big-endian.
+    """
+    native_dtype = arr.dtype.newbyteorder('=')
+    # copy=False avoids copying if already correct
+    return arr.astype(native_dtype, copy=False)
+
+
+
+class TXIngestDESY3Gold(TXIngestCatalogH5):
+    """
+    Ingest the DES Y3 Gold from hdf5 format
+    """
+
+    name = "TXIngestDESY3Gold"
+    parallel = False
+    inputs = [
+        ("des_photometry_catalog", HDFFile),
+    ]
+
+    outputs = [
+        ("photometry_catalog", HDFFile),
+    ]
+
+    config_options = {
+        "input_group_name": StageParameter(str, "catalog/gold", msg="Input group name in the HDF5 file."),
+        "chunk_rows": StageParameter(int, 100_000, msg="Number of rows to process in each chunk."),
+    }
+
+    def run(self):
+        """
+        Run the analysis for this stage.
+        """
+        print("Ingesting DES Y3 Gold catalog")
+
+        # we will only load a subset of columns to save space
+        column_names = {
+            "id": "coadd_object_id",
+            "ra": "ra",
+            "dec": "dec",
+            "mag_g": "sof_cm_mag_corrected_g",
+            "mag_i": "sof_cm_mag_corrected_i",
+            "mag_r": "sof_cm_mag_corrected_r",
+            "mag_z": "sof_cm_mag_corrected_z",
+            "mag_err_g": "sof_cm_mag_err_g",
+            "mag_err_i": "sof_cm_mag_err_i",
+            "mag_err_r": "sof_cm_mag_err_r",
+            "mag_err_z": "sof_cm_mag_err_z",
+            "sof_cm_fracdev": "sof_cm_fracdev",
+            "T": "sof_cm_t",  # Size parameter
+            # "sof_flags": "sof_flags",  # Flags from SOF photometry
+            "EXTENDED_CLASS_SOF": "extended_class_sof",  # star galaxy separator using SOF photometry
+            "EXTENDED_CLASS_MASH_SOF": "extended_class_mash_sof",  # alternative star galaxy separator using SOF photometry as primary source
+            "flags": "flags",
+            # "flags_badregions": "flags_badregions",
+            # "flags_footprint": "flags_footprint",
+            # "flags_foreground": "flags_foreground",
+            "FLAGS_GOLD": "flags_gold",
+            # "flags_phot": "flags_phot",
+            # "hpix_16384": "hpix_16384",
+            "tilename": "tilename",  # Name of DES tile
+        }
+        dummy_columns = {}
+
+        self.process_catalog(
+            "des_photometry_catalog",
+            "photometry_catalog",
+            column_names,
+            dummy_columns,
+        )
+
+
+class TXIngestDESY3Footprint(TXIngestMapsHsp):
+    """
+    Ingest the DES Y3 Footprint maps (incl. badregions, foregrounds etc) from healsparse format
+    """
+
+    name = "TXIngestDESY3Footprint"
+    parallel = False
+    inputs = []
+
+    outputs = [
+        ("des_footprint_maps", MapsFile),
+    ]
+
+    config_options = {
+        **TXIngestMapsHsp.config_options,
+        "input_filepaths": StageParameter(list, [""], msg="List of input file paths."),
+        "input_labels": StageParameter(list, [""], msg="Labels to give the input maps."),
+        "chunk_rows": StageParameter(int, 100_000, msg="Number of rows to process in each chunk."),
+    }
+
+    def run(self):
+        """
+        Run the analysis for this stage.
+        """
+        print(self.config["input_filepaths"])
+        print(self.config["input_labels"])
+        assert len(self.config["input_filepaths"]) == len(self.config["input_labels"])
+
+        self.process_maps(self.config["input_filepaths"], self.config["input_labels"], "des_footprint_maps")
+
+
+class TXIngestDESY3SpeczCat(TXIngestCatalogFits):
+    """
+    Ingest the spectroscopic catalog used for DES Y3 training of DNF
+
+    file contains spectroscopic redshifts and DES *fluxes*
+    """
+
+    name = "TXIngestDESY3SpeczCat"
+    parallel = False
+    inputs = [
+        ("des_specz_catalog", FitsFile),
+    ]
+
+    outputs = [
+        ("spectroscopic_catalog", HDFFile),
+    ]
+
+    config_options = {
+        "chunk_rows": StageParameter(int, 100_000, msg="Number of rows to process in each chunk."),
+    }
+
+    def run(self):
+        """
+        Run the analysis for this stage.
+        """
+        print("Ingesting DES Y3 spec-z catalog")
+
+        # we will only load a subset of columns to save space
+        # TODO: these are the y6 magnitudes, i need to match this to y3
+        column_names = {
+            "mag_g": "sof_cm_mag_corrected_g",
+            "mag_r": "sof_cm_mag_corrected_r",
+            "mag_i": "sof_cm_mag_corrected_i",
+            "mag_z": "sof_cm_mag_corrected_z",
+            "mag_err_g": "sof_cm_mag_err_g",
+            "mag_err_r": "sof_cm_mag_err_r",
+            "mag_err_i": "sof_cm_mag_err_i",
+            "mag_err_z": "sof_cm_mag_err_z",
+            "redshift": "Z",
+        }
+
+        dummy_columns = {}
+
+        self.process_catalog(
+            "des_specz_catalog",
+            "spectroscopic_catalog",
+            column_names,
+            dummy_columns,
+        )
+
+
+class TXIngestDESY3Shear(PipelineStage):
+    """Convert the DES Y3 metacal shear catalog into TXPipe format."""
+    name = "TXIngestDESY3Shear"
+    parallel = False
+    inputs = [
+        ("des_shear_catalog", HDFFile),
+    ]
+
+    outputs = [
+        ("shear_catalog", ShearCatalog),
+    ]
+
+    config_options = {
+        "input_group_name": StageParameter(str, "catalog/", msg="Input group name in the HDF5 file."),
+        "chunk_rows": StageParameter(int, 100_000, msg="Number of rows to process in each chunk."),
+    }
+
+    def des_metacal_flux_to_mag(self, flux, flux_err):
+        # Seems to use a zero-point of 30 based on comparison
+        # to the gold catalog. This is different to the LSST reference
+        # so don't use the same function.
+        mag = -2.5 * np.log10(flux) + 30
+        mag_err = 2.5 / np.log(10) * (flux_err / flux)
+        return mag, mag_err
+
+
+    def run(self):
+        """
+        Run the analysis for this stage.
+        """
+        print("Ingesting DES Y3 Metacal catalog from ", self.get_input("des_shear_catalog"))
+
+
+        subgroups_to_suffixes = {
+            "unsheared": "",
+            "sheared_1p": "_1p",
+            "sheared_1m": "_1m",
+            "sheared_2p": "_2p",
+            "sheared_2m": "_2m",
+        }
+
+        single_columns = {
+            "unsheared/coadd_object_id": "id",
+            "unsheared/ra": "ra",
+            "unsheared/dec": "dec",
+            "unsheared/psf_T": "psf_T_mean",
+            "unsheared/psf_e1": "psf_e1",
+            "unsheared/psf_e2": "psf_e2",
+            "unsheared/flags": "flags",
+        }
+
+        sheared_columns = {
+            "T": "T",
+            "T_err": "T_err",
+            "e_1": "g1",
+            "e_2": "g2",
+            "snr": "s2n",  # we originally called the TXPipe version "s2n" instead of "snr" 
+                           # precisely to be more consistent with metacal, but now apparently
+                           # metacal uses "snr" again. After this PR we should update to use "snr" everywhere.
+            "weight": "weight",
+        }
+
+        fluxes = ["r", "i", "z"]
+
+        # The input and output sections in the files
+        fin = self.open_input("des_shear_catalog", wrapper=True)
+        fout = self.open_output("shear_catalog", wrapper=True)
+        input_group = self.config["input_group_name"].rstrip("/") + "/"
+        gin = fin.file[input_group]
+        gout = fout.file.create_group("shear")
+        gout.attrs["catalog_type"] = "metacal"
+        compression = None
+
+        # save all the columns that are only measured once, not on all the
+        # sheared versions. In metacal this includes positions and PSF properties.
+        for input_col, output_col in single_columns.items():
+            d = to_native_endian(gin[input_col][:])
+            print(f"Copying {input_col} -> {output_col}")
+            gout.create_dataset(output_col, data=d, chunks=True, compression=compression)
+        
+        # Now save the stuff that is different for each sheared version
+        for variant, suffix in subgroups_to_suffixes.items():
+            gin_sub = gin[variant]
+
+            # First handle the ones that are just renamed, including the shears
+            # themselves and the SNR and weight etc.
+            for input_col, output_col in sheared_columns.items():
+                print(f"Copying {variant}/{input_col} -> {output_col}{suffix}")
+                d = to_native_endian(gin_sub[input_col][:])
+                gout.create_dataset(output_col + suffix, data=d, chunks=True, compression=compression)
+            
+            # Now deal with fluxes, which we have to turn into magnitudes.
+            # Note that we might change our mind on this and at some point
+            # just start storing fluxes.
+            for band in fluxes:
+                # convert fluxes to mags
+                flux = to_native_endian(gin_sub[f"flux_{band}"][:])
+                flux_err = to_native_endian(gin_sub[f"flux_err_{band}"][:])
+
+                flux[flux < 0] = 0
+
+                mag, mag_err = self.des_metacal_flux_to_mag(flux, flux_err)
+                print(f"Copying fluxes and errs {variant}/flux_{band} -> mags mag_{band}{suffix}")
+
+                # save mags and mag_errs
+                gout.create_dataset(f"mag_{band}{suffix}", data=mag, chunks=True, compression=compression)
+                gout.create_dataset(f"mag_err_{band}{suffix}", data=mag_err, chunks=True, compression=compression)
+
+
+
+class TXIngestDESY3SourceRedshift(PipelineStage):
+    """Extract the DES Y3 source n(z) from the published data vector file.
+
+    Reads the redshift distributions for the source tomographic bins from the DES data
+    vector FITS file and saves them as a TXPipe photo-z stack.
+    """
+    name = "TXIngestDESY3SourceRedshift"
+    parallel = False
+    inputs = [
+        # this should be the file 2pt_NG_final_2ptunblind_02_26_21_wnz_maglim_covupdate.fits
+        ("des_datavector_file", FitsFile),
+    ]
+
+    outputs = [
+        ("shear_photoz_stack", QPNOfZFile)
+    ]
+
+    config_options = {
+    }
+
+
+    def run(self):
+        import twopoint
+        import qp
+
+        # Read in the old DES 2point file format
+        filename = self.get_input("des_datavector_file")
+        data = twopoint.TwoPointFile.from_fits(filename)
+
+        # get the kernel info out of it
+        kernel = data.kernels[0]
+        z = kernel.z
+        nz = kernel.nsample
+        nbin_source = kernel.nbin
+
+        # convert to just an array stack from the list
+        pdfs = np.zeros((nbin_source + 1, nz))
+        ntot = kernel.ngal.sum()
+        for i in range(nbin_source):
+            pdfs[i] = kernel.nzs[i].clip(0, np.inf)
+            # weighted average of the other PDFs to get the
+            # 2D one.
+            pdfs[nbin_source] += kernel.ngal[i] * pdfs[i]
+        # do the 2D bin, just the weighted sum
+        pdfs[nbin_source] /= ntot
+
+        # save in QP format
+        q = qp.Ensemble(qp.interp, data={"xvals": z, "yvals": pdfs})
+        with self.open_output("shear_photoz_stack", wrapper=True) as f:
+            f.write_ensemble(q)

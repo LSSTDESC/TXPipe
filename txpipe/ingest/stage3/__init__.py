@@ -1,0 +1,1 @@
+from .desy3 import TXIngestDESY3Gold, TXIngestDESY3Footprint, TXIngestDESY3SpeczCat 

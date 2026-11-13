@@ -2,7 +2,7 @@ import numpy as np
 import yaml
 from .base_stage import PipelineStage
 from .data_types import TomographyCatalog, MapsFile, HDFFile, YamlFile, ShearCatalog
-from .utils.calibration_tools import read_shear_catalog_type
+from .utils import read_shear_catalog_type
 from .utils import choose_pixelization
 
 
@@ -60,11 +60,12 @@ class TXTracerMetadata(PipelineStage):
             if shear_catalog_type == "metacal":
                 copy(shear_tomo_file, "response", "tracers", "R_gamma_mean", meta_file, metadata)
                 copy(shear_tomo_file, "response", "tracers", "R_S", meta_file, metadata)
-                copy(shear_tomo_file, "response", "tracers", "R_total", meta_file, metadata)
                 copy(shear_tomo_file, "response", "tracers", "R_gamma_mean_2d", meta_file, metadata)
                 copy(shear_tomo_file, "response", "tracers", "R_S_2d", meta_file, metadata)
-                copy(shear_tomo_file, "response", "tracers", "R_total_2d", meta_file, metadata)
             elif shear_catalog_type == "metadetect":
+                copy(shear_tomo_file, "response", "tracers", "R", meta_file, metadata)
+                copy(shear_tomo_file, "response", "tracers", "R_2d", meta_file, metadata)
+            elif shear_catalog_type == "scalar_metadetect":
                 copy(shear_tomo_file, "response", "tracers", "R", meta_file, metadata)
                 copy(shear_tomo_file, "response", "tracers", "R_2d", meta_file, metadata)
             elif shear_catalog_type == "lensfit":
@@ -114,6 +115,7 @@ class TXTracerMetadata(PipelineStage):
             metadata["n_eff_2d"] = n_eff_2d.tolist()
             metadata["source_density_2d"] = source_density_2d.tolist()
             metadata["source_density"] = source_density.tolist()
+            metadata["nbin_source"] = len(source_density)
 
             copy_attrs(shear_tomo_file, "tomography", "tracers", meta_file, metadata)
 
@@ -140,6 +142,7 @@ class TXTracerMetadata(PipelineStage):
             meta_file["tracers"].attrs["density_unit"] = "arcmin^{-2}"
             metadata["lens_density"] = lens_density.tolist()
             metadata["lens_density_2d"] = lens_density_2d.tolist()
+            metadata["nbin_lens"] = len(lens_density)
 
             copy_attrs(lens_tomo_file, "tomography", "tracers", meta_file, metadata)
 
@@ -165,7 +168,13 @@ class TXTracerMetadata(PipelineStage):
             m = f.read_map("mask")
             pixel_scheme = choose_pixelization(**f.read_map_info("mask"))
 
-        num_hit = np.sum(m[m > 0])  # Assuming fracdet mask
+        # Iterate through the mask to avoid generating
+        # large non-bit-packed arrays.
+        # Assuming fracdet mask.
+        num_hit = 0.0
+        for valid_pixels in m.iter_valid_pixels_by_covpix():
+            num_hit += m[valid_pixels].sum()
+        
         area_sq_deg = pixel_scheme.pixel_area(degrees=True) * num_hit
         f_sky = float(area_sq_deg) / 41252.96125
         print(f"Area = {area_sq_deg:.2f} deg^2")

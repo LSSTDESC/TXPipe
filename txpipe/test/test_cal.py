@@ -1,37 +1,32 @@
-from ..utils.calibration_tools import (
+from ..calibration.calibration_utils import (
     MeanShearInBins,
     MetacalCalculator,
     MetaDetectCalculator,
+    ScalarMetaDetectCalculator,
+    MetaCalibrator,
+    NullCalibrator,
+    AnaCalCalculator
 )
-from ..utils import MetaCalibrator, LensfitCalibrator, NullCalibrator
+
 import numpy as np
 import mockmpi
 
 
 def select_all_bool(data):
-    return np.repeat(True, data["mcal_g2"].size)
+    return np.repeat(True, data["g2"].size)
 
 
 def select_all_index(data):
-    return np.arange(data["mcal_g2"].size)
+    return np.arange(data["g2"].size)
 
 
 def select_all_where(data):
     # we just want to select everything here too
-    return np.where(data["mcal_g2"] * 0 == 0)
-
-
-def select_all_bool_md(data):
-    return np.repeat(True, data["g2"].size)
-
-
-def select_all_index_md(data):
-    return np.arange(data["g2"].size)
-
-
-def select_all_where_md(data):
-    # we just want to select everything here too
     return np.where(data["g2"] * 0 == 0)
+
+def select_all_anacal(data):
+    return np.repeat(True, data["e2"].size)
+
 
 
 def core_metacal(comm):
@@ -52,16 +47,16 @@ def core_metacal(comm):
     weight = np.ones(N)
 
     data = {
-        "mcal_g1": g[0],
-        "mcal_g1_1p": g_1p[0],
-        "mcal_g1_1m": g_1m[0],
-        "mcal_g1_2p": g_2p[0],
-        "mcal_g1_2m": g_2m[0],
-        "mcal_g2": g[1],
-        "mcal_g2_1p": g_1p[1],
-        "mcal_g2_1m": g_1m[1],
-        "mcal_g2_2p": g_2p[1],
-        "mcal_g2_2m": g_2m[1],
+        "g1": g[0],
+        "g1_1p": g_1p[0],
+        "g1_1m": g_1m[0],
+        "g1_2p": g_2p[0],
+        "g1_2m": g_2m[0],
+        "g2": g[1],
+        "g2_1p": g_1p[1],
+        "g2_1m": g_1m[1],
+        "g2_2p": g_2p[1],
+        "g2_2m": g_2m[1],
         "weight": weight,
     }
 
@@ -69,11 +64,13 @@ def core_metacal(comm):
     for sel in [select_all_bool, select_all_where, select_all_index]:
         cal = MetacalCalculator(select_all_bool, delta_gamma)
         cal.add_data(data)
-        R, S, n, _ = cal.collect(comm, allgather=True)
+        stats = cal.collect(comm, allgather=True)
+        calibrator = stats.calibrator
 
-        assert np.allclose(R, R_true)
-        assert np.allclose(S, 0.0)
-        assert n == N * nproc
+        assert isinstance(calibrator, MetaCalibrator)
+        assert np.allclose(calibrator.R, R_true)
+        assert np.allclose(calibrator.R_sel, 0.0)
+        assert stats.source_count == N * nproc
 
     # equal non-unit weights - everything should be the same.
     data["weight"] *= 0.5
@@ -81,12 +78,12 @@ def core_metacal(comm):
     for sel in [select_all_bool, select_all_where, select_all_index]:
         cal = MetacalCalculator(sel, delta_gamma)
         cal.add_data(data)
-        R, S, n, _ = cal.collect(comm, allgather=True)
-        print("R = ", R)
+        stats = cal.collect(comm, allgather=True)
+        calibrator = stats.calibrator
 
-        assert np.allclose(R, R_true)
-        assert np.allclose(S, 0.0)
-        assert n == N * nproc
+        assert np.allclose(calibrator.R, R_true)
+        assert np.allclose(calibrator.R_sel, 0.0)
+        assert stats.source_count == N * nproc
 
     # random weights.  since R is constant this should still be the same
     data["weight"] = np.random.uniform(0, 1, size=N)
@@ -94,12 +91,13 @@ def core_metacal(comm):
     for sel in [select_all_bool, select_all_where, select_all_index]:
         cal = MetacalCalculator(sel, delta_gamma)
         cal.add_data(data)
-        R, S, n, _ = cal.collect(comm, allgather=True)
-        print("R = ", R)
+        stats = cal.collect(comm, allgather=True)
+        calibrator = stats.calibrator
+        # print("R = ", calibrator.R)
 
-        assert np.allclose(R, R_true)
-        assert np.allclose(S, 0.0)
-        assert n == N * nproc
+        assert np.allclose(calibrator.R, R_true)
+        assert np.allclose(calibrator.R_sel, 0.0)
+        assert stats.source_count == N * nproc
 
 
 def core_metadet(comm):
@@ -120,59 +118,207 @@ def core_metadet(comm):
     weight = np.ones(N)
 
     data = {
-        "00/g1": g[0],
+        "ns/g1": g[0],
         "1p/g1": g_1p[0],
         "1m/g1": g_1m[0],
         "2p/g1": g_2p[0],
         "2m/g1": g_2m[0],
-        "00/g2": g[1],
+        "ns/g2": g[1],
         "1p/g2": g_1p[1],
         "1m/g2": g_1m[1],
         "2p/g2": g_2p[1],
         "2m/g2": g_2m[1],
-        "00/weight": weight,
-        "1p/weight": weight,
-        "1m/weight": weight,
-        "2p/weight": weight,
-        "2m/weight": weight,
+        "ns/weight": weight.copy(),
+        "1p/weight": weight.copy(),
+        "1m/weight": weight.copy(),
+        "2p/weight": weight.copy(),
+        "2m/weight": weight.copy(),
     }
 
     # test each type of selector
-    for sel in [select_all_bool_md, select_all_where_md, select_all_index_md]:
+    for sel in [select_all_bool, select_all_where, select_all_index]:
         cal = MetaDetectCalculator(sel, delta_gamma)
         cal.add_data(data)
-        R, n, _ = cal.collect(comm, allgather=True)
+        stats = cal.collect(comm, allgather=True)
+        calibrator = stats.calibrator
 
-        assert np.allclose(R, R_true)
-        assert np.allclose(n, N * nproc)
+        assert np.allclose(calibrator.R, R_true)
+        assert np.allclose(calibrator.R_sel, 0.0)
+        assert stats.source_count == N * nproc
+
+
+    # Also check that we can do this variant by variant instead
+    # of all at once
+    for sel in [select_all_bool, select_all_where, select_all_index]:
+        cal = MetaDetectCalculator(sel, delta_gamma)
+        for variant in ["ns", "1p", "1m", "2p", "2m"]:
+            data_v = {k: v for k, v in data.items() if k.startswith(variant)}
+            print(data_v)
+            cal.add_data(data_v)
+        stats = cal.collect(comm, allgather=True)
+        calibrator = stats.calibrator
+
+        assert np.allclose(calibrator.R, R_true)
+        assert np.allclose(calibrator.R_sel, 0.0)
+        assert stats.source_count == N * nproc
+
+
 
     # equal non-unit weights - everything should be the same.
+    data["ns/weight"] *= 0.5
     data["1p/weight"] *= 0.5
     data["1m/weight"] *= 0.5
     data["2p/weight"] *= 0.5
     data["2m/weight"] *= 0.5
+    print('weight = ', data['1p/weight'])
+
     # test each type of selector
-    for sel in [select_all_bool_md, select_all_where_md, select_all_index_md]:
+    for sel in [select_all_bool, select_all_where, select_all_index]:
         cal = MetaDetectCalculator(sel, delta_gamma)
         cal.add_data(data)
-        R, n, _ = cal.collect(comm, allgather=True)
-        print("R = ", R)
-        assert np.allclose(n, N * nproc)
+        stats = cal.collect(comm, allgather=True)
+        calibrator = stats.calibrator
+        # print("R = ", calibrator.R)
+        assert np.allclose(calibrator.R_sel, 0.0)
+        assert stats.source_count == N * nproc
 
-    # random weights.  since R is constant this should still be the same
-    data["1p/weight"] *= np.random.uniform(0, 1, size=N)
-    data["1m/weight"] *= np.random.uniform(0, 1, size=N)
-    data["2p/weight"] *= np.random.uniform(0, 1, size=N)
-    data["2m/weight"] *= np.random.uniform(0, 1, size=N)
+
+def core_anacal(comm):
+    # Half-step convention: each ±1 variant is at ±delta_gamma from baseline,
+    # matching xlens' photoZPipe DISTORTIONS (±0.01) and the on-disk zmode
+    # variants in the merged catalog.  Not to be confused with metacal, where
+    # delta_gamma above is the full 1p−1m separation (0.02 there).
+    delta_gamma = 0.01
+    nproc = 1 if comm is None else comm.size
+    N = 10
+
+    R_shape_true = 0.4 # known test value
+    R_weight_true = 0.3
+
+    # Convention A: TXIngestAnacal exposes the pre-multiplied observable
+    # "e1"/"e2" (= wsel · e_raw), plus separate "e1_raw"/"e2_raw" and "wsel"
+    # columns.  With wsel=1 uniformly (as in this test) the pre-multiplied
+    # and raw shapes coincide, and Σweight_dg·e / Σweight equals the plain
+    # ⟨weight_dg · e_raw⟩ that the new R_detect accumulator computes.
+    e1 = np.random.normal(0, 0.1, size=N)
+    e2 = np.random.normal(0, 0.1, size=N)
+    base_data = {
+        "e1": e1,
+        "e2": e2,
+        "e1_raw": e1,
+        "e2_raw": e2,
+        "wsel": np.ones(N),
+        "weight": np.ones(N),
+        "weight_dg1": np.zeros(N),
+        "weight_dg2": np.zeros(N),
+        "de1_dg1": np.zeros(N),
+        "de2_dg2": np.zeros(N),
+        "m00": np.ones(N),
+        "m20": np.ones(N),
+        "dm00_dg1": np.zeros(N),
+        "dm00_dg2": np.zeros(N),
+        "dm20_dg1": np.zeros(N),
+        "dm20_dg2": np.zeros(N),
+        "n_mask_base": np.zeros(N)
+    }
+
+    # case 1: pure shape response
+    data = {**base_data, "de1_dg1": np.full(N, R_shape_true), "de2_dg2": np.full(N, R_shape_true)}
+    cal = AnaCalCalculator(select_all_anacal, delta_gamma)
+    cal.add_data(data)
+    stats = cal.collect(comm, allgather=True)
+    assert np.allclose(stats.calibrator.R, R_shape_true)
+    assert stats.source_count == N * nproc
+
+    # case 2: pure weight-bias response
+    data = {**base_data, "weight_dg1": np.full(N, R_weight_true), "weight_dg2": np.full(N, R_weight_true)}
+    cal = AnaCalCalculator(select_all_anacal, delta_gamma)
+    cal.add_data(data)
+    stats = cal.collect(comm, allgather=True)
+    expected_R_weight = 0.5 * (np.sum(data["weight_dg1"] * data["e1"]) +
+                               np.sum(data["weight_dg2"] * data["e2"])) / np.sum(data["weight"])
+    assert np.allclose(stats.calibrator.R, expected_R_weight)
+
+    # Case 3: both contributions add correctly
+    data = {**base_data,
+            "de1_dg1": np.full(N, R_shape_true),
+            "de2_dg2": np.full(N, R_shape_true),
+            "weight_dg1": np.full(N, R_weight_true),
+            "weight_dg2": np.full(N, R_weight_true),
+            }
+    cal = AnaCalCalculator(select_all_anacal, delta_gamma)
+    cal.add_data(data)
+    stats = cal.collect(comm, allgather=True)
+    expected_R_weight = 0.5 * (np.sum(data["weight_dg1"] * data["e1"]) +
+                               np.sum(data["weight_dg2"] * data["e2"])) / np.sum(data["weight"])
+    assert np.allclose(stats.calibrator.R, R_shape_true + expected_R_weight)
+
+def core_scalar_metadet(comm):
+    delta_gamma = 0.02
+
+    nproc = 1 if comm is None else comm.size
+
+    N = 10
+    g1_true = np.random.normal(0, 0.1, size=N)
+    g2_true = np.random.normal(0, 0.1, size=N)
+    g_true = np.array([g1_true, g2_true])
+    R_true = 1.3
+    R_matrix = np.eye(2) * R_true
+    g = R_matrix @ g_true
+    g_1p = R_matrix @ (g_true + 0.5 * delta_gamma * np.array([+1, 0])[:, np.newaxis])
+    g_1m = R_matrix @ (g_true + 0.5 * delta_gamma * np.array([-1, 0])[:, np.newaxis])
+    weight = np.ones(N)
+
+    data = {
+        "ns/g1": g[0],
+        "1p/g1": g_1p[0],
+        "1m/g1": g_1m[0],
+        "ns/g2": g[1],
+        "1p/g2": g_1p[1],
+        "1m/g2": g_1m[1],
+        "ns/weight": weight.copy(),
+        "1p/weight": weight.copy(),
+        "1m/weight": weight.copy(),
+    }
+
     # test each type of selector
-    for sel in [select_all_bool_md, select_all_where_md, select_all_index_md]:
-        cal = MetaDetectCalculator(sel, delta_gamma)
-        cal.add_data(data)
-        R, n, _ = cal.collect(comm, allgather=True)
-        print("R = ", R)
+    for sel in [select_all_bool, select_all_where, select_all_index]:
+        cal = ScalarMetaDetectCalculator(sel, delta_gamma)
+        for variant in ["ns", "1p", "1m"]:
+            data_v = {k: v for k, v in data.items() if k.startswith(variant)}
+            cal.add_data(data_v)
+        stats = cal.collect(comm, allgather=True)
+        calibrator = stats.calibrator
 
-        assert np.allclose(R, R_true)
-        assert np.allclose(n, N * nproc)
+        assert np.allclose(calibrator.R, R_true)
+        assert stats.source_count == N * nproc
+
+    # test each type of selector
+    for sel in [select_all_bool, select_all_where, select_all_index]:
+        cal = ScalarMetaDetectCalculator(sel, delta_gamma)
+        cal.add_data(data)
+        stats = cal.collect(comm, allgather=True)
+        calibrator = stats.calibrator
+
+        assert np.allclose(calibrator.R, R_true)
+        assert stats.source_count == N * nproc
+
+    # equal non-unit weights - everything should be the same.
+    data["ns/weight"] *= 0.5
+    data["1p/weight"] *= 0.5
+    data["1m/weight"] *= 0.5
+    print('weight = ', data['1p/weight'])
+
+    # test each type of selector
+    for sel in [select_all_bool, select_all_where, select_all_index]:
+        cal = ScalarMetaDetectCalculator(sel, delta_gamma)
+        cal.add_data(data)
+        stats = cal.collect(comm, allgather=True)
+        calibrator = stats.calibrator
+        # print("R = ", calibrator.R)
+        assert stats.source_count == N * nproc
+        assert np.allclose(calibrator.R, R_true)
+
 
 
 def test_metacalibrator_serial():
@@ -182,13 +328,23 @@ def test_metacalibrator_serial():
 def test_metadetect_serial():
     core_metadet(None)
 
+def test_anacal_serial():
+    core_anacal(None)
+
+def test_scalar_metadetect_serial():
+    core_scalar_metadet(None)
+
 
 def test_metadetect_parallel():
     mockmpi.mock_mpiexec(2, core_metadet)
     mockmpi.mock_mpiexec(10, core_metadet)
 
+def test_scalar_metadetect_parallel():
+    mockmpi.mock_mpiexec(2, core_scalar_metadet)
+    mockmpi.mock_mpiexec(10, core_scalar_metadet)
 
-def test_mean_shear():
+
+def test_mean_shear_no_weights():
     name = "x"
     limits = [-1.0, 0.0, 1.0]
     delta_gamma = 0.02
@@ -205,16 +361,16 @@ def test_mean_shear():
         "x_1m": np.array([-0.5, -0.5, -0.5, -0.5, 0.5, 0.5, 0.5, 0.5]),
         "x_2p": np.array([-0.5, -0.5, -0.5, -0.5, 0.5, 0.5, 0.5, 0.5]),
         "x_2m": np.array([-0.5, -0.5, -0.5, -0.5, 0.5, 0.5, 0.5, 0.5]),
-        "mcal_g1": np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]),
-        "mcal_g1_1p": np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]) + 0.5 * delta_gamma,
-        "mcal_g1_1m": np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]) - 0.5 * delta_gamma,
-        "mcal_g1_2p": np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]),
-        "mcal_g1_2m": np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]),
-        "mcal_g2": 2 * np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]),
-        "mcal_g2_1p": 2 * np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]),
-        "mcal_g2_1m": 2 * np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]),
-        "mcal_g2_2p": 2 * np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]) + 0.5 * delta_gamma,
-        "mcal_g2_2m": 2 * np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]) - 0.5 * delta_gamma,
+        "g1": np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]),
+        "g1_1p": np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]) + 0.5 * delta_gamma,
+        "g1_1m": np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]) - 0.5 * delta_gamma,
+        "g1_2p": np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]),
+        "g1_2m": np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]),
+        "g2": 2 * np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]),
+        "g2_1p": 2 * np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]),
+        "g2_1m": 2 * np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]),
+        "g2_2p": 2 * np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]) + 0.5 * delta_gamma,
+        "g2_2m": 2 * np.array([-0.7, -0.6, -0.4, -0.3, 0.7, 0.6, 0.4, 0.3]) - 0.5 * delta_gamma,
         "weight": np.array([1, 1, 1, 1, 1, 1, 1, 1]),
     }
     b1.add_data(data)
@@ -248,16 +404,16 @@ def test_mean_shear_weights():
         "x_1m": x,
         "x_2p": x,
         "x_2m": x,
-        "mcal_g1": g1,
-        "mcal_g1_1p": g1 + 0.5 * delta_gamma,
-        "mcal_g1_1m": g1 - 0.5 * delta_gamma,
-        "mcal_g1_2p": g1,
-        "mcal_g1_2m": g1,
-        "mcal_g2": g2,
-        "mcal_g2_1p": g2,
-        "mcal_g2_1m": g2,
-        "mcal_g2_2p": g2 + 0.5 * delta_gamma,
-        "mcal_g2_2m": g2 - 0.5 * delta_gamma,
+        "g1": g1,
+        "g1_1p": g1 + 0.5 * delta_gamma,
+        "g1_1m": g1 - 0.5 * delta_gamma,
+        "g1_2p": g1,
+        "g1_2m": g1,
+        "g2": g2,
+        "g2_1p": g2,
+        "g2_1m": g2,
+        "g2_2p": g2 + 0.5 * delta_gamma,
+        "g2_2m": g2 - 0.5 * delta_gamma,
         "weight": np.array([1, 1, 0, 0, 0, 0, 1, 1]),
     }
     b1.add_data(data)
@@ -269,7 +425,7 @@ def test_mean_shear_weights():
     assert np.allclose(g2, [-1.3, 0.7])
     expected_sigma1 = np.std([-0.2, -0.1]) / np.sqrt(2)
     expected_sigma2 = 2 * expected_sigma1
-    print(sigma1, expected_sigma1)
+    # print(sigma1, expected_sigma1)
     assert np.allclose(sigma1, expected_sigma1)
     assert np.allclose(sigma2, expected_sigma2)
 
@@ -387,6 +543,7 @@ def test_null_mean():
 
 if __name__ == "__main__":
     test_metacalibrator_serial()
-    test_metacalibrator_parallel()
-    test_mean_shear()
+    test_metadetect_parallel()
+    test_mean_shear_no_weights()
     test_mean_shear_weights()
+    test_anacal_serial()

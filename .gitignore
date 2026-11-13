@@ -7,6 +7,14 @@ runinfo/
 test/logs/
 ipengine.json
 data/example
+# Example pipeline outputs, written to data/<group>/<name>/
+data/desi/
+data/dp2/
+data/legacy/
+data/mocks/
+data/other/
+data/stage3/
+data/test/
 www/
 htmlcov/
 txpipe.sublime*
@@ -18,6 +26,7 @@ data/*.sacc
 data/2.2i-t3828/
 data/2.2i/
 data/cosmodc2/
+data/desy3/
 data/supreme
 dask-worker-space/
 example.tar.gz

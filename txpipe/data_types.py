@@ -2,23 +2,30 @@
 This file contains TXPipe-specific file types, subclassing the more
 generic types in ceci.
 """
-
 from ceci.file_types import HDFFile, DataFile, YamlFile, TextFile, FitsFile, Directory, FileCollection, PickleFile, ParquetFile, PNGFile, FileValidationError
+# The calibration_utils and maps.mapping imports are done inside the methods
+# that use them, to avoid circular imports: those packages import stages,
+# which import base_stage, which imports this module.
 import yaml
 import numpy as np
 
 
-def metacalibration_names(names):
-    """
-    Generate the metacalibrated variants of the inputs names,
-    that is, variants with _1p, _1m, _2p, and _2m on the end
-    of each name.
-    """
-    suffices = ["1p", "1m", "2p", "2m"]
-    out = []
-    for name in names:
-        out += [name + "_" + s for s in suffices]
-    return out
+def class_for_shear_catalog_type(shear_catalog_type):
+    if shear_catalog_type == "metacal":
+        return MetacalShearCatalog
+    elif shear_catalog_type == "simple":
+        return SimpleShearCatalog
+    elif shear_catalog_type == "metadetect":
+        return MetaDetectShearCatalog
+    elif shear_catalog_type == "scalar_metadetect":
+        return ScalarMetaDetectCatalog
+    elif shear_catalog_type == "anacal":
+        return AnacalShearCatalog
+    elif shear_catalog_type == "lensfit":
+        return LensfitShearCatalog
+    elif shear_catalog_type == "hsc":
+        return HSCShearCatalog
+    raise ValueError(f"Unknown catalog type: {shear_catalog_type}")
 
 
 class PhotometryCatalog(HDFFile):
@@ -37,85 +44,149 @@ class ShearCatalog(HDFFile):
     """
     A generic shear catalog
     """
+    def __new__(cls, *args, **kwargs):
+        import h5py
+        filename = args[0]
+        if len(args) == 1:
+            mode = kwargs["mode"]
+        else:
+            mode = args[1]
 
-    # These are columns
+        if (cls is ShearCatalog) and (mode == "r"):  # only dispatch when called on the base class
+            cat_type = cls.get_catalog_type_from_filename(filename)
+            cat_cls = class_for_shear_catalog_type(cat_type)
+            return super().__new__(cat_cls)
+        return super().__new__(cls)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._catalog_type = None
 
-    def read_catalog_info(self):
-        try:
-            group = self.file["shear"]
-            info = dict(group.attrs)
-        except:
-            raise ValueError(f"Unable to read shear catalog")
-        shear_catalog_type = info.get("catalog_type")
-        return shear_catalog_type
+    @classmethod
+    def get_catalog_type_from_filename(cls, filename):
+        import h5py
+        with h5py.File(filename) as f:
+            return cls.get_catalog_type_from_file(f)
 
-    @property
-    def catalog_type(self):
-        if self._catalog_type is not None:
-            return self._catalog_type
-
-        if "catalog_type" in self.file["shear"].attrs:
-            t = self.file["shear"].attrs["catalog_type"]
-        elif "mcal_g1" in self.file["shear"].keys():
+    @classmethod
+    def get_catalog_type_from_file(cls, f):
+        if "catalog_type" in f["shear"].attrs:
+            t = f["shear"].attrs["catalog_type"]
+        elif "g1_1p" in f["shear"].keys():
             t = "metacal"
-        elif "1p" in self.file["shear"].keys():
+        elif "2p" in f["shear"].keys():
             t = "metadetect"
-        elif "c1" in self.file["shear"].keys():
+        elif "1p" in f["shear"].keys():
+            t = "scalar_metadetect"
+        elif "c1" in f["shear"].keys():
             t = "lensfit"
         else:
             raise ValueError("Could not figure out catalog format")
-
-        self._catalog_type = t
         return t
+        
+
+    @property
+    def catalog_type(self):
+        if self._catalog_type is None:
+            self._catalog_type = self.get_catalog_type_from_file(self.file)
+        return self._catalog_type
 
     def get_size(self):
-        if self.catalog_type == "metadetect":
-            return self.file["shear/00/ra"].size
-        else:
-            return self.file["shear/ra"].size
+        return self.file["shear/ra"].size
 
-    def get_primary_catalog_group(self):
-        if self.catalog_type == "metadetect":
-            return "shear/00"
-        else:
-            return "shear"
+    @staticmethod
+    def get_primary_catalog_group():
+        return "shear"
 
-    def get_true_redshift_column(self):
-        if self.catalog_type == "metadetect":
-            return "00/redshift_true"
-        else:
-            return "redshift_true"
+    @staticmethod
+    def get_primary_catalog_prefix():
+        return ""
+
+    @staticmethod
+    def get_primary_tomography_bin_column():
+        return "bin"
+
+    @staticmethod
+    def get_tomography_bin_columns():
+        return [ShearCatalog.get_primary_tomography_bin_column()]
+
+    @classmethod
+    def get_classifier_output_columns(cls):
+        """
+        Dataset names, in the shear_bin_assignments file, for the per-variant
+        tomographic bin assigned by each of this catalog's classifier
+        variants (see get_classifier_prefixes/get_classifier_suffixes).
+
+        For most catalog types this is the same set of names as end up in
+        the final calibrated shear_tomography_catalog, so it defaults to
+        get_tomography_bin_columns(). Metacal is the exception: it needs a
+        bin assignment for every sheared variant to compute its selection
+        response, but only the unsheared ("bin") assignment is carried
+        through to the final tomography catalog, so it overrides this
+        separately.
+        """
+        return cls.get_tomography_bin_columns()
+
+    @staticmethod
+    def get_true_redshift_column():
+        return "redshift_true"
+
+    @staticmethod
+    def get_column_name_variants(*columns):
+        return columns
+
+    @staticmethod
+    def get_classifier_prefixes():
+        return [""]
+
+    @staticmethod
+    def get_classifier_suffixes():
+        return [""]
+
+    def get_extra_calibration_columns(self, mode):
+        """
+        Extra shear-catalog columns (beyond g1/g2/weight) needed for calibration.
+
+        mode: str
+            Either "compute" - building up the calibration factors from the
+            raw catalog, as done in TXComputeShearCalibration* - or "apply" -
+            applying an already-computed calibration to catalog data, as done
+            when splitting the binned shear catalog or making diagnostic
+            plots. For most catalog types the same columns are needed in
+            both cases, but for some (e.g. lensfit) they differ.
+        """
+        if mode not in ("compute", "apply"):
+            raise ValueError(f"mode must be 'compute' or 'apply', not {mode!r}")
+        return []
+
+    def get_diagnostic_shear_columns(self, bands=None, use_psf_originals=False):
+        if bands is None:
+            bands = self.get_bands()
+        psf_suffix = "_original" if use_psf_originals else ""
+        return [
+            "dec",
+            "psf_g1",
+            "psf_g2",
+            "g1",
+            "g2",
+            f"psf_T_mean{psf_suffix}",
+            "s2n",
+            "T",
+            "weight",
+            "m",
+        ] + [f"mag_{b}" for b in bands]
 
     def get_primary_catalog_names(self, true_shear=False):
         if true_shear:
-            if self.catalog_type == "metadetect":
-                shear_cols = ["00/true_g1", "00/true_g2", "00/ra", "00/dec", "00/weight"]
-                rename = {c: c[3:] for c in shear_cols}
-                rename["00/true_g1"] = "g1"
-                rename["00/true_g2"] = "g2"
-            else:
-                rename = {"true_g1": "g1", "true_g2": "g2"}
-                rename = {}
-        elif self.catalog_type == "metacal":
-            shear_cols = ["mcal_g1", "mcal_g2", "ra", "dec", "weight"]
-            rename = {"mcal_g1": "g1", "mcal_g2": "g2"}
-        elif self.catalog_type == "hsc":
-            shear_cols = ["g1", "g2", "c1", "c2", "ra", "dec", "weight"]
-            rename = {}
-        elif self.catalog_type == "metadetect":
-            shear_cols = ["00/g1", "00/g2", "00/ra", "00/dec", "00/weight"]
-            rename = {c: c[3:] for c in shear_cols}
+            shear_cols = ["true_g1", "true_g2", "ra", "dec", "weight"]
+            rename = {"true_g1": "g1", "true_g2": "g2"}
         else:
             shear_cols = ["g1", "g2", "ra", "dec", "weight"]
             rename = {}
 
         return shear_cols, rename
 
-    def get_bands(self, shear_prefix=""):
+    def get_bands(self):
         group = self.file[self.get_primary_catalog_group()]
         if "bands" in group.attrs:
             return group.attrs["bands"]
@@ -124,13 +195,289 @@ class ShearCatalog(HDFFile):
         # messy check. We look for all the columns that start with
         # mag_ and don't have an extra underscore in, which would indicate
         # that they are an error like mag_z_err
-        bands = []
-        nunderscore = shear_prefix.count("_")
-        l = len(shear_prefix + "mag_")
-        for col in group.keys():
-            if col.startswith(f"{shear_prefix}mag_") and (col.count("_") == 1 + nunderscore):
-                bands.append(col[l:])
+        band_cols = [c for c in group.keys() if c.startswith(f"mag_") and c.count("_") == 1]
+        bands = [c[4:] for c in band_cols]
         return bands
+
+class SimpleShearCatalog(ShearCatalog):
+    pass
+
+class MetacalShearCatalog(ShearCatalog):
+    @staticmethod
+    def get_classifier_prefixes():
+        return [""] * 5
+
+    @staticmethod
+    def get_classifier_suffixes():
+        return ["", "_1p", "_1m", "_2p", "_2m"]
+
+    @staticmethod
+    def get_column_name_variants(*columns):
+        from .calibration.calibration_utils.names import metacal_variants
+
+        return metacal_variants(*columns)
+
+    @staticmethod
+    def get_classifier_output_columns():
+        # Metacal needs a tomographic bin assignment for each sheared
+        # variant, to compute its selection response - but only the
+        # unsheared ("bin") assignment ends up in the final calibrated
+        # tomography catalog, via the inherited get_tomography_bin_columns().
+        return ["bin", "bin_1p", "bin_1m", "bin_2p", "bin_2m"]
+
+
+    def get_diagnostic_shear_columns(self, bands=None, use_psf_originals=False):
+        if bands is None:
+            bands = self.get_bands()
+        return [
+            "psf_g1",
+            "psf_g2",
+            "psf_T_mean",
+            "g1",
+            "g1_1p",
+            "g1_2p",
+            "g1_1m",
+            "g1_2m",
+            "g2",
+            "g2_1p",
+            "g2_2p",
+            "g2_1m",
+            "g2_2m",
+            "s2n",
+            "T",
+            "T_1p",
+            "T_2p",
+            "T_1m",
+            "T_2m",
+            "s2n_1p",
+            "s2n_2p",
+            "s2n_1m",
+            "s2n_2m",
+            "weight",
+        ] + [f"mag_{b}" for b in bands]
+
+    def get_primary_catalog_names(self, true_shear=False):
+        if true_shear:
+            shear_cols = ["true_g1", "true_g2", "ra", "dec", "weight"]
+            rename = {"true_g1": "g1", "true_g2": "g2"}
+        else:
+            shear_cols = ["g1", "g2", "ra", "dec", "weight"]
+            rename = {}
+        return shear_cols, rename
+
+class MetaDetectShearCatalog(ShearCatalog):
+    def get_size(self):
+        return self.file["shear/ns/ra"].size
+
+    @staticmethod
+    def get_classifier_prefixes():
+        return ["ns/", "1p/", "1m/", "2p/", "2m/"]
+
+    @staticmethod
+    def get_classifier_suffixes():
+        return [""] * 5
+
+    @staticmethod
+    def get_primary_catalog_group():
+        return "shear/ns"
+
+    @staticmethod
+    def get_primary_catalog_prefix():
+        return "ns/"
+
+    @staticmethod
+    def get_primary_tomography_bin_column():
+        return "ns/bin"
+
+    @staticmethod
+    def get_tomography_bin_columns():
+        return ["ns/bin", "1p/bin", "1m/bin", "2p/bin", "2m/bin"]
+
+    @staticmethod
+    def get_true_redshift_column():
+        return "ns/redshift_true"
+
+    @staticmethod
+    def get_column_name_variants(*columns):
+        from .calibration.calibration_utils.names import metadetect_variants
+
+        return metadetect_variants(*columns)
+
+    def get_diagnostic_shear_columns(self, bands=None, use_psf_originals=False):
+        if bands is None:
+            bands = self.get_bands()
+        from .calibration.calibration_utils.names import metadetect_variants, band_variants
+
+        psf_suffix = "_original" if use_psf_originals else ""
+        shear_cols = metadetect_variants(
+            "g1",
+            "g2",
+            "T",
+            f"psf_g1{psf_suffix}",
+            f"psf_g2{psf_suffix}",
+            "psf_T_mean",
+            "s2n",
+            "weight",
+        )
+        shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="metadetect")
+        return shear_cols
+
+    def get_primary_catalog_names(self, true_shear=False):
+        if true_shear:
+            shear_cols = ["ns/true_g1", "ns/true_g2", "ns/ra", "ns/dec", "ns/weight"]
+            rename = {c: c[3:] for c in shear_cols}
+            rename["ns/true_g1"] = "g1"
+            rename["ns/true_g2"] = "g2"
+        else:
+            shear_cols = ["ns/g1", "ns/g2", "ns/ra", "ns/dec", "ns/weight"]
+            rename = {c: c[3:] for c in shear_cols}
+
+        return shear_cols, rename
+
+class ScalarMetaDetectCatalog(MetaDetectShearCatalog):
+    @staticmethod
+    def get_classifier_prefixes():
+        return ["ns/", "1p/", "1m/"]
+
+    @staticmethod
+    def get_classifier_suffixes():
+        return [""] * 3
+
+    @staticmethod
+    def get_tomography_bin_columns():
+        return ["ns/bin", "1p/bin", "1m/bin"]
+
+    @staticmethod
+    def get_column_name_variants(*columns):
+        from .calibration.calibration_utils.names import scalar_metadetect_variants
+
+        return scalar_metadetect_variants(*columns)
+
+    def get_diagnostic_shear_columns(self, bands=None, use_psf_originals=False):
+        if bands is None:
+            bands = self.get_bands()
+        from .calibration.calibration_utils.names import scalar_metadetect_variants, band_variants
+
+        psf_suffix = "_original" if use_psf_originals else ""
+        shear_cols = scalar_metadetect_variants(
+            "g1",
+            "g2",
+            "T",
+            f"psf_g1{psf_suffix}",
+            f"psf_g2{psf_suffix}",
+            "psf_T_mean",
+            "s2n",
+            "weight",
+        )
+        shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="scalar_metadetect")
+        return shear_cols
+
+
+class AnacalShearCatalog(ShearCatalog):
+    def get_primary_catalog_names(self, true_shear=False):
+        if true_shear:
+            shear_cols = ["true_g1", "true_g2", "ra", "dec", "weight"]
+            rename = {"true_g1": "g1", "true_g2":"g2"}
+        else:
+            shear_cols = ["e1", "e2", "ra", "dec", "weight"]
+            rename = {"e1":"g1", "e2":"g2"}
+        return shear_cols, rename
+
+    def get_diagnostic_shear_columns(self, bands=None, use_psf_originals=False):
+        if bands is None:
+            bands = self.get_bands()
+        return [
+            "dec",
+            "ra",
+            "psf_g1",
+            "psf_g2",
+            "psf_T_mean",
+            "e1",
+            "e2",
+            "de1_dg1",
+            "de2_dg2",
+            # needed by AnaCalCalculator for R_shape and R_detect
+            "e1_raw",
+            "e2_raw",
+            "wsel",
+            "weight_dg1",
+            "weight_dg2",
+            "s2n",
+            "T",
+            "weight"
+        ] + [f"mag_{b}" for b in bands]
+
+
+    @staticmethod
+    def get_classifier_prefixes():
+        return [""] * 5
+
+    @staticmethod
+    def get_classifier_suffixes():
+        return ["", "_1p", "_1m", "_2p", "_2m"]
+
+    @staticmethod
+    def get_classifier_output_columns():
+        return ["bin", "bin_1p", "bin_1m", "bin_2p", "bin_2m"]
+
+    @staticmethod
+    def get_column_name_variants(*columns):
+        # AnaCal stores its shapes as e1/e2 (= wsel * e_raw), and AnaCalCalculator
+        # reads them under those names, so we translate rather than rename.
+        aliases = {"g1": "e1", "g2": "e2"}
+        # Only s2n has shifted variants, used for the S/N binning's R_sel.
+        shifted = {"s2n"}
+
+        cols = []
+        for col in columns:
+            col = aliases.get(col, col)
+            cols.append(col)
+            if col in shifted:
+                cols += [f"{col}{s}" for s in ("_1p", "_1m", "_2p", "_2m")]
+
+        # Per-object columns AnaCalCalculator needs for R_shape and R_detect.
+        return cols + [
+            "e1_raw", "e2_raw", "wsel",
+            "weight_dg1", "weight_dg2", "de1_dg1", "de2_dg2",
+        ]
+
+
+class LensfitShearCatalog(ShearCatalog):
+    def get_primary_catalog_names(self, true_shear=False):
+        shear_cols = ["g1", "g2", "ra", "dec", "weight"]
+        rename = {}
+        return shear_cols, rename
+
+    def get_extra_calibration_columns(self, mode):
+        if mode == "compute":
+            # Computing the calibration (K, the mean m) needs the per-object
+            # m value as well as dec, used for the north/south c-term split.
+            return ["dec", "m"]
+        elif mode == "apply":
+            # Applying the already-computed calibration only needs dec, to
+            # choose between the precomputed north/south c-terms; m is
+            # already baked into the calibrator itself.
+            return ["dec"]
+        else:
+            raise ValueError(f"mode must be 'compute' or 'apply', not {mode!r}")
+
+class HSCShearCatalog(ShearCatalog):
+    def get_primary_catalog_names(self, true_shear=False):
+        shear_cols = ["g1", "g2", "c1", "c2", "ra", "dec", "weight"]
+        if "aselepsf1" in self.file['shear'].keys():
+            shear_cols += ["aselepsf1", "aselepsf2", "msel"]
+        rename = {}
+        return shear_cols, rename
+
+    def get_extra_calibration_columns(self, mode):
+        if mode not in ("compute", "apply"):
+            raise ValueError(f"mode must be 'compute' or 'apply', not {mode!r}")
+        # TODO: check whether compute and apply should need different
+        # columns here too, as they do for lensfit.
+        if "aselepsf1" in self.file['shear'].keys():
+            return ["c1", "c2", "aselepsf1", "aselepsf2", "msel"]
+        else:
+            return ["c1", "c2"]
 
 
 class BinnedCatalog(HDFFile):
@@ -202,10 +549,11 @@ class MapsFile(HDFFile):
         def visit(name, obj):
             if isinstance(obj, h5py.Group):
                 keys = obj.keys()
-                # we save maps with these two data sets,
-                # so if they are both there then this will
+                # legacy maps have datasets "pixel", "value"
+                # healsparse maps have sub-group "healsparse"
+                # so if one of these is there then this will
                 # be a map
-                if "pixel" in keys and "value" in keys:
+                if ("pixel" in keys and "value" in keys) or ("healsparse" in keys):
                     maps.append(name)
 
         # Now actually run this
@@ -214,21 +562,42 @@ class MapsFile(HDFFile):
         # return the accumulated list
         return maps
 
-    def read_healpix(self, map_name, return_all=False):
+    def _read_healsparse(self, map_name, **kwargs):
+        """
+        Read healsparse map from hdf5
+
+        All keyword arguments are forwarded to HealSparseMap.read
+        """
+        import healsparse as hsp
+
+        return hsp.HealSparseMap.read(
+            self.path, hdf5_group=f"maps/{map_name}/healsparse", **kwargs
+        )
+
+    def _check_is_legacy(self, map_name):
+        """
+        Returns True if map was saved using an old TXPipe file format
+        i.e. is not a healsparse file
+        """
+        keys = self.file[f"maps/{map_name}"].keys()
+        return ("pixel" in keys) and ("value" in keys)
+
+    def _read_healpix_legacy(self, map_name):
+        import healsparse as hsp
         import healpy
-        import numpy as np
 
         group = self.file[f"maps/{map_name}"]
         nside = group.attrs["nside"]
-        npix = healpy.nside2npix(nside)
-        m = np.repeat(healpy.UNSEEN, npix)
-        pix = group["pixel"][:]
-        val = group["value"][:]
-        m[pix] = val
-        if return_all:
-            return m, pix, nside
+        
+        # Legacy files don't have an nside_coverage so we default to 32
+        nside_coverage = 32
+        m = hsp.HealSparseMap.make_empty(nside_coverage, nside, dtype=type(group["value"][0]))
+        if group.attrs["nest"]:
+            pix = group["pixel"][:]
         else:
-            return m
+            pix = healpy.ring2nest(nside, group["pixel"][:])
+        m.update_values_pix(pix, group["value"][:])
+        return m
 
     def read_map_info(self, map_name):
         group = self.file[f"maps/{map_name}"]
@@ -238,49 +607,150 @@ class MapsFile(HDFFile):
         return info
 
     def read_map(self, map_name):
-        info = self.read_map_info(map_name)
-        pixelization = info["pixelization"]
-        if pixelization == "gnomonic":
-            m = self.read_gnomonic(map_name)
-        elif pixelization == "healpix":
-            m = self.read_healpix(map_name)
-        else:
-            raise ValueError(f"Unknown map pixelization type {pixelization}")
-        return m
-
-    def read_mask(self, mask_name=None, thresh=0):
-        if mask_name is None:
-            mask_name = "mask"
-        mask = self.read_map(mask_name)
-        mask[mask <= thresh] = 0
-        return mask
-
-    def read_healsparse(self, map_name, return_all=True):
-        import healpy
-        import healsparse as hsp
-        import numpy as np
-
-        group = self.file[f"maps/{map_name}"]
-        nside = group.attrs["nside"]
-        m = hsp.HealSparseMap.make_empty(32, nside, dtype=type(group["value"][0]), sentinel=healpy.UNSEEN)
-        m.update_values_pix(group["pixel"][:], group["value"][:])
-        if return_all:
-            return m, nside
-        else:
-            return m
-
-    def write_map(self, map_name, pixel, value, metadata):
         """
-        Save an output map to an HDF5 subgroup.
-
-        The pixel numbering and the metadata are also saved.
+        Read map and return as a healsparse map
 
         Parameters
         ----------
 
-        group: H5Group
-            The h5py Group object in which to store maps
-        name: str
+        map_name: `str`
+            The name of this map
+        """
+        info = self.read_map_info(map_name)
+        pixelization = info["pixelization"]
+        if pixelization == "gnomonic":
+            raise ValueError("Gnomonic maps are not currently supported.")
+        elif pixelization == "healpix":
+            is_legacy = self._check_is_legacy(map_name)
+
+            if is_legacy:
+                m = self._read_healpix_legacy(map_name)
+            else:
+                m = self._read_healsparse(map_name)
+        else:
+            raise ValueError(f"Unknown map pixelization type {pixelization}")
+        return m
+
+    def read_map_healpix(
+        self, map_name, nside=None, reduction="mean", key=None, nest=True
+    ):
+        """
+        Read map and return as a healpix array
+
+        Parameters
+        ----------
+
+        map_name: `str`
+            The name of this map
+        nside : `int` (healsparse argument)
+            Output nside resolution parameter (should be a multiple of 2). If
+            not specified the output resolution will be equal to the parent's
+            sparsemap nside_sparse
+        reduction : `str` (healsparse argument)
+            If a change in resolution is requested, this controls the method to
+            reduce the map computing the "mean", "median", "std", "max", "min",
+            "sum" or "prod" (product)  of the neighboring pixels to compute the
+            "degraded" map.
+        key : `str` (healsparse argument)
+            If the parent HealSparseMap contains recarrays, key selects the
+            field that will be transformed into a HEALPix map.
+        nest : `bool`, optional (healsparse argument)
+            Output healpix map should be in nest format?
+        """
+        hsp_map = self.read_map(map_name)
+        m = hsp_map.generate_healpix_map(
+            nside=nside, reduction=reduction, key=key, nest=nest
+        )
+        return m
+
+    def read_mask(
+        self, mask_name=None, thresh=0.0, degrade_nside=None, returnbool=False
+    ):
+        """
+        Read the mask and return as a healsparse map
+
+        Parameters
+        ----------
+
+        map_name: str or None  (optional)
+            The name of this mask, if None wil load the default "mask"
+        thresh: float (optional)
+            minimum fractional coverage of a pixel (at native nside)
+        degrade_nside: int
+            if required, degrade the mask to this nside
+        returnbool: bool
+            if True, will return a binary map where any pixel with mask > 0 is True
+            if mask was already boolean, return unchanged
+        """
+        import healsparse as hsp
+
+        if mask_name is None:
+            mask_name = "mask"
+        mask_in = self.read_map(mask_name)
+
+        if thresh > 0.0:
+            # Remove any pixels below the threshold
+            # Setting pixels to the sentinel can be buggy in healsparse
+            # so we'll make a copy of the mask with the < thresh pixels removed
+            mask = hsp.HealSparseMap.make_empty_like(mask_in)
+            pix_to_keep = mask_in.valid_pixels[mask_in[mask_in.valid_pixels] > thresh]
+            mask.update_values_pix(pix_to_keep, mask_in[pix_to_keep])
+        else:
+            mask = mask_in
+
+        # degrade if requested and nessesary
+        if (degrade_nside is not None) and (degrade_nside < mask.nside_sparse):
+            # In this case we need a float mask to allow the mask-like
+            # degrading to work
+            from .maps.mapping import degrade_healsparse
+
+            mask = mask.astype("float")
+            mask = degrade_healsparse(
+                mask, reduction="mask", degrade_nside=degrade_nside
+            )
+        elif (degrade_nside is not None) and (degrade_nside > mask.nside_sparse):
+            mask = mask.upgrade(degrade_nside)
+
+
+        if returnbool and not np.issubdtype(mask.dtype, np.bool_):
+            # make a boolean mask from a frac map
+            bool_mask = hsp.HealSparseMap.make_empty(
+                mask.nside_coverage, mask.nside_sparse, bool
+            )
+            bool_mask[mask.valid_pixels] = True
+            mask = bool_mask
+
+        return mask
+
+    def read_mask_healpix(self, mask_name=None, thresh=0.0, degrade_nside=None):
+        """
+        Read the mask and return as a healpix array
+
+        Parameters
+        ----------
+
+        map_name: str or None  (optional)
+            The name of this mask, if None wil load the default "mask"
+        thresh: float (optional)
+            minimum fractional coverage of a pixel (at native nside)
+        degrade_nside : int or None  (optional)
+            degrade the mask to this nside before converting to healpix array
+        """
+        import healsparse as hsp
+
+        mask_out = self.read_mask(
+            mask_name=mask_name, thresh=thresh, degrade_nside=degrade_nside
+        )
+        return mask_out.generate_healpix_map()
+
+    def write_map(self, map_name, hsp_map, metadata):
+        """
+        Save an output healsparse map to an HDF5 subgroup in healsparse format
+
+        Parameters
+        ----------
+
+        map_name: str
             The name of this map, used as the name of a subgroup in the group where the data is stored.
         pixel: array
             Array of indices of observed pixels
@@ -289,6 +759,43 @@ class MapsFile(HDFFile):
         metadata: mapping
             Dict or other mapping of metadata to store along with the map
         """
+        if not "maps" in self.file:
+            self.file.create_group("maps")
+
+        hsp_map.write(
+            self.path,
+            format="hdf5",
+            clobber=True,
+            hdf5_group=f"maps/{map_name}/healsparse",
+        )
+
+        # also add any extra metadata
+        subgroup = self.file[f"maps/{map_name}"]
+        subgroup.attrs.update(metadata)
+
+    def write_map_pixval(self, map_name, pixel, value, metadata, nside_coverage=32):
+        """
+        Save an array of pixel indices and values to an HDF5 subgroup in healsparse format
+
+        The metadata is also saved.
+
+        Parameters
+        ----------
+
+        map_name: str
+            The name of this map, used as the name of a subgroup in the group where the data is stored.
+        pixel: array
+            Array of indices of observed pixels
+        value: array
+            Array of values of observed pixels
+        metadata: mapping
+            Dict or other mapping of metadata to store along with the map
+        nside_coverage: int
+            nside of the healsparse coverage map
+        """
+        import healsparse as hsp
+        import healpy
+
         if not "maps" in self.file:
             self.file.create_group("maps")
         if not "pixelization" in metadata:
@@ -301,98 +808,79 @@ class MapsFile(HDFFile):
             if not pixel.shape == value.shape:
                 raise pixerr
 
-        if not "maps" in self.file.keys():
-            self.file.create_group("maps")
         subgroup = self.file["maps"].create_group(map_name)
         subgroup.attrs.update(metadata)
-        subgroup.create_dataset("pixel", data=pixel)
-        subgroup.create_dataset("value", data=value)
 
-    def plot_healpix(self, map_name, view="cart", rot180=False, **kwargs):
-        import healpy
-        import numpy as np
-
-        m, pix, nside = self.read_healpix(map_name, return_all=True)
-        lon, lat = healpy.pix2ang(nside, pix, lonlat=True)
-        if rot180:  # (optional) rotate 180 degrees in the lon direction
-            lon += 180
-            lon[lon > 360.0] -= 360.0
-            pix_rot = healpy.ang2pix(nside, lon, lat, lonlat=True)
-            m_rot = np.ones(healpy.nside2npix(nside)) * healpy.UNSEEN
-            m_rot[pix_rot] = m[pix]
-            m = m_rot
-            pix = pix_rot
-        npix = healpy.nside2npix(nside)
-        if len(pix) == 0:
-            print(f"Empty map {map_name}")
-            return
-        if len(pix) == len(m):
-            w = np.where((m != healpy.UNSEEN) & (m != 0))
+        # convert pixels and values into a healsparse map and save
+        if (
+            value.ndim == 2
+        ):  # input values are a stack of maps. save as recarray (labels 0, 1, 2 etc)
+            dtypes = [(str(i), value.dtype) for i in range(value.shape[0])]
+            value = np.rec.fromarrays(value, dtype=dtypes)
+            hsp_map = hsp.HealSparseMap.make_empty(
+                nside_coverage=nside_coverage,
+                nside_sparse=metadata["nside"],
+                dtype=dtypes,
+                primary="0",
+            )
         else:
-            w = None
-        lon_range = [lon[w].min() - 0.1, lon[w].max() + 0.1]
-        lat_range = [lat[w].min() - 0.1, lat[w].max() + 0.1]
-        lat_range = np.clip(lat_range, -90, 90)
-        lon_range = np.clip(lon_range, 0, 360.0)
-        m[m == 0] = healpy.UNSEEN
-        title = kwargs.pop("title", map_name)
-        if view == "cart":
-            healpy.cartview(m, lonra=lon_range, latra=lat_range, title=title, hold=True, **kwargs)
-        elif view == "moll":
-            healpy.mollview(m, title=title, hold=True, **kwargs)
+            hsp_map = hsp.HealSparseMap.make_empty(
+                nside_coverage=nside_coverage,
+                nside_sparse=metadata["nside"],
+                dtype=value.dtype,
+            )
+        if metadata["nest"]:
+            hsp_pix = pixel
         else:
-            raise ValueError(f"Unknown Healpix view mode {mode}")
+            hsp_pix = healpy.ring2nest(metadata["nside"], pixel)
 
-    def read_gnomonic(self, map_name):
-        import numpy as np
+        hsp_map.update_values_pix(hsp_pix, value)
 
-        group = self.file[f"maps/{map_name}"]
-        info = dict(group.attrs)
-        nx = info["nx"]
-        ny = info["ny"]
-        m = np.zeros((ny, nx))
-        m[:, :] = np.nan
+        hsp_map.write(
+            self.path,
+            format="hdf5",
+            clobber=True,
+            hdf5_group=f"maps/{map_name}/healsparse",
+        )
 
-        pix = group["pixel"][:]
-        val = group["value"][:]
-        w = np.where(pix != -9999)
-        pix = pix[w]
-        val = val[w]
-        x = pix % nx
-        y = pix // nx
-        m[y, x] = val
-        return m
+    def plot(
+        self,
+        map_name,
+        view="McBryde",
+        ax=None,
+        cbar=True,
+        **kwargs,
+    ):
+        """
+        Plots healpix map using healpy tools
 
-    def plot_gnomonic(self, map_name, **kwargs):
+        The map is read as a HealSparse map, optionally degraded
+        to a target nside, converted to a Healpix array, and plotted with healpy
+
+        Parameters
+        ----------
+        map_name : str
+            Name of the map to read and plot.
+        view : str, optional
+            Skyproj projection name. Default McBryde. Will look for skyproj.{view}Skyproj
+        ax : matplotlib.Axes
+            Matplotlib axes on which to draw the image
+        cbar: bool, default=True
+        **kwargs
+            Additional keyword arguments passed directly to the underlying
+            skyproj plotting function (e.g. ``vmin``, ``vmax``,).
+        """
+        import skyproj
         import matplotlib.pyplot as plt
-        import numpy as np
-
-        info = self.read_map_info(map_name)
-        ra_min, ra_max = info["ra_min"], info["ra_max"]
-        if ra_min > 180 and ra_max < 180:
-            ra_min -= 360
-        ra_range = (ra_max, ra_min)
-        dec_range = (info["dec_min"], info["dec_max"])
-
-        # the view arg is needed for healpix but not gnomonic
-        kwargs.pop("view")
-        m = self.read_gnomonic(map_name)
-        extent = list(ra_range) + list(dec_range)
-        title = kwargs.pop("title", map_name)
-        plt.imshow(m, aspect="equal", extent=extent, **kwargs)
-        plt.title(title)
-        plt.colorbar()
-
-    def plot(self, map_name, **kwargs):
-        info = self.read_map_info(map_name)
-        pixelization = info["pixelization"]
-        if pixelization == "gnomonic":
-            m = self.plot_gnomonic(map_name, **kwargs)
-        elif pixelization == "healpix":
-            m = self.plot_healpix(map_name, **kwargs)
-        else:
-            raise ValueError(f"Unknown map pixelization type {pixelization}")
-        return m
+        hsp_map = self.read_map(map_name)
+        skyproj_class = getattr(skyproj, view + "Skyproj")
+        projection = skyproj_class(ax=ax)
+        projection.draw_hspmap(hsp_map, **kwargs)
+        plt.title(map_name)
+        plt.tick_params(labeltop=False)
+        if cbar:
+            projection.draw_colorbar()
+        plt.tight_layout()
 
 
 class LensingNoiseMaps(MapsFile):
@@ -407,6 +895,12 @@ class LensingNoiseMaps(MapsFile):
 
         return g1, g2
 
+    def read_rotation_healpix(self, realization_index, bin_index):
+        g1, g2 = self.read_rotation(realization_index, bin_index)
+        g1_hp = g1.generate_healpix_map()
+        g2_hp = g2.generate_healpix_map()
+        return g1_hp, g2_hp
+
     def number_of_realizations(self):
         info = self.file["maps"].attrs
         lensing_realizations = info["lensing_realizations"]
@@ -420,6 +914,12 @@ class ClusteringNoiseMaps(MapsFile):
         rho1 = self.read_map(rho1_name)
         rho2 = self.read_map(rho2_name)
         return rho1, rho2
+
+    def read_density_split_healpix(self, realization_index, bin_index):
+        rho1, rho2 = self.read_density_split(realization_index, bin_index)
+        rho1_hp = rho1.generate_healpix_map()
+        rho2_hp = rho2.generate_healpix_map()
+        return rho1_hp, rho2_hp
 
     def number_of_realizations(self):
         info = self.file["maps"].attrs
@@ -450,7 +950,7 @@ class SACCFile(DataFile):
 
         if mode == "w":
             raise ValueError("Do not use the open_output method to write sacc files.  Use sacc.write_fits")
-        return sacc.Sacc.load_fits(path)
+        return sacc.Sacc.load(path)
 
     def read_provenance(self):
         meta = self.file.metadata
@@ -463,11 +963,55 @@ class SACCFile(DataFile):
 
         return provenance
 
+    @classmethod
+    def add_metadata(cls, sacc_object, provenance, meta):
+        # We also save the associated metadata to the file
+        for k, v in meta.items():
+            if np.isscalar(v):
+                sacc_object.metadata[k] = v
+            else:
+                for i, vi in enumerate(v):
+                    sacc_object.metadata[f"{k}_{i}"] = vi
+
+        # Add provenance metadata.  In managed formats this is done
+        # automatically, but because the Sacc library is external
+        # we do it manually here.
+        provenance.update(SACCFile.generate_provenance())
+        for key, value in provenance.items():
+            if isinstance(value, str) and "\n" in value:
+                values = value.split("\n")
+                for i, v in enumerate(values):
+                    sacc_object.metadata[f"provenance/{key}_{i}"] = v
+            else:
+                sacc_object.metadata[f"provenance/{key}"] = value
+
+
     def close(self):
         pass
 
 
 class FiducialCosmology(YamlFile):
+
+    def to_astropy(self):
+        from astropy.cosmology import w0waCDM
+
+        with open(self.path, "r") as fp:
+            params = yaml.load(fp, Loader=yaml.Loader)
+
+        astropy_params = dict(
+            H0=params["H0"],
+            Om0=params["Omega_m"],
+            Ode0=1 - params["Omega_k"] - params["Omega_m"],
+            w0=params["w0"],
+            wa=params["wa"],
+            Neff=params["Neff"],
+            m_nu=params["sum_nu_masses"]
+
+        )
+
+        cosmo = w0waCDM(**astropy_params)
+
+        return cosmo
     # TODO replace when CCL has more complete serialization tools.
     def to_ccl(self, **kwargs):
         import pyccl as ccl
@@ -592,7 +1136,10 @@ class QPNOfZFile(QPBaseFile):
             read = tables_io.io.readHdf5GroupToDict
         except AttributeError:
             read = tables_io.hdf5.read_HDF5_group_to_dict
-        tables = dict([(key, read(val)) for key, val in self.file["qp"].items()])
+        if "qp" in self.file.keys():
+            tables = dict([(key, read(val)) for key, val in self.file["qp"].items()])
+        else:
+            tables = dict([(key, read(val)) for key, val in self.file.items()])
 
         self._ensemble = qp.from_tables(tables)
         return self._ensemble
@@ -685,3 +1232,16 @@ class QPMultiFile(HDFFile):
             subgroup = group.create_group(subgroup_name)
             for key, val in subtables.items():
                 subgroup.create_dataset(key, dtype=val.dtype, data=val.data)
+
+class CatalogSelection(HDFFile):
+    """
+    Contains a boolean selection for whether rows in a catalog
+    are selected for use or not.
+
+    For simple catalogs this will just be a single column. For meta* shear
+    catalogs it can have multiple columns.
+    """
+    pass
+
+class BinAssignments(HDFFile):
+    pass

@@ -24,7 +24,7 @@ The ``tx`` command runs programs in a TXPipe environment. To run whole pipelines
 
 .. code:: bash
 
-    tx ceci examples/metacal/pipeline.yml
+    tx ceci examples/test/metacal/pipeline.yml
 
 
 You can also use the TX command to run individual stages, to test or develop them.
@@ -36,5 +36,5 @@ They will normally have a form something like this at NERSC:
 
 .. code:: bash
 
-    srun -u --ntasks=4 --cpus-per-task=2 --nodes=1 tx python -m txpipe TXSourceSelector ...
+    srun -u --ntasks=4 --cpus-per-task=2 --nodes=1 tx python -m txpipe TXMetaDetectSelection ...
 
