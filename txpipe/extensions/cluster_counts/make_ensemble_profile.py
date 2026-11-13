@@ -10,6 +10,7 @@ from collections import defaultdict
 import yaml
 import ceci
 import pickle
+import warnings
 
 class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
     """Compute stacked radial shear profiles of ensembles of clusters.
@@ -17,11 +18,20 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
     For each redshift/richness bin of clusters, computes the tangential and cross shear profile
     of each cluster, using CLMM, and stacks them. Clusters with no background sources are
     skipped, and ensembles with fewer than two usable clusters are not stacked.
+
+    The sources of each cluster are its pairs from CLClusterShearCatalogs. Their shears are
+    calibrated with the calibration of the whole source sample in shear_tomography_catalog
+    (shear_calibration "global", or "none"), and their quantities are saved in
+    cluster_source_quantities. source_photoz_pdfs can be "none" if redshift_weight_criterion
+    does not use photo-z.
     """
     name = "CLClusterEnsembleProfiles"
+    # The stacking is done in one process
+    parallel = False
     inputs = [
         #("cluster_catalog", HDFFile),
         ("shear_catalog", ShearCatalog),
+        ("shear_tomography_catalog", TomographyCatalog),
         ("cluster_catalog_tomography", HDFFile), # TO TEST
         ("fiducial_cosmology", FiducialCosmology),
         ("cluster_shear_selection", HDFFile),
@@ -30,6 +40,7 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
 
     outputs = [
         ("cluster_profiles",  PickleFile),
+        ("cluster_source_quantities", HDFFile),
     ]
 
     config_options = {
@@ -46,11 +57,13 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         #coordinate_system for shear
         #"coordinate_system" : 'euclidean' #Must be either 'celestial' or 'euclidean'
         "coordinate_system": "celestial",
-        "use_shape_noise": False,
+        "use_shape_noise": False, # If True, the weights include the shape noise of the whole source sample (a constant, so the profiles do not change)
         "use_true_shear": False,
         "delta_sigma": True, # If True then we compute delta-sigma, otherwise we compute gamma
         "redshift_weight_criterion": "zmode",  # pdf / mean / true / None
         "chunk_rows": 100_000,  # rows to read at once from source cat
+        "shear_calibration": "global", # global / none
+        "subtract_mean_shear": False,
     }
 
     def run(self):
@@ -67,6 +80,7 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         print (self.distance_bins) 
         self.coordinate_system = self.config["coordinate_system"]
         print (self.coordinate_system) 
+        self.profile_type = "delta_sigma" if self.config["delta_sigma"] else "reduced_shear"
 
         
         with self.open_input("fiducial_cosmology", wrapper=True) as f:
@@ -74,13 +88,11 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             self.clmm_cosmo = clmm.cosmology.ccl.CCLCosmology()
             self.clmm_cosmo.set_be_cosmo(ccl_cosmo)
                  
-        clusters_in_bins = self.load_cluster_catalog_tomography_group() 
+        clusters_in_bins, bin_attrs = self.load_cluster_catalog_tomography_group() 
         clusters_list_of_source_lists = self.get_source_data(clusters_in_bins)
-        cluster_stack_dict = self.make_ensemble(clusters_in_bins, clusters_list_of_source_lists) 
+        self.write_source_quantities(clusters_in_bins, clusters_list_of_source_lists)
+        cluster_stack_dict = self.make_ensemble(clusters_in_bins, bin_attrs, clusters_list_of_source_lists) 
         pickle.dump(cluster_stack_dict, open(self.get_output("cluster_profiles"), 'wb'))
-
-
-        return tab, meta_coord_sys, profile_type
 
     def get_source_data(self, clusters_in_bins):
 
@@ -98,21 +110,31 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             clmm_cosmo.set_be_cosmo(ccl_cosmo)
 
         print("    Get cluster-galaxy pairs")
-        # get cluster-galaxy pairs
+        # get cluster-galaxy pairs, only for the clusters in the bins and within the
+        # outer radial bin, the only ones that enter the profiles
+        n_small_search = 0
+        cluster_source_index = {}
+        cluster_source_dist = {}
         with self.open_input("cluster_shear_selection") as f:
-            #catalog_group.create_dataset("cluster_theta_max_arcmin", shape=(ncluster,), dtype=np.float64)
-        
-            # sort by cl_id to optimize the assignment
-            order = np.argsort(f["index/cluster_id"][:])
-            cl_ids = f["index/cluster_id"][:][order]
-            src_inds = f["index/source_index"][:][order]
-            dist_amin = f["index/distance_arcmin"][:][order]
-
-            unique_cl_ids, num_src_in_cl = np.unique(cl_ids, return_counts=True)
-            split_pos = num_src_in_cl.cumsum()
-
-            cluster_source_index = dict(list(zip(unique_cl_ids, np.split(src_inds, split_pos)[:-1])))
-            cluster_source_dist = dict(list(zip(unique_cl_ids, np.split(dist_amin, split_pos)[:-1])))
+            catalog_row = {cl_id: i for i, cl_id in enumerate(f["catalog/cluster_id"][:])}
+            sample_start = f["catalog/cluster_sample_start"][:]
+            sample_count = f["catalog/cluster_sample_count"][:]
+            search_angle = f["catalog/cluster_theta_max_arcmin"][:]
+            for cluster_list in clusters_in_bins.values():
+                for cluster in cluster_list:
+                    i = catalog_row[cluster["id"]]
+                    # outer radial bin in arcmin. The 1e-6 margins are for rounding.
+                    max_angle = clmm.utils.convert_units(
+                        self.distance_bins[-1], self.config["bin_units"], "arcmin", float(cluster["redshift"]), clmm_cosmo
+                    )
+                    n_small_search += search_angle[i] < max_angle * (1 - 1e-6)
+                    rows = slice(sample_start[i], sample_start[i] + sample_count[i])
+                    distance = f["index/distance_arcmin"][rows]
+                    near = distance <= max_angle * (1 + 1e-6)
+                    cluster_source_index[cluster["id"]] = f["index/source_index"][rows][near]
+                    cluster_source_dist[cluster["id"]] = distance[near]
+        if n_small_search:
+            print(f"!!! {n_small_search} clusters have a search radius smaller than the outer radial bin")
 
         # sort gal_index just to be sure:
         _sort_order = {key: np.argsort(value) for key, value in cluster_source_index.items()}
@@ -125,74 +147,65 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             for bin_key, cluster_list in clusters_in_bins.items()
         }
 
+        # The shears are calibrated with the calibration of the
+        # whole source sample (the 2D bin) in shear_tomography_catalog
+        if self.config["shear_calibration"] == "global":
+            _, calibrator = Calibrator.load(self.get_input("shear_tomography_catalog"), null=self.config["use_true_shear"])
+        elif self.config["shear_calibration"] == "none":
+            calibrator = None
+        else:
+            raise ValueError(f"shear_calibration must be global or none, not {self.config['shear_calibration']}")
+
+        # The shape noise of the whole source sample, the same for all the sources
+        self.shape_noise = None
+        if self.config["use_shape_noise"]:
+            with self.open_input("shear_tomography_catalog") as f:
+                self.shape_noise = float(f["counts/sigma_e_2d"][0])
+
         print("    Loop through the source catalog")
         # Loop through the source catalog.
         for s, e, data in iterate_source_catalog(self, self.config["redshift_weight_criterion"]):
             print(f"         Process {self.rank} processing chunk {s:,} - {e:,}")
 
-            gal_indexes = np.arange(s, e)
+            if calibrator is not None:
+                data["g1"], data["g2"] = calibrator.apply(data["g1"], data["g2"], subtract_mean=self.config["subtract_mean_shear"])
+
             for bin_key, cluster_list in clusters_in_bins.items():
                 for i, cluster in enumerate(cluster_list):
 
+                    # the sources of this cluster in this chunk (the indices are sorted)
                     sources_in_cluster = cluster_source_index[cluster["id"]]
-                    if sources_in_cluster[0]>e or sources_in_cluster[-1]<s:
+                    first, last = np.searchsorted(sources_in_cluster, [s, e])
+                    if first == last:
                         continue
 
-                    _in_cluster = np.isin(gal_indexes, sources_in_cluster)
-                    if not _in_cluster.any():
-                        continue
-
-                    _in_gals = np.isin(sources_in_cluster, gal_indexes)
-                    distance = cluster_source_dist[cluster["id"]][_in_gals]
-                    
                     # Compute source quantities
-                    weights, tangential_comp, cross_comp, g1, g2 = self.compute_sources_quantities(
-                        clmm_cosmo, data, _in_cluster, cluster['redshift'], cluster['ra'], cluster['dec']
+                    sources = self.compute_sources_quantities(
+                        clmm_cosmo, data, sources_in_cluster[first:last] - s, cluster['redshift'], cluster['ra'], cluster['dec']
                     )
-                    print("weights:", weights.min(), weights.max())
+                    sources["source_index"] = sources_in_cluster[first:last]
+                    sources["distance_arcmin"] = cluster_source_dist[cluster["id"]][first:last]
+                    print("weights:", sources["weight"].min(), sources["weight"].max())
 
-                    clusters_list_of_source_lists[bin_key][i].append((distance, weights, tangential_comp, cross_comp, g1, g2))
+                    clusters_list_of_source_lists[bin_key][i].append(sources)
 
             #gc.collect()
 
 
         print(f"Process {self.rank} done reading")
 
-        # Now we loop through each cluster and collect all the galaxies
-        # behind it from all the different processes. Each different
-        # process received a different chunk of the shear catalog,
-        # so we need to pull together all the shears relevant to each
-        # cluster
+        # Now we loop through each cluster and join the pieces of its
+        # sources from the different chunks of the shear catalog.
+        # Clusters without sources keep an empty list.
         j = 0
-        #self.collect(weights, tangential_comp, cross_comp, g1, g2, distance)
         for cluster_list in clusters_list_of_source_lists.values():
-            for src_list_in_cluster in cluster_list:
+            for k, src_list_in_cluster in enumerate(cluster_list):
 
                 if (self.rank == 0) and (j%100 == 0):
                     print(f"Collecting data for cluster {j}")
 
-                if len(clusters_list_of_source_lists) == 0:
-                    # If there is no background data for this cluster
-                    # for this particular processor then we just send
-                    # an empty array
-                    weights = np.zeros(0)
-                    tangential_comp = np.zeros(0)
-                    cross_comp = np.zeros(0)
-                    g1 = np.zeros(0)
-                    g2 = np.zeros(0)
-                    distance = np.zeros(0)
-                else:
-                    # Each process flattens the list of all the galaxies for this cluster
-                    distance = np.concatenate([d[0] for d in src_list_in_cluster])
-                    if self.config['delta_sigma']:
-                        weights = np.concatenate([d[1] for d in src_list_in_cluster])
-                    else:
-                        #If we are using gamma, the weights do not deppend on each galaxy, so the function returns a float
-                        weights = np.full(len(distance), src_list_in_cluster[0][1])
-                    tangential_comp = np.concatenate([d[2] for d in src_list_in_cluster])
-                    cross_comp = np.concatenate([d[3] for d in src_list_in_cluster])
-                    g1 = np.concatenate([d[4] for d in src_list_in_cluster])
-                    g2 = np.concatenate([d[5] for d in src_list_in_cluster])
+                if len(src_list_in_cluster) > 0:
+                    cluster_list[k] = {col: np.concatenate([d[col] for d in src_list_in_cluster]) for col in src_list_in_cluster[0]}
 
                 j += 1
 
@@ -205,7 +218,6 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         z_cluster = float(z_cluster)
         is_deltasigma = self.config["delta_sigma"]
         criterion = self.config["redshift_weight_criterion"]
-        use_shape_noise = self.config["use_shape_noise"]
         sigma_c = None
         # Depending on whether we are using the PDF or not, choose
         # some keywords to give to compute_galaxy_weights
@@ -217,13 +229,14 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             if is_deltasigma:
                 with warnings.catch_warnings():
                     warnings.filterwarnings("ignore")
+                    # CLMM fails for a single p(z), so in that case we give it twice
                     sigma_c = clmm.theory.compute_critical_surface_density_eff(
                         cosmo=clmm_cosmo,
                         z_cluster=z_cluster,
                         pzbins=pdf_z,
-                        pzpdf=pdf_pz,
-                        )
-        elif criterion in ["zmode", "ztrue", "zmean"]:
+                        pzpdf=np.repeat(pdf_pz, 2, axis=0) if len(pdf_pz) == 1 else pdf_pz,
+                        )[:len(pdf_pz)]
+        elif criterion in ["zmode", "ztrue", "zmean", "zmedian"]:
             if is_deltasigma:
                 z_source = data["redshift"][index]
                 sigma_c = clmm_cosmo.eval_sigma_crit(z_cluster, z_source)
@@ -237,10 +250,12 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
         weights = clmm.dataops.compute_galaxy_weights(
             sigma_c = sigma_c,
             is_deltasigma=is_deltasigma,
-            use_shape_noise=use_shape_noise,
-            shape_component1=np.array(g1),
-            shape_component2=np.array(g2),
+            use_shape_error=self.shape_noise is not None,
+            shape_component1_err=self.shape_noise,
+            shape_component2_err=self.shape_noise,
         )
+        # CLMM gives a single number when all the sources have the same weight
+        weights = np.broadcast_to(weights, g1.shape).astype(float)
         _, tangential_comp, cross_comp = clmm.compute_tangential_and_cross_components(
             ra_cluster,
             dec_cluster,
@@ -255,7 +270,42 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             validate_input=True,
         )
         
-        return weights, tangential_comp, cross_comp, g1, g2
+        sources = {
+            "ra": data["ra"][index],
+            "dec": data["dec"][index],
+            "g1": g1,
+            "g2": g2,
+            "weight": weights,
+            "tangential_comp": tangential_comp,
+            "cross_comp": cross_comp,
+        }
+        if sigma_c is not None:
+            sources["sigma_c"] = sigma_c
+        return sources
+
+    def write_source_quantities(self, clusters_in_bins, clusters_list_of_source_lists):
+        """
+        Save the sources of the clusters in the bins with their quantities. In catalog/,
+        each cluster has the start and the number of its sources in index/.
+        """
+        cluster_ids = np.array([cluster["id"] for cluster_list in clusters_in_bins.values() for cluster in cluster_list], dtype=np.int64)
+        # clusters without sources have an empty list
+        sources = [s for source_lists in clusters_list_of_source_lists.values() for s in source_lists]
+        counts = np.array([len(s["source_index"]) if len(s) else 0 for s in sources], dtype=np.int64)
+        columns = ["source_index", "distance_arcmin", "ra", "dec", "g1", "g2", "weight", "tangential_comp", "cross_comp"]
+        if self.config["delta_sigma"]:
+            columns.append("sigma_c")
+
+        with self.open_output("cluster_source_quantities") as f:
+            catalog_group = f.create_group("catalog")
+            catalog_group.create_dataset("cluster_id", data=cluster_ids)
+            catalog_group.create_dataset("cluster_sample_start", data=np.cumsum(counts) - counts)
+            catalog_group.create_dataset("cluster_sample_count", data=counts)
+            index_group = f.create_group("index")
+            index_group.create_dataset("cluster_id", data=np.repeat(cluster_ids, counts))
+            for col in columns:
+                values = [s[col] for s in sources if len(s)]
+                index_group.create_dataset(col, data=np.concatenate(values) if values else np.zeros(0))
 
 
     def create_cluster_ensemble(self, cluster_list, sources_lists, cluster_ensemble_id=0):
@@ -286,7 +336,8 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
 
             # To use CLMM, need to have galaxy table in clmm.GCData type
             #print(sources_lists[cluster_index][0])
-            distance, weights, tangential_comp, cross_comp, g1, g2 = sources_lists[cluster_index][0]
+            sources = sources_lists[cluster_index]
+            distance, weights, tangential_comp, cross_comp = sources["distance_arcmin"], sources["weight"], sources["tangential_comp"], sources["cross_comp"]
             print("dist:", distance.min(), distance.max())
             print("weights:", weights.min(), weights.max())
             print("tangential_comp:", tangential_comp.min(), tangential_comp.max())
@@ -296,7 +347,7 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
                         "tangential_comp_clmm": tangential_comp,
                         "cross_comp_clmm": cross_comp,
                         "weight_clmm": weights,
-                        "distance_arcmin": np.degrees(distance) * 60,
+                        "distance_arcmin": distance,
                     }
                 ),
                 meta={"coordinate_system": self.coordinate_system}
@@ -316,15 +367,6 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
                 galcat,
             )
             gc_object.richness = cluster_list["richness"][cluster_index]
-            #print(np.max(galcat["distance_arcmin"]), "arcmin", "Mpc", gc_object.z, self.clmm_cosmo)
-            cat_max_distance = (
-                clmm.utils.convert_units(
-                    np.max(galcat["distance_arcmin"]), "arcmin", "Mpc", gc_object.z, self.clmm_cosmo
-                )
-                if bin_units == "mpc" else np.max(galcat["distance_arcmin"])
-            )
-            if cat_max_distance < self.distance_bins[-1]:
-                print ("!!! maximum distance of source smaller than distance_bins")
 
             # Compute radial profile for the current cluster
             gc_object.make_radial_profile(
@@ -385,11 +427,13 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
                 key: self.load_cluster_list(group=group)
                 for key, group in f["cluster_bin"].items()
             }
+            # the redshift and richness edges of each bin
+            bin_attrs = {key: dict(group.attrs) for key, group in f["cluster_bin"].items()}
 
             
-        return clusters_in_bins
+        return clusters_in_bins, bin_attrs
 
-    def make_ensemble(self, clusters_in_bins, clusters_list_of_source_lists):
+    def make_ensemble(self, clusters_in_bins, bin_attrs, clusters_list_of_source_lists):
         print("Making ensemble")
         binned_cluster_stack = {}
         for key, clusters in clusters_in_bins.items():
@@ -402,4 +446,6 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             
             #dict(dset_out[i].attrs), dset_out[i]['redshift'][:].size) 
             
-            binned_cluster_stack[key]={'cluster_bin_edges':dict(group.attrs), 'n_cl':len(clusters), 'clmm_cluster_ensemble':cluster_stack, 'profile_type': self.profile_type}
+            binned_cluster_stack[key]={'cluster_bin_edges':bin_attrs[key], 'n_cl':len(clusters), 'clmm_cluster_ensemble':cluster_stack, 'profile_type': self.profile_type}
+
+        return binned_cluster_stack
