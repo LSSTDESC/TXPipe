@@ -2,17 +2,23 @@ import os
 import gc
 import numpy as np
 from ...base_stage import PipelineStage
-from ...data_types import ShearCatalog, HDFFile, PhotozPDFFile, FiducialCosmology, TomographyCatalog, ShearCatalog
+from ...data_types import ShearCatalog, HDFFile, PhotozPDFFile, FiducialCosmology, TomographyCatalog, ShearCatalog, CatalogSelection
 from .utils import iterate_source_catalog
 from ...calibration.calibration_utils import Calibrator
-from collections import defaultdict
 import yaml
 import ceci
 import warnings
 
 class CLClusterShearCatalogs(PipelineStage):
-    """
-    
+    """Find the background sources of each cluster.
+
+    The sources are the objects of the shear catalog that pass the cuts in shear_selection
+    and, with require_tomo_bin, are in a tomographic bin of shear_tomography_catalog, the
+    sample its shear calibration is measured on. For each cluster the stage keeps those
+    within max_radius in Mpc (or max_angle in arcmin) that are behind the cluster according
+    to redshift_cut_criterion, and writes the row of each source in the shear catalog and
+    its distance to the cluster. source_photoz_pdfs can be "none" if the redshift cut does
+    not use photo-z.
     """
     name = "CLClusterShearCatalogs"
     inputs = [
@@ -20,6 +26,7 @@ class CLClusterShearCatalogs(PipelineStage):
         ("shear_catalog", ShearCatalog),
         ("fiducial_cosmology", FiducialCosmology),
         ("shear_tomography_catalog", TomographyCatalog),
+        ("shear_selection", CatalogSelection),
         ("source_photoz_pdfs", PhotozPDFFile),
     ]
 
@@ -36,6 +43,7 @@ class CLClusterShearCatalogs(PipelineStage):
         "use_radius": True,
         "max_angle": 30, # arcmin
         "use_true_shear": False,
+        "require_tomo_bin": True,  # sources must be in a tomographic bin (bin >= 0)
     }
 
     def run(self):
@@ -74,28 +82,31 @@ class CLClusterShearCatalogs(PipelineStage):
         delta_z = self.config["delta_z"]
 
         # Loop through the source catalog.
-        for s, e, data in iterate_source_catalog(self, self.config["redshift_cut_criterion"]):
+        require_tomo_bin = self.config["require_tomo_bin"]
+        for s, e, data in iterate_source_catalog(self, self.config["redshift_cut_criterion"], read_selection=True, read_tomo_bin=require_tomo_bin):
             print(f"Process {self.rank} processing chunk {s:,} - {e:,}")
-                
-            nearby_gals, nearby_gal_dists = self.find_galaxies_near_each_cluster(data, clusters, tree, max_theta_max)
+
+            # The sources are the objects that pass the selection cuts
+            # and, with require_tomo_bin, are in a tomographic bin
+            wl_sample = data["selection"]
+            if require_tomo_bin:
+                wl_sample = wl_sample & (data["bin"] >= 0)
+            wl_index = np.flatnonzero(wl_sample)
+            if wl_index.size == 0:
+                continue
+
+            nearby_gals, nearby_gal_dists = self.find_galaxies_near_each_cluster(
+                data, clusters, tree, max_theta_max, wl_index, cluster_theta_max if self.config["use_radius"] else None
+            )
 
 
-            # Now we have all the galaxies near each cluster
-            # We need to cut down to a specific radius for this
-            # cluster
+            # Now we have all the galaxies near each cluster,
+            # within the radius of that cluster
             for cluster_index, gal_index in nearby_gals.items():
                 # gal_index is an index into this chunk of galaxy data
                 # pointing to all the galaxies near this cluster
                 gal_index = np.array(gal_index)
                 distance = np.array(nearby_gal_dists[cluster_index])
-
-                if gal_index.size == 0:
-                    continue
-                if self.config["use_radius"]:
-                    # Cut down to galaxies close enough to this cluster
-                    dist_good = distance < cluster_theta_max[cluster_index]
-                    gal_index = gal_index[dist_good]
-                    distance = distance[dist_good]
 
                 if gal_index.size == 0:
                     continue
@@ -138,6 +149,9 @@ class CLClusterShearCatalogs(PipelineStage):
             catalog_group = outfile.create_group("catalog")
             catalog_group.create_dataset("cluster_id", shape=(ncluster,), dtype=np.int64)
             catalog_group.create_dataset("cluster_theta_max_arcmin", shape=(ncluster,), dtype=np.float64)
+            # where the pairs of each cluster are in the index below
+            catalog_group.create_dataset("cluster_sample_start", shape=(ncluster,), dtype=np.int64)
+            catalog_group.create_dataset("cluster_sample_count", shape=(ncluster,), dtype=np.int64)
             # and for the index into that catalog
             index_group = outfile.create_group("index")
             index_group.create_dataset("cluster_index", shape=(total_count,), dtype=np.int64)
@@ -192,6 +206,8 @@ class CLClusterShearCatalogs(PipelineStage):
             print(f"Found {n} total galaxies in catalog for cluster {c['id']}")
             catalog_group["cluster_id"][i] = c["id"]
             catalog_group["cluster_theta_max_arcmin"][i] = np.degrees(cluster_theta_max[i]) * 60
+            catalog_group["cluster_sample_start"][i] = start
+            catalog_group["cluster_sample_count"][i] = n
 
             # Now we write out the per-cluster shear catalog information
             index_group["cluster_index"][start:start + n] = i
@@ -203,10 +219,11 @@ class CLClusterShearCatalogs(PipelineStage):
         if self.rank == 0:
             outfile.close()
 
-    def find_galaxies_near_each_cluster(self, galaxy_data, cluster_data, tree, max_theta_max):
+    def find_galaxies_near_each_cluster(self, galaxy_data, cluster_data, tree, max_theta_max, index, cluster_theta_max=None):
         # Get the location of the galaxies in this chunk of data,
-        # in the form that the tree requires
-        X = np.radians([galaxy_data["dec"], galaxy_data["ra"]]).T
+        # in the form that the tree requires. Only the rows of the
+        # chunk in index are searched.
+        X = np.radians([galaxy_data["dec"][index], galaxy_data["ra"][index]]).T
 
 
         # First we will get all the objects that
@@ -214,24 +231,40 @@ class CLClusterShearCatalogs(PipelineStage):
         # Then in a moment we will cut down to the ones that are
         # within the radius for each specific cluster.
         nearby_clusters, cluster_distances1 = tree.query_radius(X, max_theta_max, return_distance=True)
-        nearby_galaxies = defaultdict(list)
-        nearby_galaxy_distances = defaultdict(list)
 
         # Now we invert our tree information. We currently have the list of
         # all the clusters near each galaxy. Now we invert it to get the list
         # of galaxies near this cluster. This strange pattern is because then
         # we only have to make the tree object (which does fast searches for
         # nearby objects once, for the cluster information.
-        for gal_i, (cluster_indices, cluster_distances) in enumerate(zip(nearby_clusters, cluster_distances1)):
-            for (cluster_i, cluster_distance) in zip(cluster_indices, cluster_distances):
-                nearby_galaxies[cluster_i].append(gal_i)
-                nearby_galaxy_distances[cluster_i].append(cluster_distance)
+        # We do it with flat arrays of all the (galaxy, cluster) pairs, which
+        # take much less memory than lists when the search radius is large.
+        n_near = np.array([c.size for c in nearby_clusters])
+        if n_near.sum() == 0:
+            return {}, {}
+        cluster_i = np.concatenate(nearby_clusters)
+        distance = np.concatenate(cluster_distances1)
+        gal_i = np.repeat(index, n_near)
+        del nearby_clusters, cluster_distances1
+
+        # Cut down to the radius of each cluster
+        if cluster_theta_max is not None:
+            close = distance < cluster_theta_max[cluster_i]
+            cluster_i, distance, gal_i = cluster_i[close], distance[close], gal_i[close]
+
+        # Group the pairs by cluster, keeping the order of the galaxies
+        order = np.argsort(cluster_i, kind="stable")
+        cluster_i, distance, gal_i = cluster_i[order], distance[order], gal_i[order]
+        found, starts = np.unique(cluster_i, return_index=True)
+        ends = np.append(starts[1:], cluster_i.size)
+        nearby_galaxies = {c: gal_i[a:b] for c, a, b in zip(found, starts, ends)}
+        nearby_galaxy_distances = {c: distance[a:b] for c, a, b in zip(found, starts, ends)}
 
         return nearby_galaxies, nearby_galaxy_distances
 
 
     def collect(self, indices, distances):
-        # total number of background objects for t
+        # total number of background objects for this cluster, over all the processes
 
         counts = np.array(self.comm.allgather(indices.size))
         total = counts.sum()
@@ -240,7 +273,7 @@ class CLClusterShearCatalogs(PipelineStage):
         if total == 0:
             indices = np.zeros(0, dtype=int)
             distances = np.zeros(0)
-            return indices, weights, distances, g1, g2
+            return indices, distances
 
         # This collects together all the results from different processes for this cluster
         if self.rank == 0:
@@ -249,7 +282,6 @@ class CLClusterShearCatalogs(PipelineStage):
             self.comm.Gatherv(sendbuf=distances, recvbuf=(all_distances, counts))
             self.comm.Gatherv(sendbuf=indices, recvbuf=(all_indices, counts))
             indices = all_indices
-            cross_comps = all_cross_comps
             distances = all_distances
         else:
             self.comm.Gatherv(sendbuf=distances, recvbuf=(None, counts))
