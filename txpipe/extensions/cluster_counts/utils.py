@@ -1,35 +1,33 @@
 import numpy as np
 
-def iterate_source_catalog(self, redshift_type):
+def iterate_source_catalog(stage, redshift_type, read_selection=False, read_tomo_bin=False):
     """
     Iterate through the shear catalog, loading the locations
     of them and whether they are assigned to any tomographic bin.
+    No row is removed, so row k of a chunk starting at s is row s + k
+    of the catalog.
 
     The options of redshift_type require the existence of:
     * redshift_type == "tomo_bins":
-        self.open_input("shear_tomography_catalog")
+        stage.open_input("shear_tomography_catalog")
     * redshift_type == "ztrue":
-        self.open_input("shear_catalog", wrapper=True)
-    * redshift_type in ("zmode", "zmean", "median", "pdf"):
-        self.open_input("source_photoz_pdfs")
+        stage.open_input("shear_catalog", wrapper=True)
+    * redshift_type in ("zmode", "zmean", "zmedian", "pdf"):
+        stage.open_input("source_photoz_pdfs")
+    For the other options the source_photoz_pdfs input is not read and can be "none".
+
+    With read_selection, each chunk also has "selection" (whether the object passes
+    the cuts in shear_selection), and with read_tomo_bin it has "bin" (its bin in
+    shear_tomography_catalog, -1 if it is in none).
     """
-    rows = self.config["chunk_rows"]
-    use_true_shear = self.config["use_true_shear"]
+    rows = stage.config["chunk_rows"]
+    use_true_shear = stage.config["use_true_shear"]
 
     # where and what to read from the shear catalog
-    with self.open_input("shear_catalog", wrapper=True) as f:
+    with stage.open_input("shear_catalog", wrapper=True) as f:
         shear_group = "shear"
         shear_cols, rename = f.get_primary_catalog_names(true_shear=use_true_shear)
-
-    # load the shear calibration information
-    # for the moment, load the average overall shear calibrator,
-    # that applies to the collective 2D bin. This won't be high
-    # accuracy, but I'm not clear right now exactly what the right
-    # model is yet. Here this calibrator is just used for the
-    # weight information calculation, which needs g1 and g2 estimates.
-    # The same calibration should be used later for the actual shears.
-    if self.rank == 0:
-        print("        Using single 2D shear calibration!")
+        prefix = f.get_primary_catalog_prefix()
 
 
     ##########################
@@ -40,9 +38,12 @@ def iterate_source_catalog(self, redshift_type):
     # format where the mode and mean are stored in a file called
     # "ancil". The columns are called zmode and zmean.
 
-    # to aggregate groups of redshift data to be read not in shear_catalog
+    # to aggregate groups of data to be read not in shear_catalog
     z_info = []
     additional_data_info = {}
+
+    if redshift_type in ("zmode", "zmean", "zmedian", "pdf") and stage.get_input("source_photoz_pdfs").lower() == "none":
+        raise ValueError(f"redshift_type={redshift_type} needs the source_photoz_pdfs input, which is none")
 
     if redshift_type is None:
         print("redshift_type is None, no reshift information is being read.")
@@ -52,17 +53,17 @@ def iterate_source_catalog(self, redshift_type):
         # any selected object, so we just ask for bin >= 0.
         z_info += ["shear_tomography_catalog", "tomography", ["bin"]]
 
-        with self.open_input("shear_tomography_catalog") as f:
+        with stage.open_input("shear_tomography_catalog") as f:
             tomo_attrs = f["tomography"].attrs
             additional_data_info["tomo_bin_edges"] = np.array(
                 [(tomo_attrs[f"zmin_{i}"], tomo_attrs[f"zmax_{i}"]) for i in range(tomo_attrs["nbin"])]
             )
     # The truth redshifts are keps in the shear catalog not
     # the p(z) catalog. If we ask for that column we need to load it
-    # here.
+    # here.
 
     elif redshift_type == "ztrue":
-        with self.open_input("shear_catalog", wrapper=True) as f:
+        with stage.open_input("shear_catalog", wrapper=True) as f:
             col = f.get_true_redshift_column()
             shear_cols.append(col)
             rename[col] = "redshift"
@@ -73,7 +74,7 @@ def iterate_source_catalog(self, redshift_type):
         rename["yvals"] = "pdf_pz"
 
         # we will also need the z axis values in this case
-        with self.open_input("source_photoz_pdfs") as f:
+        with stage.open_input("source_photoz_pdfs") as f:
             # this data seems to be 1D in my QP file.
             # but that's the kind of thing they might change.
             additional_data_info["pdf_z"] = np.squeeze(f["/meta/xvals"][0])
@@ -84,9 +85,18 @@ def iterate_source_catalog(self, redshift_type):
     else:
         raise ValueError(f"redshift_type={redshift_type} not valid!")
 
+    if read_tomo_bin and redshift_type != "tomo_bins":
+        z_info += ["shear_tomography_catalog", "tomography", ["bin"]]
+
+    # The selection file has the groups of the shear catalog,
+    # e.g. ns/selection for metadetect
+    if read_selection:
+        z_info += ["shear_selection", "shear", [f"{prefix}selection"]]
+        rename[f"{prefix}selection"] = "selection"
+
 
     # Loop through all these input files simultaneously.
-    for s, e, data in self.combined_iterators(
+    for s, e, data in stage.combined_iterators(
             rows,
             "shear_catalog",
             shear_group,
@@ -106,18 +116,6 @@ def iterate_source_catalog(self, redshift_type):
 
         # add extra info that does not depend on the rows
         data.update(additional_data_info)
-
-        ##################################
-        # This is Eduardo's problem now ;)
-        ##################################
-        # Apply the shear calibration to this sample.
-        # Optionally subtract the mean (of the whole WL sample, not the local mean)
-        #_, shear_cal = Calibrator.load(self.get_input("shear_tomography_catalog"), null=use_true_shear)
-        #data["g1"], data["g2"] = shear_cal.apply(data["g1"],
-        #                                         data["g2"],
-        #                                         subtract_mean=subtract_mean
-        #)
-
 
         # Give this chunk of data to the main run function
         yield s, e, data
