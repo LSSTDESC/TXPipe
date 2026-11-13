@@ -5,4 +5,5 @@
 from .bin_cluster import CLClusterBinningRedshiftRichness
 from .sources_select_compute import *
 from .make_ensemble_profile import CLClusterEnsembleProfiles
+from .combined_catalog import CombinedClusterCatalog
 from .convert_to_sacc import CLClusterSACC

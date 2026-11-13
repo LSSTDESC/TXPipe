@@ -2,7 +2,7 @@ import os
 import gc
 import numpy as np
 from ...base_stage import PipelineStage
-from .sources_select_compute import CLClusterShearCatalogs, CombinedClusterCatalog
+from .sources_select_compute import CLClusterShearCatalogs
 from ...data_types import ShearCatalog, HDFFile, PhotozPDFFile, FiducialCosmology, TomographyCatalog, PickleFile
 from .utils import iterate_source_catalog
 from ...calibration.calibration_utils import Calibrator
