@@ -102,7 +102,13 @@ class TXTwoPointTheoryFourier(TXTwoPointTheoryReal):
         cosmo = self.open_input("fiducial_cosmology", wrapper=True).to_ccl(matter_power_spectrum="halofit", Neff=3.046)
         print(cosmo)
 
-        s_theory = theory_3x2pt(cosmo, s, smooth=self.config["smooth"])
+        # Same bias options as TXTwoPointTheoryReal
+        bias = self.config["galaxy_bias"]
+        if bias == [0.0]:
+            bias = None
+        elif len(bias) == 1 and bias[0] < 0:
+            bias = -bias[0]
+        s_theory = theory_3x2pt(cosmo, s, bias=bias, smooth=self.config["smooth"])
 
         # Remove covariance
         s_theory.covariance = None
