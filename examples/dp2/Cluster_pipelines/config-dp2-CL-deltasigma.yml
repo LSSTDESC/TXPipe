@@ -96,7 +96,6 @@ CLClusterBinningRedshiftRichnessRandoms:
 
 # The sacc tracers are lens_k; the lens_k -> (zbin, richbin) mapping is in the zbin/richbin
 # attrs of lens/bin_k in binned_lens_catalog.hdf5.
-# NOTE: TXDeltaSigma has no flip_g2, so with the image-frame DP2 g2 the signal averages to ~zero for now.
 TXDeltaSigma:
     source_bins: [0, 1]                # back to [0, 1] once the two-bin source files are regenerated
     lens_bins: [0, 1, 2]            # explicit: CLClusterLensCatalog writes no lens/bin_all

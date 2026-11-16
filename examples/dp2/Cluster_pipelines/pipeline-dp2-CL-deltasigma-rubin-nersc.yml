@@ -9,8 +9,7 @@
 #   measurement:     TXDeltaSigma per (source bin 0, cluster bin k). The sacc tracers are named lens_k;
 #                    the lens_k -> (zbin, richbin) mapping is in the zbin/richbin attrs of lens/bin_k in
 #                    binned_lens_catalog.hdf5.
-# NOTE: DP2 g2 is in the image-pixel frame (see config-dp2-CL.yml). TXTwoPoint flips it with flip_g2,
-# but TXDeltaSigma reads g1/g2 as stored, so for now Delta Sigma is expected to average to ~zero.
+# g2 convention: TXDeltaSigma passes the stored DP2 g1/g2 to dsigma unchanged, and that is correct
 # From the TXPipe directory, submit with
 #     sbatch examples/dp2/Cluster_pipelines/dp2-deltasigma-rubin-nersc.sub
 # Settings live in config-dp2-CL-deltasigma.yml. The shared stages use the same settings as

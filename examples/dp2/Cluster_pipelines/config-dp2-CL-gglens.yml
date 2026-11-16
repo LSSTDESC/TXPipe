@@ -95,7 +95,7 @@ TXTwoPoint:
     use_subsampled_randoms: false
     # As in examples/dp2/config.yml. DP2 g2 has the image-frame sign (see config-dp2-CL.yml);
     # check that gamma_t > 0 and gamma_x ~ 0 on the first run.
-    flip_g2: true
+    flip_g2: false
     sep_units: arcmin
     min_sep: 1.0                    # same range as CLClusterEnsembleProfilesGt in config-dp2-CL.yml
     max_sep: 20.0

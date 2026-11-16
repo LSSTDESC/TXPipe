@@ -96,8 +96,9 @@ output_dir: /pscratch/sd/y/yyzhang/dp2/outputs/rubin
 config: ./examples/dp2/Cluster_pipelines/config-dp2-CL-gglens.yml
 
 inputs:
-    # clusters: external catalogs (DES Y3 redMaPPer, ...) cross-matched to DP2 objects
-    cluster_catalog_csv: /pscratch/sd/y/yyzhang/desc/TXPipe/dp2_cluster_overlap_jul23.csv
+    # clusters: external catalogs (DES Y3 redMaPPer, ...) cross-matched to DP2 objects,
+    # cut to clusters whose centre is inside the DP2 mask (registry id 151)
+    cluster_catalog_csv: /global/cfs/cdirs/m1727/yyzhang/dp2_cluster_overlap_jul23_dp2footprint.csv
     # shear catalog, from the DESC data registry:
     # txpipe_dp2_shear_catalog_Rubin_metaDetect 0.3.0 (J. Zuntz), uncut
     full_shear_catalog:
