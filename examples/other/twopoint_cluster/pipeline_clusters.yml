@@ -11,8 +11,7 @@ modules: txpipe rail.creation.degraders.grid_selection rail.creation.engines.flo
   rail.estimation.algos.nz_dir rail.estimation.algos.bpz_lite
 output_dir: data/other/twopoint_cluster/outputs/test/
 pipeline_log: data/other/twopoint_cluster/log.txt
-python_paths:
-- submodules/WLMassMap/python/desc/
+python_paths: []
 resume: true
 site:
   max_threads: 2
