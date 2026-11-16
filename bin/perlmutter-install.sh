@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-# BASH_SOURCE[0] gives the path to this script.
-# dirname on that gives the directory it's in
+# BASH_SOURCE[0] gives the path to this script.
+# dirname on that gives the directory it's in
 DESCPYTHONUSERBASE=$(dirname "${BASH_SOURCE[0]}")/../local
 mkdir -p $DESCPYTHONUSERBASE
 
@@ -14,16 +14,8 @@ export DESCPYTHONUSERBASE=$(realpath ${DESCPYTHONUSERBASE})
 source /global/common/software/lsst/common/miniconda/setup_current_python.sh
 unset PYTHONNOUSERSITE
 
-python -m pip install --user  \
-    psycopg \
-    smokescreen==1.5.6 \
-    ceci==2.7.2 \
-    lsstdesc-crow  \
-    git+https://github.com/LSSTDESC/rail_base@u/jzuntz/fix-mpi-warning \
+python -m pip install --user --no-build-isolation  \
     git+https://github.com/LSSTDESC/rail_sompz@u/jzuntz/iterate-tomobin-nz-onesom 
-
-
-# pip install --user --no-build-isolation <NewPackage>
 
 
 echo ""

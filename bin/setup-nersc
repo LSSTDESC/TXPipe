@@ -31,4 +31,4 @@ unset PYTHONNOUSERSITE
 
 echo "Using the central DESC conda environment."
 echo "Install any extra packages into ${DESCPYTHONUSERBASE} using:"
-echo "    pip install --user <packages>"
+echo "    pip install --user --no-build-isolation <packages>"
