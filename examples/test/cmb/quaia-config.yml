@@ -9,7 +9,7 @@ TXIngestQuaia:
 
 
 TXIngestPlanckLensingMaps:
-    alm_file: "data/cmb/planck/PR4_klm_dat_p.fits"
+    kappa_file: "data/cmb/planck/PR4_klm_dat_p.fits"
     mask_file: "data/cmb/planck/mask.fits.gz"
 
 TXTwoPointFourierCMBLensingCrossDensity:
