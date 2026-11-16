@@ -12,7 +12,7 @@ In TXPipe, I/O happens at the process level.  You can use the *striping* option 
 In some cases you also have to worry about memory usage, if each process uses lots of memory you may have to split over multiple nodes.
 
 The exact choices of what's most efficient depend on the size of the dataset used.
-See examples/cosmodc2/pipeline.yml for some choices for large-ish data sets.
+See examples/mocks/cosmodc2/pipeline.yml for some choices for large-ish data sets.
 
 Ingestion Parallelization
 -------------------------

@@ -9,7 +9,7 @@ def example():
     ]
 
     sacc_files = [
-        'data/cosmodc2/outputs/twopoint_data_fourier.sacc',
+        'data/mocks/cosmodc2/outputs/twopoint_data_fourier.sacc',
         ]
     cosmo = pyccl.Cosmology.read_yaml("./data/fiducial_cosmology.yml")
 
