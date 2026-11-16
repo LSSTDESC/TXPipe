@@ -405,6 +405,71 @@ class TXTruthLensSelector(TXBaseLensSelector):
             yield s, e, data
 
 
+class TXSOMPZLensSelector(TXBaseLensSelector):
+    """
+    Select lens objects using externally assigned tomographic bins
+
+    The bins come from a SOMPZ run (or any other external bin assignment):
+    a file with one integer per object, in the same row order as the
+    photometry catalog, giving its bin index (-1 for unassigned). The usual
+    maglim / BOSS photometric selection is then applied on top.
+
+    lens_zbin_edges only sets the number of bins (len - 1) and is stored as
+    metadata; set it to the bin indices, e.g. [0, 1, 2, 3, 4] for four bins.
+    """
+
+    name = "TXSOMPZLensSelector"
+
+    inputs = [
+        ("photometry_catalog", PhotometryCatalog),
+        ("lens_sompz_bins", HDFFile),
+    ]
+
+    config_options = TXBaseLensSelector.config_options.copy()
+    config_options["bin_dataset"] = StageParameter(
+        str, "bhat_for_wide_data", msg="Dataset in lens_sompz_bins holding the per-object bin index."
+    )
+
+    def prepare_selector(self):
+        # Fail early if the bin file does not match the catalog row by row
+        with self.open_input("photometry_catalog") as f:
+            nobj = f["photometry/ra"].size
+        with self.open_input("lens_sompz_bins") as f:
+            nbin_file = f[self.config["bin_dataset"]].size
+        if nbin_file != nobj:
+            raise ValueError(
+                f"lens_sompz_bins has {nbin_file:,} bin assignments but the photometry catalog has {nobj:,} rows"
+            )
+        return None
+
+    def data_iterator(self):
+        chunk_rows = self.config["chunk_rows"]
+        phot_cols = ["mag_i", "mag_r", "mag_g"]
+        if self.config["snr_i_cut"] > 0.0:
+            phot_cols.append("mag_i_err")
+        extra_cols = [c for c in self.config["extra_cols"] if c]
+        phot_cols += extra_cols
+
+        return self.combined_iterators(
+            chunk_rows,
+            "photometry_catalog",
+            "photometry",
+            phot_cols,
+            "lens_sompz_bins",
+            "/",
+            [self.config["bin_dataset"]],
+        )
+
+    def apply_redshift_cut(self, phot_data, _):
+        nbin = len(self.config["lens_zbin_edges"]) - 1
+        zbin = np.asarray(phot_data[self.config["bin_dataset"]]).astype(int)
+        if zbin.max() >= nbin:
+            raise ValueError(f"Found bin index {zbin.max()} but lens_zbin_edges only defines {nbin} bins")
+        zbin[zbin < 0] = -1
+        print(f"Rank {self.rank} found {(zbin >= 0).sum()} / {zbin.size} galaxies with a SOMPZ bin")
+        return {"zbin": zbin}
+
+
 class TXMeanLensSelector(TXBaseLensSelector):
     """
     Select lens objects based on mean redshifts and BOSS criteria
