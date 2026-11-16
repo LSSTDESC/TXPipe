@@ -42,11 +42,11 @@ files = {
     "LensfitShearCatalog":      ("data/example/inputs/lensfit_shear_catalog.hdf5", "lensfit"),
     "MetadetectShearCatalog":   ("data/example/inputs/metadetect_shear_catalog.hdf5", "metadetect"),
     "StarCatalog":              ("data/example/inputs/star_catalog.hdf5", "stars"),
-    "TomographyCatalog":        ("data/example/outputs_metadetect/shear_tomography_catalog.hdf5", "tomography"),
-    "BinnedCatalog":            ("data/example/outputs_metadetect/binned_lens_catalog.hdf5", "binned"),
-    "RandomsCatalog":           ("data/example/outputs_metadetect/random_cats.hdf5", "randoms"),
-    "MapsFile":                 ("data/example/outputs_metadetect/lens_maps.hdf5", "maps"),
-    "MetaData":                 ("data/example/outputs_metadetect/tracer_metadata.hdf5", "metadata"),
+    "TomographyCatalog":        ("data/test/metadetect/outputs_metadetect/shear_tomography_catalog.hdf5", "tomography"),
+    "BinnedCatalog":            ("data/test/metadetect/outputs_metadetect/binned_lens_catalog.hdf5", "binned"),
+    "RandomsCatalog":           ("data/test/metadetect/outputs_metadetect/random_cats.hdf5", "randoms"),
+    "MapsFile":                 ("data/test/metadetect/outputs_metadetect/lens_maps.hdf5", "maps"),
+    "MetaData":                 ("data/test/metadetect/outputs_metadetect/tracer_metadata.hdf5", "metadata"),
 }
 
 if __name__ == "__main__":

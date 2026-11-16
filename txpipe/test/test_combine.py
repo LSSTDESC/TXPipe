@@ -13,7 +13,7 @@ def test_combine():
         {
             "tag1": "data/testing/test1.hdf",
             "tag2": "data/testing/test2.hdf",
-            "config": "examples/metacal/config.yml",
+            "config": "examples/test/metacal/config.yml",
         }
     )
 

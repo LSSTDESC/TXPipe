@@ -172,9 +172,10 @@ jobs:
       if: always()
       run: |
         # always run
-        cat data/cmb/logs_quaia/*
+        cat data/test/cmb/logs_quaia/*
 
-        
+
+      
   Pipelines:
     runs-on: ${{ matrix.os }}
     needs: Download_Data
@@ -255,10 +256,34 @@ jobs:
         # and checks that the expected output file was produced.
         bin/run_regression_tests.sh ${{ matrix.pipeline }}
 
-    - name: Dry run DP1
+    - name: Execute Welcome Notebook
+      if: ${{ matrix.pipeline == 'metadetect' && matrix.os == 'ubuntu-latest' }}
       run: |
         source ./conda/bin/activate
-        ceci --dry-run examples/dp1/pipeline-edfs.yml
+        jupyter execute notebooks/Welcome\ to\ TXPipe.ipynb
+        
+    - name: DP2 And Other Flow Charts
+      if: ${{ matrix.pipeline == 'metadetect' && matrix.os == 'ubuntu-latest' }}
+      run: |
+        source ./conda/bin/activate
+        # Make flow charts from the DP2 pipelines. Unlike the --dry-run approach this doesn't
+        # require any file paths so doesn't break when the data registry is unavailable,
+        # so this is a good test that all the pipeline components still fit together.
+
+        # DESC Metadetect
+        ceci --flow-chart flow1.png examples/dp2/desc_metadetect/ingestion1.1.yml
+        ceci --flow-chart flow2.png examples/dp2/desc_metadetect/analysis_desc_metadetect_1.1.yml
+
+        # DESC Anacal
+        ceci --flow-chart flow3.png examples/dp2/anacal/anacal_ingestion.yml
+        ceci --flow-chart flow4.png examples/dp2/anacal/anacal_analysis.yml
+
+        # Rubin metadetect
+        ceci --flow-chart flow5.png examples/dp2/rubin_metadetect/ingestion.yml
+        ceci --flow-chart flow6.png examples/dp2/rubin_metadetect/analysis_rubin_metadetect.yml
+
+        # Starts
+        ceci --flow-chart flow7.png examples/dp2/star_catalog/star_catalog_ingest.yml
 
 
     - name: Show logs
@@ -267,7 +292,7 @@ jobs:
         # always run
         # the multi-length test reuses the metadetect example's log directory
         if [ "${{ matrix.pipeline }}" == "metadetect_different_lengths" ]; then
-          cat data/example/logs_metadetect/*
+          cat data/test/metadetect/logs_metadetect/*
         else
-          cat data/example/logs_${{ matrix.pipeline }}/*
+          cat data/test/${{ matrix.pipeline }}/logs_${{ matrix.pipeline }}/*
         fi

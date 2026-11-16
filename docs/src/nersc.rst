@@ -24,7 +24,7 @@ The ``tx`` command runs programs in a TXPipe environment. To run whole pipelines
 
 .. code:: bash
 
-    tx ceci examples/metacal/pipeline.yml
+    tx ceci examples/test/metacal/pipeline.yml
 
 
 You can also use the TX command to run individual stages, to test or develop them.
