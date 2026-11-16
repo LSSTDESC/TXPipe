@@ -12,6 +12,7 @@ from ..data_types import (
 )
 import numpy as np
 import glob
+import os
 import time
 from ..utils.fitting import calc_chi2
 from ceci.config import StageParameter
@@ -46,8 +47,13 @@ class TXLSSDensityBase(TXMapCorrelations):
 
     def read_healsparse(self, map_path, nside):
         """
-        returns a healsparse object degraded to nside
+        Returns a HealSparseMap degraded to nside.
+
+        Accepts both HealSparse (.hs) files and plain HEALPix FITS (.fits)
+        files.  FITS maps are converted to HealSparseMap on the fly so that
+        the rest of the pipeline sees a uniform interface.
         """
+        import healpy as hp
         import healsparse
         import os
 
@@ -58,9 +64,31 @@ class TXLSSDensityBase(TXMapCorrelations):
         else:
             real_map_path = map_path
 
-        # Convert to correct res healpix map
-        m = healsparse.HealSparseMap.read(map_path)
-        return m.degrade(nside)
+        ext = os.path.splitext(real_map_path)[1].lower()
+
+        if ext in (".hs", ".hsp"):
+            m = healsparse.HealSparseMap.read(real_map_path)
+        elif ext in (".fits", ".fit", ".fits.gz"):
+            hp_map = hp.read_map(real_map_path)
+            m = healsparse.HealSparseMap(
+                nside_coverage=self.config["nside_coverage"],
+                healpix_map=hp_map.astype(np.float64),
+                nest=False,   # healpy reads FITS in RING order by default
+                sentinel=hp.UNSEEN,
+            )
+        else:
+            raise ValueError(
+                f"Unrecognised systematic map format for {map_path!r}. "
+                "Expected .hs, .hsp, or .fits."
+            )
+
+        map_nside = m.nside_sparse
+        if map_nside > nside:
+            return m.degrade(nside)
+        elif map_nside < nside:
+            return m.upgrade(nside)
+        else:
+            return m
 
     def prepare_sys_maps(self):
         """
@@ -151,8 +179,18 @@ class TXLSSDensityBase(TXMapCorrelations):
         s = time.time()
 
         root = self.config["supreme_path_root"]
-        sys_files = glob.glob(f"{root}*.hs")
-        sys_files = np.sort(sys_files)
+        all_files = sorted(
+            glob.glob(f"{root}*.hs")
+            + glob.glob(f"{root}*.hsp")
+            + glob.glob(f"{root}*.fits")
+            + glob.glob(f"{root}*.fit")
+        )
+        sys_files = []
+        for f in all_files:
+            if "mask" in os.path.basename(f).lower():
+                print(f"Skipping mask file (not a systematic map): {f}")
+            else:
+                sys_files.append(f)
         nsys = len(sys_files)
         print(f"Found {nsys} total systematic maps")
 
@@ -172,8 +210,9 @@ class TXLSSDensityBase(TXMapCorrelations):
         sys_maps = []
         sys_names = []
         for i, map_path in enumerate(sys_files):
-            # strip root, .hs, and underscores to get friendly name
-            sys_name = map_path[len(root) : -3].strip("_")
+            # strip root and extension (.hs, .fits, etc.) to get a friendly name
+            basename = os.path.basename(map_path)
+            sys_name = os.path.splitext(basename)[0].strip("_")
             sys_names.append(sys_name)
 
             # get actual data for this map
@@ -651,6 +690,14 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
 
         nbinstotal = len(density_correlation.map_index)
 
+        # fractional pixel coverage (frac) for weighting the pixel-pixel two-point function,
+        # so partially-covered pixels contribute less than fully-covered ones
+        with self.open_input("mask", wrapper=True) as map_file:
+            mask_map_info = map_file.read_map_info("mask")
+            mask = map_file.read_map("mask")
+        mask_nest = mask_map_info["nest"]
+        mask_nside = mask_map_info["nside"]
+
         # generate theory wtheta
         mintheta = hp.nside2resol(sys_maps[0].nside_sparse, arcmin=True)
         maxtheta = 250.0  # in arcmin
@@ -691,12 +738,17 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
                 ra_i, dec_i = sys_maps[imap].valid_pixels_pos(lonlat=True)
             else:
                 ra_i, dec_i = mask.valid_pixels_pos(lonlat=True)
+            if mask_nest:
+                frac_i = mask[sys_maps[imap].valid_pixels]
+            else:
+                frac_i = mask[hp.nest2ring(mask_nside, sys_maps[imap].valid_pixels)]
             edges_i = density_correlation.get_edges(imap)
             for isp in range(len(edges_i) - 1):
                 selecti = density_correlation.precomputed_array[imap][isp]
                 cat_i = treecorr.Catalog(
                     ra=ra_i[selecti],
                     dec=dec_i[selecti],
+                    w=frac_i[selecti],
                     ra_units="degrees",
                     dec_units="degrees",
                 )
@@ -749,7 +801,8 @@ class TXLSSDensityNullTests(TXLSSDensityBase):
                         if diag_blocks_only and imap != jmap:  # sometimes we dont need the covarinace between maps
                             continue
                         nn = self.sys_meta["sp_pixel_twopoint"][indexi, indexj]
-                        covmat_N[indexi, indexj] = np.sum(nn.npairs * wtheta_interp(nn.meanr))
+                        # use the frac-weighted pair counts (nn.weight), not the raw pair counts (nn.npairs)
+                        covmat_N[indexi, indexj] = np.sum(nn.weight * wtheta_interp(nn.meanr))
                         covmat_N[indexj, indexi] = covmat_N[indexi, indexj]
 
         # I did not include nbar in covmat_N because this would get divided out here

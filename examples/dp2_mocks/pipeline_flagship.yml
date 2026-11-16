@@ -1,0 +1,105 @@
+# =============================================================================
+# TXPipe pipeline: Flagship DP2 parquet ingestion → density maps → C_ell
+#
+# Differences from pipeline_lens.yml:
+#   - TXMaskFromParquet builds the footprint mask directly from galaxy positions
+#     (the two flagship tiles cover a different sky region than the dp2 mask).
+#   - TXIngestFlagshipCatalog reads the flagship-ramin-* column schema and
+#     converts fluxes to AB magnitudes on the fly.
+#   - CMB lensing stages are omitted.
+# =============================================================================
+
+stages:
+  # --------------------------------------------------------------------------
+  # Mask (built from galaxy positions – no pre-existing mask needed)
+  # --------------------------------------------------------------------------
+  - name: TXMaskFromParquet
+
+  # --------------------------------------------------------------------------
+  # Ingestion
+  # --------------------------------------------------------------------------
+  - name: TXIngestFlagshipCatalog
+
+  # --------------------------------------------------------------------------
+  # Lens selection (uses observed_redshift_gal → stored as redshift_true)
+  # --------------------------------------------------------------------------
+  - name: TXTruthLensSelector
+
+  - name: TXTruthLensCatalogSplitter
+
+  - name: TXLSSWeightsUnit
+
+  # --------------------------------------------------------------------------
+  # Maps
+  # --------------------------------------------------------------------------
+  - name: TXLensMaps
+  - name: TXDensityMaps
+
+  # --------------------------------------------------------------------------
+  # Metadata & null tests
+  # --------------------------------------------------------------------------
+  - name: TXTracerMetadata
+  # - name: TXLSSDensityNullTests
+
+  # --------------------------------------------------------------------------
+  # Two-point statistics
+  # --------------------------------------------------------------------------
+  - name: TXTwoPointFourier
+    threads_per_process: 2
+
+  - name: TXFourierNamasterCovariance
+
+# =============================================================================
+# Python modules
+# =============================================================================
+modules: >
+    txpipe
+    txpipe.extensions
+
+# =============================================================================
+# Output directory
+# =============================================================================
+output_dir: data/outputs/flagship_lens
+
+# =============================================================================
+# Launcher / site
+# =============================================================================
+launcher:
+  name: mini
+  interval: 1.0
+
+site:
+  name: local
+  max_threads: 4
+
+# =============================================================================
+# Configuration file
+# =============================================================================
+config: examples/dp2_mocks/config_flagship.yml
+
+# =============================================================================
+# Pipeline-level inputs
+#   - mask is produced by TXMaskFromParquet (not listed here)
+#   - photometry_catalog is produced by TXIngestFlagshipCatalog (not listed here)
+# =============================================================================
+inputs:
+  fiducial_cosmology: data/fiducial_cosmology.yml
+
+  lens_photoz_stack:  data/outputs/flagship_lens/lens_photoz_stack.hdf5
+  shear_photoz_stack: data/inputs/shear_photoz_stack.hdf5
+
+  shear_tomography_catalog: none
+  shear_catalog: none
+
+  source_maps:        data/inputs/source_maps.hdf5
+  source_noise_maps:  data/inputs/source_noise_maps.hdf5
+  lens_noise_maps:    data/inputs/source_noise_maps.hdf5
+
+  cmb_lensing_beam: data/cmb/unit_transfer_function.txt
+
+# =============================================================================
+# Ceci bookkeeping
+# =============================================================================
+resume: True
+log_dir: data/logs
+pipeline_log: data/pipeline_log.txt
