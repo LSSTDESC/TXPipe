@@ -16,7 +16,8 @@ unset PYTHONNOUSERSITE
 
 python -m pip install --user --no-build-isolation  \
     git+https://github.com/LSSTDESC/rail_sompz@u/jzuntz/iterate-tomobin-nz-onesom \
-    git+https://github.com/ashaeres/pyfsb@86989ab125b843628156868eaadc6e1816ff82cb
+    git+https://github.com/ashaeres/pyfsb@86989ab125b843628156868eaadc6e1816ff82cb \
+    git+https://github.com/LSSTDESC/WLMassMap@c9180673c3084cb948eac730531165be35c99d5d
 
 
 echo ""

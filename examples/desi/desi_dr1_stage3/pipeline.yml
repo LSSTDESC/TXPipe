@@ -116,8 +116,7 @@ modules: txpipe
 
 # where to find any modules that are not in this repo,
 # and any other code we need.
-python_paths:
-  - submodules/WLMassMap/python/desc/
+python_paths: []
 
 # configuration settings
 config: examples/desi/desi_dr1_stage3/config.yml

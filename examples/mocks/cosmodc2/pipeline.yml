@@ -13,8 +13,7 @@ modules: >
     rail.estimation.algos.nz_dir
     rail.estimation.algos.bpz_lite
 
-python_paths:
-  - submodules/WLMassMap/python/desc/
+python_paths: []
 
 stages:
   # Simulating spectroscopic sample
