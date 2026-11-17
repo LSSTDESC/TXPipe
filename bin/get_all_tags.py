@@ -1,22 +1,21 @@
 import ceci
 
 pipeline_files = [
-    "examples/2.2i/pipeline.yml",
-    "examples/buzzard/pipeline.yml",
-    "examples/clmm/pipeline.yml",
-    "examples/cosmodc2/pipeline.yml",
-    "examples/desy1/pipeline.yml",
-    "examples/desy3/pipeline.yml",
-    "examples/dp0.2/pipeline.yml",
-    "examples/kids-1000/pipeline.yml",
-    "examples/lensfit/pipeline.yml",
-    "examples/lognormal/pipeline.yml",
-    "examples/metacal/pipeline.yml",
-    "examples/metadetect/pipeline.yml",
-    "examples/metadetect_source_only/pipeline.yml",
-    "examples/mock_shear/pipeline.yml",
-    "examples/redmagic/pipeline.yml",
-    "examples/skysim/pipeline.yml",
+    "examples/legacy/2.2i/pipeline.yml",
+    "examples/mocks/buzzard/pipeline.yml",
+    "examples/mocks/cosmodc2/pipeline.yml",
+    "examples/stage3/desy1/pipeline.yml",
+    "examples/stage3/desy3/pipeline.yml",
+    "examples/legacy/dp0.2/pipeline.yml",
+    "examples/stage3/kids-1000/pipeline.yml",
+    "examples/test/lensfit/pipeline.yml",
+    "examples/other/lognormal/pipeline.yml",
+    "examples/test/metacal/pipeline.yml",
+    "examples/test/metadetect/pipeline.yml",
+    "examples/test/metadetect_source_only/pipeline.yml",
+    "examples/test/mock_shear/pipeline.yml",
+    "examples/test/redmagic/pipeline.yml",
+    "examples/mocks/skysim/pipeline.yml",
 ]
 
 def get_tags(pipeline_file):

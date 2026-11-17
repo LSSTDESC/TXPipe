@@ -1,4 +1,4 @@
-from ...twopoint import TXTwoPoint
+from ...twopoint.twopoint import TXTwoPoint
 from ...data_types import (
     HDFFile,
     PNGFile,

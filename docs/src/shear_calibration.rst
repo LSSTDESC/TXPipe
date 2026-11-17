@@ -8,13 +8,13 @@ In our primary use case one ensemble is one tomographic bin, but for shear diagn
 How calibration fits into the pipeline
 --------------------------------------
 
-Calibration is the last of three steps that turn a shear catalog into a calibrated tomographic sample: :ref:`selection, tomography and calibration<Source selection and tomography>`. The ``TXComputeShearCalibration*`` stages (one per catalog type, in ``txpipe/shear_calibration/``) take the cuts from the selection stage and the bin assignments from the tomography stage, and use the calculator classes described below to find the calibration of each tomographic bin. They save the results in the "response" and "counts" groups of the :ref:`shear tomography catalog<Shear tomography catalogs>`.
+Calibration is the last of three steps that turn a shear catalog into a calibrated tomographic sample: :ref:`selection, tomography and calibration<Source selection and tomography>`. The ``TXComputeShearCalibration*`` stages (one per catalog type, in ``txpipe/calibration/shear_calibration/``) take the cuts from the selection stage and the bin assignments from the tomography stage, and use the calculator classes described below to find the calibration of each tomographic bin. They save the results in the "response" and "counts" groups of the :ref:`shear tomography catalog<Shear tomography catalogs>`.
 
 Later stages load those values with the calibrator classes. The ``TXShearCalibration`` stage (in ``txpipe/calibrate.py``) uses them to make calibrated tomographic catalogs, and ``TXSourceMaps`` turns those into tomographic maps.
 
 If you are doing straightforward analysis on tomographic quantities you may be able to avoid understanding the shear calibration at all, since these stages do it all for you. The classes below are for people who want to write new diagnostics, or add a new type of shear catalog.
 
-TXPipe uses several classes in shear calibration, all in the ``txpipe.calibration_utils`` sub-module.
+TXPipe uses several classes in shear calibration, all in the ``txpipe.calibration.calibration_utils`` sub-module.
 
 - ``CalibrationCalculator``: the calculator sub-classes compute the shear calibration factor.
 - ``Calibrator``: the calibrator sub-classes load the shear calibration factor from a file and then apply it to a sample.
@@ -23,7 +23,7 @@ TXPipe uses several classes in shear calibration, all in the ``txpipe.calibratio
 Calculator Classes
 ------------------
 
-The calculator classes can be found in ``txpipe/calibration_utils/calibration_calculators.py``. There is one for each shear calibration method (``MetacalCalculator``, ``MetaDetectCalculator``, ``ScalarMetaDetectCalculator``, ``LensfitCalculator``, ``HSCCalculator``, and ``MockCalculator`` for catalogs that need no calibration), and ``CalibrationCalculator.create_calculator`` chooses the right one from the catalog type. Their main use is in the ``TXComputeShearCalibration*`` stages in ``txpipe/shear_calibration/``, and for diagnostics like ``TXResponseInBins``. Their output is saved into the :ref:`tomography file<Shear tomography catalogs>` "response" group.
+The calculator classes can be found in ``txpipe/calibration/calibration_utils/calibration_calculators.py``. There is one for each shear calibration method (``MetacalCalculator``, ``MetaDetectCalculator``, ``ScalarMetaDetectCalculator``, ``LensfitCalculator``, ``HSCCalculator``, and ``MockCalculator`` for catalogs that need no calibration), and ``CalibrationCalculator.create_calculator`` chooses the right one from the catalog type. Their main use is in the ``TXComputeShearCalibration*`` stages in ``txpipe/calibration/shear_calibration/``, and for diagnostics like ``TXResponseInBins``. Their output is saved into the :ref:`tomography file<Shear tomography catalogs>` "response" group.
 
 The calculator classes are designed to operate on streamed data (i.e. they do not load the entire catalog at once, but a chunk at a time).  The expected life cycle of a calculator class is:
 
@@ -50,7 +50,7 @@ The calculator classes return an instance of `BinStats`, a little class that jus
 Calibrator Classes
 ------------------
 
-The calibrator classes read the data from the tomography file response group and apply it to shear catalogs, maps, or similar values. They can be found in ``txpipe/calibration_utils/calibrators.py``. The primary place they are used is to generate calibrated tomographic catalogs in the ``TXShearCalibration`` stage in ``calibrate.py``.
+The calibrator classes read the data from the tomography file response group and apply it to shear catalogs, maps, or similar values. They can be found in ``txpipe/calibration/calibration_utils/calibrators.py``. The primary place they are used is to generate calibrated tomographic catalogs in the ``TXShearCalibration`` stage in ``calibrate.py``.
 
 The base class, `Calibrator`, has a `load` method which takes the name of the tomography file to load from, and then determines which shear catalog type it is and returns a `Calibrator` sub-class appropriate for that type. This method also takes a "null" keyword which you can use to tell it to ignore the calibration factors and return a dummy calibrator that does nothing. This is useful when you have true shear values for testing.
 

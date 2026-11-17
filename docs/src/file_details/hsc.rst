@@ -17,7 +17,7 @@ shear    msel       1D float    Optional. Selection bias correction
 
 The three optional columns are used if they are present. They are listed by :py:meth:`~txpipe.data_types.ShearCatalog.get_extra_calibration_columns`.
 
-The selection stage is :py:class:`~txpipe.source_selection.TXHSCSelection`, which adds an optional maximum-shear cut to the standard cuts, and the calibration stage is :py:class:`~txpipe.shear_calibration.hsc.TXComputeShearCalibrationHSC`.
+The selection stage is :py:class:`~txpipe.selection.source_selection.TXHSCSelection`, which adds an optional maximum-shear cut to the standard cuts, and the calibration stage is :py:class:`~txpipe.calibration.shear_calibration.hsc.TXComputeShearCalibrationHSC`.
 
 .. warning::
 

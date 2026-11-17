@@ -3,8 +3,9 @@ This file contains TXPipe-specific file types, subclassing the more
 generic types in ceci.
 """
 from ceci.file_types import HDFFile, DataFile, YamlFile, TextFile, FitsFile, Directory, FileCollection, PickleFile, ParquetFile, PNGFile, FileValidationError
-from .mapping import degrade_healsparse
-from .calibration_utils.names import META_VARIANTS, SCALAR_META_VARIANTS, metacal_variants, metadetect_variants, scalar_metadetect_variants, band_variants
+# The calibration_utils and maps.mapping imports are done inside the methods
+# that use them, to avoid circular imports: those packages import stages,
+# which import base_stage, which imports this module.
 import yaml
 import numpy as np
 
@@ -18,6 +19,8 @@ def class_for_shear_catalog_type(shear_catalog_type):
         return MetaDetectShearCatalog
     elif shear_catalog_type == "scalar_metadetect":
         return ScalarMetaDetectCatalog
+    elif shear_catalog_type == "anacal":
+        return AnacalShearCatalog
     elif shear_catalog_type == "lensfit":
         return LensfitShearCatalog
     elif shear_catalog_type == "hsc":
@@ -210,6 +213,8 @@ class MetacalShearCatalog(ShearCatalog):
 
     @staticmethod
     def get_column_name_variants(*columns):
+        from .calibration.calibration_utils.names import metacal_variants
+
         return metacal_variants(*columns)
 
     @staticmethod
@@ -294,11 +299,15 @@ class MetaDetectShearCatalog(ShearCatalog):
 
     @staticmethod
     def get_column_name_variants(*columns):
+        from .calibration.calibration_utils.names import metadetect_variants
+
         return metadetect_variants(*columns)
 
     def get_diagnostic_shear_columns(self, bands=None, use_psf_originals=False):
         if bands is None:
             bands = self.get_bands()
+        from .calibration.calibration_utils.names import metadetect_variants, band_variants
+
         psf_suffix = "_original" if use_psf_originals else ""
         shear_cols = metadetect_variants(
             "g1",
@@ -340,11 +349,15 @@ class ScalarMetaDetectCatalog(MetaDetectShearCatalog):
 
     @staticmethod
     def get_column_name_variants(*columns):
+        from .calibration.calibration_utils.names import scalar_metadetect_variants
+
         return scalar_metadetect_variants(*columns)
 
     def get_diagnostic_shear_columns(self, bands=None, use_psf_originals=False):
         if bands is None:
             bands = self.get_bands()
+        from .calibration.calibration_utils.names import scalar_metadetect_variants, band_variants
+
         psf_suffix = "_original" if use_psf_originals else ""
         shear_cols = scalar_metadetect_variants(
             "g1",
@@ -358,6 +371,75 @@ class ScalarMetaDetectCatalog(MetaDetectShearCatalog):
         )
         shear_cols += band_variants(bands, "mag", "mag_err", shear_catalog_type="scalar_metadetect")
         return shear_cols
+
+
+class AnacalShearCatalog(ShearCatalog):
+    def get_primary_catalog_names(self, true_shear=False):
+        if true_shear:
+            shear_cols = ["true_g1", "true_g2", "ra", "dec", "weight"]
+            rename = {"true_g1": "g1", "true_g2":"g2"}
+        else:
+            shear_cols = ["e1", "e2", "ra", "dec", "weight"]
+            rename = {"e1":"g1", "e2":"g2"}
+        return shear_cols, rename
+
+    def get_diagnostic_shear_columns(self, bands=None, use_psf_originals=False):
+        if bands is None:
+            bands = self.get_bands()
+        return [
+            "dec",
+            "ra",
+            "psf_g1",
+            "psf_g2",
+            "psf_T_mean",
+            "e1",
+            "e2",
+            "de1_dg1",
+            "de2_dg2",
+            # needed by AnaCalCalculator for R_shape and R_detect
+            "e1_raw",
+            "e2_raw",
+            "wsel",
+            "weight_dg1",
+            "weight_dg2",
+            "s2n",
+            "T",
+            "weight"
+        ] + [f"mag_{b}" for b in bands]
+
+
+    @staticmethod
+    def get_classifier_prefixes():
+        return [""] * 5
+
+    @staticmethod
+    def get_classifier_suffixes():
+        return ["", "_1p", "_1m", "_2p", "_2m"]
+
+    @staticmethod
+    def get_classifier_output_columns():
+        return ["bin", "bin_1p", "bin_1m", "bin_2p", "bin_2m"]
+
+    @staticmethod
+    def get_column_name_variants(*columns):
+        # AnaCal stores its shapes as e1/e2 (= wsel * e_raw), and AnaCalCalculator
+        # reads them under those names, so we translate rather than rename.
+        aliases = {"g1": "e1", "g2": "e2"}
+        # Only s2n has shifted variants, used for the S/N binning's R_sel.
+        shifted = {"s2n"}
+
+        cols = []
+        for col in columns:
+            col = aliases.get(col, col)
+            cols.append(col)
+            if col in shifted:
+                cols += [f"{col}{s}" for s in ("_1p", "_1m", "_2p", "_2m")]
+
+        # Per-object columns AnaCalCalculator needs for R_shape and R_detect.
+        return cols + [
+            "e1_raw", "e2_raw", "wsel",
+            "weight_dg1", "weight_dg2", "de1_dg1", "de2_dg2",
+        ]
 
 
 class LensfitShearCatalog(ShearCatalog):
@@ -620,6 +702,8 @@ class MapsFile(HDFFile):
         if (degrade_nside is not None) and (degrade_nside < mask.nside_sparse):
             # In this case we need a float mask to allow the mask-like
             # degrading to work
+            from .maps.mapping import degrade_healsparse
+
             mask = mask.astype("float")
             mask = degrade_healsparse(
                 mask, reduction="mask", degrade_nside=degrade_nside

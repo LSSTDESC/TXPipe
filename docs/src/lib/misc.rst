@@ -11,7 +11,7 @@ These are miscellaneous utilities.
 .. automodule:: txpipe.utils.provenance
    :members:
 
-.. automodule:: txpipe.utils.theory
+.. automodule:: txpipe.theory.theory_utils
    :members:
 
 .. automodule:: txpipe.utils.timer

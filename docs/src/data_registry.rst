@@ -102,7 +102,7 @@ The ``dregs`` command-line tool, which comes with the ``dataregistry`` package, 
 
 Run ``dregs --help`` or see the `data registry documentation <https://lsstdesc.org/dataregistry/index.html>`_ for the full list of options, and for how to register your own data sets.
 
-Registry ``id`` values are shared by everyone, so a pipeline with an ``id`` will run for any other DESC member. Check the ID with ``dregs path`` before you rely on it. The examples show a full set of inputs: for example ``examples/dp2/analysis_desc_metadetect_1.1.yml`` looks up its mask, shear catalog and spectroscopic data by ``id``, and ``examples/cosmodc2/pipeline-20deg2-nersc.yml`` looks up its catalogs by ``name``.
+Registry ``id`` values are shared by everyone, so a pipeline with an ``id`` will run for any other DESC member. Check the ID with ``dregs path`` before you rely on it. The examples show a full set of inputs: for example ``examples/dp2/desc_metadetect/analysis_desc_metadetect_1.1.yml`` looks up its mask, shear catalog and spectroscopic data by ``id``, and ``examples/mocks/cosmodc2/pipeline-20deg2-nersc.yml`` looks up its catalogs by ``name``.
 
 
 Dry runs and flow charts

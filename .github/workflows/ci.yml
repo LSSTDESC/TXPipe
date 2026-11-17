@@ -56,13 +56,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-14]
+        os: [ubuntu-latest, macos-latest]
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-      with:
-        submodules: true
 
     - name: Cache conda packages
       uses: actions/cache@v4
@@ -118,8 +116,6 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-      with:
-        submodules: true
 
     - name: Cache conda packages
       uses: actions/cache@v4
@@ -166,16 +162,16 @@ jobs:
         source ./conda/bin/activate
         # Manually re-install ducc0 to try and avoid illegal instruction crashes
         python -m pip install -v --no-cache-dir --no-binary=ducc0 --force-reinstall --no-deps  ducc0
-        ceci examples/cmb/quaia.yml
-        test -f data/cmb/outputs_quaia/twopoint_data_fourier_cmb_cross_density_plot.png
+        bin/run_regression_tests.sh cmb
 
     - name: Show logs
       if: always()
       run: |
         # always run
-        cat data/cmb/logs_quaia/*
+        cat data/test/cmb/logs_quaia/*
 
-        
+
+      
   Pipelines:
     runs-on: ${{ matrix.os }}
     needs: Download_Data
@@ -197,14 +193,14 @@ jobs:
             pipeline: metadetect_source_only
           - os: ubuntu-latest
             pipeline: mock_shear
-          - os: macos-14
+          - os: ubuntu-latest
+            pipeline: metadetect_different_lengths
+          - os: macos-latest
             pipeline: metadetect
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-      with:
-        submodules: true
 
     - name: Cache conda packages
       uses: actions/cache@v4
@@ -250,48 +246,47 @@ jobs:
         mkdir -p cache/workspaces
         source ./conda/bin/activate
         python -m pip install -v --no-cache-dir --no-binary=ducc0 --force-reinstall --no-deps  ducc0
-        # Just for the metadetect source pipeline
-        # we activate the debug mode with an env var
-        if [ "${{ matrix.pipeline }}" == "metadetect_source_only" ]; then
-          export TX_DASK_DEBUG=1
-        fi
-        if [ "${{ matrix.pipeline }}" == "scalar_metadetect" ]; then
-          python bin/make_scalar_metadetect.py
-        fi
-        ceci examples/${{ matrix.pipeline }}/pipeline.yml
+        # The script handles per-pipeline env vars (e.g. TX_DASK_DEBUG)
+        # and checks that the expected output file was produced.
+        bin/run_regression_tests.sh ${{ matrix.pipeline }}
 
-        if [ "${{ matrix.pipeline }}" == "mock_shear" ]; then
-          test -f data/example/outputs_mock_shear/binned_shear_catalog.hdf5
-        else
-          test -f data/example/outputs_${{ matrix.pipeline }}/shear_xi_plus.png
-        fi
-
-    - name: Run metadetect with multi-length data
+    - name: Execute Welcome Notebook
       if: ${{ matrix.pipeline == 'metadetect' && matrix.os == 'ubuntu-latest' }}
       run: |
         source ./conda/bin/activate
-        python -m pip install -v --no-cache-dir --no-binary=ducc0 --force-reinstall --no-deps  ducc0
-
-        # remove the old target file
-        rm -f data/example/outputs_${{ matrix.pipeline }}/shear_xi_plus.png
-
-        # Generate the new data file
-        python bin/make_metadetect_file_different_lengths.py
-
-        # Run the pipeline with the new file
-        ceci examples/metadetect/pipeline.yml resume=restart inputs.shear_catalog=data/example/inputs/metadetect_shear_catalog_different_lengths.hdf5
-
-        test -f data/example/outputs_${{ matrix.pipeline }}/shear_xi_plus.png
-
-
-    - name: Dry run DP1
+        jupyter execute notebooks/Welcome\ to\ TXPipe.ipynb
+        
+    - name: DP2 And Other Flow Charts
+      if: ${{ matrix.pipeline == 'metadetect' && matrix.os == 'ubuntu-latest' }}
       run: |
         source ./conda/bin/activate
-        ceci --dry-run examples/dp1/pipeline-edfs.yml
+        # Make flow charts from the DP2 pipelines. Unlike the --dry-run approach this doesn't
+        # require any file paths so doesn't break when the data registry is unavailable,
+        # so this is a good test that all the pipeline components still fit together.
+
+        # DESC Metadetect
+        ceci --flow-chart flow1.png examples/dp2/desc_metadetect/ingestion1.1.yml
+        ceci --flow-chart flow2.png examples/dp2/desc_metadetect/analysis_desc_metadetect_1.1.yml
+
+        # DESC Anacal
+        ceci --flow-chart flow3.png examples/dp2/anacal/anacal_ingestion.yml
+        ceci --flow-chart flow4.png examples/dp2/anacal/anacal_analysis.yml
+
+        # Rubin metadetect
+        ceci --flow-chart flow5.png examples/dp2/rubin_metadetect/ingestion.yml
+        ceci --flow-chart flow6.png examples/dp2/rubin_metadetect/analysis_rubin_metadetect.yml
+
+        # Starts
+        ceci --flow-chart flow7.png examples/dp2/star_catalog/star_catalog_ingest.yml
 
 
     - name: Show logs
       if: always()
       run: |
         # always run
-        cat data/example/logs_${{ matrix.pipeline }}/*
+        # the multi-length test reuses the metadetect example's log directory
+        if [ "${{ matrix.pipeline }}" == "metadetect_different_lengths" ]; then
+          cat data/test/metadetect/logs_metadetect/*
+        else
+          cat data/test/${{ matrix.pipeline }}/logs_${{ matrix.pipeline }}/*
+        fi

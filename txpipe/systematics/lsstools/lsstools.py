@@ -1,0 +1,733 @@
+"""
+Classes and functions to help computing lss tools
+(primarily within the lss weights stages)
+"""
+
+import numpy as np
+from ...utils.fitting import calc_chi2
+
+
+class DensityCorrelation:
+    def __init__(self, tomobin=None):  # add fracdet option here
+        """
+        Class to compute and keep track of
+        1d density correlations for a given galaxy sample/tomographic bin
+        """
+
+        self.tomobin = tomobin
+        self.map_index = np.array([])
+        self.smin = np.array([])
+        self.smax = np.array([])
+        self.smean = np.array([])
+        self.N = np.array([])  # number of galaxies
+        self.npix = np.array([])  # number of pixels
+        self.ndens_perpixel = np.array([])  # number density per healpix pixel
+        self.norm = np.array([])  # normalization (could be slightly different per map due to outliers)
+        self.ndens = np.array([])  # normalized number density
+
+        self.ndens_err = None
+        self.covmat = None
+
+        #place to save histogram of SP pixels (more bins than 1D trends and always equal spacing)
+        self.s_fine_grid = np.array([])
+        self.npix_fine_grid = np.array([])
+        self.map_index_fine_grid = np.array([])
+
+        self.ndens_models = {}
+        self.chi2 = {}
+
+        self.mapnames = {}  # dict of map names to be indexed with map_index
+
+        self.precomputed_array = {}
+        self.precomputed_npix = {}
+        self.precomputed_sumsys = {}
+        self.sys_meta = {}
+
+    def add_correlation(
+        self,
+        map_index,
+        edges,
+        sys_vals,
+        data,
+        map_input=False,
+        frac=None,
+        weight=None,
+        sys_name=None,
+        use_precompute=False,
+        do_grid_hist=True, 
+        normalize=True, 
+    ):
+        """
+        Add a 1d density correlation
+
+        Params
+        ------
+        map_index: Integer
+            For labelling
+        edges: 1D array
+            edges of the systematic map binning
+        sys_vals: 1D array
+            systematic map for each fo the valid pixels
+        data: 1D array
+            systematic value for each object in the galaxy catalog OR the data map pixel values
+        map_input: bool
+            if True  will assume data is the map pixel values
+            if False will assume data is the sys value evaluate at each object location
+        frac: 1D array or None
+            fractional pixel coverage for each pixel in sys_vals
+        weight: 1d array or None
+            input galaxy or galaxy count weights
+        sys_name: str
+            a label for this map
+        use_precompute: bool
+            If True will use pre-computed boolean arrays and pixel number counts for this SP map
+            If False will compute the density in bins using numpy histogram
+        do_grid_hist: bool
+            if True, will also compute a histogram of the SP map values (on a fine grid, equal spaced bins)
+        normalize: bool
+            If True, ndens is in dimentionless units (Nobj/Npix)/(np.sum(Nobj)/np.sum(Npix))
+            If False, ndens is in in units of object per pixel area (Nobj/Npix)
+        """
+        if sys_name is not None:
+            self.mapnames[map_index] = str(sys_name)
+        if weight is None:
+            weight = np.ones(len(data))
+
+        if use_precompute:
+            # use the precomputed boolean arrays to get 1d trends
+
+            assert len(self.precomputed_array[map_index][0]) == len(sys_vals)
+            assert len(self.precomputed_array[map_index]) == len(edges) - 1
+            assert map_input
+            nobj_sys = np.zeros(len(self.precomputed_array[map_index]))
+            for i, select_sp in enumerate(self.precomputed_array[map_index]):
+                if frac is None:
+                    nobj_sys[i] = np.sum(data[select_sp])
+                else:
+                    nobj_sys[i] = np.sum(data[select_sp] * frac[select_sp])
+
+            npix_sys = self.precomputed_npix[map_index]
+            sumsys_sys = self.precomputed_sumsys[map_index]
+
+        else:
+            # use the numpy histogram functions to get 1d trends
+
+            if frac is None:
+                frac = np.ones(len(sys_vals))
+
+            # number counts
+            if map_input:
+                nobj_sys, _ = np.histogram(sys_vals, bins=edges, weights=data * weight)
+            else:
+                nobj_sys, _ = np.histogram(data, bins=edges, weights=weight)
+
+            # pixel counts (weighted by frac coverage)
+            npix_sys, _ = np.histogram(sys_vals, bins=edges, weights=frac)
+
+            # sumof sys value * frac in sys bin (to make mean)
+            sumsys_sys, _ = np.histogram(sys_vals, bins=edges, weights=sys_vals * frac)
+        
+        if do_grid_hist:
+            s_fine_grid_edges = np.linspace(edges.min(), edges.max(), 3*len(edges))
+            npix_fine_grid, _ = np.histogram(sys_vals, bins=s_fine_grid_edges, weights=frac)
+            self.s_fine_grid = np.append(self.s_fine_grid, (s_fine_grid_edges[1:]+s_fine_grid_edges[:-1])/2. )
+            self.npix_fine_grid = np.append(self.npix_fine_grid, npix_fine_grid)
+            self.map_index_fine_grid = np.append(self.map_index_fine_grid, np.ones(len(s_fine_grid_edges) - 1) * map_index)
+
+        # do we want to include any excluded outliers in this normalization?
+        norm = np.ones(len(edges) - 1) * 1.0 / (np.sum(nobj_sys) / np.sum(npix_sys))
+
+        if normalize:
+            ndens = norm * nobj_sys / npix_sys
+        else:
+            ndens = nobj_sys / npix_sys
+
+        self.map_index = np.append(self.map_index, np.ones(len(edges) - 1) * map_index)
+        self.smin = np.append(self.smin, edges[:-1])
+        self.smax = np.append(self.smax, edges[1:])
+        self.smean = np.append(self.smean, sumsys_sys / npix_sys)
+        self.N = np.append(self.N, nobj_sys)
+        self.npix = np.append(self.npix, npix_sys)
+        self.ndens_perpixel = np.append(self.ndens_perpixel, nobj_sys / npix_sys)
+        self.norm = np.append(self.norm, norm)
+        self.ndens = np.append(self.ndens, ndens)
+
+    def precompute(self, map_index, edges, sys_vals, frac=None):
+        """
+        Precompute the boolean arays for SP map bins
+        These can be used later for faster computation of 1d trends
+
+        Params
+        ------
+        map_index: Integer
+            For labelling
+        edges: 1D array
+            edges of the systematic map binning
+        sys_vals: 1D array
+            systematic map for each fo the valid pixels
+            The order of these pixels should be preserved in any later calculations
+        frac: 1D array
+            fractional coverage of each pixel
+        """
+        if frac is None:
+            frac = np.ones(len(sys_vals))
+
+        sp_select = []
+        for i_sp_bin in range(len(edges) - 1):
+            if i_sp_bin == len(edges) - 2:  # last bin
+                sp_select_bin = (sys_vals >= edges[i_sp_bin]) * (
+                    sys_vals <= edges[i_sp_bin + 1]
+                )  # this is to match the behaviour of np.histogram
+            else:
+                sp_select_bin = (sys_vals >= edges[i_sp_bin]) * (sys_vals < edges[i_sp_bin + 1])
+            sp_select.append(sp_select_bin)
+        self.precomputed_array[map_index] = np.array(sp_select)
+
+        # pixel counts (weighted by frac coverage)
+        npix_sys, _ = np.histogram(sys_vals, bins=edges, weights=frac)
+
+        # sumof sys value * frac in sys bin (to make mean)
+        sumsys_sys, _ = np.histogram(sys_vals, bins=edges, weights=sys_vals * frac)
+
+        self.precomputed_npix[map_index] = npix_sys
+        self.precomputed_sumsys[map_index] = sumsys_sys
+
+    def set_precompute(self, density_correlation):
+        """
+        copy over the precompute quantities from a different DensityCorrelation object
+        """
+        self.precomputed_array = density_correlation.precomputed_array
+        self.precomputed_npix = density_correlation.precomputed_npix
+        self.precomputed_sumsys = density_correlation.precomputed_sumsys
+
+    def add_diagonal_shot_noise_covariance(self, assert_empty=True):
+        """
+        Adds a shot noise only covariance
+        Only adds to the diagonal (no shot noise in the covariance between maps)
+        """
+        if assert_empty:
+            assert self.ndens_err is None
+            assert self.covmat is None
+            self.covmat = np.zeros((len(self.N), len(self.N)))
+
+        N_err = np.sqrt(self.N)
+        self.ndens_err = self.norm * N_err / self.npix
+        covmat_new = np.identity(len(self.N))
+        np.fill_diagonal(covmat_new, self.ndens_err**2.0)
+
+        self.covmat = self.covmat + covmat_new
+
+    def add_external_covariance(self, covmat, assert_empty=True):
+        """
+        Adds an external covariance matrix
+        """
+        if assert_empty:
+            assert self.ndens_err is None
+            assert self.covmat is None
+            self.covmat = np.zeros((len(self.N), len(self.N)))
+
+        self.covmat = self.covmat + covmat
+        self.ndens_err = np.sqrt(self.covmat.diagonal())
+
+    def clear_covariance(self):
+        self.ndens_err = None
+        self.covmat = None
+
+    def get_covmat_singlemap(self, map_index):
+        """
+        Returns the covariance matrix block for a single Survey Property map
+        """
+        select_map = self.map_index == map_index
+        return np.array([line[select_map] for line in self.covmat[select_map]])
+
+    def plot1d_singlemap(
+        self, filepath, map_index, label=None, extra_density_correlations=None, extra_density_labels=None, plot_hist=False, 
+    ):
+        """
+        Plot the 1D galaxy density correlation for a single systematic map.
+
+        This method plots the normalized galaxy number density as a function of the
+        mean value of a specified systematic map.
+
+        Parameters
+        ----------
+        filepath : str
+            Path where the output figure will be saved.
+        map_index : int
+            Index identifying the systematic map to plot.
+        label : str, optional
+            Label used for the legend entry of the primary density correlation (this object)
+        extra_density_correlations : list, optional
+            List of additional density-correlation objects. These are plotted 
+            for the same `map_index` for comparison.
+        extra_density_labels : list of str, optional
+            Labels corresponding to each entry in `extra_density_correlations`.
+            Must have the same length if provided.
+        plot_hist : bool, optional
+            if True will also plot a histogram of the number of pixels in each SP bin in the background
+
+        Notes
+        -----
+        - If the systematic maps were normalized, they are rescaled to physical
+        units using the stored mean and standard deviation before plotting.
+        - If density uncertainties are available, they are shown as error bars
+        (for the primary data) or shaded regions (for extra correlations).
+        """
+        import matplotlib.pyplot as plt
+        import textwrap
+
+        fig, ax = plt.subplots(figsize=(4, 4))
+        ax.axhline(1, color="k", ls="--")
+
+        ##### plot data from this object
+        select_map = self.map_index == map_index
+        smean = self.smean[select_map]
+        ndens = self.ndens[select_map]
+
+        if self.sys_meta["normed"]:
+            sys_width = self.sys_meta["std"][int(map_index)]
+            sys_mean = self.sys_meta["mean"][int(map_index)]
+            smean = smean * sys_width + sys_mean
+
+        if plot_hist:
+            select_map_fine_grid = self.map_index_fine_grid == map_index
+            s_grid = self.s_fine_grid[select_map_fine_grid]
+            if self.sys_meta["normed"]:
+                s_grid = s_grid * sys_width + sys_mean
+            npix_grid = self.npix_fine_grid[select_map_fine_grid]
+            ax2 = ax.twinx()
+            ax2.set_yticklabels([])
+            ax2.fill_between(s_grid, np.zeros(len(s_grid)), npix_grid, color='k', alpha=0.1)
+
+        if self.ndens_err is None:
+            ax.plot(smean, ndens, ".", color="b")
+        else:
+            ndata = len(ndens)
+            try:
+                chi2_null = self.chi2["null"][map_index]
+                if label is None:
+                    label = ""
+                legend_label = label + " null" + ": " + r"$\chi^2=$" + "{0}/{1}".format(np.round(chi2_null, 1), ndata)
+            except KeyError:
+                legend_label = "null"
+            ndens_err = self.ndens_err[select_map]
+            ax.errorbar(
+                smean,
+                ndens,
+                ndens_err,
+                fmt=".",
+                color="b",
+                capsize=3,
+                label=legend_label,
+            )
+
+        ##### plot data from any extra density correlations
+        if extra_density_correlations is not None:
+            for idc, dc in enumerate(extra_density_correlations):
+                select_map_extra = dc.map_index == map_index
+                smean_extra = dc.smean[select_map_extra]
+                ndens_extra = dc.ndens[select_map_extra]
+                # offset = (idc + 1) * 0.05 * np.min(np.diff(smean_extra))
+                offset = 0
+                if dc.sys_meta["normed"]:
+                    sys_width_extra = dc.sys_meta["std"][int(map_index)]
+                    sys_mean_extra = dc.sys_meta["mean"][int(map_index)]
+                    smean_extra = smean_extra * sys_width_extra + sys_mean_extra
+
+                if dc.ndens_err is None:
+                    ax.plot(offset + smean_extra, ndens_extra, ".", color="green")
+                else:
+                    chi2_null_extra = dc.chi2["null"][map_index]
+                    ndata_extra = len(ndens_extra)
+                    if extra_density_labels is None:
+                        label_extra = ""
+                    else:
+                        label_extra = extra_density_labels[idc]
+                    try:
+                        legend_label_extra = (
+                            label_extra + " "
+                            "null" + ": " + r"$\chi^2=$" + "{0}/{1}".format(np.round(chi2_null_extra, 1), ndata_extra)
+                        )
+                    except KeyError:
+                        legend_label_extra = "null"
+                    ndens_err_extra = dc.ndens_err[select_map_extra]
+                    ax.fill_between(
+                        smean_extra,
+                        ndens_extra - ndens_err_extra,
+                        ndens_extra + ndens_err_extra,
+                        alpha=0.3,
+                        color="green",
+                        label=legend_label_extra,
+                    )
+
+        # plot any models other than null (from this object only)
+        for model_name in self.ndens_models:
+            if model_name == "null":
+                continue
+            ndens_model = self.ndens_models[model_name][select_map]
+            chi2 = self.chi2[model_name][map_index]
+            ndata = len(ndens)
+            legend_label = model_name + ": " + r"$\chi^2=$" + "{0}/{1}".format(np.round(chi2, 1), ndata)
+            # legend_label = None
+            ax.plot(smean, ndens_model, "-", label=legend_label)
+
+        if map_index in self.mapnames.keys():
+            xlabel = self.mapnames[map_index]
+        else:
+            xlabel = f"SP {map_index}"
+
+        # wrap the x axis label in case it is too big
+        xlabel = "\n".join(textwrap.wrap(xlabel, 40))
+
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(r"$n_{\rm gal}/n_{\rm gal \ mean}$", fontsize=16)
+        ax.legend()
+        fig.tight_layout()
+        fig.savefig(filepath)
+        fig.clear()
+        plt.close()
+
+    def plot_chi2_hist(self, filepath, extra_density_correlations=None, chi2_threshold=None, nbins=10):
+        import matplotlib.pyplot as plt
+        import scipy.stats
+
+        fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+        ax.hist(
+            self.chi2["null"].values(),
+            bins=nbins,
+            density=True,
+            histtype="step",
+            color="blue",
+        )
+        if extra_density_correlations is not None:
+            for extra_density_correlation in extra_density_correlations:
+                ax.hist(
+                    extra_density_correlation.chi2["null"].values(),
+                    bins=nbins,
+                    density=True,
+                    histtype="step",
+                    color="green",
+                )
+
+        ndata = len(self.get_edges(self.map_index[0])) - 1
+        chi2_array = np.linspace(0, ndata * 3, 100)
+        ax.plot(chi2_array, scipy.stats.chi2(ndata).pdf(chi2_array))
+
+        if chi2_threshold is not None:
+            plt.axvline(chi2_threshold, color="k", ls="--")
+
+        ax.set_xlabel(r"$\chi^2_{\rm null}$")
+        fig.tight_layout()
+        fig.savefig(filepath)
+        fig.clear()
+        plt.close()
+
+    def get_edges(self, map_index):
+        """get the sys map bin edges for a given map"""
+        select_map = self.map_index == map_index
+        smin = self.smin[select_map]
+        smax = self.smax[select_map]
+        edges = np.zeros(len(smin) + 1)
+        edges[:-1] = smin
+        edges[-1] = smax[-1]
+        return edges
+
+    def add_null_model(self):
+        """
+        Add a null contamination model (i.e. flat line at 1.0)
+        n_dens/<n_dens> = 1
+        and compute its chi2
+        """
+        null_model = np.ones(len(self.ndens))
+        self.add_model(null_model, "null")
+
+    def add_model(self, model, model_name):
+        """
+        Adds a model and computes chi2 with the data for each Survey Property map
+
+        Params
+        ------
+        model: 1D array
+
+        model_name: string
+        """
+        self.ndens_models[model_name] = model
+
+        # if we have error bars, loop over survey property maps and compute the chi2 for each
+        if self.ndens_err is not None:
+            self.chi2[model_name] = {}
+            for map_index in self.mapnames:
+                select_map = self.map_index == map_index
+                ndens = self.ndens[select_map]
+                covmat = self.get_covmat_singlemap(map_index)
+                chi2_map = calc_chi2(ndens, covmat, model[select_map])
+                self.chi2[model_name][map_index] = chi2_map
+
+    def save_to_group(self, parent_group, suffix=""):
+        """
+        Save this DensityCorrelation to an HDF5 group within an existing file.
+        Returns the created group (e.g. f["density_0"]). The "suffix" parameter can optionally
+        be used to add some extra distinguisher to the group name.
+        """
+        group_name = f"density_{self.tomobin}{suffix}"
+        g = parent_group.create_group(group_name)
+        g.attrs.update({"tomobin": self.tomobin})
+
+        for key, val in self.__dict__.items():
+            self._save_item(g, key, val)
+
+        return g
+
+    def _save_item(self, group, key, val):
+        """
+        Save item into group
+        all arrays -> group datasets
+        all values -> group attributes
+        dicts -> make a subgroup then loop over the entries
+        """
+        if key == "sp_pixel_twopoint":
+            return  # dont save the treecorr correlations of the pixels
+        if isinstance(val, np.ndarray):
+            group.create_dataset(key, data=val)
+        elif isinstance(val, (int, float, str, bool, np.generic)):
+            group.attrs[key] = val
+        elif isinstance(val, dict):
+            subgrp = group.create_group(key)
+            for k, v in val.items():
+                self._save_item(subgrp, str(k), v)
+        else:
+            raise RuntimeError(f"I dont know how to save {key}={val} to {group}")
+
+    @classmethod
+    def load_from_group(cls, group):
+        """
+        Load a DensityCorrelation object from an existing HDF5 group.
+        """
+        self = cls(group.attrs["tomobin"])
+
+        for key, item in group.items():
+            setattr(self, key, cls._load_item(item))
+
+        for key, val in group.attrs.items():
+            if key != "tomobin":  # already used
+                setattr(self, key, val)
+
+        return self
+
+    @classmethod
+    def _load_item(cls, item):
+        """
+        load item from hdf5 group
+        we are trying to reconstruct the saving that was done in _save_item, i.e.
+            all arrays -> group datasets
+            all values -> group attributes (dealt with separately)
+            dicts -> make a subgroup then loop over the entries
+        """
+        import h5py
+
+        if isinstance(item, h5py.Dataset):
+            return np.array(item)
+        elif isinstance(item, h5py.Group):
+            out = {}
+            for k, v in item.items():
+                # if the key can be interpreted as an int, do it
+                k = try_int(k)
+                out[k] = cls._load_item(v)
+            for k, v in item.attrs.items():
+                # ditto
+                k = try_int(k)
+                out[k] = v
+            return out
+        else:
+            raise TypeError(f"Cannot load unknown item type: {type(item)}")
+
+    def postprocess(self, density_correlation):
+        """
+        PostProcess this object with an external density correlation object
+
+        Adds the covariance from density_correlation
+        Then adds the null signal model + computes chi2
+
+        TO DO: come up with a neater way to do this
+        """
+        self.add_external_covariance(density_correlation.covmat, assert_empty=True)
+        self.add_model(density_correlation.ndens_models["null"], "null")
+
+    def precompute_design_matrix(self, sysmap_table_all, frac=None, corr_map_indices=None):
+        """
+        Precompute the design matrix for linear systematics regression.
+
+        For a linear model in map space:
+            F(x) = beta + alpha_0 * s_0(x) + alpha_1 * s_1(x) + ...
+
+        the mean of F over pixels in bin b of map j is:
+            <F>_{j,b} = beta + sum_i alpha_i * <s_i>_{j,b}
+
+        where <s_i>_{j,b} is the weighted mean of systematic map i over pixels
+        in bin b of map j. The full predicted data vector is then just A @ params,
+        where params = [beta, alpha_0, alpha_1, ...].
+
+        Parameters
+        ----------
+        sysmap_table_all : np.ndarray
+            Array of shape (N_maps, N_pix) containing systematic map values,
+            where the row index matches those in self.map_index
+        frac : np.ndarray, optional
+            Fractional pixel coverage, length N_pix. Defaults to ones.
+        corr_map_indicies : np.ndarray of its, optional
+            the indices for which we will compute the model 
+            (in the order they appear in the parameters array)
+            Defaults to all maps in DensityCorrelation
+
+        Returns
+        -------
+        design_matrix : np.ndarray
+            Array of shape (N_corr_maps * N_bins, N_corr_maps + 1) where N_corr_maps
+            is the number of maps to be used in the model. Row j*N_bins + b corresponds to bin
+            b of the jth correlation map. Column 0 is the beta (intercept) term
+            (all ones). Columns 1..N_maps contain the weighted mean of each
+            systematic map over the pixels in that bin.
+        """
+        if frac is None:
+            frac = np.ones(sysmap_table_all.shape[1])
+
+        if corr_map_indices is None:
+            # unique map indices in the order they were added
+            # If the DensityCorrelation object only uses a subset of sysmap_table,
+            # this should select only those rows that are used
+            _, first_occurrence = np.unique(self.map_index, return_index=True)
+            corr_map_indices = self.map_index[np.sort(first_occurrence)].astype(int)
+
+        n_corr_maps = len(corr_map_indices)
+        n_bins = len(self.get_edges(corr_map_indices[0])) - 1
+        A = np.zeros((n_corr_maps * n_bins, n_corr_maps + 1))
+        A[:, 0] = 1.0  # beta column
+
+        for j, map_index_j in enumerate(corr_map_indices[:]): #For each map we are binning on...
+            print(f"Precomputing design matrix rows for map {j} / {n_corr_maps}")
+            edges_j = self.get_edges(map_index_j)
+            row_start = j * n_bins
+            row_end = row_start + n_bins
+
+            # weighted pixel count
+            weighted_pix_count, _ = np.histogram(
+                sysmap_table_all[map_index_j],
+                bins=edges_j,
+                weights=frac,
+            )
+
+            for i, map_index_i in enumerate(corr_map_indices): #... compute means of every other map in the model
+
+                #  weighted sum of systematic map i
+                sumsys, _ = np.histogram(
+                    sysmap_table_all[map_index_j],
+                    bins=edges_j,
+                    weights=sysmap_table_all[map_index_i] * frac,
+                )
+
+                A[row_start:row_end, i + 1] = np.divide(
+                    sumsys,
+                    weighted_pix_count,
+                    out=np.zeros_like(sumsys, dtype=float),
+                    where=weighted_pix_count != 0,
+                )
+
+        self.design_matrix_corr_map_indices = np.asarray(corr_map_indices)
+        self.design_matrix = A
+        return A
+    
+    def linear_model(self, params):
+        """
+        linear contamination model:
+        F(s) = alpha1*s1 + alpha2*s2 + ... + beta
+
+        computes the model using precomputed design matrix
+
+        Parameters
+        ----------
+        params : np.ndarray
+            the input parameters [beta, alpha1, alpha2, ...]
+        
+        Returns
+        ----------
+            predicted_mean_F : np.ndarray
+                the predicted density model for this set of parameters
+        """
+        predicted_mean_F = self.design_matrix @ params
+        return predicted_mean_F
+
+def linear_model_from_maps(
+    beta,
+    *alphas,
+    density_correlation=None,
+    sys_maps=None,
+    sysmap_table=None,
+    map_index=None,
+    frac=None,
+    do_grid_hist=True,
+):
+    """
+    linear contamination model:
+    F(s) = alpha1*s1 + alpha2*s2 + ... + beta
+    Normalised to <F(s)> = 1
+
+    returns
+        predicted ndens vs smean
+    """
+    import healsparse as hsp
+    import healpy as hp
+    import numpy as np
+    from . import lsstools
+
+    if map_index is not None:
+        assert len(map_index) == len(alphas)
+    else:
+        assert len(alphas) == len(sys_maps)
+        map_index = np.arange(len(sys_maps))
+
+    if sysmap_table is None:
+        sysmap_table = hsplist2array(sys_map)
+
+    # make empty F(s) map
+    validpixels = sys_maps[0].valid_pixels
+    F = hsp.HealSparseMap.make_empty(
+        sys_maps[0].nside_coverage,
+        sys_maps[0].nside_sparse,
+        dtype=np.float64,
+        sentinel=hp.UNSEEN,
+    )
+    Fvals = np.sum(np.array([alphas]).T * sysmap_table[map_index], axis=0) + beta
+    F.update_values_pix(validpixels, Fvals)
+
+    data_vals = F[validpixels]
+    if frac is None:
+        frac_vals = np.ones(len(validpixels))
+    else:
+        frac_vals = frac[validpixels]
+    F_density_corrs = lsstools.DensityCorrelation()
+    F_density_corrs.set_precompute(density_correlation)
+    for imap in map_index:
+        sys_vals = sysmap_table[imap]
+        edges = density_correlation.get_edges(imap)
+        #use the map correlation method to compute the mean F in s bins
+        F_density_corrs.add_correlation(
+            imap,
+            edges,
+            sys_vals,
+            data_vals,
+            map_input=True,
+            use_precompute=False,
+            frac=frac_vals,
+            weight=frac_vals,
+            do_grid_hist=do_grid_hist,
+            normalize=False
+        )
+
+    return F, F_density_corrs
+
+
+def try_int(k):
+    try:
+        return int(k)
+    except ValueError:
+        return k

@@ -1,6 +1,6 @@
 from ..base_stage import PipelineStage
 from ..data_types import ShearCatalog, HDFFile
-from ..calibration_utils import band_variants, metacal_variants
+from ..calibration.calibration_utils import band_variants, metacal_variants
 from ..utils import moments_to_shear
 from ceci.config import StageParameter
 import numpy as np

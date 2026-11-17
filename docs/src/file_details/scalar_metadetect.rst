@@ -5,7 +5,7 @@ Scalar metadetect catalogs are a simplified version of :ref:`Metadetect catalogs
 
 Only three variants are stored, because the shear response is the same in both directions: "ns" (no shear), "1p" and "1m". As for the full metadetect catalogs, each variant is a separate sub-group of the "shear" group containing a complete catalog with its own number of objects. The group has the attribute ``catalog_type = "scalar_metadetect"``; if it is missing the type is identified by the presence of a "1p" sub-group without a "2p" one.
 
-The selection stages are :py:class:`~txpipe.source_selection.TXScalarMetaDetectSelection` and :py:class:`~txpipe.source_selection.TXDP2DESCSelection`, and the calibration stage is :py:class:`~txpipe.shear_calibration.scalar_metadetect.TXComputeShearCalibrationScalarMetadetect`.
+The selection stages are :py:class:`~txpipe.selection.source_selection.TXScalarMetaDetectSelection` and :py:class:`~txpipe.selection.source_selection.TXDP2DESCSelection`, and the calibration stage is :py:class:`~txpipe.calibration.shear_calibration.scalar_metadetect.TXComputeShearCalibrationScalarMetadetect`.
 
 The columns in each variant of the example catalog are:
 

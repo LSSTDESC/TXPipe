@@ -160,9 +160,9 @@ Adding a new type of shear catalog
 The source selection, tomography and calibration stages (see :ref:`Source selection and tomography`) are designed so that a new type of shear catalog needs only a small amount of new code:
 
 #. Add a subclass of ``ShearCatalog`` in ``txpipe/data_types.py`` that describes the columns and groups of the format (for example ``get_tomography_bin_columns`` and ``get_extra_calibration_columns``), and add it to ``class_for_shear_catalog_type``.
-#. If the calibration scheme is new, add a calculator and a calibrator in ``txpipe/calibration_utils/`` (see :ref:`Shear calibration guide`). If it is like an existing one, reuse it.
+#. If the calibration scheme is new, add a calculator and a calibrator in ``txpipe/calibration/calibration_utils/`` (see :ref:`Shear calibration guide`). If it is like an existing one, reuse it.
 #. Add a selection stage by subclassing ``TXSimpleSelection`` in ``txpipe/source_selection.py``, overriding ``compute_selection`` if your catalog needs different cuts.
-#. Add a calibration stage by subclassing ``TXComputeShearCalibrationBase`` in ``txpipe/shear_calibration/``, supplying ``setup_response_calculators`` and, if your calibration saves anything beyond the standard bin and counts information, the setup and writing of the "response" group.
+#. Add a calibration stage by subclassing ``TXComputeShearCalibrationBase`` in ``txpipe/calibration/shear_calibration/``, supplying ``setup_response_calculators`` and, if your calibration saves anything beyond the standard bin and counts information, the setup and writing of the "response" group.
 #. The tomography stages do not usually need changing, because they use the classifier prefixes and suffixes from your ``ShearCatalog`` subclass.
 #. Import your stages in ``txpipe/__init__.py``.
 

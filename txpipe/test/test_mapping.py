@@ -1,4 +1,4 @@
-from ..mapping.basic_maps import pix2sparseindex
+from ..maps.mapping.basic_maps import pix2sparseindex
 import numpy as np
 import healsparse as hsp
 import healpy as hp

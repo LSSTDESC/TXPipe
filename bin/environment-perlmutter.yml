@@ -16,7 +16,7 @@ dependencies:
   - jax=0.7.*
   - jaxlib=0.7.*
   - jupyter=1.1.*
-  - lsstdesc-ceci=2.6.*
+  - lsstdesc-ceci=2.7.*
   - lsstdesc-crow=1.0.*
   - lsstdesc-smokescreen=1.5.*
   - matplotlib=3.10.*
@@ -57,7 +57,7 @@ dependencies:
     - dask-mpi==2022.4.0
     - git+https://github.com/LSSTDESC/CLMM.git@1.14.6
     - parallel-statistics==0.13
-    - sacc[all]==2.2.*
+    - sacc[all]==2.4.*
     - jax==0.7.2
     - jaxlib==0.7.2
     - glass==2023.7
@@ -73,4 +73,6 @@ dependencies:
     - git+https://github.com/LSSTDESC/dataregistry.git
     - dsigma==1.2.*
     - git+https://github.com/LSSTDESC/dsf.git@792d08e443d8242bbe3ff6c68275e550c1bd8849
+    - git+https://github.com/ashaeres/pyfsb@86989ab125b843628156868eaadc6e1816ff82cb
+    - git+https://github.com/LSSTDESC/WLMassMap@c9180673c3084cb948eac730531165be35c99d5d
   

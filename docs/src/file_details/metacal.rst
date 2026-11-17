@@ -7,7 +7,7 @@ Each quantity is measured under 5 different conditions: the nominal measurement,
 
 Everything is stored in a single group called "shear". The group has an attribute ``bands`` listing the photometric bands, and (optionally) ``catalog_type = "metacal"``. If the attribute is missing TXPipe identifies the catalog type from the presence of a ``g1_1p`` column.
 
-The source selection stage is :py:class:`~txpipe.source_selection.TXMetacalSelection`, and the calibration stage is :py:class:`~txpipe.shear_calibration.metacal.TXComputeShearCalibrationMetacal`. See :ref:`Shear calibration guide`.
+The source selection stage is :py:class:`~txpipe.selection.source_selection.TXMetacalSelection`, and the calibration stage is :py:class:`~txpipe.calibration.shear_calibration.metacal.TXComputeShearCalibrationMetacal`. See :ref:`Shear calibration guide`.
 
 The columns, for an example three-band (z, i, r) catalog, are:
 

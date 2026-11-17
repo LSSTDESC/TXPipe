@@ -9,7 +9,7 @@ Each variant is stored in its own sub-group of the "shear" group, named for the 
 
 Because the variants have different lengths, every stage that works with metadetect catalogs reads one variant at a time. The source selection, tomographic bin assignments, and the "bin" columns of the shear tomography catalog all follow the same layout, with one dataset per variant: see :ref:`Catalog selections`, :ref:`Tomographic bin assignments` and :ref:`Shear tomography catalogs`.
 
-The selection stages for metadetect catalogs are :py:class:`~txpipe.source_selection.TXMetaDetectSelection` and the Rubin/DESC-specific versions :py:class:`~txpipe.source_selection.TXDP2RubinMetadetectSelection` and :py:class:`~txpipe.source_selection.TXDP2DESCSelection`. The calibration stage is :py:class:`~txpipe.shear_calibration.metadetect.TXComputeShearCalibrationMetadetect`.
+The selection stages for metadetect catalogs are :py:class:`~txpipe.selection.source_selection.TXMetaDetectSelection` and the Rubin/DESC-specific versions :py:class:`~txpipe.selection.source_selection.TXDP2RubinMetadetectSelection` and :py:class:`~txpipe.selection.source_selection.TXDP2DESCSelection`. The calibration stage is :py:class:`~txpipe.calibration.shear_calibration.metadetect.TXComputeShearCalibrationMetadetect`.
 
 The columns in each variant of the example metadetect catalog are shown below. Real Rubin catalogs have additional columns such as ``mfrac`` (the masked fraction of the object), ``is_primary``, and per-fit flags; the ingestion stages in :ref:`Rubin DP2 Ingestion` list what they write.
 

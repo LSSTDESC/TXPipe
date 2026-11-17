@@ -1,7 +1,7 @@
 Catalog selections
 ==================
 
-A catalog selection file records which objects in a shear catalog pass the cuts that define the source sample, before any tomographic binning is applied. It is the output of the selection stages (:py:class:`~txpipe.source_selection.TXSimpleSelection` and its subclasses), is called ``shear_selection`` in pipelines, and is read with the ``CatalogSelection`` class. See :ref:`Source selection and tomography`.
+A catalog selection file records which objects in a shear catalog pass the cuts that define the source sample, before any tomographic binning is applied. It is the output of the selection stages (:py:class:`~txpipe.selection.source_selection.TXSimpleSelection` and its subclasses), is called ``shear_selection`` in pipelines, and is read with the ``CatalogSelection`` class. See :ref:`Source selection and tomography`.
 
 The file contains boolean datasets with one entry per object in the corresponding group of the shear catalog. The layout follows that of the shear catalog:
 

@@ -5,7 +5,7 @@ TXPipe is developed and tested with Python 3.12.  Download the TXPipe code like 
 
 .. code-block:: bash
 
-    git clone --recurse-submodules https://github.com/LSSTDESC/TXPipe
+    git clone https://github.com/LSSTDESC/TXPipe
     cd TXPipe
 
 Then on a personal machine or NERSC, install with:

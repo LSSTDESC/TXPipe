@@ -8,8 +8,8 @@ import pyccl
 import sacc
 import yaml
 
-from ..smokescreen_blinding import TXSmokescreenBlinding
-from ..utils.theory import theory_3x2pt, make_bias_parameters
+from ..blinding.smokescreen_blinding import TXSmokescreenBlinding
+from ..theory.theory_utils import theory_3x2pt, make_bias_parameters
 from .test_firecrown import make_sacc
 
 REFERENCE_COSMOLOGY = {
