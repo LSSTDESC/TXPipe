@@ -52,6 +52,8 @@ inputs:
     cluster_catalog: ./data/example/inputs/cluster_catalog.hdf5
     shear_tomography_catalog: data/test/metadetect/outputs_metadetect/shear_tomography_catalog.hdf5
     source_photoz_pdfs: ./data/example/inputs/photoz_pdfs.hdf5
+    # made by CLClusterShearCalibrator, only for shear_calibration: cluster
+    cluster_shear_response: none
     #cluster_shear_catalogs: data/mocks/cosmodc2/outputs-1deg2-CL/cluster_shear_catalogs.hdf5
 resume: true
 log_dir: data/mocks/cosmodc2/logs
