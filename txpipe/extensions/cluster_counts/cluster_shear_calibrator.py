@@ -5,31 +5,15 @@ import yaml
 import warnings
 
 
-def tangential_response(R):
-    """
-    Response of the tangential shear. Per source R_T = cos²2φ R11 + sin²2φ R22, and the
-    off-diagonal terms average out (Zhou et al. 2026, arXiv:2606.21141, Eq. 22; McClintock
-    et al. 2019, arXiv:1805.00039, Eqs. 4-5). Averaged over sources spread around the
-    clusters, R_T = (R11 + R22) / 2. AnaCal gives a scalar R, which is already R_T.
-    """
-    R = np.atleast_1d(R)
-    if R.size == 1:
-        return float(R[0])
-    if R.shape == (2, 2):
-        return 0.5 * (R[0, 0] + R[1, 1])
-    # one response per shear component
-    return float(np.mean(R))
-
-
 class CLClusterShearCalibrator(PipelineStage):
     """
     Response of the background sources of each cluster stack (richness-redshift bin),
     in each radial bin or for the whole stack, using the TXPipe calculator of the
     shear catalog type (metadetect, scalar_metadetect or anacal).
 
-    Only the response is computed and saved: the full R of each stack and its tangential
-    response R_T (for plots), and the radial bins they were computed in. This stage is
-    optional: CLClusterEnsembleProfiles with shear_calibration "cluster" calibrates the
+    Only the response is computed and saved: the full R of each stack, its bootstrap error,
+    and the radial bins they were computed in. This stage is optional:
+    CLClusterEnsembleProfiles with shear_calibration "cluster" calibrates the
     shears of the sources of each stack with its R (per radial bin with radial_calibration,
     as in Zhou et al. 2026, arXiv:2606.21141, Eq. 23, where the response changes with radius
     because of the magnification of the sources).
@@ -58,7 +42,7 @@ class CLClusterShearCalibrator(PipelineStage):
         "bin_units": "mpc", # options are mpc or arcmin
         "chunk_rows": 100_000, # rows read at once from the shear catalogs
         "radial_calibration": False, # one response per radial bin of each stack, or one per stack
-        "n_bootstrap": 100, # resamplings of the clusters for the error of R_T, 0 for none
+        "n_bootstrap": 100, # resamplings of the clusters for the error of R, 0 for none
         "bootstrap_seed": 42,
     }
 
@@ -79,7 +63,8 @@ class CLClusterShearCalibrator(PipelineStage):
         # Catalog type, and delta_gamma of the calibration stage
         with self.open_input("shear_tomography_catalog") as f:
             self.catalog_type = f["tomography"].attrs["catalog_type"]
-            self.selector_config = self.load_selector_config(f)
+            # TXPipe saves each option of the calibration stage in its provenance as a string
+            self.delta_gamma = yaml.safe_load(str(f["provenance"].attrs["config/delta_gamma"]))
         print(f"Calibrating a {self.catalog_type} catalog")
         # The sources of the pairs are those that pass the selection and, with the
         # require_tomo_bin option of CLClusterShearCatalogs, are in a tomographic bin
@@ -112,22 +97,11 @@ class CLClusterShearCalibrator(PipelineStage):
                 if calibrator is None:
                     print(f"{bin_name}, {label}: no sources")
                 else:
-                    print(f"{bin_name}, {label}: R_T = {tangential_response(calibrator.R):.4f} +- {err:.4f}, R = {np.ravel(calibrator.R)}")
+                    print(f"{bin_name}, {label}: R = {np.ravel(calibrator.R)} +- {None if err is None else np.ravel(err)}")
             stacks.append((bin_name, clusters, sources, calibrators, errors))
 
         self.write_response(stacks)
 
-
-    def load_selector_config(self, f):
-        """
-        Config of the stage that made the shear tomography catalog.
-        Read back from its provenance, where TXPipe saves each option as a string
-        attribute "config/<key>".
-
-        To override it (a catalog that did not come from TXPipe), change this function.
-        """
-        # str(None) is saved as "None", which yaml reads back as a string
-        return {k[len("config/"):]: yaml.safe_load(v) for k, v in f["provenance"].attrs.items() if k.startswith("config/")}
 
     def load_cluster_bin_sources(self, bin_name, variant=None):
         """
@@ -194,7 +168,7 @@ class CLClusterShearCalibrator(PipelineStage):
         """
         Calibrators of the sources of one stack: one per radial bin with radial_calibration
         (None for a radial bin with no sources), otherwise a list with the one of the stack.
-        Also returns the bootstrap error of R_T of each (NaN when there is none).
+        Also returns the bootstrap error of R of each (None when there is none).
         cluster_ids are the clusters of the stack, which the bootstrap resamples.
         """
         if self.config["radial_calibration"]:
@@ -208,7 +182,7 @@ class CLClusterShearCalibrator(PipelineStage):
             sel = np.ones(len(sources), dtype=bool) if k is None else np.asarray(sources["radial_bin"] == k)
             if not sel.any():
                 calibrators.append(None)
-                errors.append(np.nan)
+                errors.append(None)
                 continue
             calibrator, err = self.compute_stack_calibrator(sources[sel], cluster_ids, radial_bin=k)
             calibrators.append(calibrator)
@@ -223,7 +197,7 @@ class CLClusterShearCalibrator(PipelineStage):
         sources can be the sources of one radial bin of the stack, given by radial_bin,
         so that the sheared metadetect variants are cut to the same radial bin.
 
-        Returns the calibrator and the bootstrap error of its R_T.
+        Returns the calibrator and the bootstrap error of its R.
         """
         data, row_clusters, make_calculator = self.read_calibration_data(sources, radial_bin)
         calculator = make_calculator()
@@ -234,17 +208,17 @@ class CLClusterShearCalibrator(PipelineStage):
 
     def bootstrap_error(self, make_calculator, data, row_clusters, cluster_ids):
         """
-        Error of R_T from n_bootstrap resamplings of the clusters of the stack with
+        Error of each element of R from n_bootstrap resamplings of the clusters of the stack with
         replacement. A cluster drawn n times brings all its pairs n times, so the scatter
         between clusters and the sources shared by several clusters are included.
         row_clusters gives the cluster of each row of each array of data.
         """
         n_bootstrap = self.config["n_bootstrap"]
         if n_bootstrap == 0:
-            return np.nan
+            return None
         cluster_ids = np.sort(np.asarray(cluster_ids))
         position = {key: np.searchsorted(cluster_ids, c) for key, c in row_clusters.items()}
-        R_T = np.empty(n_bootstrap)
+        R = []
         for b in range(n_bootstrap):
             draws = np.bincount(self.rng.integers(len(cluster_ids), size=len(cluster_ids)),
                                 minlength=len(cluster_ids))
@@ -253,8 +227,8 @@ class CLClusterShearCalibrator(PipelineStage):
             # A resampling can leave a variant with no sources
             with np.errstate(divide="ignore", invalid="ignore"):
                 calculator.add_data(resampled)
-                R_T[b] = tangential_response(calculator.collect().calibrator.R)
-        return float(np.nanstd(R_T, ddof=1))
+                R.append(np.atleast_1d(calculator.collect().calibrator.R))
+        return np.nanstd(R, axis=0, ddof=1)
 
 
     def read_calibration_data(self, sources, radial_bin=None):
@@ -267,7 +241,7 @@ class CLClusterShearCalibrator(PipelineStage):
         from ...calibration.calibration_utils import (MetaDetectCalculator, ScalarMetaDetectCalculator, AnaCalCalculator,
                                           META_VARIANTS, SCALAR_META_VARIANTS)
 
-        delta_gamma = self.selector_config["delta_gamma"]
+        delta_gamma = self.delta_gamma
         def read_rows(dataset):
             return self.read_source_rows(dataset, sources["source_index"])
 
@@ -391,9 +365,9 @@ class CLClusterShearCalibrator(PipelineStage):
     def write_response(self, stacks):
         """
         Response of each stack in the group calibration/<stack>:
-        - R_T, the tangential response, its bootstrap error R_T_err and the full R: with
-          radial_calibration, one row per radial bin (NaN where the radial bin has no
-          sources), otherwise those of the stack
+        - R and its bootstrap error R_err (NaN without bootstrap): with radial_calibration,
+          one row per radial bin (NaN where the radial bin has no sources), otherwise those
+          of the stack
         - attributes: the numbers of clusters and sources, and the bin edges of the stack
         The radial bins and the options used are attributes of the calibration group,
         so that the next stage can check they are the same as its own.
@@ -410,14 +384,14 @@ class CLClusterShearCalibrator(PipelineStage):
 
         for bin_name, clusters, sources, calibrators, errors in stacks:
             ref = next(c for c in calibrators if c is not None)
-            R = [np.full(np.atleast_1d(ref.R).shape, np.nan) if c is None else np.atleast_1d(c.R) for c in calibrators]
-            R_T = [np.nan if c is None else tangential_response(c.R) for c in calibrators]
+            nan = np.full(np.atleast_1d(ref.R).shape, np.nan)
+            R = [nan if c is None else np.atleast_1d(c.R) for c in calibrators]
+            R_err = [nan if e is None else e for e in errors]
             if not self.config["radial_calibration"]:
-                R, R_T, errors = R[0], R_T[0], errors[0]
+                R, R_err = R[0], R_err[0]
             g = calibration.create_group(bin_name)
-            g.create_dataset("R_T", data=np.array(R_T))
-            g.create_dataset("R_T_err", data=np.array(errors))
             g.create_dataset("R", data=np.array(R))
+            g.create_dataset("R_err", data=np.array(R_err))
             g.attrs["n_clusters"] = len(clusters)
             g.attrs["n_sources"] = len(sources)
             g.attrs["n_sources_per_radial_bin"] = np.bincount(sources["radial_bin"], minlength=len(self.distance_bins) - 1)
