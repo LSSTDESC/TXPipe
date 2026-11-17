@@ -33,6 +33,8 @@ class CLClusterShearCalibrator(PipelineStage):
     shears of the sources of each stack with its R (per radial bin with radial_calibration,
     as in Zhou et al. 2026, arXiv:2606.21141, Eq. 23, where the response changes with radius
     because of the magnification of the sources).
+
+    The response is the plain mean over the pairs (uniform weights).
     """
     name = "CLClusterShearCalibrator"
     inputs = [
@@ -295,8 +297,10 @@ class CLClusterShearCalibrator(PipelineStage):
                  self.open_input("shear_selection") as s:
                 for v in variants:
                     source_index, cluster_id = self.variant_source_index(sources, v, f, radial_bin)
-                    for col in ["g1", "g2", "weight"]:
+                    for col in ["g1", "g2"]:
                         data[f"{v}/{col}"] = self.read_source_rows(f[f"shear/{v}/{col}"], source_index)
+                    # uniform weights, as AnaCal: the catalog weights are not used in the profile
+                    data[f"{v}/weight"] = np.ones(len(source_index))
                     data[f"{v}/bin"] = self.read_source_rows(b[f"{v}/bin"], source_index)
                     data[f"{v}/selection"] = self.read_source_rows(s[f"shear/{v}/selection"], source_index)
                     for col in ["g1", "g2", "weight", "bin", "selection"]:
