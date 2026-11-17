@@ -4,12 +4,17 @@ import healsparse as hsp
 
 from ..survey_property_null_tests import (
     _bin_edges_from_values,
+    _counts_in_bins,
     _property_values_at,
     _assign_property_column,
     _marker_offset,
+    _min_count_cut_report,
+    _bad_bin_report,
+    _null_test_statistics,
     _band_of,
     _shorten_map_name,
     _hs_map_names,
+    _keep_psf_map,
 )
 from ..calibration.calibration_utils.names import META_VARIANTS
 
@@ -92,6 +97,39 @@ def test_bin_edges_integer_values_select_every_value():
     assert _selected_by_strict_bins(vals, edges) == vals.size
     for v in vals:
         assert ((v > edges[:-1]) & (v < edges[1:])).sum() == 1
+
+
+def test_bin_edges_integer_counts_lose_no_galaxies():
+    """Integer maps with more values than bins: no value may sit on an edge."""
+    rng = np.random.default_rng(3)
+    for mean in (40, 400):
+        vals = rng.poisson(mean, 100_000).astype(float)
+        edges = _bin_edges_from_values(vals, 20, 0.05)
+        assert not np.isin(vals, edges).any()
+        lo = np.percentile(vals, 5)
+        hi = np.percentile(vals, 95)
+        inside = vals[(vals >= lo) & (vals <= hi)]
+        # Every value between the 5th and 95th percentiles is in exactly one bin.
+        assert _counts_in_bins(inside, edges).sum() == inside.size
+        assert np.all(np.diff(edges) > 0)
+
+
+def test_bin_edges_pixelized_float_map_loses_no_galaxies():
+    """Galaxies share their pixel's value, so a float map can hit an edge too."""
+    rng = np.random.default_rng(5)
+    pixel_values = rng.normal(2000.0, 50.0, 3000)
+    vals = pixel_values[rng.integers(0, pixel_values.size, 100_000)]
+    edges = _bin_edges_from_values(vals, 20, 0.05)
+    assert not np.isin(vals, edges).any()
+    inside = vals[(vals >= np.percentile(vals, 5)) & (vals <= np.percentile(vals, 95))]
+    assert _counts_in_bins(inside, edges).sum() == inside.size
+
+
+def test_bin_edges_float_map_unchanged_by_snapping():
+    vals = np.random.default_rng(4).normal(2000.0, 50.0, 50_000)
+    edges = _bin_edges_from_values(vals, 20, 0.05)
+    expected = np.linspace(np.percentile(vals, 5), np.percentile(vals, 95), 21)
+    assert np.array_equal(edges, expected)
 
 
 def test_bin_edges_none_when_constant():
@@ -177,6 +215,26 @@ def test_property_values_at_inrange_sentinel():
     assert np.isnan(vals[1])  # unobserved -> NaN even though sentinel is in range
 
 
+def test_property_values_at_empty_input():
+    """An empty chunk gives an empty float array for every map dtype.
+
+    combined_iterators(longest=True) keeps yielding chunks after the shorter
+    input runs out, so a chunk can have no rows. HealSparse returns an empty
+    array of the map's own dtype for no pixels, ignoring valid_mask, which
+    made ``~valid`` fail ("ufunc 'invert' not supported") on the first DP2 run.
+    """
+    empty = np.empty(0, dtype=float)
+    for dtype, value in [(np.float64, 5.0), (np.float32, 5.0), (np.int32, 7), (np.int64, 7)]:
+        prop = hsp.HealSparseMap.make_empty(NSIDE_COV, NSIDE, dtype)
+        prop[_patch_pixels()] = value
+
+        vals = _property_values_at(prop, NSIDE, empty, empty)
+        assert vals.shape == (0,)
+        assert vals.dtype == np.float64
+        # The bin-edge pass filters the values like this; it must work on empty too.
+        assert vals[np.isfinite(vals)].shape == (0,)
+
+
 # ---------------------------------------------------------------------------
 # _assign_property_column
 #
@@ -255,6 +313,50 @@ def test_assign_property_column_single_for_non_metadetect():
 
     assert data["survey_prop"].shape == (200,)
     assert [k for k in data if "survey_prop" in k] == ["survey_prop"]
+
+
+def test_assign_property_column_metadetect_empty_variants():
+    """Late chunks from combined_iterators(longest=True): the variants have
+    different lengths, so the shorter ones run out first and arrive empty while
+    a longer one still has rows. Every variant must still get a property column
+    of its own length, including zero."""
+    prop = _observed_map(1.0)
+    patch_pix = _patch_pixels()
+    rng = np.random.default_rng(2)
+
+    # ns and most variants exhausted; only 1p still has rows.
+    lengths = {v: 0 for v in META_VARIANTS}
+    lengths["1p"] = 5
+    data = {}
+    for v in META_VARIANTS:
+        ra, dec = _positions(rng.choice(patch_pix, size=lengths[v]))
+        data[f"{v}/ra"], data[f"{v}/dec"] = ra, dec
+        data[f"{v}/bin"] = np.zeros(lengths[v], dtype=int)
+
+    _assign_property_column(data, "metadetect", prop, NSIDE, "ns/ra", "ns/dec")
+
+    for v in META_VARIANTS:
+        assert data[f"{v}/survey_prop"].shape == (lengths[v],)
+        assert data[f"{v}/survey_prop"].dtype == np.float64
+    assert data["survey_prop"].shape == (0,)
+    assert np.all(data["1p/survey_prop"] == 1.0)
+
+    # The bin-edge pass's selection on the unsheared variant, on an empty chunk.
+    in_source_bin = data["ns/bin"] != -1
+    vals = data["ns/survey_prop"]
+    assert vals[in_source_bin & np.isfinite(vals)].shape == (0,)
+
+
+def test_assign_property_column_empty_chunk_non_metadetect():
+    """An empty chunk for a single-position catalog type (metacal etc.)."""
+    prop = _observed_map(2.5)
+    empty = np.empty(0, dtype=float)
+    data = {"ra": empty, "dec": empty}
+
+    _assign_property_column(data, "metacal", prop, NSIDE, "ra", "dec")
+
+    assert data["survey_prop"].shape == (0,)
+    assert data["survey_prop"].dtype == np.float64
 
 
 # ---------------------------------------------------------------------------
@@ -397,3 +499,164 @@ def test_band_filter_keeps_maps_with_no_band_suffix():
     stems = ["psf_size_i", "psf_size_r", "supreme_airmass"]
     kept = [s for s in stems if _band_of(s) in (None, *bands)]
     assert kept == ["psf_size_i", "supreme_airmass"]
+
+
+# ---------------------------------------------------------------------------
+# _min_count_cut_report
+# ---------------------------------------------------------------------------
+def test_min_count_cut_report_none_when_nothing_cut():
+    edges = np.linspace(0.0, 1.0, 5)
+    assert _min_count_cut_report("depth", edges, np.array([50, 80, 90, 60]), 50) is None
+
+
+def test_min_count_cut_report_lists_each_cut_bin():
+    """Bins below min_count, including empty ones, are each listed with their
+    range and count; a bin at exactly min_count is kept, matching the >= cut in
+    _null_test_statistics."""
+    edges = np.array([0.0, 0.25, 0.5, 0.75, 1.0])
+    counts = np.array([12, 50, 300, 0])
+    msg = _min_count_cut_report("sky_background_i", edges, counts, 50)
+    assert "'sky_background_i': 2 of 4 bins" in msg
+    assert "bin 0 (0 to 0.25): 12 galaxies" in msg
+    assert "bin 3 (0.75 to 1): 0 galaxies" in msg
+    assert "bin 1 " not in msg and "bin 2 " not in msg
+
+
+# ---------------------------------------------------------------------------
+# _bad_bin_report
+# ---------------------------------------------------------------------------
+def _good_bins(n=4):
+    edges = np.linspace(0.0, 1.0, n + 1)
+    mu = 0.5 * (edges[1:] + edges[:-1])
+    g1 = np.full(n, 1e-3)
+    g2 = np.full(n, -1e-3)
+    s1 = np.full(n, 1e-2)
+    s2 = np.full(n, 1e-2)
+    counts = np.full(n, 1000)
+    return edges, mu, g1, g2, s1, s2, counts
+
+
+def test_bad_bin_report_none_for_healthy_bins():
+    assert _bad_bin_report("depth", *_good_bins(), 50) is None
+
+
+def test_bad_bin_report_flags_populated_nan_and_zero_error_bins():
+    """A well-populated bin with a NaN shear (e.g. one NaN in the catalog) or a
+    zero error is reported; healthy bins are not."""
+    edges, mu, g1, g2, s1, s2, counts = _good_bins()
+    g1[1] = np.nan
+    s2[3] = 0.0
+    msg = _bad_bin_report("psf_size_i", edges, mu, g1, g2, s1, s2, counts, 50)
+    assert "WARNING - 'psf_size_i': 2 bin(s)" in msg
+    assert "bin 1 (0.25 to 0.5): 1000 galaxies, g1=nan" in msg
+    assert "bin 3 (0.75 to 1): 1000 galaxies" in msg and "sigma_g2=0" in msg
+    assert "bin 0 " not in msg and "bin 2 " not in msg
+
+
+def test_bad_bin_report_ignores_small_bins():
+    """Empty or tiny bins are NaN for expected reasons; the count cut already
+    handles them, so they are not reported here."""
+    edges, mu, g1, g2, s1, s2, counts = _good_bins()
+    counts[0], counts[3] = 0, 3
+    for arr in (mu, g1, g2, s1, s2):
+        arr[0] = np.nan
+    s1[3] = 0.0
+    assert _bad_bin_report("depth", edges, mu, g1, g2, s1, s2, counts, 50) is None
+
+
+# ---------------------------------------------------------------------------
+# _null_test_statistics: chi2 against zero and against a constant
+# ---------------------------------------------------------------------------
+def _stats_inputs(n=20, sigma=1e-3):
+    mu = np.linspace(0.0, 1.0, n)
+    s = np.full(n, sigma)
+    counts = np.full(n, 1000)
+    return mu, s, counts
+
+
+def test_chi2_const_removes_a_constant_offset():
+    """A pure offset (same shear in every bin) fails the test against zero but
+    gives chi2_const = 0, with the offset recovered as const_g1/const_g2."""
+    mu, s, counts = _stats_inputs()
+    g1 = np.full(mu.size, 3e-3)
+    g2 = np.full(mu.size, -2e-3)
+    _, st = _null_test_statistics(mu, g1, g2, s, s, counts, 50)
+
+    # Against zero: 20 bins x ((3)^2 + (2)^2) = 260.
+    assert np.isclose(st["chi2_null"], 20 * (3.0**2 + 2.0**2))
+    assert st["n_dof_null"] == 40
+    assert np.isclose(st["chi2_const"], 0.0, atol=1e-9)
+    assert st["n_dof_const"] == 38
+    assert np.isclose(st["chi2_const_pvalue"], 1.0)
+    assert np.isclose(st["const_g1"], 3e-3)
+    assert np.isclose(st["const_g2"], -2e-3)
+    assert np.isclose(st["const_g1_err"], 1e-3 / np.sqrt(20))
+
+
+def test_chi2_const_matches_direct_sum_and_skips_unused_bins():
+    """chi2_const equals the weighted residual sum about the weighted mean,
+    over the used bins only (a low-count bin with a wild value is ignored)."""
+    rng = np.random.default_rng(4)
+    mu, _, counts = _stats_inputs()
+    s1 = rng.uniform(0.5e-3, 2e-3, mu.size)
+    s2 = rng.uniform(0.5e-3, 2e-3, mu.size)
+    g1 = rng.normal(1e-3, s1)
+    g2 = rng.normal(0.0, s2)
+    counts[5] = 10          # cut by min_count
+    g1[5] = 1.0             # would dominate if it were used
+
+    usable, st = _null_test_statistics(mu, g1, g2, s1, s2, counts, 50)
+    expected = 0.0
+    for g, s in ((g1, s1), (g2, s2)):
+        w = 1 / s[usable] ** 2
+        m = np.sum(w * g[usable]) / np.sum(w)
+        expected += np.sum(w * (g[usable] - m) ** 2)
+    assert not usable[5]
+    assert np.isclose(st["chi2_const"], expected)
+    assert st["n_dof_const"] == 2 * 19 - 2
+
+
+def test_chi2_const_dof_match_its_mean_under_the_null():
+    """With Gaussian noise about an offset, the mean chi2_const over many
+    realisations equals its dof (2n - 2), confirming the dof count."""
+    rng = np.random.default_rng(5)
+    mu, s, counts = _stats_inputs(n=10)
+    vals = []
+    for _ in range(4000):
+        g1 = 2e-3 + rng.normal(0.0, s)
+        g2 = -1e-3 + rng.normal(0.0, s)
+        vals.append(_null_test_statistics(mu, g1, g2, s, s, counts, 50)[1]["chi2_const"])
+    # dof = 18; the mean of 4000 draws has a standard error of sqrt(36/4000) ~ 0.1.
+    assert abs(np.mean(vals) - 18) < 0.5
+
+
+def test_chi2_const_needs_two_bins():
+    """One used bin leaves no freedom after fitting the constant: NaN, dof 0.
+    No used bins: everything NaN, nothing raised."""
+    mu, s, counts = _stats_inputs(n=3)
+    g = np.full(3, 1e-3)
+    counts[1:] = 0
+    _, st = _null_test_statistics(mu, g, g, s, s, counts, 50)
+    assert st["n_used_bins"] == 1
+    assert st["n_dof_const"] == 0 and np.isnan(st["chi2_const"])
+    assert np.isnan(st["chi2_const_pvalue"])
+    assert np.isfinite(st["const_g1"])
+
+    counts[:] = 0
+    with np.errstate(all="raise"):
+        _, st = _null_test_statistics(mu, g, g, s, s, counts, 50)
+    assert st["n_used_bins"] == 0
+    assert np.isnan(st["chi2_const"]) and np.isnan(st["const_g1"])
+
+
+def test_keep_psf_map_default_keeps_only_2d():
+    names = ["psf/g1_0", "psf/g1_3", "psf/g1_2D", "psf/count_2D", "psf/var_e_1"]
+    kept = [n for n in names if _keep_psf_map(n, ["2D"])]
+    assert kept == ["psf/g1_2D", "psf/count_2D"]
+
+
+def test_keep_psf_map_empty_list_keeps_all_and_ints_match():
+    assert _keep_psf_map("psf/g1_0", [])
+    assert _keep_psf_map("psf/g1_0", [0])
+    assert not _keep_psf_map("psf/g1_10", [0])
+

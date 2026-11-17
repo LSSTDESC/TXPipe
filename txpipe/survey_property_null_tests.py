@@ -77,6 +77,14 @@ def _hs_map_names(paths):
     }
 
 
+def _keep_psf_map(name, psf_map_bins):
+    """
+    Whether to test a psf_maps map, from its bin suffix (psf/g1_2D -> 2D).
+    An empty psf_map_bins keeps every map.
+    """
+    return not psf_map_bins or name.rsplit("_", 1)[-1] in [str(b) for b in psf_map_bins]
+
+
 def _bin_edges_from_values(vals, nbins, outlier_fraction):
     """
     On a first pass, compute reasonable bin edges for a survey property according
@@ -88,7 +96,9 @@ def _bin_edges_from_values(vals, nbins, outlier_fraction):
 
     Edge case: Maps taking only a few distinct integer values (e.g. flags, if supplied)
     may get dropped due to strict inequalities with edges in MeanShearInBins.selector.
-    We put bin edges between these integer values to keep them.
+    We put bin edges between these integer values to keep them. With more values
+    than bins, any edge that lands on a value is moved halfway between neighbouring
+    values, for the same reason.
 
     Returns ``None`` if the sample has no usable range -- because no galaxy
     sampled the map, or because the property is constant across the sample and
@@ -116,7 +126,22 @@ def _bin_edges_from_values(vals, nbins, outlier_fraction):
             )
         )
 
-    return np.linspace(lo, hi, nbins + 1)
+    edges = np.linspace(lo, hi, nbins + 1)
+    # If an edge lands on a value (integer maps, or a pixel's value in a float
+    # map), those galaxies would be in no bin, so we move each edge halfway
+    # between two values; the outer edges move outwards to keep lo and hi.
+    if np.isin(edges, uniq).any():
+        halfway = np.concatenate((
+            [uniq[0] - 0.5 * (uniq[1] - uniq[0])],
+            0.5 * (uniq[1:] + uniq[:-1]),
+            [uniq[-1] + 0.5 * (uniq[-1] - uniq[-2])],
+        ))
+        j = np.clip(np.searchsorted(halfway, edges), 1, halfway.size - 1)
+        nearer_below = edges - halfway[j - 1] <= halfway[j] - edges
+        snapped = np.where(nearer_below, halfway[j - 1], halfway[j])
+        snapped[0], snapped[-1] = halfway[j[0] - 1], halfway[j[-1]]
+        edges = np.unique(snapped)
+    return edges
 
 
 def _counts_in_bins(vals, edges):
@@ -140,6 +165,11 @@ def _property_values_at(hsp_map, nside, ra, dec):
     can apply to all map types (e.g. int32, float64) and sentinels (e.g. hp.UNSEEN).
     """
     import healpy as hp
+
+    # Chunks can be empty (combined_iterators with longest=True), and HealSparse
+    # then ignores valid_mask, so we return an empty array directly.
+    if len(ra) == 0:
+        return np.empty(0, dtype=float)
 
     pixels = hp.ang2pix(nside, ra, dec, lonlat=True, nest=True)
     # valid_mask=True flags observed pixels for any map dtype.
@@ -203,6 +233,54 @@ def _weighted_line_fit(x, y, sigma):
     return slope, np.sqrt(S / det), intercept, np.sqrt(Sxx / det)
 
 
+def _min_count_cut_report(name, edges, counts, min_count):
+    """
+    List the bins cut for having fewer than ``min_count`` galaxies, with their
+    range and count, or None. These are usually the end bins, where a
+    systematic is most likely, so the cut is reported in the log.
+    """
+    cut = np.flatnonzero(np.asarray(counts) < min_count)
+    if cut.size == 0:
+        return None
+    parts = [
+        f"bin {i} ({edges[i]:.4g} to {edges[i + 1]:.4g}): {int(counts[i])} galaxies"
+        for i in cut
+    ]
+    return (
+        f"TXMeanShearSurveyProperties: '{name}': {cut.size} of {len(counts)} bins "
+        f"have fewer than {min_count} galaxies and are left out of the chi-squared "
+        "and the fits: " + "; ".join(parts)
+    )
+
+
+def _bad_bin_report(name, edges, mu, g1, g2, sigma1, sigma2, counts, min_count):
+    """
+    Warn about bins with at least ``min_count`` galaxies that still cannot be
+    used (non-finite mean or error, or zero error), or None. This points to a
+    problem in the inputs, e.g. a NaN shear or weight in the catalog.
+    """
+    finite = (
+        np.isfinite(mu) & np.isfinite(g1) & np.isfinite(g2)
+        & np.isfinite(sigma1) & np.isfinite(sigma2)
+    )
+    with np.errstate(invalid="ignore"):
+        positive = (sigma1 > 0) & (sigma2 > 0)
+    bad = np.flatnonzero((np.asarray(counts) >= min_count) & ~(finite & positive))
+    if bad.size == 0:
+        return None
+    parts = [
+        f"bin {i} ({edges[i]:.4g} to {edges[i + 1]:.4g}): {int(counts[i])} galaxies, "
+        f"g1={g1[i]:.3g}, g2={g2[i]:.3g}, sigma_g1={sigma1[i]:.3g}, sigma_g2={sigma2[i]:.3g}"
+        for i in bad
+    ]
+    return (
+        f"TXMeanShearSurveyProperties: WARNING - '{name}': {bad.size} bin(s) with at "
+        f"least {min_count} galaxies have a non-finite mean or error, or a zero "
+        "error, and are left out; check the catalog for NaN/inf shears or weights: "
+        + "; ".join(parts)
+    )
+
+
 def _null_test_statistics(mu, g1, g2, sigma1, sigma2, counts, min_count):
     """
     Summary statistics of the binned mean shear for one survey property.
@@ -211,16 +289,19 @@ def _null_test_statistics(mu, g1, g2, sigma1, sigma2, counts, min_count):
     positive, and it holds at least ``min_count`` galaxies (else, poorly
     sampled bins produce incorrect error bars).
 
-    Two statistics are returned:
+    Three statistics are returned:
 
     - chi2_null: the chi-squared of the mean g1 and g2 against zero shear, the
       null hypothesis, over the used bins. No parameters are fitted, so the
       number of degrees of freedom is the number of values summed (two per
       bin).
+    - chi2_const: the same against a constant, each component's weighted mean
+      (const_g1, const_g2), so only bin-to-bin variation counts; two fewer
+      degrees of freedom, and at least two used bins are needed.
     - straight-line fits of g1 and g2 against the mean property value, whose
       slopes measure a trend with the property.
 
-    Both treat the bins as independent with shape-noise errors only; spatially
+    All treat the bins as independent with shape-noise errors only; spatially
     correlated errors between bins are not included.
     """
     from scipy.stats import chi2 as chi2_dist
@@ -243,6 +324,20 @@ def _null_test_statistics(mu, g1, g2, sigma1, sigma2, counts, min_count):
         "n_used_bins": n,
         "min_count": min_count,
     }
+
+    # Against a constant: subtract each component's weighted mean.
+    chi2_c = 0.0
+    for comp, g, s in (("g1", g1, sigma1), ("g2", g2, sigma2)):
+        w = 1.0 / s[usable] ** 2
+        const = float(np.sum(w * g[usable]) / np.sum(w)) if n else np.nan
+        stats[f"const_{comp}"] = const
+        stats[f"const_{comp}_err"] = float(1.0 / np.sqrt(np.sum(w))) if n else np.nan
+        chi2_c += float(np.sum(w * (g[usable] - const) ** 2)) if n else 0.0
+    n_dof_c = 2 * n - 2 if n >= 2 else 0
+    stats["chi2_const"] = chi2_c if n_dof_c else np.nan
+    stats["n_dof_const"] = n_dof_c
+    stats["chi2_const_per_dof"] = chi2_c / n_dof_c if n_dof_c else np.nan
+    stats["chi2_const_pvalue"] = float(chi2_dist.sf(chi2_c, n_dof_c)) if n_dof_c else np.nan
     for comp, g, s in (("g1", g1, sigma1), ("g2", g2, sigma2)):
         slope, slope_err, intercept, intercept_err = _weighted_line_fit(
             mu[usable], g[usable], s[usable]
@@ -349,6 +444,14 @@ class TXMeanShearSurveyProperties(PipelineStage):
             list, [],
             msg="Map names to test (e.g. ['psf/g1_2D', 'depth/depth']). Empty list means all available."
         ),
+        "psf_map_bins": StageParameter(
+            list, ["2D"],
+            msg="Tomographic bins of the psf_maps maps to test, matched against the "
+                "trailing _<bin> of the name (e.g. psf/g1_2D). The default keeps only "
+                "the non-tomographic maps: the PSF does not depend on the galaxy, so "
+                "the per-bin maps sample the same field at fewer points. Empty list "
+                "means all bins."
+        ),
         "external_maps_dir": StageParameter(
             str, "",
             msg="Directory (or filename prefix) of .hs healsparse files to test. "
@@ -391,7 +494,7 @@ class TXMeanShearSurveyProperties(PipelineStage):
         binned_shears = self.measure_mean_shear(all_maps, bin_edges, cols)
 
         # Compute statistics, and save results to files/plots.
-        self.write_results(all_maps, binned_shears, counts)
+        self.write_results(all_maps, binned_shears, bin_edges, counts)
 
     def catalog_columns(self):
         """
@@ -452,6 +555,8 @@ class TXMeanShearSurveyProperties(PipelineStage):
                 continue
             with self.open_input(tag, wrapper=True) as f:
                 for name in f.list_maps():
+                    if tag == "psf_maps" and not _keep_psf_map(name, self.config["psf_map_bins"]):
+                        continue
                     register(name, f.read_map(name), f.read_map_info(name)["nside"])
 
         map_dir = self.survey_property_map_dir()
@@ -581,7 +686,7 @@ class TXMeanShearSurveyProperties(PipelineStage):
                 binned_shears[name].add_data(data)
         return binned_shears
 
-    def write_results(self, all_maps, binned_shears, counts):
+    def write_results(self, all_maps, binned_shears, bin_edges, counts):
         """
         Collect each map's binned mean shear, then on rank 0 write it with its
         statistics to the HDF5 output and make its plot.
@@ -608,6 +713,14 @@ class TXMeanShearSurveyProperties(PipelineStage):
             usable, stats = _null_test_statistics(
                 mu, g1, g2, sigma1, sigma2, counts[name], min_count
             )
+            cut_report = _min_count_cut_report(name, bin_edges[name], counts[name], min_count)
+            if cut_report:
+                print(cut_report)
+            bad_report = _bad_bin_report(
+                name, bin_edges[name], mu, g1, g2, sigma1, sigma2, counts[name], min_count
+            )
+            if bad_report:
+                print(bad_report)
             if stats["n_used_bins"] < _MIN_FIT_BINS:
                 print(
                     f"TXMeanShearSurveyProperties: WARNING - '{name}' has only "
