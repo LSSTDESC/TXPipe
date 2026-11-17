@@ -27,16 +27,17 @@ class CLClusterShearCalibrator(PipelineStage):
     in each radial bin or for the whole stack, using the TXPipe calculator of the
     shear catalog type (metadetect, scalar_metadetect or anacal).
 
-    Only the response is computed and saved: the tangential response R_T and the full R
-    of each stack, and the radial bins they were computed in. CLClusterEnsembleProfiles
-    divides the tangential profile of each radial bin by its R_T, as in Zhou et al. 2026
-    (arXiv:2606.21141, Eq. 23), where the response changes with radius because of the
-    magnification of the sources.
+    Only the response is computed and saved: the full R of each stack and its tangential
+    response R_T (for plots), and the radial bins they were computed in. This stage is
+    optional: CLClusterEnsembleProfiles with shear_calibration "cluster" calibrates the
+    shears of the sources of each stack with its R (per radial bin with radial_calibration,
+    as in Zhou et al. 2026, arXiv:2606.21141, Eq. 23, where the response changes with radius
+    because of the magnification of the sources).
     """
     name = "CLClusterShearCalibrator"
     inputs = [
         ("cluster_catalog_tomography", HDFFile),
-        ("cluster_shear_catalogs", HDFFile),
+        ("cluster_shear_selection", HDFFile),
         ("fiducial_cosmology", FiducialCosmology),
         ("shear_catalog", ShearCatalog),
         ("shear_tomography_catalog", TomographyCatalog),
@@ -54,7 +55,7 @@ class CLClusterShearCalibrator(PipelineStage):
         "nbins" : 5, # number of bins
         "bin_units": "mpc", # options are mpc or arcmin
         "chunk_rows": 100_000, # rows read at once from the shear catalogs
-        "radial_calibration": True, # one response per radial bin of each stack, or one per stack
+        "radial_calibration": False, # one response per radial bin of each stack, or one per stack
         "n_bootstrap": 100, # resamplings of the clusters for the error of R_T, 0 for none
         "bootstrap_seed": 42,
     }
@@ -78,6 +79,10 @@ class CLClusterShearCalibrator(PipelineStage):
             self.catalog_type = f["tomography"].attrs["catalog_type"]
             self.selector_config = self.load_selector_config(f)
         print(f"Calibrating a {self.catalog_type} catalog")
+        # The sources of the pairs are those that pass the selection and, with the
+        # require_tomo_bin option of CLClusterShearCatalogs, are in a tomographic bin
+        with self.open_input("cluster_shear_selection") as f:
+            self.require_tomo_bin = yaml.safe_load(str(f["provenance"].attrs["config/require_tomo_bin"]))
         self.rng = np.random.default_rng(self.config["bootstrap_seed"])
         with self.open_input("cluster_catalog_tomography") as f:
             bin_names = list(f["cluster_bin"].keys())
@@ -148,7 +153,7 @@ class CLClusterShearCalibrator(PipelineStage):
             clusters.meta.update(dict(g.attrs))
 
         sources = []
-        with self.open_input("cluster_shear_catalogs") as f:
+        with self.open_input("cluster_shear_selection") as f:
             row = {int(cid): i for i, cid in enumerate(f[f"catalog{suffix}/cluster_id"][:])}
             starts = f[f"catalog{suffix}/cluster_sample_start"][:]
             counts = f[f"catalog{suffix}/cluster_sample_count"][:]
@@ -254,17 +259,21 @@ class CLClusterShearCalibrator(PipelineStage):
         Returns the data for the calculator, the cluster of each row of each of its
         arrays, and a function that makes a new calculator.
         """
-        from ...calibration_utils import (MetaDetectCalculator, ScalarMetaDetectCalculator, AnaCalCalculator,
+        from ...calibration.calibration_utils import (MetaDetectCalculator, ScalarMetaDetectCalculator, AnaCalCalculator,
                                           META_VARIANTS, SCALAR_META_VARIANTS)
 
         delta_gamma = self.selector_config["delta_gamma"]
         def read_rows(dataset):
             return self.read_source_rows(dataset, sources["source_index"])
 
-        # As in TXComputeShearCalibrationBase.select_any_bin: a source of each variant is
-        # used if it has a tomographic bin and passes the cuts of the selection stage
+        # The same sources as the pairs, for each variant: those that pass the cuts of the
+        # selection stage and, with require_tomo_bin, have a tomographic bin, as in
+        # TXComputeShearCalibrationBase.select_any_bin
+        require_tomo_bin = self.require_tomo_bin
         def select_any_bin(d):
-            return (d["bin"] >= 0) & d["selection"]
+            if require_tomo_bin:
+                return (d["bin"] >= 0) & d["selection"]
+            return d["selection"]
 
         data = {}
         row_clusters = {}
@@ -332,7 +341,7 @@ class CLClusterShearCalibrator(PipelineStage):
         if variant == "ns":
             return sources["source_index"], np.asarray(sources["cluster_id"])
 
-        with self.open_input("cluster_shear_catalogs") as f:
+        with self.open_input("cluster_shear_selection") as f:
             has_variant_pairs = f"index_{variant}" in f
 
         if has_variant_pairs:
@@ -348,8 +357,8 @@ class CLClusterShearCalibrator(PipelineStage):
         # Placeholder until CLClusterShearCatalogs saves the pairs of each variant
         if shear_file[f"shear/{variant}/g1"].size != shear_file["shear/ns/g1"].size:
             raise ValueError(f"The {variant} catalog has different objects from ns and "
-                             f"cluster_shear_catalogs has no index_{variant} pairs")
-        warnings.warn(f"No index_{variant} pairs in cluster_shear_catalogs: using the ns rows "
+                             f"cluster_shear_selection has no index_{variant} pairs")
+        warnings.warn(f"No index_{variant} pairs in cluster_shear_selection: using the ns rows "
                       f"for {variant}, which assumes the variants have the same objects")
         return sources["source_index"], np.asarray(sources["cluster_id"])
 
