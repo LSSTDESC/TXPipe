@@ -6,13 +6,17 @@ import numpy as np
 from ceci.config import StageParameter
 
 from .base_stage import PipelineStage
-from .data_types import ShearCatalog, TomographyCatalog, MapsFile, FileCollection, HDFFile
-from .calibration.calibration_utils import (
-    MeanShearInBins,
-    metadetect_variants,
-    META_VARIANTS,
-    SCALAR_META_VARIANTS,
+from .data_types import (
+    ShearCatalog,
+    TomographyCatalog,
+    MapsFile,
+    FileCollection,
+    HDFFile,
+    class_for_shear_catalog_type,
 )
+from .calibration.calibration_utils import MeanShearInBins
+# META_VARIANTS is not used here, but is re-exported for the tests.
+from .calibration.calibration_utils.names import META_VARIANTS
 from .utils import read_shear_catalog_type
 from .utils.fitting import fit_straight_line, calc_chi2
 from .diagnostics.diagnostics import where_all_finite
@@ -148,16 +152,18 @@ def _property_values_at(hsp_map, nside, ra, dec):
 
 def _detection_variants(cat_type):
     """
-    The shear-variant names (ns, 1p, ...) for a metadetect-style catalog type,
-    or None for catalog types whose variants share one set of positions.
+    The shear-variant group names (ns, 1p, ...) for catalog types where each
+    variant is a separate detection catalog with its own positions (metadetect
+    and scalar metadetect), or None for types whose variants share one set of
+    positions (metacal, anacal, lensfit, hsc).
 
-    Scalar metadetect catalogs only have the ns, 1p and 1m variants.
+    Taken from the shear catalog class, so new catalog types are handled by
+    their own class rather than by a list kept here.
     """
-    if cat_type == "metadetect":
-        return META_VARIANTS
-    if cat_type == "scalar_metadetect":
-        return SCALAR_META_VARIANTS
-    return None
+    cat_class = class_for_shear_catalog_type(cat_type)
+    if not cat_class.get_primary_catalog_prefix():
+        return None
+    return [p.rstrip("/") for p in cat_class.get_classifier_prefixes()]
 
 
 def _assign_property_column(data, cat_type, hsp_map, nside, ra_key, dec_key):
@@ -168,7 +174,7 @@ def _assign_property_column(data, cat_type, hsp_map, nside, ra_key, dec_key):
     catalogue with its own positions and its own length, and the calibrator
     evaluates the bin selector once per variant. A single property column sized
     to the unsheared variant therefore cannot be broadcast against the per-
-    variant ``bin_1p`` etc. columns. So one ``{variant}/survey_prop`` column is
+    variant ``1p/bin`` etc. columns. So one ``{variant}/survey_prop`` column is
     written per variant, each looked up at that variant's own positions, matched
     by ``_DataWrapper`` in the calibrator. ``MeanShearInBins.add_data`` also
     reads a plain ``survey_prop`` indexed by the *unsheared* selection when it
@@ -490,70 +496,42 @@ class TXMeanShearSurveyProperties(PipelineStage):
 
     def catalog_columns(self):
         """
-        Work out which shear and tomography columns to read for this catalog
-        type.
+        Work out which shear and tomography columns to read, using the shear
+        catalog class's own methods so each catalog type defines its columns in
+        one place.
 
         Returns a dict with the catalog type, the column lists, the keys of the
         positions the property is looked up at, and the source-bin column.
         """
         cat_type = read_shear_catalog_type(self)
 
-        # Build shear column list for each catalog type.
-        # For metadetect, ra/dec live in the unsheared variant subgroup, whose
-        # name comes from META_VARIANTS[0] rather than being hard-coded.
-        if cat_type == "metacal":
-            shear_cols = [
-                "ra", "dec",
-                "g1", "g1_1p", "g1_1m", "g1_2p", "g1_2m",
-                "g2", "g2_1p", "g2_2p", "g2_1m", "g2_2m",
-                "weight",
-            ]
-            # No stored response is read: MetacalCalculator recomputes R per
-            # survey-property bin from the sheared columns above, since the
-            # response of a re-binned selection differs from the tomographic-bin
-            # response saved in the catalog.
-            ra_key, dec_key = "ra", "dec"
-        elif cat_type in ("metadetect", "scalar_metadetect"):
-            variants = _detection_variants(cat_type)
-            unsheared = variants[0]
-            # ra/dec are read for every variant, not just the unsheared one:
-            # each metadetect variant is a separate detection catalogue with its
-            # own positions and length, and the property must be looked up at
-            # each variant's positions (see _assign_property_column).
-            shear_cols = [
-                f"{v}/{name}"
-                for v in variants
-                for name in ("ra", "dec", "g1", "g2", "weight")
-            ]
-            ra_key, dec_key = f"{unsheared}/ra", f"{unsheared}/dec"
-        elif cat_type in ("lensfit", "hsc"):
-            shear_cols = ["ra", "dec", "g1", "g2", "weight", "m"]
-            ra_key, dec_key = "ra", "dec"
-        else:
-            raise ValueError(
-                f"TXMeanShearSurveyProperties: unsupported shear catalog type '{cat_type}'"
-            )
-
-        # MeanShearInBins cuts down to the source sample using a bin column.
-        # For metadetect that column is per-variant (bin_ns, bin_1p, ...), since
-        # the selector runs once per sheared variant; the other catalog types
-        # have a single "bin". Compare TXDiagnosticPlots, which does the same.
-        variants = _detection_variants(cat_type)
-        if variants is not None:
-            tomo_cols = [f"bin_{v}" for v in variants]
-        else:
-            tomo_cols = ["bin"]
+        with self.open_input("shear_catalog", wrapper=True) as f:
+            prefix = f.get_primary_catalog_prefix()
+            tomo_cols = list(f.get_tomography_bin_columns())
+            source_bin_key = f.get_primary_tomography_bin_column()
+            if prefix:
+                # Metadetect types: every variant is its own detection catalog,
+                # so positions and weights are read per variant too (see
+                # _assign_property_column).
+                shear_cols = list(f.get_column_name_variants("ra", "dec", "g1", "g2", "weight"))
+            else:
+                # Metacal, anacal, lensfit, hsc: one set of positions. The
+                # sheared columns (metacal, anacal) come from the variant names,
+                # and the response or m is recomputed per property bin from them,
+                # since a re-binned selection has a different response from the
+                # one saved for each tomographic bin.
+                shear_cols = list(f.get_column_name_variants("g1", "g2"))
+                shear_cols += ["ra", "dec", "weight"]
+                shear_cols += f.get_extra_calibration_columns(mode="compute")
 
         return {
             "cat_type": cat_type,
-            "shear_cols": shear_cols,
+            # dict.fromkeys drops duplicates (e.g. lensfit's extra "dec") in order.
+            "shear_cols": list(dict.fromkeys(shear_cols)),
             "tomo_cols": tomo_cols,
-            "ra_key": ra_key,
-            "dec_key": dec_key,
-            # Galaxies in a source bin are the ones the measurement uses (the
-            # MeanShearInBins source-bin cut), judged on the unsheared variant
-            # for metadetect; see MeanShearInBins.selector.
-            "source_bin_key": "bin_ns" if variants else "bin",
+            "ra_key": f"{prefix}ra",
+            "dec_key": f"{prefix}dec",
+            "source_bin_key": source_bin_key,
         }
 
     def load_maps(self):
