@@ -10,8 +10,8 @@ from ..survey_property_null_tests import (
     _band_of,
     _shorten_map_name,
     _hs_map_names,
-    META_VARIANTS,
 )
+from ..calibration.calibration_utils.names import META_VARIANTS
 
 # A small patch: a disc of radius 10 deg centred at (ra, dec) = (30, 10),
 # NEST ordering to match the stage.

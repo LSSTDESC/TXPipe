@@ -15,14 +15,11 @@ from .data_types import (
     class_for_shear_catalog_type,
 )
 from .calibration.calibration_utils import MeanShearInBins
-# META_VARIANTS is not used here, but is re-exported for the tests.
-from .calibration.calibration_utils.names import META_VARIANTS
 from .utils import read_shear_catalog_type
 
 BANDS = "ugrizy"
 
-# Fewest usable bins a straight-line fit is attempted on. Two points always fit
-# a line exactly and leave no freedom to judge it, so at least three are needed.
+# Fewest usable bins to attempt the straight line fit on.
 _MIN_FIT_BINS = 3
 
 
@@ -31,7 +28,7 @@ def _hs_files(root):
     List the .hs healsparse files under a survey property map root.
 
     ``root`` may be a directory, e.g. what the survey_property_maps FileCollection
-    from ingestion stage, or a filename prefix.
+    from ingestion stage, or a filename prefix ``root*.hs``.
     """
     if not root:
         return []
@@ -42,7 +39,7 @@ def _hs_files(root):
 def _band_of(stem):
     """
     The band a survey property map ends in, or None if no band
-    suffix. DP1 writes one file per band, named e.g. ..._weighted_mean_i.
+    suffix. DP1 writes one file per band, named e.g. *_weighted_mean_i.
     """
     band = stem.rpartition("_")[2]
     return band if band in BANDS and len(band) == 1 else None
@@ -54,8 +51,6 @@ def _shorten_map_name(stem):
 
     E.g. replaces ``deepCoadd_<property>_consolidated_map_<reduction>_<band>``
     with <property>_<reduction>_<band>, such as epoch_max_i.
-
-    The <reduction> is kept when it is not weighted_mean.
 
     Names without _consolidated_map in them are left alone, so SUPREME/DC2 maps
     keep the names they have always had.
@@ -70,7 +65,8 @@ def _shorten_map_name(stem):
 
 def _hs_map_names(paths):
     """
-    Choose the name to register each .hs file under.
+    Decide a shortened name for each .hs file and avoid clashes by keeping
+    the full name.
     """
     stems = {path: pathlib.Path(path).stem for path in paths}
     short = {path: _shorten_map_name(stem) for path, stem in stems.items()}
@@ -83,21 +79,16 @@ def _hs_map_names(paths):
 
 def _bin_edges_from_values(vals, nbins, outlier_fraction):
     """
-    Compute bin edges for a survey property from the values it takes within the
-    shear catalog footprint.
+    On a first pass, compute reasonable bin edges for a survey property according
+    to its footprint.
 
-    ``vals`` is the survey property sampled at ``{galaxies with defined shear
-    in a source bin} ∩ {pixels where that map is observed}`` -- exactly the sample
-    the mean shear is measured over -- so the bins span the region actually
-    being tested, with no separate mask needed. Non-finite entries must already
-    be removed by the caller.
+    ``vals`` is the survey property sampled within the mean shear measurement region,
+    i.e. ``{galaxies with defined shear in a source bin} ∩ {pixels where that map is
+    observed}``. Non-finite entries must already be removed by the caller.
 
-    Maps taking only a few distinct values (integer counts such as
-    ``bright_objects/count``, or flag maps) are binned with one bin per value,
-    centred on that value. Evenly spaced edges would instead land exactly *on*
-    the integers, and since ``MeanShearInBins.selector`` selects with strict
-    inequalities on both sides, every galaxy would then fall into no bin at all
-    and the test would silently come out empty.
+    Edge case: Maps taking only a few distinct integer values (e.g. flags, if supplied)
+    may get dropped due to strict inequalities with edges in MeanShearInBins.selector.
+    We put bin edges between these integer values to keep them.
 
     Returns ``None`` if the sample has no usable range -- because no galaxy
     sampled the map, or because the property is constant across the sample and
@@ -110,12 +101,10 @@ def _bin_edges_from_values(vals, nbins, outlier_fraction):
     hi = np.percentile(vals, 100 * (1 - outlier_fraction))
 
     # Discrete-valued map: put the edges between the values so each value sits
-    # at a bin centre. Checked on the values that survive the outlier trim, and
-    # on their number rather than the dtype, so that float maps which happen to
-    # be discrete are handled too.
+    # at a bin centre.
     uniq = np.unique(vals[(vals >= lo) & (vals <= hi)])
     if uniq.size < 2:
-        # Constant across the sample: no trend can be measured.
+        # i.e. survey property is a single value across the sample.
         return None
     if uniq.size <= nbins:
         mids = 0.5 * (uniq[1:] + uniq[:-1])
@@ -133,11 +122,8 @@ def _bin_edges_from_values(vals, nbins, outlier_fraction):
 def _counts_in_bins(vals, edges):
     """
     Number of values in each bin, selected the way ``MeanShearInBins.selector``
-    selects them: strictly inside both edges.
-
-    ``np.histogram`` is not used because it includes the lower edge of each bin
-    and the upper edge of the last one, so its counts would not match the
-    galaxies the mean shear is actually computed from.
+    selects them: strictly inside both edges. ``np.histogram`` is not used, since it
+    includes the lower edge.
     """
     return np.array(
         [np.count_nonzero((vals > lo) & (vals < hi)) for lo, hi in zip(edges[:-1], edges[1:])],
@@ -147,15 +133,11 @@ def _counts_in_bins(vals, edges):
 
 def _property_values_at(hsp_map, nside, ra, dec):
     """
-    Look up a survey property map at galaxy positions, returning float values
-    with ``NaN`` for galaxies on pixels the map does not observe.
+    Look up a survey property map at (ra, dec) positions. Returns ``NaN`` for
+    galaxies on pixels the map does not observe (these are not binned).
 
-    Unobserved pixels are detected with HealSparse's own validity mask rather
-    than by comparing against ``hp.UNSEEN``: the unobserved sentinel differs by
-    dtype (``hp.UNSEEN`` for float64, but a distinct value for integer and
-    float32 maps), so an equality test would silently miss them. ``NaN`` values
-    fall outside every bin and are dropped by ``MeanShearInBins``, so each
-    property is tested only where it is actually observed.
+    Unobserved pixels are detected with HealSparse's valid_mask=True so that it
+    can apply to all map types (e.g. int32, float64) and sentinels (e.g. hp.UNSEEN).
     """
     import healpy as hp
 
@@ -169,14 +151,11 @@ def _property_values_at(hsp_map, nside, ra, dec):
 
 def _detection_variants(cat_type):
     """
-    The shear-variant group names (ns, 1p, ...) for catalog types where each
-    variant is a separate detection catalog with its own positions (metadetect
-    and scalar metadetect), or None for types whose variants share one set of
-    positions (metacal, anacal, lensfit, hsc).
-
-    Taken from the shear catalog class, so new catalog types are handled by
-    their own class rather than by a list kept here.
+    Return the shear-variant group names (ns, 1p, ...) for metadetect-style
+    catalogs (metadetect, scalar_metadetect) with distinct RA/Dec or return None
+    (metacal, anacal, etc.). Names taken from .data_types.
     """
+    # class: metadetect style (separate ra, dec) or metacal style?
     cat_class = class_for_shear_catalog_type(cat_type)
     if not cat_class.get_primary_catalog_prefix():
         return None
@@ -185,21 +164,9 @@ def _detection_variants(cat_type):
 
 def _assign_property_column(data, cat_type, hsp_map, nside, ra_key, dec_key):
     """
-    Set the ``survey_prop`` column(s) on a data chunk for ``MeanShearInBins``.
-
-    For metadetect each shear variant (ns/1p/1m/2p/2m) is a *separate* detection
-    catalogue with its own positions and its own length, and the calibrator
-    evaluates the bin selector once per variant. A single property column sized
-    to the unsheared variant therefore cannot be broadcast against the per-
-    variant ``1p/bin`` etc. columns. So one ``{variant}/survey_prop`` column is
-    written per variant, each looked up at that variant's own positions, matched
-    by ``_DataWrapper`` in the calibrator. ``MeanShearInBins.add_data`` also
-    reads a plain ``survey_prop`` indexed by the *unsheared* selection when it
-    accumulates the mean property value, so that is mirrored from the unsheared
-    variant.
-
-    Other catalogue types (metacal, lensfit, hsc) share one position array and
-    length across variants, so a single ``survey_prop`` column suffices.
+    Set the survey_prop column(s) that MeanShearInBins bins on. Metadetect
+    variants have their own positions, so each gets its own column, plus a
+    plain survey_prop copied from the unsheared one; other types need one column.
     """
     variants = _detection_variants(cat_type)
     if variants is not None:
@@ -216,14 +183,7 @@ def _assign_property_column(data, cat_type, hsp_map, nside, ra_key, dec_key):
 
 def _weighted_line_fit(x, y, sigma):
     """
-    Weighted least-squares fit of ``y = slope * x + intercept``.
-
-    The errors on the parameters come from ``sigma`` alone, treated as the true
-    one-sigma errors on ``y``. They are not rescaled by the scatter of the
-    points about the line, which ``scipy.optimize.curve_fit`` does by default
-    (and so ``txpipe.utils.fitting.fit_straight_line``): with that rescaling, a
-    set of points that happens to lie closer to a line than its error bars
-    suggest gets a smaller slope error than the data support.
+    Weighted least-squares linear fit with intercept.
 
     Returns ``(slope, slope_err, intercept, intercept_err)``. All four are NaN
     when there are fewer than ``_MIN_FIT_BINS`` points or all ``x`` are equal,
@@ -248,11 +208,8 @@ def _null_test_statistics(mu, g1, g2, sigma1, sigma2, counts, min_count):
     Summary statistics of the binned mean shear for one survey property.
 
     A bin is used only if every quantity in it is finite, both errors are
-    positive, and it holds at least ``min_count`` galaxies. The count cut
-    matters because each bin's error is the spread of its galaxies' shears
-    divided by sqrt(N_eff): with only a few galaxies the spread is itself badly
-    measured and can come out far too small, giving that bin a huge weight in
-    both statistics below.
+    positive, and it holds at least ``min_count`` galaxies (else, poorly
+    sampled bins produce incorrect error bars).
 
     Two statistics are returned:
 
@@ -299,18 +256,7 @@ def _null_test_statistics(mu, g1, g2, sigma1, sigma2, counts, min_count):
 
 def _marker_offset(mu):
     """
-    Horizontal offset used to separate the g1 and g2 series in the plots.
-
-    ``mu`` holds the *mean* property value of the galaxies in each populated
-    bin, not the bin midpoint, so the points are not evenly spaced. The offset
-    is therefore scaled from the narrowest gap rather than a typical one: an
-    offset wider than half a gap would push a point past its neighbour and show
-    the series in the wrong order.
-
-    Empty bins (``NaN`` from ``collect``) must be removed before calling, or the
-    spacing is undefined. Returns 0 when there is no spacing to work with -- a
-    single point, or several points sharing one value -- in which case the two
-    series simply sit on top of each other.
+    Plotting aid used to visually separate the g1 and g2 series in the plots.
     """
     gaps = np.diff(np.sort(mu))
     gaps = gaps[gaps > 0]
@@ -352,20 +298,14 @@ class TXMeanShearSurveyProperties(PipelineStage):
     Survey properties can come from both of:
 
     - A psf_maps and depth_map input, from TXPSFMaps and TXDepthMaps.
-    - A directory of .hs healsparse files. This is the survey_property_maps
-      FileCollection written by TXIngestDataPreview1 when that input is wired
-      up, and otherwise the directory named by the external_maps_dir config
-      option. The DP2 ingestion stages do not yet write survey property maps,
-      so for DP2, and for SUPREME-style or other external maps, point
+    - A directory of .hs healsparse files. Either the ``survey_property_maps``
+      tag in an ingestion stage (e.g. TXIngestDataPreview1) or the
+      ``external_maps_dir`` config option. Currently for DP2 we point
       external_maps_dir at the directory of .hs files.
 
     These map inputs are optional: alias the tags survey_property_maps, psf_maps or
     depth_map to "none" in "inputs:" in pipeline.yml to ignore any input. At
     least one map must be found, or the stage raises an error.
-
-    The bands config option filters the .hs files down to chosen bands, since
-    DP1 ingestion writes every property in all six of ugrizy. Files with no
-    recognised band suffix are always kept.
 
     For each map the output file holds the mean g1 and g2 in each property bin,
     their errors and the galaxy count, plus the chi-squared of the mean shear
@@ -391,6 +331,7 @@ class TXMeanShearSurveyProperties(PipelineStage):
         ("shear_survey_property_null", HDFFile),
     ]
 
+    # These configs can be set in the pipeline .yml files.
     config_options = {
         "nbins": StageParameter(int, 20, msg="Number of survey property bins"),
         "chunk_rows": StageParameter(int, 100_000, msg="Rows per catalog chunk"),
@@ -431,20 +372,31 @@ class TXMeanShearSurveyProperties(PipelineStage):
     }
 
     def run(self):
+        """
+        Run the analysis for this stage.
+        """
         import matplotlib
         matplotlib.use("Agg")
 
+        # Pull corresponding shear columns for this catalog.
         cols = self.catalog_columns()
+
+        # Load survey property maps.
         all_maps = self.load_maps()
+
+        # Choose bin edges based on range of *galaxy* survey property values.
         bin_edges, counts = self.choose_bin_edges(all_maps, cols)
+
+        # Calculate mean shear and uncertainty for these bin edges.
         binned_shears = self.measure_mean_shear(all_maps, bin_edges, cols)
+
+        # Compute statistics, and save results to files/plots.
         self.write_results(all_maps, binned_shears, counts)
 
     def catalog_columns(self):
         """
         Work out which shear and tomography columns to read, using the shear
-        catalog class's own methods so each catalog type defines its columns in
-        one place.
+        catalog class's own methods.
 
         Returns a dict with the catalog type, the column lists, the keys of the
         positions the property is looked up at, and the source-bin column.
@@ -457,22 +409,17 @@ class TXMeanShearSurveyProperties(PipelineStage):
             source_bin_key = f.get_primary_tomography_bin_column()
             if prefix:
                 # Metadetect types: every variant is its own detection catalog,
-                # so positions and weights are read per variant too (see
-                # _assign_property_column).
+                # so positions and weights are read per variant too.
                 shear_cols = list(f.get_column_name_variants("ra", "dec", "g1", "g2", "weight"))
             else:
-                # Metacal, anacal, lensfit, hsc: one set of positions. The
-                # sheared columns (metacal, anacal) come from the variant names,
-                # and the response or m is recomputed per property bin from them,
-                # since a re-binned selection has a different response from the
-                # one saved for each tomographic bin.
+                # Metacal, anacal, lensfit, hsc: one set of positions.
                 shear_cols = list(f.get_column_name_variants("g1", "g2"))
                 shear_cols += ["ra", "dec", "weight"]
                 shear_cols += f.get_extra_calibration_columns(mode="compute")
 
         return {
             "cat_type": cat_type,
-            # dict.fromkeys drops duplicates (e.g. lensfit's extra "dec") in order.
+            # Drop duplicate shear_cols
             "shear_cols": list(dict.fromkeys(shear_cols)),
             "tomo_cols": tomo_cols,
             "ra_key": f"{prefix}ra",
@@ -482,12 +429,11 @@ class TXMeanShearSurveyProperties(PipelineStage):
 
     def load_maps(self):
         """
-        Load every survey property map to test: the psf_maps and depth_map
+        Load every survey property map for the run: the psf_maps and depth_map
         inputs, then a directory of .hs files. Returns a dict of
         name -> (healsparse map, nside), filtered by the properties option.
 
-        Raises an error if no map is found, since an empty test would otherwise
-        pass silently.
+        Raises an error if no map is found.
         """
         import healsparse
 
@@ -535,9 +481,7 @@ class TXMeanShearSurveyProperties(PipelineStage):
     def survey_property_map_dir(self):
         """
         The directory of .hs files to load. The survey_property_maps input takes
-        precedence over the external_maps_dir option. If the input is wired up
-        but holds no .hs files, fall back to the option rather than silently
-        testing nothing.
+        precedence over the external_maps_dir option.
         """
         map_dir = self.get_input("survey_property_maps")
         if map_dir == "none":
@@ -562,10 +506,7 @@ class TXMeanShearSurveyProperties(PipelineStage):
     def choose_bin_edges(self, all_maps, cols):
         """
         Pass 1 over the catalog: choose bin edges for each map from the property
-        values at the galaxies that actually enter the measurement, i.e.
-        galaxies in a source bin where the map is observed. This is the same
-        region the mean shear is measured over, so the bins match the tested
-        region without needing a separate mask.
+        values at the galaxies that actually enter the mean shear measurement.
 
         The same values give the number of galaxies in each bin, used for the
         min_count cut. Maps with no usable range are removed from all_maps.
@@ -586,8 +527,7 @@ class TXMeanShearSurveyProperties(PipelineStage):
                 sampled[name].append(vals[in_source_bin & np.isfinite(vals)])
 
         # Combine the sampled values across chunks and MPI ranks. allgather so
-        # every rank builds identical binners later (their construction and
-        # collection are collective through the calibrators).
+        # every rank builds identical binners later.
         bin_edges, counts = {}, {}
         for name in list(all_maps):
             local = np.concatenate(sampled.pop(name)) if sampled[name] else np.empty(0)
@@ -647,16 +587,19 @@ class TXMeanShearSurveyProperties(PipelineStage):
         statistics to the HDF5 output and make its plot.
 
         The loop runs on every rank because binner.collect is collective and
-        would deadlock if some ranks skipped it. Only rank 0 opens the outputs,
-        since every rank opening the same file would race.
+        would deadlock if some ranks skipped it.
         """
         min_count = self.config["min_count"]
+
+        # Prevent race, only rank 0 writes
         if self.rank == 0:
             output_dir = self.open_output("shear_survey_property_plots", wrapper=True)
             hdf_out = self.open_output("shear_survey_property_null")
 
         png_files = []
         for name, binner in binned_shears.items():
+            # MeanShearInBins.collect gathers all partial sums and sends to all ranks,
+            # so all ranks must call it.
             mu, g1, g2, sigma1, sigma2 = binner.collect(self.comm)
             if self.rank != 0:
                 continue
@@ -689,6 +632,7 @@ class TXMeanShearSurveyProperties(PipelineStage):
             )
             png_files.append(png_name)
 
+        # Prevent race, only rank 0 writes
         if self.rank == 0:
             output_dir.write_listing(png_files)
             hdf_out.close()
