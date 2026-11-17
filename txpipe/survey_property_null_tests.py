@@ -46,7 +46,7 @@ def _shorten_map_name(stem):
     """
     Trim a survey property filename down for plotting.
 
-    E.g. replaces ``deepCoadd_<property>_consolidated_map_<reduction>_<band>`` 
+    E.g. replaces ``deepCoadd_<property>_consolidated_map_<reduction>_<band>``
     with <property>_<reduction>_<band>, such as epoch_max_i.
 
     The <reduction> is kept when it is not weighted_mean.
@@ -80,7 +80,7 @@ def _bin_edges_from_values(vals, nbins, outlier_fraction):
     Compute bin edges for a survey property from the values it takes within the
     shear catalog footprint.
 
-    ``vals`` is the survey property sampled at ``{galaxies with defined shear 
+    ``vals`` is the survey property sampled at ``{galaxies with defined shear
     in a source bin} ∩ {pixels where that map is observed}`` -- exactly the sample
     the mean shear is measured over -- so the bins span the region actually
     being tested, with no separate mask needed. Non-finite entries must already
@@ -189,6 +189,37 @@ def _assign_property_column(data, cat_type, hsp_map, nside, ra_key, dec_key):
         data["survey_prop"] = _property_values_at(
             hsp_map, nside, data[ra_key], data[dec_key]
         )
+
+
+def _null_test_statistics(mu, g1, g2, sigma1, sigma2):
+    """
+    Summary statistics of the binned mean shear for one survey property.
+
+    Two complementary statistics, as discussed for the other null tests: chi2
+    against zero catches any departure from zero, while the slope of a
+    straight-line fit is the trend statistic the rest of TXPipe quotes. Bins
+    with a non-finite value are left out, and bins holding a single galaxy have
+    sigma == 0 and are dropped from both, as they would divide by zero.
+
+    Returns the indices of the finite bins and a dict of the statistics.
+    """
+    # where_all_finite returns indices, not a mask, and is the helper the other
+    # TXPipe mean-shear null tests use.
+    idx = where_all_finite(mu, g1, g2, sigma1, sigma2)
+    chi2, n_dof = 0.0, 0
+    stats = {}
+    for comp, g, s in (("g1", g1[idx], sigma1[idx]), ("g2", g2[idx], sigma2[idx])):
+        good = s > 0
+        chi2 += calc_chi2(g[good], s[good], np.zeros(int(good.sum())))
+        n_dof += int(good.sum())
+        slope, intercept, cov = fit_straight_line(mu[idx][good], g[good], y_err=s[good])
+        stats[f"slope_{comp}"] = slope
+        stats[f"slope_{comp}_err"] = cov[0, 0] ** 0.5
+        stats[f"intercept_{comp}"] = intercept
+    stats["chi2"] = chi2
+    stats["n_dof"] = n_dof
+    stats["chi2_per_dof"] = chi2 / n_dof if n_dof > 0 else np.nan
+    return idx, stats
 
 
 def _marker_offset(mu):
@@ -393,7 +424,8 @@ class TXMeanShearSurveyProperties(PipelineStage):
       whose maps did not come from DP1 ingestion.
 
     These map inputs are optional: alias the tags survey_property_maps, psf_maps or
-    depth_map to "none" in "inputs:" in pipeline.yml to ignore any input.
+    depth_map to "none" in "inputs:" in pipeline.yml to ignore any input. At
+    least one map must be found, or the stage raises an error.
 
     The bands config option filters the .hs files down to chosen bands, since
     DP1 ingestion writes every property in all six of ugrizy. Files with no
@@ -447,17 +479,24 @@ class TXMeanShearSurveyProperties(PipelineStage):
     }
 
     def run(self):
-        from .utils.fitting import fit_straight_line, calc_chi2
         import matplotlib
         matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
 
+        cols = self.catalog_columns()
+        all_maps = self.load_maps()
+        bin_edges = self.choose_bin_edges(all_maps, cols)
+        binned_shears = self.measure_mean_shear(all_maps, bin_edges, cols)
+        self.write_results(all_maps, binned_shears)
+
+    def catalog_columns(self):
+        """
+        Work out which shear and tomography columns to read for this catalog
+        type.
+
+        Returns a dict with the catalog type, the column lists, the keys of the
+        positions the property is looked up at, and the source-bin column.
+        """
         cat_type = read_shear_catalog_type(self)
-        nbins = self.config["nbins"]
-        chunk_rows = self.config["chunk_rows"]
-        delta_gamma = self.config["delta_gamma"]
-        outlier_fraction = self.config["outlier_fraction"]
-        properties_filter = self.config["properties"]
 
         # Build shear column list for each catalog type.
         # For metadetect, ra/dec live in the unsheared variant subgroup, whose
@@ -499,112 +538,133 @@ class TXMeanShearSurveyProperties(PipelineStage):
         # For metadetect that column is per-variant (bin_ns, bin_1p, ...), since
         # the selector runs once per sheared variant; the other catalog types
         # have a single "bin". Compare TXDiagnosticPlots, which does the same.
-        if _detection_variants(cat_type) is not None:
-            tomo_cols = [f"bin_{v}" for v in _detection_variants(cat_type)]
+        variants = _detection_variants(cat_type)
+        if variants is not None:
+            tomo_cols = [f"bin_{v}" for v in variants]
         else:
             tomo_cols = ["bin"]
 
-        # Load the aux map files, then a directory of .hs files. Every source is
-        # optional, so a pipeline supplies whichever it has.
-        all_maps = {}  # name -> (hsp_map, nside)
+        return {
+            "cat_type": cat_type,
+            "shear_cols": shear_cols,
+            "tomo_cols": tomo_cols,
+            "ra_key": ra_key,
+            "dec_key": dec_key,
+            # Galaxies in a source bin are the ones the measurement uses (the
+            # MeanShearInBins source-bin cut), judged on the unsheared variant
+            # for metadetect; see MeanShearInBins.selector.
+            "source_bin_key": "bin_ns" if variants else "bin",
+        }
 
-        def _register_map(name, hsp_map, nside):
+    def load_maps(self):
+        """
+        Load every survey property map to test: the psf_maps and depth_map
+        inputs, then a directory of .hs files. Returns a dict of
+        name -> (healsparse map, nside), filtered by the properties option.
+
+        Raises an error if no map is found, since an empty test would otherwise
+        pass silently.
+        """
+        import healsparse
+
+        properties_filter = self.config["properties"]
+        all_maps = {}
+
+        def register(name, hsp_map, nside):
             if properties_filter and name not in properties_filter:
                 return
             all_maps[name] = (hsp_map, nside)
 
         # Aliased to "none" these are skipped, letting the test run without the
-        # aux map stages having been run first.
+        # map stages having been run first.
         for tag in ("psf_maps", "depth_map"):
             if self.get_input(tag) == "none":
                 continue
             with self.open_input(tag, wrapper=True) as f:
                 for name in f.list_maps():
-                    hsp_map = f.read_map(name)
-                    nside = f.read_map_info(name)["nside"]
-                    _register_map(name, hsp_map, nside)
+                    register(name, f.read_map(name), f.read_map_info(name)["nside"])
 
-        # The ingested survey_property_maps collection takes precedence over the
-        # hand-written config path. If the input is wired up but holds no maps we
-        # still fall back, rather than silently testing nothing.
-        map_dir = ""
-        if self.get_input("survey_property_maps") != "none":
-            map_dir = self.get_input("survey_property_maps")
-            if not _hs_files(map_dir):
-                if self.rank == 0:
-                    print(
-                        "TXMeanShearSurveyProperties: no .hs files in the "
-                        f"survey_property_maps input at {map_dir}."
-                    )
-                map_dir = self.config["external_maps_dir"]
-        else:
-            map_dir = self.config["external_maps_dir"]
-
+        map_dir = self.survey_property_map_dir()
         paths = _hs_files(map_dir)
-        if paths:
-            import healsparse
-            bands = self.config["bands"]
-            # A file with no band suffix is kept whatever bands is set to, so
-            # this cannot silently drop maps that are not named the DP1 way.
-            paths = [
-                p for p in paths
-                if not bands or _band_of(pathlib.Path(p).stem) in (None, *bands)
-            ]
-            names = _hs_map_names(paths)
-            if self.rank == 0:
-                print(f"TXMeanShearSurveyProperties: {len(paths)} .hs maps from {map_dir}")
-            for path in paths:
-                hsp_map = healsparse.HealSparseMap.read(path)
-                _register_map(names[path], hsp_map, hsp_map.nside_sparse)
+        bands = self.config["bands"]
+        # A file with no band suffix is kept whatever bands is set to, so
+        # this cannot silently drop maps that are not named the DP1 way.
+        paths = [
+            p for p in paths
+            if not bands or _band_of(pathlib.Path(p).stem) in (None, *bands)
+        ]
+        if paths and self.rank == 0:
+            print(f"TXMeanShearSurveyProperties: {len(paths)} .hs maps from {map_dir}")
+        names = _hs_map_names(paths)
+        for path in paths:
+            hsp_map = healsparse.HealSparseMap.read(path)
+            register(names[path], hsp_map, hsp_map.nside_sparse)
 
         if not all_maps:
-            if self.rank == 0:
-                print("TXMeanShearSurveyProperties: no survey property maps found.")
-            return
-
-        def _catalog_iterator():
-            return self.combined_iterators(
-                chunk_rows,
-                "shear_catalog", "shear", shear_cols,
-                "shear_tomography_catalog", "tomography", tomo_cols,
-                longest=True,
+            raise ValueError(
+                "TXMeanShearSurveyProperties: no survey property maps found. Supply "
+                "psf_maps, depth_map, survey_property_maps or external_maps_dir, and "
+                "check the properties and bands options."
             )
+        return all_maps
 
-        # Galaxies in a source bin are the ones the measurement uses (the
-        # MeanShearInBins source-bin cut). The bin column is per-variant for
-        # metadetect -- the unsheared variant "ns" -- and a single "bin"
-        # otherwise; see MeanShearInBins.selector.
-        source_bin_key = "bin_ns" if _detection_variants(cat_type) else "bin"
+    def survey_property_map_dir(self):
+        """
+        The directory of .hs files to load. The survey_property_maps input takes
+        precedence over the external_maps_dir option. If the input is wired up
+        but holds no .hs files, fall back to the option rather than silently
+        testing nothing.
+        """
+        map_dir = self.get_input("survey_property_maps")
+        if map_dir == "none":
+            return self.config["external_maps_dir"]
+        if not _hs_files(map_dir):
+            if self.rank == 0:
+                print(
+                    "TXMeanShearSurveyProperties: no .hs files in the "
+                    f"survey_property_maps input at {map_dir}."
+                )
+            return self.config["external_maps_dir"]
+        return map_dir
 
-        # Pass 1: choose bin edges from the property values at the galaxy
-        # positions that actually enter the measurement, i.e. galaxies in a
-        # source bin where the map is observed. This is the same
-        # {galaxies with defined shear in a source bin} ∩ {observed pixels}
-        # region the mean shear is measured over, so the bins match the tested
-        # region without needing a separate mask.
+    def catalog_iterator(self, cols):
+        return self.combined_iterators(
+            self.config["chunk_rows"],
+            "shear_catalog", "shear", cols["shear_cols"],
+            "shear_tomography_catalog", "tomography", cols["tomo_cols"],
+            longest=True,
+        )
+
+    def choose_bin_edges(self, all_maps, cols):
+        """
+        Pass 1 over the catalog: choose bin edges for each map from the property
+        values at the galaxies that actually enter the measurement, i.e.
+        galaxies in a source bin where the map is observed. This is the same
+        region the mean shear is measured over, so the bins match the tested
+        region without needing a separate mask.
+
+        Maps with no usable range are removed from all_maps. Returns a dict of
+        name -> bin edges.
+        """
+        nbins = self.config["nbins"]
+        outlier_fraction = self.config["outlier_fraction"]
+        ra_key, dec_key = cols["ra_key"], cols["dec_key"]
+
         sampled = {name: [] for name in all_maps}
-        for s, e, data in _catalog_iterator():
+        for s, e, data in self.catalog_iterator(cols):
             if self.rank == 0:
                 print(f"TXMeanShearSurveyProperties: bin-edge pass rows {s:,} – {e:,}")
-            in_source_bin = data[source_bin_key] != -1
+            in_source_bin = data[cols["source_bin_key"]] != -1
             for name, (hsp_map, nside) in all_maps.items():
-                vals = _property_values_at(
-                    hsp_map, nside, data[ra_key], data[dec_key]
-                )
-                # Keep only source-sample galaxies with an observed value: this
-                # is the sample the mean shear is binned over.
-                keep = in_source_bin & np.isfinite(vals)
-                sampled[name].append(vals[keep])
+                vals = _property_values_at(hsp_map, nside, data[ra_key], data[dec_key])
+                sampled[name].append(vals[in_source_bin & np.isfinite(vals)])
 
-        # Combine the sampled values across chunks and MPI ranks, then set the
-        # edges. allgather so every rank builds identical binners below (their
-        # construction is collective through the calibrators).
+        # Combine the sampled values across chunks and MPI ranks. allgather so
+        # every rank builds identical binners later (their construction and
+        # collection are collective through the calibrators).
         bin_edges = {}
         for name in list(all_maps):
-            local = (
-                np.concatenate(sampled[name]) if sampled[name] else np.empty(0)
-            )
-            del sampled[name]
+            local = np.concatenate(sampled.pop(name)) if sampled[name] else np.empty(0)
             if self.comm is not None:
                 local = np.concatenate(self.comm.allgather(local))
             edges = _bin_edges_from_values(local, nbins, outlier_fraction)
@@ -619,44 +679,50 @@ class TXMeanShearSurveyProperties(PipelineStage):
             bin_edges[name] = edges
 
         if not all_maps:
-            if self.rank == 0:
-                print(
-                    "TXMeanShearSurveyProperties: no survey property map has a "
-                    "usable range among the measured galaxies."
-                )
-            return
+            raise ValueError(
+                "TXMeanShearSurveyProperties: no survey property map has a usable "
+                "range among the measured galaxies."
+            )
+        return bin_edges
 
-        # One MeanShearInBins accumulator per surviving map.
+    def measure_mean_shear(self, all_maps, bin_edges, cols):
+        """
+        Pass 2 over the catalog: accumulate the calibrated mean shear in the
+        property bins of every map, in one sweep. Returns name -> MeanShearInBins.
+        """
+        cat_type = cols["cat_type"]
         binned_shears = {
             name: MeanShearInBins(
                 "survey_prop",
                 bin_edges[name],
-                delta_gamma,
+                self.config["delta_gamma"],
                 cut_source_bin=True,
                 shear_catalog_type=cat_type,
             )
             for name in all_maps
         }
 
-        # Pass 2: accumulate mean shear in those bins, processing all maps per
-        # chunk in a single sweep of the catalog.
-        for s, e, data in _catalog_iterator():
+        for s, e, data in self.catalog_iterator(cols):
             if self.rank == 0:
                 print(f"TXMeanShearSurveyProperties: measurement pass rows {s:,} – {e:,}")
             for name, (hsp_map, nside) in all_maps.items():
-                # Look up the property at each galaxy, with NaN for galaxies on
-                # pixels the map does not observe (dropped by the binner). For
-                # metadetect this writes one column per shear variant; see
-                # _assign_property_column for why.
+                # NaN for galaxies on unobserved pixels, which the binner drops.
+                # For metadetect this writes one column per shear variant.
                 _assign_property_column(
-                    data, cat_type, hsp_map, nside, ra_key, dec_key
+                    data, cat_type, hsp_map, nside, cols["ra_key"], cols["dec_key"]
                 )
                 binned_shears[name].add_data(data)
+        return binned_shears
 
-        # Only rank 0 writes, so only rank 0 opens the outputs -- every rank
-        # opening the same file would race. The loop below still runs on all
-        # ranks, because binner.collect is collective and would deadlock if
-        # some ranks skipped it.
+    def write_results(self, all_maps, binned_shears):
+        """
+        Collect each map's binned mean shear, then on rank 0 write it with its
+        statistics to the HDF5 output and make its plot.
+
+        The loop runs on every rank because binner.collect is collective and
+        would deadlock if some ranks skipped it. Only rank 0 opens the outputs,
+        since every rank opening the same file would race.
+        """
         if self.rank == 0:
             output_dir = self.open_output("shear_survey_property_plots", wrapper=True)
             hdf_out = self.open_output("shear_survey_property_null")
@@ -664,50 +730,21 @@ class TXMeanShearSurveyProperties(PipelineStage):
         png_files = []
         for name, binner in binned_shears.items():
             mu, g1, g2, sigma1, sigma2 = binner.collect(self.comm)
-
             if self.rank != 0:
                 continue
 
             safe_name = name.replace("/", "_")
+            idx, stats = _null_test_statistics(mu, g1, g2, sigma1, sigma2)
 
-            # Numerical results
             grp = hdf_out.create_group(safe_name)
-            grp.create_dataset("bin_centers", data=mu)
-            grp.create_dataset("g1", data=g1)
-            grp.create_dataset("g2", data=g2)
-            grp.create_dataset("sigma_g1", data=sigma1)
-            grp.create_dataset("sigma_g2", data=sigma2)
-
-            # Bins with a usable value in everything we plot. where_all_finite
-            # returns indices, not a mask, and is the helper the other TXPipe
-            # mean-shear null tests use.
-            idx = where_all_finite(mu, g1, g2, sigma1, sigma2)
-
-            # Two complementary statistics, as discussed for the other null
-            # tests: chi2 against zero catches any departure from zero, while
-            # the slope of a straight-line fit is the trend statistic the rest
-            # of TXPipe quotes. Bins holding a single galaxy have sigma == 0
-            # and are dropped from both, as they would divide by zero.
-            chi2, n_dof = 0.0, 0
-            fits = []
-            for g_arr, s_arr in [(g1[idx], sigma1[idx]), (g2[idx], sigma2[idx])]:
-                good = s_arr > 0
-                chi2 += calc_chi2(g_arr[good], s_arr[good], np.zeros(int(good.sum())))
-                n_dof += int(good.sum())
-                slope, intercept, cov = fit_straight_line(
-                    mu[idx][good], g_arr[good], y_err=s_arr[good]
-                )
-                fits.append((slope, intercept, cov[0, 0] ** 0.5))
-            chi2_dof = chi2 / n_dof if n_dof > 0 else np.nan
-            (slope1, intercept1, slope1_err), (slope2, intercept2, slope2_err) = fits
-
-            grp.attrs["chi2"] = chi2
-            grp.attrs["n_dof"] = n_dof
-            grp.attrs["chi2_per_dof"] = chi2_dof
-            grp.attrs["slope_g1"] = slope1
-            grp.attrs["slope_g1_err"] = slope1_err
-            grp.attrs["slope_g2"] = slope2
-            grp.attrs["slope_g2_err"] = slope2_err
+            for key, value in (
+                ("bin_centers", mu), ("g1", g1), ("g2", g2),
+                ("sigma_g1", sigma1), ("sigma_g2", sigma2),
+            ):
+                grp.create_dataset(key, data=value)
+            for key in ("chi2", "n_dof", "chi2_per_dof", "slope_g1", "slope_g1_err",
+                        "slope_g2", "slope_g2_err"):
+                grp.attrs[key] = stats[key]
 
             # An empty plot is otherwise the only sign that a map produced no
             # usable bins at all, so say so explicitly.
@@ -717,73 +754,85 @@ class TXMeanShearSurveyProperties(PipelineStage):
                     f"for '{name}'; the plot will have no points."
                 )
 
-            # Two panels: the property map itself on the left, so the trend on
-            # the right can be read against the spatial structure driving it.
-            fig = plt.figure(figsize=(12.0, 4.5))
-            # The map panel is a touch narrower: a sky patch keeps its aspect
-            # ratio, so given equal widths it would sit small beside the trend.
-            gs = fig.add_gridspec(1, 2, width_ratios=[1.0, 1.35])
-
-            map_ax = fig.add_subplot(gs[0])
-            hsp_map, map_nside = all_maps[name]
-            _plot_property_map(
-                map_ax, fig, hsp_map, map_nside, safe_name,
-                plot_nside=self.config["map_plot_nside"],
-            )
-
-            ax = fig.add_subplot(gs[1])
-            # Small horizontal offset so the g1/g2 series don't overlap, taken
-            # over the finite bins only: empty bins (NaN from collect) would
-            # otherwise poison it and blank the whole scatter. g1 sits to the
-            # right of each bin and g2 to the left, matching TXDiagnosticPlots.
-            dx = _marker_offset(mu[idx])
-            ax.axhline(0, color="k", lw=0.8, ls="--")
-            # Error bars are drawn in black *on top of* the markers rather than
-            # in the series colour underneath them. A bin holding a single
-            # galaxy has sigma exactly zero, and one holding two or three that
-            # happen to agree has a sigma far smaller than the marker: both look
-            # identical when the bar is hidden behind the point. Drawn this way,
-            # a true zero shows no black at all, while a tiny error shows a
-            # short black line through the marker.
-            for x_off, g_arr, s_arr in [
-                (mu[idx] + dx, g1[idx], sigma1[idx]),
-                (mu[idx] - dx, g2[idx], sigma2[idx]),
-            ]:
-                ax.errorbar(
-                    x_off, g_arr, s_arr,
-                    fmt="none", ecolor="k", elinewidth=0.8, zorder=3,
-                )
-            ax.plot(
-                mu[idx] + dx, g1[idx], "s", markersize=4, color="tab:blue",
-                linestyle="none", zorder=2,
-                label=f"g1  (m={slope1:.2e} $\\pm$ {slope1_err:.2e})",
-            )
-            ax.plot(
-                mu[idx] - dx, g2[idx], "o", markersize=4, color="tab:orange",
-                linestyle="none", zorder=2,
-                label=f"g2  (m={slope2:.2e} $\\pm$ {slope2_err:.2e})",
-            )
-
-            # The fitted lines, drawn across the range that was actually fitted.
-            if idx.size > 1:
-                x_line = np.array([mu[idx].min(), mu[idx].max()])
-                ax.plot(x_line, slope1 * x_line + intercept1, color="tab:blue", lw=1)
-                ax.plot(x_line, slope2 * x_line + intercept2, color="tab:orange", lw=1)
-
-            ax.set_xlabel(safe_name)
-            ax.set_ylabel("Mean shear")
-            ax.set_title(f"{safe_name}  (χ²/dof = {chi2_dof:.2f})")
-            ax.legend(fontsize=8)
-            # Explicit spacing rather than tight_layout: the map colorbar and
-            # the trend panel need a wide gap between them to stop the map's
-            # Dec axis crowding the trend's y-axis.
-            fig.subplots_adjust(left=0.06, right=0.96, bottom=0.15, wspace=0.32)
-
             png_name = f"{safe_name}.png"
-            fig.savefig(output_dir.path_for_file(png_name))
-            plt.close(fig)
+            self.plot_property(
+                output_dir.path_for_file(png_name), name, all_maps[name],
+                mu, g1, g2, sigma1, sigma2, idx, stats,
+            )
             png_files.append(png_name)
 
         if self.rank == 0:
             output_dir.write_listing(png_files)
             hdf_out.close()
+
+    def plot_property(self, path, name, map_info, mu, g1, g2, sigma1, sigma2, idx, stats):
+        """
+        Two-panel figure: the property map on the left, so the trend on the right
+        can be read against the spatial structure driving it.
+        """
+        import matplotlib.pyplot as plt
+
+        safe_name = name.replace("/", "_")
+        slope1, slope1_err = stats["slope_g1"], stats["slope_g1_err"]
+        slope2, slope2_err = stats["slope_g2"], stats["slope_g2_err"]
+        fig = plt.figure(figsize=(12.0, 4.5))
+        # The map panel is a touch narrower: a sky patch keeps its aspect
+        # ratio, so given equal widths it would sit small beside the trend.
+        gs = fig.add_gridspec(1, 2, width_ratios=[1.0, 1.35])
+
+        map_ax = fig.add_subplot(gs[0])
+        hsp_map, map_nside = map_info
+        _plot_property_map(
+            map_ax, fig, hsp_map, map_nside, safe_name,
+            plot_nside=self.config["map_plot_nside"],
+        )
+
+        ax = fig.add_subplot(gs[1])
+        # Small horizontal offset so the g1/g2 series don't overlap, taken
+        # over the finite bins only: empty bins (NaN from collect) would
+        # otherwise poison it and blank the whole scatter. g1 sits to the
+        # right of each bin and g2 to the left, matching TXDiagnosticPlots.
+        dx = _marker_offset(mu[idx])
+        ax.axhline(0, color="k", lw=0.8, ls="--")
+        # Error bars are drawn in black *on top of* the markers rather than
+        # in the series colour underneath them. A bin holding a single
+        # galaxy has sigma exactly zero, and one holding two or three that
+        # happen to agree has a sigma far smaller than the marker: both look
+        # identical when the bar is hidden behind the point. Drawn this way,
+        # a true zero shows no black at all, while a tiny error shows a
+        # short black line through the marker.
+        for x_off, g_arr, s_arr in [
+            (mu[idx] + dx, g1[idx], sigma1[idx]),
+            (mu[idx] - dx, g2[idx], sigma2[idx]),
+        ]:
+            ax.errorbar(
+                x_off, g_arr, s_arr,
+                fmt="none", ecolor="k", elinewidth=0.8, zorder=3,
+            )
+        ax.plot(
+            mu[idx] + dx, g1[idx], "s", markersize=4, color="tab:blue",
+            linestyle="none", zorder=2,
+            label=f"g1  (m={slope1:.2e} $\\pm$ {slope1_err:.2e})",
+        )
+        ax.plot(
+            mu[idx] - dx, g2[idx], "o", markersize=4, color="tab:orange",
+            linestyle="none", zorder=2,
+            label=f"g2  (m={slope2:.2e} $\\pm$ {slope2_err:.2e})",
+        )
+
+        # The fitted lines, drawn across the range that was actually fitted.
+        if idx.size > 1:
+            x_line = np.array([mu[idx].min(), mu[idx].max()])
+            ax.plot(x_line, slope1 * x_line + stats["intercept_g1"], color="tab:blue", lw=1)
+            ax.plot(x_line, slope2 * x_line + stats["intercept_g2"], color="tab:orange", lw=1)
+
+        ax.set_xlabel(safe_name)
+        ax.set_ylabel("Mean shear")
+        ax.set_title(f"{safe_name}  (χ²/dof = {stats['chi2_per_dof']:.2f})")
+        ax.legend(fontsize=8)
+        # Explicit spacing rather than tight_layout: the map colorbar and
+        # the trend panel need a wide gap between them to stop the map's
+        # Dec axis crowding the trend's y-axis.
+        fig.subplots_adjust(left=0.06, right=0.96, bottom=0.15, wspace=0.32)
+        fig.savefig(path)
+        plt.close(fig)
