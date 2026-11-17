@@ -81,12 +81,8 @@ CLClusterShearCatalogs:
     max_radius: 5.0                 # Mpc
     delta_z: 0.2
     redshift_cut_criterion: zmode
-    redshift_weight_criterion: zmode
     redshift_cut_criterion_pdf_fraction: 0.9
-    subtract_mean_shear: false
-    coordinate_system: euclidean    # as in Kabelo's DP2 config
     use_true_shear: false
-    delta_sigma: true
 
 CLClusterShearCalibrator:
     r_min: 0.2                      # Mpc, the radial bins of Kabelo's DeltaSigma profiles
@@ -95,3 +91,15 @@ CLClusterShearCalibrator:
     bin_units: mpc
     radial_calibration: true
     n_bootstrap: 100                # resamplings of the clusters for the R_T errors
+
+CLClusterEnsembleProfiles:
+    r_min: 0.2                      # the radial bins must be those of CLClusterShearCalibrator
+    r_max: 4.5
+    nbins: 4
+    bin_units: mpc
+    shear_calibration: cluster      # the response of each stack (and radial bin)
+    redshift_weight_criterion: zmode
+    subtract_mean_shear: false
+    coordinate_system: euclidean    # as in Kabelo's DP2 config
+    use_true_shear: false
+    delta_sigma: true

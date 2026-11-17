@@ -1,6 +1,7 @@
 # DP2 cluster weak lensing with the AnaCal shear catalogue: shear selection and
-# calibration, BPZ photo-z, cluster binning, cluster-source pairs and the shear
-# response of each stack and radial bin (CLClusterShearCalibrator).
+# calibration, BPZ photo-z, cluster binning, cluster-source pairs, the shear
+# response of each stack and radial bin (CLClusterShearCalibrator) and the
+# profiles calibrated with it (CLClusterEnsembleProfiles, shear_calibration: cluster).
 # Same structure as Kabelo's pipeline-dp2-CL-rubin-nersc.yml for metadetect.
 # From the TXPipe directory:
 #     sbatch examples/dp2/Cluster_pipelines/anacal_pipelines/pipeline.sub
@@ -47,6 +48,8 @@ stages:
   - name: CLClusterShearCatalogs
     nprocess: 1
   - name: CLClusterShearCalibrator # R and R_T of each stack and radial bin
+    nprocess: 1
+  - name: CLClusterEnsembleProfiles
     nprocess: 1
 
 output_dir: /pscratch/sd/e/edujb/dp2/outputs/anacal
