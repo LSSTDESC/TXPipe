@@ -88,15 +88,18 @@ class CLClusterShearCalibrator(PipelineStage):
             bin_names = list(f["cluster_bin"].keys())
 
         stacks = []
+        self.stacks_without_sources = []
         for bin_name in bin_names:
             clusters, sources = self.load_cluster_bin_sources(bin_name)
             if len(sources) == 0:
                 print(f"{bin_name}: {len(clusters)} clusters, no sources")
+                self.stacks_without_sources.append(bin_name)
                 continue
             # Only the sources that enter the profile are used
             sources = sources[sources["radial_bin"] >= 0]
             if len(sources) == 0:
                 print(f"{bin_name}: {len(clusters)} clusters, no sources in [r_min, r_max]")
+                self.stacks_without_sources.append(bin_name)
                 continue
             counts = np.bincount(sources["radial_bin"], minlength=self.config["nbins"])
             print(f"{bin_name}: {len(clusters)} clusters, {len(sources)} sources, per radial bin {counts}")
@@ -398,6 +401,8 @@ class CLClusterShearCalibrator(PipelineStage):
         calibration.attrs["distance_bins"] = self.distance_bins
         calibration.attrs["bin_units"] = self.config["bin_units"].lower()
         calibration.attrs["n_bootstrap"] = self.config["n_bootstrap"]
+        # the stacks without sources in the radial bins have no response
+        calibration.attrs["stacks_without_sources"] = np.array(self.stacks_without_sources, dtype="S")
 
         for bin_name, clusters, sources, calibrators, errors in stacks:
             ref = next(c for c in calibrators if c is not None)

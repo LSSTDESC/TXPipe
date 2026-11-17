@@ -123,26 +123,33 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
             _, calibrator = Calibrator.load(self.get_input("shear_tomography_catalog"), null=self.config["use_true_shear"])
             calibrators = {bin_key: [calibrator] for bin_key in clusters_in_bins}
         elif shear_calibration == "cluster":
-            if self.get_input("cluster_shear_response").lower() == "none":
+            if str(self.get_input("cluster_shear_response")).lower() == "none":
                 raise ValueError("shear_calibration=cluster needs the cluster_shear_response input from CLClusterShearCalibrator")
             if self.config["use_true_shear"] or self.config["subtract_mean_shear"]:
                 raise ValueError("shear_calibration=cluster cannot be used with use_true_shear or subtract_mean_shear")
-            calibrator_class = {"metadetect": MetaDetectCalibrator, "scalar_metadetect": ScalarMetaDetectCalibrator, "anacal": AnaCalibrator}[catalog_type]
+            calibrator_classes = {"metadetect": MetaDetectCalibrator, "scalar_metadetect": ScalarMetaDetectCalibrator, "anacal": AnaCalibrator}
+            if catalog_type not in calibrator_classes:
+                raise ValueError(f"shear_calibration=cluster is not implemented for {catalog_type} catalogs")
+            calibrator_class = calibrator_classes[catalog_type]
             calibrators = {}
             with self.open_input("cluster_shear_response") as f:
                 g = f["calibration"]
                 radial_calibration = bool(g.attrs["radial_calibration"])
-                if g.attrs["bin_units"] != self.config["bin_units"].lower() or not np.allclose(g.attrs["distance_bins"], self.distance_bins):
+                if (g.attrs["bin_units"] != self.config["bin_units"].lower() or len(g.attrs["distance_bins"]) != len(self.distance_bins)
+                        or not np.allclose(g.attrs["distance_bins"], self.distance_bins)):
                     raise ValueError(f"The radial bins of cluster_shear_response ({g.attrs['distance_bins']} {g.attrs['bin_units']}) "
                                      f"are not those of the profiles ({self.distance_bins} {self.config['bin_units']})")
-                for bin_key in clusters_in_bins:
-                    # A stack without sources in the radial bins has no response
-                    if bin_key not in g:
-                        print(f"    {bin_key} has no response in cluster_shear_response, so no sources in the radial bins")
+                stacks_without_sources = [name.decode() for name in g.attrs["stacks_without_sources"]]
+                for bin_key, cluster_list in clusters_in_bins.items():
+                    # The calibrator gives no response to a stack without sources in the radial bins
+                    if bin_key in stacks_without_sources:
+                        print(f"    {bin_key} has no sources in the radial bins and no response")
                         calibrators[bin_key] = None
                         continue
+                    if bin_key not in g or g[bin_key].attrs["n_clusters"] != len(cluster_list):
+                        raise ValueError(f"cluster_shear_response was made with another cluster binning ({bin_key})")
                     R = g[bin_key]["R"][:]
-                    calibrators[bin_key] = [calibrator_class(r, np.zeros(2)) for r in (R if radial_calibration else [R])]
+                    calibrators[bin_key] = [calibrator_class(np.squeeze(r), np.zeros(2)) for r in (R if radial_calibration else [R])]
         elif shear_calibration == "none":
             if catalog_type in ["metacal", "metadetect", "scalar_metadetect", "anacal"] and not self.config["use_true_shear"]:
                 raise ValueError(f"The shears of a {catalog_type} catalog must be calibrated: use shear_calibration global or cluster")
@@ -179,7 +186,8 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
                         # The radial bin of each pair, as in CLClusterShearCalibrator. The pairs
                         # inside r_min, which are not in the profile, get the first one.
                         r = distance[near]
-                        if self.config["bin_units"].lower() == "mpc":
+                        # (CLMM does not convert empty arrays: clusters without pairs)
+                        if self.config["bin_units"].lower() == "mpc" and r.size > 0:
                             r = clmm.utils.convert_units(r, "arcmin", "Mpc", cluster["redshift"], clmm_cosmo)
                         cluster_source_radial_bin[cluster["id"]] = np.clip(np.digitize(r, self.distance_bins) - 1, 0, len(self.distance_bins) - 2)
         if n_small_search:
