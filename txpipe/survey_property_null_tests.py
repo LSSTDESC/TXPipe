@@ -18,10 +18,12 @@ from .calibration.calibration_utils import MeanShearInBins
 # META_VARIANTS is not used here, but is re-exported for the tests.
 from .calibration.calibration_utils.names import META_VARIANTS
 from .utils import read_shear_catalog_type
-from .utils.fitting import fit_straight_line, calc_chi2
-from .diagnostics.diagnostics import where_all_finite
 
 BANDS = "ugrizy"
+
+# Fewest usable bins a straight-line fit is attempted on. Two points always fit
+# a line exactly and leave no freedom to judge it, so at least three are needed.
+_MIN_FIT_BINS = 3
 
 
 def _hs_files(root):
@@ -128,6 +130,21 @@ def _bin_edges_from_values(vals, nbins, outlier_fraction):
     return np.linspace(lo, hi, nbins + 1)
 
 
+def _counts_in_bins(vals, edges):
+    """
+    Number of values in each bin, selected the way ``MeanShearInBins.selector``
+    selects them: strictly inside both edges.
+
+    ``np.histogram`` is not used because it includes the lower edge of each bin
+    and the upper edge of the last one, so its counts would not match the
+    galaxies the mean shear is actually computed from.
+    """
+    return np.array(
+        [np.count_nonzero((vals > lo) & (vals < hi)) for lo, hi in zip(edges[:-1], edges[1:])],
+        dtype=np.int64,
+    )
+
+
 def _property_values_at(hsp_map, nside, ra, dec):
     """
     Look up a survey property map at galaxy positions, returning float values
@@ -197,35 +214,87 @@ def _assign_property_column(data, cat_type, hsp_map, nside, ra_key, dec_key):
         )
 
 
-def _null_test_statistics(mu, g1, g2, sigma1, sigma2):
+def _weighted_line_fit(x, y, sigma):
+    """
+    Weighted least-squares fit of ``y = slope * x + intercept``.
+
+    The errors on the parameters come from ``sigma`` alone, treated as the true
+    one-sigma errors on ``y``. They are not rescaled by the scatter of the
+    points about the line, which ``scipy.optimize.curve_fit`` does by default
+    (and so ``txpipe.utils.fitting.fit_straight_line``): with that rescaling, a
+    set of points that happens to lie closer to a line than its error bars
+    suggest gets a smaller slope error than the data support.
+
+    Returns ``(slope, slope_err, intercept, intercept_err)``. All four are NaN
+    when there are fewer than ``_MIN_FIT_BINS`` points or all ``x`` are equal,
+    so a fit that could not be made is never written out as if it were real.
+    """
+    nan = (np.nan, np.nan, np.nan, np.nan)
+    if x.size < _MIN_FIT_BINS:
+        return nan
+    w = 1.0 / sigma**2
+    S, Sx, Sy = w.sum(), (w * x).sum(), (w * y).sum()
+    Sxx, Sxy = (w * x * x).sum(), (w * x * y).sum()
+    det = S * Sxx - Sx**2
+    if not det > 0:
+        return nan
+    slope = (S * Sxy - Sx * Sy) / det
+    intercept = (Sxx * Sy - Sx * Sxy) / det
+    return slope, np.sqrt(S / det), intercept, np.sqrt(Sxx / det)
+
+
+def _null_test_statistics(mu, g1, g2, sigma1, sigma2, counts, min_count):
     """
     Summary statistics of the binned mean shear for one survey property.
 
-    Two complementary statistics, as discussed for the other null tests: chi2
-    against zero catches any departure from zero, while the slope of a
-    straight-line fit is the trend statistic the rest of TXPipe quotes. Bins
-    with a non-finite value are left out, and bins holding a single galaxy have
-    sigma == 0 and are dropped from both, as they would divide by zero.
+    A bin is used only if every quantity in it is finite, both errors are
+    positive, and it holds at least ``min_count`` galaxies. The count cut
+    matters because each bin's error is the spread of its galaxies' shears
+    divided by sqrt(N_eff): with only a few galaxies the spread is itself badly
+    measured and can come out far too small, giving that bin a huge weight in
+    both statistics below.
 
-    Returns the indices of the finite bins and a dict of the statistics.
+    Two statistics are returned:
+
+    - chi2_null: the chi-squared of the mean g1 and g2 against zero shear, the
+      null hypothesis, over the used bins. No parameters are fitted, so the
+      number of degrees of freedom is the number of values summed (two per
+      bin).
+    - straight-line fits of g1 and g2 against the mean property value, whose
+      slopes measure a trend with the property.
+
+    Both treat the bins as independent with shape-noise errors only; spatially
+    correlated errors between bins are not included.
     """
-    # where_all_finite returns indices, not a mask, and is the helper the other
-    # TXPipe mean-shear null tests use.
-    idx = where_all_finite(mu, g1, g2, sigma1, sigma2)
-    chi2, n_dof = 0.0, 0
-    stats = {}
-    for comp, g, s in (("g1", g1[idx], sigma1[idx]), ("g2", g2[idx], sigma2[idx])):
-        good = s > 0
-        chi2 += calc_chi2(g[good], s[good], np.zeros(int(good.sum())))
-        n_dof += int(good.sum())
-        slope, intercept, cov = fit_straight_line(mu[idx][good], g[good], y_err=s[good])
+    from scipy.stats import chi2 as chi2_dist
+
+    usable = (
+        np.isfinite(mu) & np.isfinite(g1) & np.isfinite(g2)
+        & np.isfinite(sigma1) & np.isfinite(sigma2)
+        & (sigma1 > 0) & (sigma2 > 0)
+        & (counts >= min_count)
+    )
+    n = int(usable.sum())
+
+    chi2 = float(np.sum((g1[usable] / sigma1[usable]) ** 2 + (g2[usable] / sigma2[usable]) ** 2))
+    n_dof = 2 * n
+    stats = {
+        "chi2_null": chi2 if n_dof else np.nan,
+        "n_dof_null": n_dof,
+        "chi2_null_per_dof": chi2 / n_dof if n_dof else np.nan,
+        "chi2_null_pvalue": float(chi2_dist.sf(chi2, n_dof)) if n_dof else np.nan,
+        "n_used_bins": n,
+        "min_count": min_count,
+    }
+    for comp, g, s in (("g1", g1, sigma1), ("g2", g2, sigma2)):
+        slope, slope_err, intercept, intercept_err = _weighted_line_fit(
+            mu[usable], g[usable], s[usable]
+        )
         stats[f"slope_{comp}"] = slope
-        stats[f"slope_{comp}_err"] = cov[0, 0] ** 0.5
+        stats[f"slope_{comp}_err"] = slope_err
         stats[f"intercept_{comp}"] = intercept
-    stats["chi2"] = chi2
-    stats["n_dof"] = n_dof
-    stats["chi2_per_dof"] = chi2 / n_dof if n_dof > 0 else np.nan
-    return idx, stats
+        stats[f"intercept_{comp}_err"] = intercept_err
+    return usable, stats
 
 
 def _marker_offset(mu):
@@ -297,6 +366,13 @@ class TXMeanShearSurveyProperties(PipelineStage):
     The bands config option filters the .hs files down to chosen bands, since
     DP1 ingestion writes every property in all six of ugrizy. Files with no
     recognised band suffix are always kept.
+
+    For each map the output file holds the mean g1 and g2 in each property bin,
+    their errors and the galaxy count, plus the chi-squared of the mean shear
+    against zero and straight-line fits against the property value. Bins with
+    fewer than min_count galaxies are kept in the output but left out of both
+    statistics. The statistics treat bins as independent with shape-noise
+    errors only.
     """
 
     name = "TXMeanShearSurveyProperties"
@@ -322,6 +398,11 @@ class TXMeanShearSurveyProperties(PipelineStage):
         "outlier_fraction": StageParameter(
             float, 0.05,
             msg="Fraction of sampled galaxies excluded as outliers at each tail when computing bin edges"
+        ),
+        "min_count": StageParameter(
+            int, 50,
+            msg="Minimum number of galaxies in a bin for it to enter the chi-squared and "
+                "the straight-line fits. Bins below this are still saved and plotted."
         ),
         "properties": StageParameter(
             list, [],
@@ -355,9 +436,9 @@ class TXMeanShearSurveyProperties(PipelineStage):
 
         cols = self.catalog_columns()
         all_maps = self.load_maps()
-        bin_edges = self.choose_bin_edges(all_maps, cols)
+        bin_edges, counts = self.choose_bin_edges(all_maps, cols)
         binned_shears = self.measure_mean_shear(all_maps, bin_edges, cols)
-        self.write_results(all_maps, binned_shears)
+        self.write_results(all_maps, binned_shears, counts)
 
     def catalog_columns(self):
         """
@@ -486,8 +567,10 @@ class TXMeanShearSurveyProperties(PipelineStage):
         region the mean shear is measured over, so the bins match the tested
         region without needing a separate mask.
 
-        Maps with no usable range are removed from all_maps. Returns a dict of
-        name -> bin edges.
+        The same values give the number of galaxies in each bin, used for the
+        min_count cut. Maps with no usable range are removed from all_maps.
+
+        Returns dicts of name -> bin edges and name -> counts per bin.
         """
         nbins = self.config["nbins"]
         outlier_fraction = self.config["outlier_fraction"]
@@ -505,7 +588,7 @@ class TXMeanShearSurveyProperties(PipelineStage):
         # Combine the sampled values across chunks and MPI ranks. allgather so
         # every rank builds identical binners later (their construction and
         # collection are collective through the calibrators).
-        bin_edges = {}
+        bin_edges, counts = {}, {}
         for name in list(all_maps):
             local = np.concatenate(sampled.pop(name)) if sampled[name] else np.empty(0)
             if self.comm is not None:
@@ -520,13 +603,14 @@ class TXMeanShearSurveyProperties(PipelineStage):
                 del all_maps[name]
                 continue
             bin_edges[name] = edges
+            counts[name] = _counts_in_bins(local, edges)
 
         if not all_maps:
             raise ValueError(
                 "TXMeanShearSurveyProperties: no survey property map has a usable "
                 "range among the measured galaxies."
             )
-        return bin_edges
+        return bin_edges, counts
 
     def measure_mean_shear(self, all_maps, bin_edges, cols):
         """
@@ -557,7 +641,7 @@ class TXMeanShearSurveyProperties(PipelineStage):
                 binned_shears[name].add_data(data)
         return binned_shears
 
-    def write_results(self, all_maps, binned_shears):
+    def write_results(self, all_maps, binned_shears, counts):
         """
         Collect each map's binned mean shear, then on rank 0 write it with its
         statistics to the HDF5 output and make its plot.
@@ -566,6 +650,7 @@ class TXMeanShearSurveyProperties(PipelineStage):
         would deadlock if some ranks skipped it. Only rank 0 opens the outputs,
         since every rank opening the same file would race.
         """
+        min_count = self.config["min_count"]
         if self.rank == 0:
             output_dir = self.open_output("shear_survey_property_plots", wrapper=True)
             hdf_out = self.open_output("shear_survey_property_null")
@@ -577,30 +662,30 @@ class TXMeanShearSurveyProperties(PipelineStage):
                 continue
 
             safe_name = name.replace("/", "_")
-            idx, stats = _null_test_statistics(mu, g1, g2, sigma1, sigma2)
+            usable, stats = _null_test_statistics(
+                mu, g1, g2, sigma1, sigma2, counts[name], min_count
+            )
+            if stats["n_used_bins"] < _MIN_FIT_BINS:
+                print(
+                    f"TXMeanShearSurveyProperties: WARNING - '{name}' has only "
+                    f"{stats['n_used_bins']} bins with at least {min_count} galaxies; "
+                    "its slopes are written as NaN."
+                )
 
             grp = hdf_out.create_group(safe_name)
             for key, value in (
                 ("bin_centers", mu), ("g1", g1), ("g2", g2),
                 ("sigma_g1", sigma1), ("sigma_g2", sigma2),
+                ("count", counts[name]), ("used_in_statistics", usable),
             ):
                 grp.create_dataset(key, data=value)
-            for key in ("chi2", "n_dof", "chi2_per_dof", "slope_g1", "slope_g1_err",
-                        "slope_g2", "slope_g2_err"):
-                grp.attrs[key] = stats[key]
-
-            # An empty plot is otherwise the only sign that a map produced no
-            # usable bins at all, so say so explicitly.
-            if idx.size == 0:
-                print(
-                    f"TXMeanShearSurveyProperties: WARNING - every bin is empty "
-                    f"for '{name}'; the plot will have no points."
-                )
+            for key, value in stats.items():
+                grp.attrs[key] = value
 
             png_name = f"{safe_name}.png"
             self.plot_property(
                 output_dir.path_for_file(png_name), name, all_maps[name],
-                mu, g1, g2, sigma1, sigma2, idx, stats,
+                mu, g1, g2, sigma1, sigma2, usable, stats,
             )
             png_files.append(png_name)
 
@@ -608,16 +693,17 @@ class TXMeanShearSurveyProperties(PipelineStage):
             output_dir.write_listing(png_files)
             hdf_out.close()
 
-    def plot_property(self, path, name, map_info, mu, g1, g2, sigma1, sigma2, idx, stats):
+    def plot_property(self, path, name, map_info, mu, g1, g2, sigma1, sigma2, usable, stats):
         """
         Two-panel figure: the property map on the left, so the trend on the right
         can be read against the spatial structure driving it.
+
+        Bins left out of the statistics (too few galaxies) are drawn as open
+        grey markers so they stay visible without looking like part of the fit.
         """
         import matplotlib.pyplot as plt
 
         safe_name = name.replace("/", "_")
-        slope1, slope1_err = stats["slope_g1"], stats["slope_g1_err"]
-        slope2, slope2_err = stats["slope_g2"], stats["slope_g2_err"]
         fig = plt.figure(figsize=(12.0, 4.5))
         # The map panel is a touch narrower: a sky patch keeps its aspect
         # ratio, so given equal widths it would sit small beside the trend.
@@ -631,51 +717,55 @@ class TXMeanShearSurveyProperties(PipelineStage):
         )
 
         ax = fig.add_subplot(gs[1])
-        # Small horizontal offset so the g1/g2 series don't overlap, taken
-        # over the finite bins only: empty bins (NaN from collect) would
-        # otherwise poison it and blank the whole scatter. g1 sits to the
-        # right of each bin and g2 to the left, matching TXDiagnosticPlots.
-        dx = _marker_offset(mu[idx])
+        finite = np.isfinite(mu) & np.isfinite(g1) & np.isfinite(g2)
+        # Small horizontal offset so the g1/g2 series don't overlap, taken over
+        # the finite bins only. g1 sits to the right of each bin and g2 to the
+        # left, matching TXSourceDiagnosticPlots.
+        dx = _marker_offset(mu[finite])
         ax.axhline(0, color="k", lw=0.8, ls="--")
-        # Error bars are drawn in black *on top of* the markers rather than
-        # in the series colour underneath them. A bin holding a single
-        # galaxy has sigma exactly zero, and one holding two or three that
-        # happen to agree has a sigma far smaller than the marker: both look
-        # identical when the bar is hidden behind the point. Drawn this way,
-        # a true zero shows no black at all, while a tiny error shows a
-        # short black line through the marker.
-        for x_off, g_arr, s_arr in [
-            (mu[idx] + dx, g1[idx], sigma1[idx]),
-            (mu[idx] - dx, g2[idx], sigma2[idx]),
-        ]:
-            ax.errorbar(
-                x_off, g_arr, s_arr,
-                fmt="none", ecolor="k", elinewidth=0.8, zorder=3,
-            )
-        ax.plot(
-            mu[idx] + dx, g1[idx], "s", markersize=4, color="tab:blue",
-            linestyle="none", zorder=2,
-            label=f"g1  (m={slope1:.2e} $\\pm$ {slope1_err:.2e})",
-        )
-        ax.plot(
-            mu[idx] - dx, g2[idx], "o", markersize=4, color="tab:orange",
-            linestyle="none", zorder=2,
-            label=f"g2  (m={slope2:.2e} $\\pm$ {slope2_err:.2e})",
-        )
 
-        # The fitted lines, drawn across the range that was actually fitted.
-        if idx.size > 1:
-            x_line = np.array([mu[idx].min(), mu[idx].max()])
-            ax.plot(x_line, slope1 * x_line + stats["intercept_g1"], color="tab:blue", lw=1)
-            ax.plot(x_line, slope2 * x_line + stats["intercept_g2"], color="tab:orange", lw=1)
+        for comp, g, s, sign, marker, color in (
+            ("g1", g1, sigma1, +1, "s", "tab:blue"),
+            ("g2", g2, sigma2, -1, "o", "tab:orange"),
+        ):
+            x = mu + sign * dx
+            used = usable
+            excluded = finite & ~usable
+            # Error bars are drawn in black on top of the markers, so that a bin
+            # with a tiny error still shows a short line through its marker.
+            ax.errorbar(x[used], g[used], s[used], fmt="none", ecolor="k",
+                        elinewidth=0.8, zorder=3)
+            slope, slope_err = stats[f"slope_{comp}"], stats[f"slope_{comp}_err"]
+            label = (
+                f"{comp}  (m={slope:.2e} $\\pm$ {slope_err:.2e})"
+                if np.isfinite(slope) else f"{comp}  (too few bins to fit)"
+            )
+            ax.plot(x[used], g[used], marker, markersize=4, color=color,
+                    linestyle="none", zorder=2, label=label)
+            if excluded.any():
+                ax.errorbar(x[excluded], g[excluded], s[excluded], fmt=marker,
+                            markersize=4, mfc="none", color="0.6", elinewidth=0.6,
+                            zorder=1)
+            # The fitted line, drawn across the range that was actually fitted.
+            if np.isfinite(slope):
+                x_line = np.array([mu[used].min(), mu[used].max()])
+                ax.plot(x_line, slope * x_line + stats[f"intercept_{comp}"],
+                        color=color, lw=1)
+
+        if (finite & ~usable).any():
+            ax.plot([], [], "o", mfc="none", color="0.6", linestyle="none",
+                    label=f"< {stats['min_count']} galaxies (not used)")
 
         ax.set_xlabel(safe_name)
         ax.set_ylabel("Mean shear")
-        ax.set_title(f"{safe_name}  (χ²/dof = {stats['chi2_per_dof']:.2f})")
+        ax.set_title(
+            f"{safe_name}  ($\\chi^2_{{\\rm null}}$/dof = "
+            f"{stats['chi2_null']:.1f}/{stats['n_dof_null']}, "
+            f"p = {stats['chi2_null_pvalue']:.2g})"
+        )
         ax.legend(fontsize=8)
-        # Explicit spacing rather than tight_layout: the map colorbar and
-        # the trend panel need a wide gap between them to stop the map's
-        # Dec axis crowding the trend's y-axis.
+        # Explicit spacing rather than tight_layout: the map colorbar and the
+        # trend panel need a wide gap between them.
         fig.subplots_adjust(left=0.06, right=0.96, bottom=0.15, wspace=0.32)
         fig.savefig(path)
         plt.close(fig)
