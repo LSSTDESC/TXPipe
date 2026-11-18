@@ -35,8 +35,8 @@ modules: >
 config: examples/dp2/config_desc_metadetect_1.1.yml
 inputs:
     shear_mask_full: /pscratch/sd/e/esheldon/lsst-mdet-runs/run-dp2-v01.1/run-dp2-v01.1-footprint-2026-09-24.hsp
-    shear_mask_wide: /pscratch/sd/e/esheldon/lsst-mdet-runs/run-dp2-v01.1/run-dp2-v01.1-wide-footprint-2026-09-24.hsp
-    shear_mask_deep: /pscratch/sd/e/esheldon/lsst-mdet-runs/run-dp2-v01.1/run-dp2-v01.1-deep-footprint-2026-09-24.hsp
+    shear_mask_wide: /global/cfs/projectdirs/lsst/groups/PO/users/esheldon/desc-mdet/lsst-mdet-runs/run-dp2-v01.1/run-dp2-v01.1-wide-footprint-2026-11-18.hsp
+    shear_mask_deep: /global/cfs/projectdirs/lsst/groups/PO/users/esheldon/desc-mdet/lsst-mdet-runs/run-dp2-v01.1/run-dp2-v01.1-deep-footprint-2026-11-18.hsp
 
 resume: true
 log_dir: data/dp2/logs
