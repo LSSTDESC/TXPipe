@@ -47,6 +47,8 @@ index    source_index              1D int64    The row of this galaxy in the ori
 index    distance_arcmin           1D float64  The distance from the cluster center to this galaxy in arcminutes.
 =======  ========================  ==========  =========
 
+With `variant_pairs`, the file also has the groups `catalog_<v>` and `index_<v>`, with the same columns, for each sheared version `v` of the shear catalog (1p, 1m, 2p, 2m). The pairs of a version are found with its own positions, cuts, tomographic bin and redshift, and are only used by `CLClusterShearCalibrator`, for the selection response.
+
 
 Cluster Shear Response
 ----------------------

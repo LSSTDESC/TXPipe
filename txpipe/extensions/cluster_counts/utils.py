@@ -1,6 +1,6 @@
 import numpy as np
 
-def iterate_source_catalog(stage, redshift_type, read_selection=False, read_tomo_bin=False):
+def iterate_source_catalog(stage, redshift_type, read_selection=False, read_tomo_bin=False, version=None):
     """
     Iterate through the shear catalog, loading the locations
     of them and whether they are assigned to any tomographic bin.
@@ -21,6 +21,13 @@ def iterate_source_catalog(stage, redshift_type, read_selection=False, read_tomo
     With read_selection, each chunk also has "selection" (whether the object passes
     the cuts in shear_selection), and with read_tomo_bin it has "bin" (its bin in
     shear_tomography_catalog, -1 if it is in none).
+
+    version is None for the main catalog (ns for metadetect), or a sheared version of it
+    (see CLClusterSourceSelect.sheared_versions), with the prefix and suffix of its columns
+    and its bin column in shear_bin_assignments. For a version only the positions are read
+    from the shear catalog, with its own selection, its own bin (from shear_bin_assignments,
+    -1 if it is in none) and its own catalog_redshift column. The photo-z of
+    source_photoz_pdfs and the true redshift are those of the rows of the main catalog.
     """
     rows = stage.config["chunk_rows"]
     use_true_shear = stage.config["use_true_shear"]
@@ -30,6 +37,17 @@ def iterate_source_catalog(stage, redshift_type, read_selection=False, read_tomo
         shear_group = "shear"
         shear_cols, rename = f.get_primary_catalog_names(true_shear=use_true_shear)
         prefix = f.get_primary_catalog_prefix()
+    suffix = ""
+    # where to read the tomographic bin
+    tomo_bin_info = ["shear_tomography_catalog", "tomography", ["bin"]]
+    tomo_bin_rename = {}
+    if version is not None:
+        # a sheared version: its own positions, cuts, bin and redshift
+        prefix, suffix = version["prefix"], version["suffix"]
+        shear_cols = [f"{prefix}ra", f"{prefix}dec"]
+        rename = {col: col[len(prefix):] for col in shear_cols}
+        tomo_bin_info = ["shear_bin_assignments", "/", [version["bin"]]]
+        tomo_bin_rename = {version["bin"]: "bin"}
 
 
     ##########################
@@ -53,8 +71,7 @@ def iterate_source_catalog(stage, redshift_type, read_selection=False, read_tomo
         # where and what to read from the tomography catalog.
         # We just want the values from the source bin. We will use
         # any selected object, so we just ask for bin >= 0.
-        z_info += ["shear_tomography_catalog", "tomography", ["bin"]]
-
+        # The bin is read below
         with stage.open_input("shear_tomography_catalog") as f:
             tomo_attrs = f["tomography"].attrs
             additional_data_info["tomo_bin_edges"] = np.array(
@@ -87,20 +104,21 @@ def iterate_source_catalog(stage, redshift_type, read_selection=False, read_tomo
 
     # a redshift that comes with the shear catalog
     elif redshift_type == "catalog_redshift":
-        col = f"{prefix}{stage.config['catalog_redshift_column']}"
+        col = f"{prefix}{stage.config['catalog_redshift_column']}{suffix}"
         shear_cols.append(col)
         rename[col] = "redshift"
     else:
         raise ValueError(f"redshift_type={redshift_type} not valid!")
 
-    if read_tomo_bin and redshift_type != "tomo_bins":
-        z_info += ["shear_tomography_catalog", "tomography", ["bin"]]
+    if read_tomo_bin or redshift_type == "tomo_bins":
+        z_info += tomo_bin_info
+        rename.update(tomo_bin_rename)
 
     # The selection file has the groups of the shear catalog,
-    # e.g. ns/selection for metadetect
+    # e.g. ns/selection for metadetect, and the suffixes of its versions, e.g. selection_1p
     if read_selection:
-        z_info += ["shear_selection", "shear", [f"{prefix}selection"]]
-        rename[f"{prefix}selection"] = "selection"
+        z_info += ["shear_selection", "shear", [f"{prefix}selection{suffix}"]]
+        rename[f"{prefix}selection{suffix}"] = "selection"
 
 
     # Loop through all these input files simultaneously.
