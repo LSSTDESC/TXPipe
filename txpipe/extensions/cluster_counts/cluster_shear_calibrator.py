@@ -72,7 +72,6 @@ class CLClusterShearCalibrator(PipelineStage):
         # require_tomo_bin option of CLClusterSourceSelect, are in a tomographic bin
         with self.open_input("cluster_shear_selection") as f:
             self.require_tomo_bin = yaml.safe_load(str(f["provenance"].attrs["config/require_tomo_bin"]))
-        self.rng = np.random.default_rng(self.config["bootstrap_seed"])
         with self.open_input("cluster_catalog_tomography") as f:
             bin_names = list(f["cluster_bin"].keys())
 
@@ -212,15 +211,18 @@ class CLClusterShearCalibrator(PipelineStage):
         replacement. A cluster drawn n times brings all its pairs n times, so the scatter
         between clusters and the sources shared by several clusters are included.
         row_clusters gives the cluster of each row of each array of data.
+        Each stack (and radial bin) starts from bootstrap_seed, so its error does not depend
+        on the other stacks. There is no error (None) with fewer than two clusters with sources.
         """
         n_bootstrap = self.config["n_bootstrap"]
-        if n_bootstrap == 0:
+        if n_bootstrap == 0 or np.unique(np.concatenate(list(row_clusters.values()))).size < 2:
             return None
+        rng = np.random.default_rng(self.config["bootstrap_seed"])
         cluster_ids = np.sort(np.asarray(cluster_ids))
         position = {key: np.searchsorted(cluster_ids, c) for key, c in row_clusters.items()}
         R = []
         for b in range(n_bootstrap):
-            draws = np.bincount(self.rng.integers(len(cluster_ids), size=len(cluster_ids)),
+            draws = np.bincount(rng.integers(len(cluster_ids), size=len(cluster_ids)),
                                 minlength=len(cluster_ids))
             resampled = {key: np.repeat(values, draws[position[key]]) for key, values in data.items()}
             calculator = make_calculator()
