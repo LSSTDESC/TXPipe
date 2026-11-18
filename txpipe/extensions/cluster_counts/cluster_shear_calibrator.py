@@ -151,8 +151,10 @@ class CLClusterShearCalibrator(PipelineStage):
                 else:
                     cat["distance"] = cat["distance_arcmin"]
 
-                # bin i is [edge_i, edge_i+1), sources outside the edges get -1
+                # bin i is [edge_i, edge_i+1), and the last one includes r_max, as in CLMM.
+                # Sources outside the edges get -1
                 radial_bin = np.digitize(cat["distance"], self.distance_bins) - 1
+                radial_bin[np.asarray(cat["distance"]) == self.distance_bins[-1]] = nbins - 1
                 radial_bin[(radial_bin >= nbins)] = -1
                 cat["radial_bin"] = radial_bin
                 sources.append(cat)
