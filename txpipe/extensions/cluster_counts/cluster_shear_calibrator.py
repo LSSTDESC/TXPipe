@@ -21,6 +21,8 @@ class CLClusterShearCalibrator(PipelineStage):
     The response is the plain mean over the pairs (uniform weights).
     """
     name = "CLClusterShearCalibrator"
+    # The response is computed in one process
+    parallel = False
     inputs = [
         ("cluster_catalog_tomography", HDFFile),
         ("cluster_shear_selection", HDFFile),
