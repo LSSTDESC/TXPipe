@@ -30,7 +30,7 @@ stages:
 #      nprocess: 1
   - name: CLClusterBinningRedshiftRichness
     nprocess: 1
-  - name: CLClusterShearCatalogs
+  - name: CLClusterSourceSelect
     nprocess: 1
   - name: CLClusterEnsembleProfiles
     nprocess: 1

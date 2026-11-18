@@ -2,7 +2,7 @@ import os
 import gc
 import numpy as np
 from ...base_stage import PipelineStage
-from .sources_select_compute import CLClusterShearCatalogs
+from .sources_select import CLClusterSourceSelect
 from ...data_types import ShearCatalog, HDFFile, PhotozPDFFile, FiducialCosmology, TomographyCatalog, PickleFile
 from .utils import iterate_source_catalog
 from ...calibration.calibration_utils import Calibrator, MetaDetectCalibrator, ScalarMetaDetectCalibrator, AnaCalibrator
@@ -12,14 +12,14 @@ import ceci
 import pickle
 import warnings
 
-class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
+class CLClusterEnsembleProfiles(CLClusterSourceSelect):
     """Compute stacked radial shear profiles of ensembles of clusters.
 
     For each redshift/richness bin of clusters, computes the tangential and cross shear profile
     of each cluster, using CLMM, and stacks them. Clusters with no background sources are
     skipped, and ensembles with fewer than two usable clusters are not stacked.
 
-    The sources of each cluster are its pairs from CLClusterShearCatalogs. Their shears are
+    The sources of each cluster are its pairs from CLClusterSourceSelect. Their shears are
     calibrated with the calibration of the whole source sample in shear_tomography_catalog
     (shear_calibration "global"), with the response of the sources of their stack from
     CLClusterShearCalibrator in cluster_shear_response ("cluster"), or not at all ("none"),
@@ -431,11 +431,11 @@ class CLClusterEnsembleProfiles(CLClusterShearCatalogs):
                     bin_units, 
                     bins=self.distance_bins,
                     cosmo=self.clmm_cosmo, 
-                    tan_component_in = "tangential_comp_clmm", # name given in the CLClusterShearCatalogs stage
-                    cross_component_in = "cross_comp_clmm", # name given in the CLClusterShearCatalogs stage
+                    tan_component_in = "tangential_comp_clmm", # name given in galcat above
+                    cross_component_in = "cross_comp_clmm", # name given in galcat above
                     tan_component_out = "tangential_comp",
                     cross_component_out = "cross_comp",
-                    weights_in = "weight_clmm", # name given in the CLClusterShearCatalogs stage
+                    weights_in = "weight_clmm", # name given in galcat above
                     weights_out = "W_l",
                     include_empty_bins = True ,
                     use_weights=True

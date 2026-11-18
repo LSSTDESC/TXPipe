@@ -64,7 +64,7 @@ CLClusterBinningRedshiftRichness:
     zedge: [0.2, 0.4, 0.6, 0.8]
     richedge: [5., 10., 100.]
 
-CLClusterShearCatalogs:
+CLClusterSourceSelect:
     chunk_rows: 100_000  # rows to read at once from source cat
     max_radius: 5   # Mpc
     delta_z: 0.2   # redshift buffer

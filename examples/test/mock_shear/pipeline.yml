@@ -9,7 +9,7 @@ stages:
   - name: TXMockTruthPZ            # Generate PDFs as narrow gaussian centered on the true redshifts
     aliases:
         photoz_pdfs: source_photoz_pdfs
-  - name: CLClusterShearCatalogs   # Extract and weight the shear catalog around every cluster
+  - name: CLClusterSourceSelect   # Find the background sources of every cluster
 
 
 
