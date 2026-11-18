@@ -6,7 +6,7 @@ from .utils import iterate_source_catalog
 import yaml
 import warnings
 
-class CLClusterShearCatalogs(PipelineStage):
+class CLClusterSourceSelect(PipelineStage):
     """Find the background sources of each cluster.
 
     The sources are the objects of the shear catalog that pass the cuts in shear_selection
@@ -17,7 +17,7 @@ class CLClusterShearCatalogs(PipelineStage):
     its distance to the cluster. source_photoz_pdfs can be "none" if the redshift cut does
     not use photo-z.
     """
-    name = "CLClusterShearCatalogs"
+    name = "CLClusterSourceSelect"
     inputs = [
         ("cluster_catalog", HDFFile),
         ("shear_catalog", ShearCatalog),
