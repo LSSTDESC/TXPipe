@@ -69,10 +69,7 @@ CLClusterSourceSelect:
     max_radius: 5   # Mpc
     delta_z: 0.2   # redshift buffer
     redshift_cut_criterion: ztrue
-    redshift_weight_criterion: ztrue
     redshift_cut_criterion_pdf_fraction: 0.9
-    subtract_mean_shear: false
-    coordinate_system: celestial #euclidean or celestial, when using shear_true we shoudl use celestial
     use_true_shear: false
 
 CLClusterEnsembleProfiles:
@@ -81,7 +78,12 @@ CLClusterEnsembleProfiles:
     r_max: 5.  #in Mpc
     nbins: 5  # number of bins
     #type of profile
-    delta_sigma_profile: true
-    shear_profile: false
+    delta_sigma: true  # delta sigma, or reduced shear if false
     magnification_profile: false
+    redshift_weight_criterion: ztrue
+    subtract_mean_shear: false
+    coordinate_system: celestial #euclidean or celestial, when using shear_true we shoudl use celestial
+    use_true_shear: false
+    shear_calibration: global  # or cluster, with the response of CLClusterShearCalibrator
+    cov_type: sample_covariance  # the clusters of the 1 deg2 field are all in one jackknife pixel
 

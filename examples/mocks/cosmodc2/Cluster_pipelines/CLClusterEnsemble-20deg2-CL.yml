@@ -16,6 +16,7 @@ launcher:
     interval: 3.0
 modules: >
     txpipe
+    txpipe.extensions
     rail.estimation.algos.bpz_lite
 
 python_paths: []
@@ -30,7 +31,7 @@ stages:
 #    - name: CLClusterBinningRedshiftRichness
 #      nprocess: 1
 #    - name: CLClusterSourceSelect
-#      nprocess: 1 #>1 does not work with mpi
+#      nprocess: 1
   - name: CLClusterEnsembleProfiles
     nprocess: 1
 #    - name: CLClusterDataVector
@@ -43,16 +44,17 @@ config: ./examples/mocks/cosmodc2/Cluster_pipelines/config-20deg2-CL.yml
 
 inputs:
     # See README for paths to download these files
-    #shear_catalog:  ./data/cosmodc2/20deg2/shear_catalog.hdf5
+    shear_catalog: ./data/cosmodc2/20deg2/shear_catalog.hdf5
     #photometry_catalog:  ./data/cosmodc2/20deg2/photometry_catalog.hdf5
     fiducial_cosmology: ./data/fiducial_cosmology.yml
     #calibration_table:  ./data/cosmodc2/20deg2/sample_cosmodc2_w10year_errors.dat
     #spectroscopic_catalog: ./data/cosmodc2/20deg2/spectroscopic_catalog.hdf5
     #cluster_catalog: ./data/cosmodc2/20deg2/cluster_catalog.hdf5
-    #shear_tomography_catalog: data/test/metadetect/outputs_metadetect/shear_tomography_catalog.hdf5
-    #source_photoz_pdfs: ./data/example/inputs/photoz_pdfs.hdf5
-    cluster_catalog_tomography: ./data/cosmodc2/20deg2/cluster_catalog_tomography.hdf5
-    cluster_shear_catalogs: ./data/cosmodc2/20deg2/cluster_shear_catalogs.hdf5
+    # made by a full run of pipeline-20deg2-CL-*.yml
+    shear_tomography_catalog: data/mocks/cosmodc2/outputs-20deg2-CL/shear_tomography_catalog.hdf5
+    source_photoz_pdfs: data/mocks/cosmodc2/outputs-20deg2-CL/source_photoz_pdfs.hdf5
+    cluster_catalog_tomography: data/mocks/cosmodc2/outputs-20deg2-CL/cluster_catalog_tomography.hdf5
+    cluster_shear_selection: data/mocks/cosmodc2/outputs-20deg2-CL/cluster_shear_selection.hdf5
     # made by CLClusterShearCalibrator, only for shear_calibration: cluster
     cluster_shear_response: none
 

@@ -40,6 +40,7 @@ BPZliteEstimator:
     bpz_ref_data_path: ./data/example/rail-bpz-inputs
     bands: [mag_r, mag_i, mag_z]
     err_bands: [mag_err_r, mag_err_i, mag_err_z]
+    filter_list: [DC2LSST_r, DC2LSST_i, DC2LSST_z]
     hdf5_groupname: shear/00
     nondetect_val: .inf
     columns_file: ./data/bpz_riz.columns
@@ -67,12 +68,8 @@ CLClusterSourceSelect:
     max_radius: 10.  # Mpc
     delta_z: 0.2   # redshift buffer
     redshift_cut_criterion: zmode
-    redshift_weight_criterion: zmode
     redshift_cut_criterion_pdf_fraction: 0.9
-    subtract_mean_shear: false
-    coordinate_system: celestial #euclidean or celestial
     use_true_shear: false
-    delta_sigma: false
 
 CLClusterEnsembleProfiles:
     #radial bin definition
@@ -80,9 +77,12 @@ CLClusterEnsembleProfiles:
     r_max: 10.  #in Mpc
     nbins: 3  # number of bins
     #type of profile
-    delta_sigma_profile: true
-    shear_profile: false
+    delta_sigma: false  # reduced shear, or delta sigma if true
     magnification_profile: false
+    redshift_weight_criterion: zmode
+    subtract_mean_shear: false
+    use_true_shear: false
+    shear_calibration: global  # or cluster, with the response of CLClusterShearCalibrator
     coordinate_system: celestial #euclidean or celestial
     bin_units: 'mpc'
 CLClusterSACC:
