@@ -14,6 +14,8 @@ def iterate_source_catalog(stage, redshift_type, read_selection=False, read_tomo
         stage.open_input("shear_catalog", wrapper=True)
     * redshift_type in ("zmode", "zmean", "zmedian", "pdf"):
         stage.open_input("source_photoz_pdfs")
+    * redshift_type == "catalog_redshift":
+        the column catalog_redshift_column of the shear catalog (e.g. mean_z for AnaCal)
     For the other options the source_photoz_pdfs input is not read and can be "none".
 
     With read_selection, each chunk also has "selection" (whether the object passes
@@ -82,6 +84,12 @@ def iterate_source_catalog(stage, redshift_type, read_selection=False, read_tomo
     elif redshift_type in ("zmode", "zmean", "zmedian"):
         z_info += ["source_photoz_pdfs", "ancil", [redshift_type]]
         rename[redshift_type] = "redshift"
+
+    # a redshift that comes with the shear catalog
+    elif redshift_type == "catalog_redshift":
+        col = f"{prefix}{stage.config['catalog_redshift_column']}"
+        shear_cols.append(col)
+        rename[col] = "redshift"
     else:
         raise ValueError(f"redshift_type={redshift_type} not valid!")
 

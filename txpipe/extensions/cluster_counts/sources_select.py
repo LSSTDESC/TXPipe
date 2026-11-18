@@ -35,12 +35,13 @@ class CLClusterSourceSelect(PipelineStage):
         "chunk_rows": 100_000,  # rows to read at once from source cat
         "max_radius": 10.0,  # Mpc
         "delta_z": 0.1,
-        "redshift_cut_criterion": "zmode",  # pdf / mean / true / median / tomo_bins
+        "redshift_cut_criterion": "zmode",  # pdf / mean / true / median / tomo_bins / catalog_redshift
         "redshift_cut_criterion_pdf_fraction": 0.9,  # pdf / mean / true / median
         "use_radius": True,
         "max_angle": 30, # arcmin
         "use_true_shear": False,
         "require_tomo_bin": True,  # sources must be in a tomographic bin (bin >= 0)
+        "catalog_redshift_column": "mean_z",  # redshift column of the shear catalog, for the catalog_redshift criterion
     }
 
     def run(self):
@@ -355,7 +356,7 @@ class CLClusterSourceSelect(PipelineStage):
             pdf_frac = pdf[:, pdf_z > cluster_z + delta_z].sum(axis=1) / pdf.sum(axis=1)
             z_good = pdf_frac > self.config["redshift_cut_criterion_pdf_fraction"]
 
-        elif redshift_cut_criterion in ["ztrue", "zmode", "zmean", "zmedian"]:
+        elif redshift_cut_criterion in ["ztrue", "zmode", "zmean", "zmedian", "catalog_redshift"]:
 
             zgal = data["redshift"][gal_index]
             z_good = zgal > cluster_z + delta_z

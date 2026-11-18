@@ -63,7 +63,8 @@ class CLClusterEnsembleProfiles(CLClusterSourceSelect):
         "use_shape_noise": False, # If True, the weights include the shape noise of the whole source sample (a constant, so the profiles do not change)
         "use_true_shear": False,
         "delta_sigma": True, # If True then we compute delta-sigma, otherwise we compute gamma
-        "redshift_weight_criterion": "zmode",  # pdf / mean / true / None
+        "redshift_weight_criterion": "zmode",  # pdf / mean / true / catalog_redshift / None
+        "catalog_redshift_column": "mean_z",  # redshift column of the shear catalog, for the catalog_redshift criterion
         "chunk_rows": 100_000,  # rows to read at once from source cat
         "shear_calibration": "global", # global (whole source sample) / cluster (each stack, from CLClusterShearCalibrator) / none
         "subtract_mean_shear": False,
@@ -293,7 +294,7 @@ class CLClusterEnsembleProfiles(CLClusterSourceSelect):
                         pzbins=pdf_z,
                         pzpdf=np.repeat(pdf_pz, 2, axis=0) if len(pdf_pz) == 1 else pdf_pz,
                         )[:len(pdf_pz)]
-        elif criterion in ["zmode", "ztrue", "zmean", "zmedian"]:
+        elif criterion in ["zmode", "ztrue", "zmean", "zmedian", "catalog_redshift"]:
             if is_deltasigma:
                 z_source = data["redshift"][index]
                 sigma_c = clmm_cosmo.eval_sigma_crit(z_cluster, z_source)
