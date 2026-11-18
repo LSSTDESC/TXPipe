@@ -3,7 +3,6 @@
 variables:
   # Cori queue submission options.
   SCHEDULER_PARAMETERS: "-C haswell -M escori -q xfer -N1 -t 01:00:00 -A m1727"
-  GIT_SUBMODULE_STRATEGY: recursive
 
 # How is this workflow triggered?
 workflow:
@@ -20,7 +19,7 @@ example:
     # Script loads desc-python Conda environment and runs tests.
     - curl -O https://portal.nersc.gov/cfs/lsst/txpipe/data/example.tar.gz
     - tar -zxvf example.tar.gz
-    - shifter --image=joezuntz/txpipe ceci examples/metadetect/pipeline.yml
+    - shifter --image=joezuntz/txpipe ceci examples/test/metadetect/pipeline.yml
     # Trigger the status repository CI workflow to report results.
     - >
       curl -X POST --fail

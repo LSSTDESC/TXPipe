@@ -1,0 +1,44 @@
+# This is a draft ingestion pipeline, for DP2. Initially intended to be run on the RSP
+stages:
+  - name: TXIngestDESCMetaDetectV1_1
+    nprocess: 64
+    aliases:
+      shear_catalog: full_shear_catalog
+{% for mask_variant in ["deep", "wide", "full"] %}
+  - name: TXIngestHealsparseMask_{{ mask_variant }}
+    classname: TXIngestHealsparseMask
+    aliases:
+      shear_mask: shear_mask_{{ mask_variant }}
+      mask: mask_{{ mask_variant }}
+
+  - name: TXCutShearCatalog_{{ mask_variant }}
+    classname: TXCutShearCatalog
+    nprocess: 64
+    aliases:
+      mask: mask_{{ mask_variant }}
+      shear_catalog: full_shear_catalog
+      cut_shear_catalog: shear_catalog_{{ mask_variant }}
+{% endfor %}
+
+output_dir: data/dp2/desc_metadetect/metadetect_desc_dp2_ingest
+
+launcher:
+    name: mini
+    interval: 1.0
+
+site:
+    name: local
+
+modules: >
+    txpipe
+
+config: examples/dp2/desc_metadetect/config_desc_metadetect_1.1.yml
+inputs:
+    shear_mask_full: /pscratch/sd/e/esheldon/lsst-mdet-runs/run-dp2-v01.1/run-dp2-v01.1-footprint-2026-09-24.hsp
+    shear_mask_wide: /global/cfs/projectdirs/lsst/groups/PO/users/esheldon/desc-mdet/lsst-mdet-runs/run-dp2-v01.1/run-dp2-v01.1-wide-footprint-2026-11-18.hsp
+    shear_mask_deep: /global/cfs/projectdirs/lsst/groups/PO/users/esheldon/desc-mdet/lsst-mdet-runs/run-dp2-v01.1/run-dp2-v01.1-deep-footprint-2026-11-18.hsp
+
+resume: true
+log_dir: data/dp2/desc_metadetect/logs
+pipeline_log: data/dp2/desc_metadetect/ingest_log.txt
+#registry: {}

@@ -7,7 +7,7 @@ Examples of both can be found in the `examples folder <https://github.com/LSSTDE
 
 .. code-block:: bash
 
-    ceci examples/metacal/pipeline.yml
+    ceci examples/test/metacal/pipeline.yml
 
 
 Pipeline files
@@ -63,13 +63,12 @@ The ``modules`` string should contain a space-separated list of packages that sh
 
     modules: txpipe
 
-The ``python_paths`` list can contain a set of paths to add to the ``PYTHONPATH`` variable so that stages can import modules from them. In TXPipe these are mostly included in the ``submodules`` directory, for example:
+The ``python_paths`` list can contain a set of paths to add to the ``PYTHONPATH`` variable so that stages can import modules from them. TXPipe's own dependencies are all installed in its environment, so this is usually empty, but it can be used to point to extra code, for example:
 
 .. code-block:: yaml
 
     python_paths:
-        - submodules/WLMassMap/python/desc/
-        - submodules/TJPCov
+        - /path/to/my/extra/code
 
 
 Restarting pipelines

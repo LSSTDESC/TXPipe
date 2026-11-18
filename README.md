@@ -12,7 +12,7 @@ Installing
 Download TXPipe like this:
 
 ```bash
-git clone --recurse-submodules https://github.com/LSSTDESC/TXPipe
+git clone https://github.com/LSSTDESC/TXPipe
 ```
 
 and then install dependencies for it with conda like this on a laptop/desktop (M1 macs are not yet supported, sorry!):
@@ -44,10 +44,12 @@ tar -zxvf example.tar.gz
 Then run a pipeline on that data:
 
 ```bash
-ceci examples/metadetect/pipeline.yml
+ceci examples/test/metadetect/pipeline.yml
 ```
 
-You can find the outputs in the directory `data/example/outputs_metadetect`
+You can find the outputs in the directory `data/test/metadetect/outputs_metadetect`
+
+Example pipelines are grouped under `examples/` into `stage3`, `desi`, `dp2`, `mocks`, `test`, `other` and `legacy`; each writes its outputs and logs to `data/<group>/<name>/`.
 
 
 Learning more

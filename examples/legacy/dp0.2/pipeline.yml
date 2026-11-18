@@ -1,0 +1,124 @@
+# Stages to run
+stages:
+#    - name: TXIngestDataPreview02
+  - name: BPZliteInformer
+    aliases:
+        input: spectroscopic_catalog
+        model: photoz_model
+  - name: BPZ_lite
+    nodes: 2
+    nprocess: 128
+    threads_per_process: 2
+    aliases:
+        model: photoz_model
+        input: photometry_catalog
+        output: photoz_pdfs
+  - name: TXShearCalibration
+    nprocess: 32
+    threads_per_process: 2
+  - name: TXMeanLensSelector
+    nprocess: 32
+    threads_per_process: 2
+    aliases:
+        lens_photoz_pdfs: photoz_pdfs
+  - name: TXLensCatalogSplitter
+    nprocess: 32
+    threads_per_process: 2
+    aliases:
+        lens_photoz_pdfs: photoz_pdfs
+  - name: TXComputeShearCalibrationHSC
+    nprocess: 32
+    threads_per_process: 2
+  - name: TXHSCSelection
+  - name: TXApplyRandomForestSourceTomography
+  - name: TXTrainRandomForestTomography
+    threads_per_process: 4
+  - name: TXPhotozSourceStack
+    nprocess: 32
+    threads_per_process: 2
+    aliases:
+        source_photoz_pdfs: photoz_pdfs
+  - name: TXPhotozLensStack
+    nprocess: 32
+    threads_per_process: 2
+    aliases:
+        lens_photoz_pdfs: photoz_pdfs
+  - name: TXSourceMaps
+    nprocess: 8
+    threads_per_process: 8
+  - name: TXLensMaps
+    nprocess: 8
+    threads_per_process: 8
+  - name: TXPSFMaps    # make PSF maps
+  - name: TXFlagMaps
+    nprocess: 8
+    threads_per_process: 8
+  - name: TXDepthMaps      # make depth and bright object maps
+    nprocess: 8
+    threads_per_process: 8
+  - name: TXBrightObjectMaps      # make depth and bright object maps
+    nprocess: 8
+    threads_per_process: 8
+  - name: TXSimpleMask           # combine maps to make a simple mask
+  - name: TXTracerMetadata       # collate metadata
+  - name: TXRandomCat            # generate lens bin random catalogs
+    nprocess: 32
+    threads_per_process: 1
+    aliases:
+        lens_photoz_pdfs: photoz_pdfs
+  - name: TXJackknifeCenters     # Split the area into jackknife regions
+  - name: TXTwoPoint             # Compute real-space 2-point correlations
+    nprocess: 16
+    threads_per_process: 64
+    nodes: 8
+  - name: TXTwoPointPlotsTheory
+    aliases:
+        twopoint_data_real: summary_statistics_real
+  - name: TXTwoPointTheoryReal
+  - name: TXNullBlinding
+  - name: TXMapPlots
+  - name: TXDensityMaps
+  - name: TXRealGaussianCovariance
+    threads_per_process: 32
+  - name: TXPhotozPlot
+
+# Where to put outputs
+output_dir: data/legacy/dp0.2/outputs
+
+# How to run the pipeline: mini, parsl, or cwl
+launcher:
+    name: mini
+    interval: 1.0
+
+# Where to run the pipeline: cori-interactive, cori-batch, or local
+site:
+    name: nersc-interactive
+    image: ghcr.io/lsstdesc/txpipe-dev
+
+# modules and packages to import that have pipeline
+# stages defined in them
+modules: txpipe rail.stages
+
+# where to find any modules that are not in this repo,
+# and any other code we need.
+python_paths: []
+
+# configuration settings
+config: examples/legacy/dp0.2/config.yml
+
+
+inputs:
+    # See README for paths to download these files
+    spectroscopic_catalog: data/example/inputs/mock_spectroscopic_catalog.hdf5
+    shear_catalog: data/dp0.2/shear_catalog.hdf5
+    photometry_catalog: data/dp0.2/photometry_catalog.hdf5
+    calibration_table: data/example/inputs/sample_cosmodc2_w10year_errors.dat
+    fiducial_cosmology: data/fiducial_cosmology.yml
+
+# if supported by the launcher, restart the pipeline where it left off
+# if interrupted
+resume: true
+# where to put output logs for individual stages
+log_dir: data/legacy/dp0.2/logs
+# where to put an overall parsl pipeline log
+pipeline_log: data/legacy/dp0.2/log.txt
