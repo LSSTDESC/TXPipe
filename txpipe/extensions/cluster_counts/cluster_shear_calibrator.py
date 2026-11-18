@@ -13,7 +13,7 @@ class CLClusterShearCalibrator(PipelineStage):
 
     Only the response is computed and saved: the full R of each stack, its bootstrap error,
     and the radial bins they were computed in. This stage is optional:
-    CLClusterEnsembleProfiles with shear_calibration "cluster" calibrates the
+    CLClusterEnsembleProfiles with shear_calibration "cluster_stack" calibrates the
     shears of the sources of each stack with its R (per radial bin with radial_calibration,
     as in Zhou et al. 2026, arXiv:2606.21141, Eq. 23, where the response changes with radius
     because of the magnification of the sources).

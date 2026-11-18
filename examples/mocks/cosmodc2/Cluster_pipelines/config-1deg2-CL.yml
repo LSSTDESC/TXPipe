@@ -84,6 +84,6 @@ CLClusterEnsembleProfiles:
     subtract_mean_shear: false
     coordinate_system: celestial #euclidean or celestial, when using shear_true we shoudl use celestial
     use_true_shear: false
-    shear_calibration: global  # or cluster, with the response of CLClusterShearCalibrator
+    shear_calibration: global  # or cluster_stack, with the response of CLClusterShearCalibrator
     cov_type: sample_covariance  # the clusters of the 1 deg2 field are all in one jackknife pixel
 

@@ -65,7 +65,7 @@ CLClusterEnsembleProfiles:
     r_max: 4.5
     nbins: 4
     bin_units: mpc
-    shear_calibration: cluster      # the response of each stack (and radial bin)
+    shear_calibration: cluster_stack      # the response of each stack (and radial bin)
     redshift_weight_criterion: catalog_redshift
     catalog_redshift_column: mean_z
     subtract_mean_shear: false

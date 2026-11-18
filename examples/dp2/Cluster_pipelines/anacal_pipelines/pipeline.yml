@@ -2,7 +2,7 @@
 # calibration, cluster binning, cluster-source pairs of the catalogue and of its
 # sheared versions (with their own mean_z), the shear response of each stack and
 # radial bin (CLClusterShearCalibrator) and the profiles calibrated with it
-# (CLClusterEnsembleProfiles, shear_calibration: cluster).
+# (CLClusterEnsembleProfiles, shear_calibration: cluster_stack).
 # Same structure as Kabelo's pipeline-dp2-CL-rubin-nersc.yml for metadetect.
 # From the TXPipe directory:
 #     sbatch examples/dp2/Cluster_pipelines/anacal_pipelines/pipeline.sub

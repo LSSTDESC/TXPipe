@@ -57,7 +57,7 @@ inputs:
     # the bins of the sheared versions, only for variant_pairs of CLClusterSourceSelect
     shear_bin_assignments: none
     source_photoz_pdfs: ./data/example/inputs/photoz_pdfs.hdf5
-    # made by CLClusterShearCalibrator, only for shear_calibration: cluster
+    # made by CLClusterShearCalibrator, only for shear_calibration: cluster_stack
     cluster_shear_response: none
 resume: true
 log_dir: data/mocks/cosmodc2/logs

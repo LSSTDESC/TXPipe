@@ -53,7 +53,7 @@ With `variant_pairs`, the file also has the groups `catalog_<v>` and `index_<v>`
 Cluster Shear Response
 ----------------------
 
-The cluster shear response file (`cluster_shear_response`) is generated in the optional `CLClusterShearCalibrator` stage. It has the shear response of the background sources of each cluster stack (a redshift and richness bin of `cluster_catalog_tomography`), from their pairs in `cluster_shear_selection` within the radial range of the stage. `CLClusterEnsembleProfiles` applies it with `shear_calibration: cluster`.
+The cluster shear response file (`cluster_shear_response`) is generated in the optional `CLClusterShearCalibrator` stage. It has the shear response of the background sources of each cluster stack (a redshift and richness bin of `cluster_catalog_tomography`), from their pairs in `cluster_shear_selection` within the radial range of the stage. `CLClusterEnsembleProfiles` applies it with `shear_calibration: cluster_stack`.
 
 The response is a 2x2 matrix for metadetect, and a single value for scalar metadetect and AnaCal. With `radial_calibration`, there is one response for each radial bin of the stack (first axis), NaN for the radial bins without sources.
 
