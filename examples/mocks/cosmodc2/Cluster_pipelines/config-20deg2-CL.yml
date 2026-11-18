@@ -82,7 +82,7 @@ CLClusterEnsembleProfiles:
     redshift_weight_criterion: zmode
     subtract_mean_shear: false
     use_true_shear: false
-    shear_calibration: global  # or cluster, with the response of CLClusterShearCalibrator
+    shear_calibration: global  # or cluster_stack, with the response of CLClusterShearCalibrator
     coordinate_system: celestial #euclidean or celestial
     bin_units: 'mpc'
 CLClusterSACC:
