@@ -80,15 +80,13 @@ class CLClusterShearCalibrator(PipelineStage):
         self.stacks_without_sources = []
         for bin_name in bin_names:
             clusters, sources = self.load_cluster_bin_sources(bin_name)
-            if len(sources) == 0:
-                print(f"{bin_name}: {len(clusters)} clusters, no sources")
-                self.stacks_without_sources.append(bin_name)
-                continue
             # Only the sources that enter the profile are used
-            sources = sources[sources["radial_bin"] >= 0]
+            if len(sources) > 0:
+                sources = sources[sources["radial_bin"] >= 0]
             if len(sources) == 0:
                 print(f"{bin_name}: {len(clusters)} clusters, no sources in [r_min, r_max]")
                 self.stacks_without_sources.append(bin_name)
+                stacks.append((bin_name, clusters, sources, None, None))
                 continue
             counts = np.bincount(sources["radial_bin"], minlength=self.config["nbins"])
             print(f"{bin_name}: {len(clusters)} clusters, {len(sources)} sources, per radial bin {counts}")
@@ -370,7 +368,9 @@ class CLClusterShearCalibrator(PipelineStage):
         - R and its bootstrap error R_err (NaN without bootstrap): with radial_calibration,
           one row per radial bin (NaN where the radial bin has no sources), otherwise those
           of the stack
+        - cluster_id: the clusters of the stack, so that the next stage can check its binning
         - attributes: the numbers of clusters and sources, and the bin edges of the stack
+        A stack without sources has no R and R_err.
         The radial bins and the options used are attributes of the calibration group,
         so that the next stage can check they are the same as its own.
         """
@@ -385,18 +385,22 @@ class CLClusterShearCalibrator(PipelineStage):
         calibration.attrs["stacks_without_sources"] = np.array(self.stacks_without_sources, dtype="S")
 
         for bin_name, clusters, sources, calibrators, errors in stacks:
+            g = calibration.create_group(bin_name)
+            g.create_dataset("cluster_id", data=np.asarray(clusters["cluster_id"]))
+            g.attrs["n_clusters"] = len(clusters)
+            g.attrs["n_sources"] = len(sources)
+            radial_bins = sources["radial_bin"] if len(sources) > 0 else np.zeros(0, dtype=int)
+            g.attrs["n_sources_per_radial_bin"] = np.bincount(radial_bins, minlength=len(self.distance_bins) - 1)
+            g.attrs.update(clusters.meta)
+            if calibrators is None:
+                continue
             ref = next(c for c in calibrators if c is not None)
             nan = np.full(np.atleast_1d(ref.R).shape, np.nan)
             R = [nan if c is None else np.atleast_1d(c.R) for c in calibrators]
             R_err = [nan if e is None else e for e in errors]
             if not self.config["radial_calibration"]:
                 R, R_err = R[0], R_err[0]
-            g = calibration.create_group(bin_name)
             g.create_dataset("R", data=np.array(R))
             g.create_dataset("R_err", data=np.array(R_err))
-            g.attrs["n_clusters"] = len(clusters)
-            g.attrs["n_sources"] = len(sources)
-            g.attrs["n_sources_per_radial_bin"] = np.bincount(sources["radial_bin"], minlength=len(self.distance_bins) - 1)
-            g.attrs.update(clusters.meta)
 
         f.close()

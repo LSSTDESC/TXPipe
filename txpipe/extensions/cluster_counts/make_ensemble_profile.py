@@ -134,6 +134,8 @@ class CLClusterEnsembleProfiles(CLClusterSourceSelect):
             calibrators = {}
             with self.open_input("cluster_shear_response") as f:
                 g = f["calibration"]
+                if g.attrs["catalog_type"] != catalog_type:
+                    raise ValueError(f"cluster_shear_response was made for a {g.attrs['catalog_type']} catalog, not {catalog_type}")
                 radial_calibration = bool(g.attrs["radial_calibration"])
                 if (g.attrs["bin_units"] != self.config["bin_units"].lower() or len(g.attrs["distance_bins"]) != len(self.distance_bins)
                         or not np.allclose(g.attrs["distance_bins"], self.distance_bins)):
@@ -141,13 +143,13 @@ class CLClusterEnsembleProfiles(CLClusterSourceSelect):
                                      f"are not those of the profiles ({self.distance_bins} {self.config['bin_units']})")
                 stacks_without_sources = [name.decode() for name in g.attrs["stacks_without_sources"]]
                 for bin_key, cluster_list in clusters_in_bins.items():
+                    if bin_key not in g or not np.array_equal(np.sort(g[bin_key]["cluster_id"][:]), np.sort(np.asarray(cluster_list["id"]))):
+                        raise ValueError(f"cluster_shear_response was made with another cluster binning ({bin_key})")
                     # The calibrator gives no response to a stack without sources in the radial bins
                     if bin_key in stacks_without_sources:
                         print(f"    {bin_key} has no sources in the radial bins and no response")
                         calibrators[bin_key] = None
                         continue
-                    if bin_key not in g or g[bin_key].attrs["n_clusters"] != len(cluster_list):
-                        raise ValueError(f"cluster_shear_response was made with another cluster binning ({bin_key})")
                     R = g[bin_key]["R"][:]
                     calibrators[bin_key] = [calibrator_class(np.squeeze(r), np.zeros(2)) for r in (R if radial_calibration else [R])]
         elif shear_calibration == "none":

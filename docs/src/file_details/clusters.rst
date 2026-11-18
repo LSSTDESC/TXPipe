@@ -64,6 +64,7 @@ calibration                  distance_bins             attribute    The edges of
 calibration                  bin_units                 attribute    The units of the radial bins, mpc or arcmin.
 calibration                  n_bootstrap               attribute    The number of bootstrap resamplings of the clusters for the errors.
 calibration                  stacks_without_sources    attribute    The stacks with no sources in the radial range, which have no response.
+calibration/<stack>          cluster_id                int64        The clusters of the stack, to check the binning of the next stage.
 calibration/<stack>          R                         float64      The response of the stack.
 calibration/<stack>          R_err                     float64      Its bootstrap error (NaN without bootstrap).
 calibration/<stack>          n_clusters                attribute    The number of clusters in the stack.
@@ -71,4 +72,4 @@ calibration/<stack>          n_sources                 attribute    The number o
 calibration/<stack>          n_sources_per_radial_bin  attribute    The number of pairs in each radial bin.
 ===========================  ========================  ===========  =========
 
-Each `calibration/<stack>` group also has the attributes of the stack in `cluster_catalog_tomography` (its redshift and richness edges).
+Each `calibration/<stack>` group also has the attributes of the stack in `cluster_catalog_tomography` (its redshift and richness edges). A stack without sources has no `R` and `R_err`.
