@@ -18,10 +18,11 @@ class CLClusterSourceSelect(PipelineStage):
     not use photo-z.
 
     With variant_pairs, it also finds the pairs of each sheared version of the catalog
-    (1p, 1m, 2p, 2m), with the positions, cuts, tomographic bin (from shear_bin_assignments)
+    (1p, 1m, 2p, 2m, or 1p, 1m for scalar metadetect), with the positions, cuts, tomographic bin (from shear_bin_assignments)
     and redshift of that version, so that CLClusterShearCalibrator has every galaxy of each
     version for the selection response. The profiles only use the pairs of the main catalog.
-    shear_bin_assignments can be "none" without variant_pairs.
+    shear_bin_assignments can be "none" unless variant_pairs needs the bins of the
+    sheared versions (require_tomo_bin or tomo_bins).
     """
     name = "CLClusterSourceSelect"
     inputs = [
