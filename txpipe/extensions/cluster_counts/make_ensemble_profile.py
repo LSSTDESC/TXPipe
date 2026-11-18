@@ -151,6 +151,14 @@ class CLClusterEnsembleProfiles(CLClusterSourceSelect):
                         calibrators[bin_key] = None
                         continue
                     R = g[bin_key]["R"][:]
+                    # R is NaN only where the calibrator had no sources: a NaN where it had
+                    # sources (a sheared version selected none of them) cannot calibrate them
+                    n_sources = g[bin_key].attrs["n_sources_per_radial_bin"] if radial_calibration else [g[bin_key].attrs["n_sources"]]
+                    for k, (r, n) in enumerate(zip(R if radial_calibration else [R], n_sources)):
+                        if n > 0 and not np.all(np.isfinite(r)):
+                            where = f"radial bin {k} of {bin_key}" if radial_calibration else bin_key
+                            raise ValueError(f"The response of {where} is not finite (R = {np.ravel(r)}): "
+                                             f"one sheared version selects none of its sources, use fewer radial bins")
                     calibrators[bin_key] = [calibrator_class(np.squeeze(r), np.zeros(2)) for r in (R if radial_calibration else [R])]
         elif shear_calibration == "none":
             if catalog_type in ["metacal", "metadetect", "scalar_metadetect", "anacal"] and not self.config["use_true_shear"]:
