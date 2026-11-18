@@ -270,6 +270,7 @@ Diagnostics:
         - TXGammaTRandoms
         - TXApertureMass
         - TXFocalPlanePlot
+        - TXMeanShearSurveyProperties
 
 Source Injection:
     blurb: |

@@ -84,6 +84,7 @@ from .diagnostics import (
 )
 from .systematics import TXLSSWeights
 from .metadata import TXTracerMetadata
+from .survey_property_null_tests import TXMeanShearSurveyProperties
 from .ingest import *
 
 # We no longer import all the extensions automatically here to avoid
