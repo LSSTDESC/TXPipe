@@ -1,7 +1,8 @@
 # DP2 cluster weak lensing with the AnaCal shear catalogue: shear selection and
-# calibration, BPZ photo-z, cluster binning, cluster-source pairs, the shear
-# response of each stack and radial bin (CLClusterShearCalibrator) and the
-# profiles calibrated with it (CLClusterEnsembleProfiles, shear_calibration: cluster).
+# calibration, cluster binning, cluster-source pairs of the catalogue and of its
+# sheared versions (with their own mean_z), the shear response of each stack and
+# radial bin (CLClusterShearCalibrator) and the profiles calibrated with it
+# (CLClusterEnsembleProfiles, shear_calibration: cluster).
 # Same structure as Kabelo's pipeline-dp2-CL-rubin-nersc.yml for metadetect.
 # From the TXPipe directory:
 #     sbatch examples/dp2/Cluster_pipelines/anacal_pipelines/pipeline.sub
@@ -16,7 +17,6 @@ launcher:
 modules: >
     txpipe
     txpipe.extensions
-    rail.estimation.algos.bpz_lite
 
 python_paths: []
 
@@ -32,20 +32,9 @@ stages:
     nprocess: 64
   - name: TXComputeShearCalibrationAnacal    # AnaCal response of the source sample
     nprocess: 64
-  - name: BPZliteInformer          # uses the HDFN prior
-    nprocess: 1
-    aliases:
-      input: spectroscopic_catalog
-      model: source_photoz_model
-  - name: BPZliteEstimator         # per-object p(z), zmode for the background cut
-    nprocess: 64
-    aliases:
-      model: source_photoz_model
-      input: shear_catalog
-      output: source_photoz_pdfs
   - name: CLClusterBinningRedshiftRichness
     nprocess: 1
-  - name: CLClusterSourceSelect
+  - name: CLClusterSourceSelect    # pairs of the catalogue and of each sheared version
     nprocess: 1
   - name: CLClusterShearCalibrator # R of each stack, and of each radial bin with radial_calibration
     nprocess: 1
@@ -62,7 +51,8 @@ inputs:
         id: 324                    # txpipe_dp2_anacal_mask_wide 0.1.0, already a TXPipe mask
     cluster_catalog:
         id: 327                    # external_0723_x_dp2_clusters 0.1.0
-    spectroscopic_catalog: /global/cfs/cdirs/m1727/kabelo/TXPipe/data/example/outputs_metadetect/spectroscopic_catalog.hdf5
+    # the redshifts are the mean_z of the shear catalogue
+    source_photoz_pdfs: none
     fiducial_cosmology: ./data/fiducial_cosmology.yml
 
 registry: {}

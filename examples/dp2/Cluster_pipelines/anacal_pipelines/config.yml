@@ -1,5 +1,5 @@
 # Config of pipeline.yml. The shear stages follow examples/dp2/anacal_config.yml,
-# the photo-z and cluster stages follow Kabelo's config-dp2-CL.yml.
+# the cluster stages follow Kabelo's config-dp2-CL.yml.
 
 global:
     chunk_rows: 1000000
@@ -39,39 +39,6 @@ TXComputeShearCalibrationAnacal:
     delta_gamma: 0.01
     chunk_rows: 100000
 
-BPZliteInformer:
-    zmin: 0.0
-    zmax: 3.0
-    nzbins: 61
-    bpz_ref_data_path: /global/cfs/cdirs/m1727/kabelo/TXPipe/data/example/rail-bpz-inputs
-    spectra_file: CWWSB4.list
-    ref_band: i
-    bands: [r, i, z]
-    hdf5_groupname: photometry
-
-BPZliteEstimator:
-    zmin: 0.0
-    zmax: 3.0
-    dz: 0.05
-    nzbins: 61
-    bpz_ref_data_path: /global/cfs/cdirs/m1727/kabelo/TXPipe/data/example/rail-bpz-inputs
-    bands: [mag_r, mag_i, mag_z]
-    err_bands: [mag_err_r, mag_err_i, mag_err_z]
-    filter_list: [DC2LSST_r, DC2LSST_i, DC2LSST_z]
-    hdf5_groupname: shear           # AnaCal keeps the magnitudes in the shear group
-    nondetect_val: .inf
-    spectra_file: CWWSB4.list
-    ref_band: mag_i
-    p_min: 0.005
-    gauss_kernel: 0.0
-    zp_errors: [0.01, 0.01, 0.01]
-    mag_err_min: 0.005
-    madau_flag: "no"
-    mag_limits:
-        mag_r: 29.06
-        mag_i: 28.62
-        mag_z: 27.98
-
 CLClusterBinningRedshiftRichness:
     zedge: [0.2, 0.4, 0.6, 0.8]
     richedge: [20., 35., 70., 100.]   # as cosmoDC2 redMaPPer, up to 100
@@ -80,9 +47,10 @@ CLClusterSourceSelect:
     use_radius: true
     max_radius: 5.0                 # Mpc
     delta_z: 0.2
-    redshift_cut_criterion: zmode
-    redshift_cut_criterion_pdf_fraction: 0.9
+    redshift_cut_criterion: catalog_redshift   # mean_z, and mean_z_1p... for the sheared versions
+    catalog_redshift_column: mean_z
     use_true_shear: false
+    variant_pairs: true             # the pairs of each sheared version, for the selection response
 
 CLClusterShearCalibrator:
     r_min: 0.2                      # Mpc, the radial bins of Kabelo's DeltaSigma profiles
@@ -98,7 +66,8 @@ CLClusterEnsembleProfiles:
     nbins: 4
     bin_units: mpc
     shear_calibration: cluster      # the response of each stack (and radial bin)
-    redshift_weight_criterion: zmode
+    redshift_weight_criterion: catalog_redshift
+    catalog_redshift_column: mean_z
     subtract_mean_shear: false
     coordinate_system: euclidean    # as in Kabelo's DP2 config
     use_true_shear: false
