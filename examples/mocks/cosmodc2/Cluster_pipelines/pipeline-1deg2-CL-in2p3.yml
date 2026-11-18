@@ -54,6 +54,8 @@ inputs:
     # made by the metadetect test pipeline, examples/test/metadetect/pipeline.yml
     shear_selection: data/test/metadetect/outputs_metadetect/shear_selection.hdf5
     shear_tomography_catalog: data/test/metadetect/outputs_metadetect/shear_tomography_catalog.hdf5
+    # the bins of the sheared versions, only for variant_pairs of CLClusterSourceSelect
+    shear_bin_assignments: none
     source_photoz_pdfs: ./data/example/inputs/photoz_pdfs.hdf5
     # made by CLClusterShearCalibrator, only for shear_calibration: cluster
     cluster_shear_response: none
