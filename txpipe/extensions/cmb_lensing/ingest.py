@@ -20,9 +20,10 @@ class TXIngestPlanckLensingMaps(PipelineStage):
         ("cmb_lensing_map", MapsFile),
     ]
     config_options = {
-        "alm_file": str,
+        "kappa_file": str,
         "mask_file": str,
         "nside": 512,
+        "experiment": "Planck",
     }
 
     def run(self):
@@ -47,26 +48,35 @@ class TXIngestPlanckLensingMaps(PipelineStage):
     def ingest_kappa(self):
         import healpy as hp
 
-        alm_file = self.config["alm_file"]
         nside = self.config["nside"]
 
-        # Read in the CMB lensing alms
-        alms, lmax = hp.read_alm(alm_file, return_mmax=True)
+        if self.config['experiment'] == 'Planck':
+            alm_file = self.config["kappa_file"]
 
-        # correct for the monopole
-        alms[0] = 0 + 0j
+            # Read in the CMB lensing alms
+            alms, lmax = hp.read_alm(alm_file, return_mmax=True)
 
-        # Rotate from Galactic to Celestial coordinates
-        rot = hp.Rotator(coord=["G", "C"])
-        alms = rot.rotate_alm(alms)
+            # correct for the monopole
+            alms[0] = 0 + 0j
 
-        # Low-pass filter: remove power above ell = 3 * Nside
-        fl = np.ones(lmax + 1)
-        fl[3 * nside :] = 0
-        alms = hp.almxfl(alms, fl, inplace=True)
+            # Rotate from Galactic to Celestial coordinates
+            rot = hp.Rotator(coord=["G", "C"])
+            alms = rot.rotate_alm(alms)
 
-        # convert to map space
-        kappa = hp.alm2map(alms, nside)
+            # Low-pass filter: remove power above ell = 3 * Nside
+            fl = np.ones(lmax + 1)
+            fl[3 * nside :] = 0
+            alms = hp.almxfl(alms, fl, inplace=True)
+
+            # convert to map space
+            kappa = hp.alm2map(alms, nside)
+
+        else:
+            kappa_file = self.config["kappa_file"]
+            kappa = hp.read_map(kappa_file)
+
+            kappa = hp.ud_grade(kappa, nside_out=nside)
+
         return kappa
 
     def ingest_mask(self):
