@@ -23,28 +23,26 @@ clusters    scaleval       float64
 ==========  =============  ==========  =========
 
 
-Cluster Shear Catalogs
-----------------------
+Cluster Source Selection
+------------------------
 
-The cluster shear catalog is generated in the `CLClusterShearCatalogs` stage. For each cluster, it lists the source galaxies which are nearby and behind that cluster. It records both the index into the original shear catalog, and the shear values rotated into the cluster frame, plus a distance from the cluster and a weight.
+The cluster source selection file (`cluster_shear_selection`) is generated in the `CLClusterSourceSelect` stage. For each cluster, it lists the source galaxies which are nearby and behind that cluster: the index into the original shear catalog and the distance from the cluster. The shears, weights and tangential and cross components of these sources are computed by `CLClusterEnsembleProfiles`, which saves them in `cluster_source_quantities`.
 
-The cluster shear catalog structure is a little complicated - it contains a table of clusters, and for each of those clusters, and index into another table of source galaxies. The columns in the cluster shear catalog are:
+The file contains a table of clusters, and for each of those clusters, an index into another table of source galaxies. The columns are:
 
 The `catalog` group is a list of clusters, matching the order in the cluster catalog which this came from.
 
-The `index` group is a list of galaxies around clusters.
+The `index` group is a list of galaxies around clusters, sorted by cluster and, for each cluster, by their row in the shear catalog.
 
 =======  ========================  ==========  =========
 Group    Name                      Kind        Meaning
 =======  ========================  ==========  =========
 catalog  cluster_id                1D int64    The ID number from a cluster in the cluster catalog.
-catalog  cluster_sample_count      1D int32    The row in the `index` catalog where galaxies around this cluster start.
-catalog  cluster_sample_start      1D int32    The number of rows in the `index` catalog for galaxies around this cluster.
+catalog  cluster_sample_start      1D int64    The row in the `index` catalog where galaxies around this cluster start.
+catalog  cluster_sample_count      1D int64    The number of rows in the `index` catalog for galaxies around this cluster.
 catalog  cluster_theta_max_arcmin  1D float64  The maximum distance from the cluster center of included galaxies.
 index    cluster_index             1D int64    The row in the `catalog` group where the cluster this galaxy is around is.
+index    cluster_id                1D int64    The ID number of that cluster.
 index    source_index              1D int64    The row of this galaxy in the original shear catalog.
-index    cross_comp                1D float64  The cross component of the shear, rotated into the cluster frame.
-index    tangential_comp           1D float64  The tangential component of the shear, rotated into the cluster frame.
 index    distance_arcmin           1D float64  The distance from the cluster center to this galaxy in arcminutes.
-index    weight                    1D float64  The weight assigned to this galaxy for this cluster.
 =======  ========================  ==========  =========
