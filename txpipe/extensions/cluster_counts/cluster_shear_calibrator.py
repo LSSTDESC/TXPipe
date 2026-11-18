@@ -67,7 +67,7 @@ class CLClusterShearCalibrator(PipelineStage):
             self.delta_gamma = yaml.safe_load(str(f["provenance"].attrs["config/delta_gamma"]))
         print(f"Calibrating a {self.catalog_type} catalog")
         # The sources of the pairs are those that pass the selection and, with the
-        # require_tomo_bin option of CLClusterShearCatalogs, are in a tomographic bin
+        # require_tomo_bin option of CLClusterSourceSelect, are in a tomographic bin
         with self.open_input("cluster_shear_selection") as f:
             self.require_tomo_bin = yaml.safe_load(str(f["provenance"].attrs["config/require_tomo_bin"]))
         self.rng = np.random.default_rng(self.config["bootstrap_seed"])
@@ -312,7 +312,7 @@ class CLClusterShearCalibrator(PipelineStage):
         Rows of the shear catalog of a metadetect variant for the sources of one stack.
 
         ns uses the pairs of the stack. A sheared variant uses its own pairs when
-        CLClusterShearCatalogs saved them (index_<variant> group), in the same radial
+        CLClusterSourceSelect saved them (index_<variant> group), in the same radial
         bin (radial_bin), or in [r_min, r_max] when radial_bin is None. Otherwise, as a
         placeholder, it reuses the ns rows, which is only right when the variants have
         the same objects in the same rows (simulations).
@@ -335,7 +335,7 @@ class CLClusterShearCalibrator(PipelineStage):
                 keep = variant_sources["radial_bin"] == radial_bin
             return variant_sources["source_index"][keep], np.asarray(variant_sources["cluster_id"][keep])
 
-        # Placeholder until CLClusterShearCatalogs saves the pairs of each variant
+        # Placeholder until CLClusterSourceSelect saves the pairs of each variant
         if shear_file[f"shear/{variant}/g1"].size != shear_file["shear/ns/g1"].size:
             raise ValueError(f"The {variant} catalog has different objects from ns and "
                              f"cluster_shear_selection has no index_{variant} pairs")

@@ -76,7 +76,7 @@ CLClusterBinningRedshiftRichness:
     zedge: [0.2, 0.4, 0.6, 0.8]
     richedge: [20., 35., 70., 100.]   # as cosmoDC2 redMaPPer, up to 100
 
-CLClusterShearCatalogs:
+CLClusterSourceSelect:
     use_radius: true
     max_radius: 5.0                 # Mpc
     delta_z: 0.2
@@ -90,7 +90,7 @@ CLClusterShearCalibrator:
     nbins: 4
     bin_units: mpc
     radial_calibration: true
-    n_bootstrap: 100                # resamplings of the clusters for the R_T errors
+    n_bootstrap: 100                # resamplings of the clusters for the R errors
 
 CLClusterEnsembleProfiles:
     r_min: 0.2                      # the radial bins must be those of CLClusterShearCalibrator

@@ -45,9 +45,9 @@ stages:
       output: source_photoz_pdfs
   - name: CLClusterBinningRedshiftRichness
     nprocess: 1
-  - name: CLClusterShearCatalogs
+  - name: CLClusterSourceSelect
     nprocess: 1
-  - name: CLClusterShearCalibrator # R and R_T of each stack and radial bin
+  - name: CLClusterShearCalibrator # R of each stack, and of each radial bin with radial_calibration
     nprocess: 1
   - name: CLClusterEnsembleProfiles
     nprocess: 1
