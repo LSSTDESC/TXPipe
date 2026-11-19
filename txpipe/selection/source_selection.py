@@ -1,3 +1,5 @@
+import sys
+
 import numpy as np
 from ..calibration.calibration_utils.names import META_VARIANTS, SCALAR_META_VARIANTS, metacal_variants, band_variants
 from ..data_types import ShearCatalog, CatalogSelection
@@ -481,3 +483,91 @@ class TXDP2DESCSelection(TXScalarMetaDetectSelection):
         return cutter.sel
 
 
+class TXDP2UtilsSelection(TXSimpleSelection):
+    """Select DP2 metadetect/anacal objects using the versioned cuts in dp2utils.
+
+    """
+    name = "TXDP2UtilsSelection"
+
+    config_options = {
+        "chunk_rows": StageParameter(int, 10_000, msg="Number of rows to process at once"),
+        "cut_version": StageParameter(str, "0", msg="Version of the dp2utils cuts to apply"),
+        "catalog_version": StageParameter(str, "rubin_mdet", msg="Version of the catalog to apply cuts to (rubin_mdet, desc_mdet, desc_anacal)"),
+        "verbose": StageParameter(bool, False, msg="Whether to print out lots of information"),
+    }
+
+    mdet_variants = {
+        "rubin_mdet": META_VARIANTS, 
+        "desc_mdet": SCALAR_META_VARIANTS,
+    }
+
+    # Columns used by dp2utils for each type of catalog:
+    # (always used, used only if present in the catalog)
+    columns = {
+        "rubin_mdet":
+            [
+                "ra", "dec", "gauss_snr", "gauss_T", "gauss_psfReconvolved_T", "mfrac",
+                "r_pgaussFlux", "i_pgaussFlux", "z_pgaussFlux",
+            ] +
+            [
+                "is_primary", "bmask_flags", "image_flags", "gauss_flags", "pgauss_flags",
+                "gauss_object_flags", "pgauss_object_flags", "gauss_psfReconvolved_flags",
+                "psfOriginal_flags", "gauss_shape_flags", "pgauss_shape_flags",
+            ] + [f"{b}_{f}" for b in "riz" for f in ["gaussFlux_flags", "pgaussFlux_flags"]], 
+        "desc_mdet": 
+            [
+                "ra", "dec", "s2n", "T", "psf_T_mean", "mfrac",
+                "flux_r", "flux_i", "flux_z", "psfrec_g1", "psfrec_g2",
+            ] +
+            [
+                "is_primary", "psfrec_flags", "psf_flags", "g_flags", "flags", "deblend_flags",
+            ] + [f"{f}_{b}" for f in ["psfrec_flags", "psf_flags"] for b in "riz"], 
+        "desc_anacal": 
+            [
+                "ra", "dec", "n_mask_base", "s2n", "m00", "m20", "esq"
+            ] + [f"{f}_{b}" for f in ["mag", "psf_g1", "psf_g2"] for b in "riz"] + 
+            [f"lsst_{b}_{f}" for f in ["flux_gauss2_err"] for b in "riz"]
+    }
+
+    def run(self):
+        # The groups and columns depend on the configuration, so shadow
+        # the class variables with ones specific to this instance
+        catalog_version = self.config["catalog_version"]
+                
+        if catalog_version == "desc_anacal":
+            self.groups = ["shear/"]
+        else:
+            if catalog_version not in self.mdet_variants:
+                raise ValueError(f"catalog_version must be one of {list(self.mdet_variants)}, not {catalog_version!r}")
+            self.groups = ["shear/" + v for v in self.mdet_variants[catalog_version]]
+
+        # required, optional = self.columns[catalog_version]
+        # with self.open_input("shear_catalog") as f:
+        #     available = set(f[self.groups[0]].keys())
+        self.columns = self.columns[catalog_version]
+
+        super().run()
+
+    def compute_selection(self, start, end, data):
+
+        from dp2utils import mdet, anacal
+
+        if self.config["catalog_version"] == "desc_anacal":
+            sel = anacal.make_anacal_cuts(
+                data,
+                data.keys(),
+                self.config["cut_version"],
+                verbose=self.config["verbose"],
+                mask=None, # ingested catalog has mask applied so no extra masking is applied.
+            )
+        elif self.config["catalog_version"] in ["rubin_mdet", "desc_mdet"]:
+            sel = mdet.make_mdet_cuts(
+                data,
+                data.keys(),
+                self.config["cut_version"],
+                verbose=self.config["verbose"],
+                mask=None, # ingested catalog has mask applied so no extra masking is applied.
+                mdet=self.config["catalog_version"][:-5], # "rubin" or "desc"
+            )
+
+        return sel
