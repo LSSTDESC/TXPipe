@@ -27,7 +27,7 @@ launcher:
     interval: 1.0
 
 site:
-    name: local
+    name: nersc-interactive
 
 modules: >
     txpipe
@@ -38,7 +38,7 @@ inputs:
     shear_mask_wide: /global/cfs/projectdirs/lsst/groups/PO/users/esheldon/desc-mdet/lsst-mdet-runs/run-dp2-v01.1/run-dp2-v01.1-wide-footprint-2026-11-18.hsp
     shear_mask_deep: /global/cfs/projectdirs/lsst/groups/PO/users/esheldon/desc-mdet/lsst-mdet-runs/run-dp2-v01.1/run-dp2-v01.1-deep-footprint-2026-11-18.hsp
 
-resume: true
+resume: resume
 log_dir: data/dp2/desc_metadetect/logs
 pipeline_log: data/dp2/desc_metadetect/ingest_log.txt
 #registry: {}
