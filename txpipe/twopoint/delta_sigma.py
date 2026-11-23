@@ -40,9 +40,13 @@ class TXDeltaSigma(PipelineStage):
         "n_jackknife": StageParameter(
             int, 0, msg="Number of jackknife regions to use for error estimation, 0 means no jackknife"
         ),
+        "lower_bin_edge": StageParameter(list, [-1], msg="List of lower bin edges of the source sample"),
+        "lens_source_sep": StageParameter(float, 0.1, msg="Separation between lens and source samples"),
         "subsample": StageParameter(
             float, 0.0, msg="If set to non-zero, randomly subsample this fraction of the all the data sets for testing."
         ),
+        "compute_magnification": StageParameter(bool, False, msg="Compute lens magnification bias"),
+        "alpha_l": StageParameter(float, 1.0, msg="The lens magnification bias parameter alpha_l"),
     }
 
     def run(self):
@@ -54,11 +58,11 @@ class TXDeltaSigma(PipelineStage):
 
         bin_pairs = self.get_bin_pairs()
         print(bin_pairs)
-        source_bin = 3
-        lens_bin = 0
 
         with self.open_input("fiducial_cosmology", wrapper=True) as cosmo_file:
-            cosmo = cosmo_file.to_astropy()
+            # cosmo = cosmo_file.to_astropy()
+            from astropy.cosmology import FlatLambdaCDM
+            cosmo = FlatLambdaCDM(H0=100, Om0=0.30966, Tcmb0 = 2.7255,  Neff=3.046, m_nu = [0,0,0.06], Ob0=0.04897)
 
         # If our redshifts are photometric then per-objects z values are not used,
         # and instead we supply the estimated n(z) distribution for the ensemble.
@@ -86,12 +90,16 @@ class TXDeltaSigma(PipelineStage):
             if source_bin != last_source_bin:
                 last_source_bin = source_bin
                 source_table = self.load_source_table(source_bin)
+            
+            # Only uses lenses with z < z_bin_edge - lens_source_sep to avoid lens-source overlap. 
+            if self.config["lower_bin_edge"][0] != -1:
+                print('applying the lens-source separation cut')
+                source_table['z_l_max'] = np.array(self.config["lower_bin_edge"])[source_table['z_bin']] - self.config["lens_source_sep"]
 
             # Always reload the lens bins because we will add some
             # columns to them in-place in a minute.
             lens_table = self.load_lens_table(lens_bin)
             randoms_table = self.load_random_table(lens_bin)
-
 
             # Add columns to two tables in-place to do most of the pre-computation work.
             # We should look at using the n_jobs multiprocessing option here
@@ -131,6 +139,18 @@ class TXDeltaSigma(PipelineStage):
             )
             result["rp"] = np.sqrt(result['rp_min'] * result['rp_max'])
 
+            # Lens magnification bias. It is NaN if any radial bin has zero pairs,
+            # because dSigma would pass z = NaN to CAMB
+            ds_lm = np.full(len(result), np.nan)
+            if self.config["compute_magnification"]:
+                z_l = dsigma.stacking.mean_lens_redshift(lens_table)
+                z_s = dsigma.stacking.mean_source_redshift(lens_table)
+                if np.all(np.isfinite(z_l)) and np.all(np.isfinite(z_s)):
+                    ds_lm = dsigma.stacking.lens_magnification_bias(lens_table, self.config["alpha_l"])
+                else:
+                    print(f"Empty radial bins for ({source_bin}, {lens_bin}); magnification set to NaN")
+
+
             # Optionally get the jackknife covariance.
             # dSigma does this for us too. The stacking is the relatively
             # fast bit so hopefully this is quite fast.
@@ -140,13 +160,18 @@ class TXDeltaSigma(PipelineStage):
                 dsigma.jackknife.compute_jackknife_fields(randoms_table, centers)
 
                 # Get the covariance
-                delta_sigma_cov = dsigma.jackknife.jackknife_resampling(
-                    dsigma.stacking.excess_surface_density, lens_table, randoms_table
+                delta_sigma_cov, jk_samples = dsigma.jackknife.jackknife_resampling(
+                    dsigma.stacking.excess_surface_density, lens_table, randoms_table, random_subtraction=True, boost_correction=True, return_samples=True
                 )
+                # list of n_jk arrays -> (n_jk, n_rbins) plain float array
+                jk_samples = np.array([np.asarray(getattr(x, "value", x), dtype=float) for x in jk_samples])
+                print(f"Jackknife samples for ({source_bin}, {lens_bin}): shape {jk_samples.shape}")
+
             else:
                 delta_sigma_cov = None
+                jk_samples = None
 
-            results.append((source_bin, lens_bin, result, delta_sigma_cov))
+            results.append((source_bin, lens_bin, result, delta_sigma_cov, ds_lm, jk_samples))
 
         # restore numpy settings
         np.seterr(**numpy_error_settings)
@@ -402,11 +427,17 @@ class TXDeltaSigma(PipelineStage):
         # for each bin pair's results, add all the
         # measurements in the output data table
         cov_blocks = []
-        for source_bin, lens_bin, result, cov_block in results:
+        for source_bin, lens_bin, result, cov_block, lens_magb, jk_sample in results:
             tracer1 = f"source_{source_bin}"
             tracer2 = f"lens_{lens_bin}"
 
-            for row in result:
+            for i,row in enumerate(result):
+                # One tag per jackknife realisation: jk_0 ... jk_{n-1}
+                jk_tags = {}
+                if jk_sample is not None:
+                    jk_tags = {f"jk_{k}": float(jk_sample[k, i]) for k in range(jk_sample.shape[0])}
+                    jk_tags["n_jk"] = int(jk_sample.shape[0])
+
                 # Add the data point and all the various tags
                 s.add_data_point(
                     "galaxy_shearDensity_deltasigma",
@@ -418,8 +449,10 @@ class TXDeltaSigma(PipelineStage):
                     raw_value=row["ds_raw"],  # the raw Delta(Sigma) measurement before boost correction
                     boost=row["b"],  # the boost factor that was applied to get the final Delta(Sigma)
                     random_subtraction=row["ds_r"],  # the contribution from the randoms that was subtracted off
+                    lens_magnification_bias=float(lens_magb[i]),  # the lens magnification bias correction
                     n_pairs=row["n_pairs"],  # the number of pairs in the bin
                     r_unit="Mpc/h",  # according to the dSigma docs
+                    **jk_tags,
                 )
 
             if cov_block is not None:
