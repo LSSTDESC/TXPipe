@@ -8,7 +8,7 @@ class TXConvergenceMaps(PipelineStage):
     """
     Make a convergence map from a source map using Kaiser-Squires
 
-    This uses the wlmassmap library, which is included as a submodule in TXPipe.
+    This uses the wlmassmap library, which is installed as a TXPipe dependency.
     """
 
     name = "TXConvergenceMaps"
@@ -27,7 +27,7 @@ class TXConvergenceMaps(PipelineStage):
     }
 
     def run(self):
-        from wlmassmap.kaiser_squires import healpix_KS_map
+        from desc.wlmassmap.kaiser_squires import healpix_KS_map
         import healpy
 
         # Open the input file and read bit of metadata.

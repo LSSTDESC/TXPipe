@@ -8,8 +8,7 @@ site:
 
 modules: txpipe
 
-python_paths:
-    - submodules/WLMassMap/python/desc/
+python_paths: []
 
 stages:
     - name: TXRandomCat

@@ -12,7 +12,7 @@ Installing
 Download TXPipe like this:
 
 ```bash
-git clone --recurse-submodules https://github.com/LSSTDESC/TXPipe
+git clone https://github.com/LSSTDESC/TXPipe
 ```
 
 and then install dependencies for it with conda like this on a laptop/desktop (M1 macs are not yet supported, sorry!):

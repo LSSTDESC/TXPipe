@@ -16,8 +16,7 @@ modules: txpipe
 
 # where to find any modules that are not in this repo,
 # and any other code we need.
-python_paths:
-  - submodules/WLMassMap/python/desc/
+python_paths: []
 
 stages:
   - name: TXJackknifeCenters
