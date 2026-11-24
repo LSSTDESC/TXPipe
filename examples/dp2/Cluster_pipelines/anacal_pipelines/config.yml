@@ -91,6 +91,7 @@ CLClusterShearCalibrator:
     bin_units: mpc
     radial_calibration: true
     n_bootstrap: 100                # resamplings of the clusters for the R errors
+    delta_gamma: 0.01               # as in TXComputeShearCalibrationAnacal
 
 CLClusterEnsembleProfiles:
     r_min: 0.2                      # the radial bins must be those of CLClusterShearCalibrator
