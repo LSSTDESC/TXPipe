@@ -51,12 +51,10 @@ inputs:
     #spectroscopic_catalog: ./data/cosmodc2/20deg2/spectroscopic_catalog.hdf5
     #cluster_catalog: ./data/cosmodc2/20deg2/cluster_catalog.hdf5
     # made by a full run of pipeline-20deg2-CL-*.yml
-    shear_tomography_catalog: data/mocks/cosmodc2/outputs-20deg2-CL/shear_tomography_catalog.hdf5
     source_photoz_pdfs: data/mocks/cosmodc2/outputs-20deg2-CL/source_photoz_pdfs.hdf5
     cluster_catalog_tomography: data/mocks/cosmodc2/outputs-20deg2-CL/cluster_catalog_tomography.hdf5
     cluster_shear_selection: data/mocks/cosmodc2/outputs-20deg2-CL/cluster_shear_selection.hdf5
-    # made by CLClusterShearCalibrator, only for shear_calibration: cluster_stack
-    cluster_shear_response: none
+    cluster_shear_response: data/mocks/cosmodc2/outputs-20deg2-CL/cluster_shear_response.hdf5
 
 resume: true
 log_dir: data/mocks/cosmodc2/logs

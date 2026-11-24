@@ -1,6 +1,7 @@
 import numpy as np
 from ...base_stage import PipelineStage
-from ...data_types import ShearCatalog, HDFFile, FiducialCosmology, TomographyCatalog, BinAssignments, CatalogSelection
+from ...data_types import ShearCatalog, HDFFile, FiducialCosmology, BinAssignments, CatalogSelection
+from ...utils import read_shear_catalog_type
 import yaml
 import warnings
 
@@ -28,7 +29,6 @@ class CLClusterShearCalibrator(PipelineStage):
         ("cluster_shear_selection", HDFFile),
         ("fiducial_cosmology", FiducialCosmology),
         ("shear_catalog", ShearCatalog),
-        ("shear_tomography_catalog", TomographyCatalog),
         ("shear_bin_assignments", BinAssignments),
         ("shear_selection", CatalogSelection),
     ]
@@ -46,6 +46,7 @@ class CLClusterShearCalibrator(PipelineStage):
         "radial_calibration": False, # one response per radial bin of each stack, or one per stack
         "n_bootstrap": 100, # resamplings of the clusters for the error of R, 0 for none
         "bootstrap_seed": 42,
+        "delta_gamma": float, # the shear step of the sheared versions, as in TXComputeShearCalibration*
     }
 
     def run(self):
@@ -62,11 +63,8 @@ class CLClusterShearCalibrator(PipelineStage):
             self.clmm_cosmo = clmm.cosmology.ccl.CCLCosmology()
             self.clmm_cosmo.set_be_cosmo(ccl_cosmo)
 
-        # Catalog type, and delta_gamma of the calibration stage
-        with self.open_input("shear_tomography_catalog") as f:
-            self.catalog_type = f["tomography"].attrs["catalog_type"]
-            # TXPipe saves each option of the calibration stage in its provenance as a string
-            self.delta_gamma = yaml.safe_load(str(f["provenance"].attrs["config/delta_gamma"]))
+        self.catalog_type = read_shear_catalog_type(self)
+        self.delta_gamma = self.config["delta_gamma"]
         print(f"Calibrating a {self.catalog_type} catalog")
         # The sources of the pairs are those that pass the selection and, with the
         # require_tomo_bin option of CLClusterSourceSelect, are in a tomographic bin

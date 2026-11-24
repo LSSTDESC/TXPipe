@@ -59,6 +59,7 @@ CLClusterShearCalibrator:
     bin_units: mpc
     radial_calibration: true
     n_bootstrap: 100                # resamplings of the clusters for the R errors
+    delta_gamma: 0.01               # as in TXComputeShearCalibrationAnacal
 
 CLClusterEnsembleProfiles:
     r_min: 0.2                      # the radial bins must be those of CLClusterShearCalibrator
@@ -68,7 +69,6 @@ CLClusterEnsembleProfiles:
     shear_calibration: cluster_stack      # the response of each stack (and radial bin)
     redshift_weight_criterion: catalog_redshift
     catalog_redshift_column: mean_z
-    subtract_mean_shear: false
     coordinate_system: euclidean    # as in Kabelo's DP2 config
     use_true_shear: false
     delta_sigma: true
