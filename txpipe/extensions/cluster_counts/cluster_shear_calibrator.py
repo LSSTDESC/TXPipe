@@ -1,8 +1,7 @@
 import numpy as np
 from ...base_stage import PipelineStage
-from ...data_types import ShearCatalog, HDFFile, FiducialCosmology, BinAssignments, CatalogSelection
+from ...data_types import ShearCatalog, HDFFile, FiducialCosmology
 from ...utils import read_shear_catalog_type
-import yaml
 import warnings
 
 
@@ -19,7 +18,10 @@ class CLClusterShearCalibrator(PipelineStage):
     as in Zhou et al. 2026, arXiv:2606.21141, Eq. 23, where the response changes with radius
     because of the magnification of the sources).
 
-    The response is the plain mean over the pairs (uniform weights).
+    The response is the plain mean over the pairs (uniform weights). The pairs of each
+    sheared version come from CLClusterSourceSelect with variant_pairs, which applies the
+    cuts and tomographic bin of each version. Without them, every version uses the pairs
+    of the main catalog, and the response of the selection cuts is not included.
     """
     name = "CLClusterShearCalibrator"
     # The response is computed in one process
@@ -29,8 +31,6 @@ class CLClusterShearCalibrator(PipelineStage):
         ("cluster_shear_selection", HDFFile),
         ("fiducial_cosmology", FiducialCosmology),
         ("shear_catalog", ShearCatalog),
-        ("shear_bin_assignments", BinAssignments),
-        ("shear_selection", CatalogSelection),
     ]
 
     outputs = [
@@ -66,15 +66,12 @@ class CLClusterShearCalibrator(PipelineStage):
         self.catalog_type = read_shear_catalog_type(self)
         self.delta_gamma = self.config["delta_gamma"]
         print(f"Calibrating a {self.catalog_type} catalog")
-        # The sources of the pairs are those that pass the selection and, with the
-        # require_tomo_bin option of CLClusterSourceSelect, are in a tomographic bin
+        # The pairs of each sheared version, from variant_pairs of CLClusterSourceSelect
         with self.open_input("cluster_shear_selection") as f:
-            self.require_tomo_bin = yaml.safe_load(str(f["provenance"].attrs["config/require_tomo_bin"]))
-            # the pairs of each sheared version, from variant_pairs of CLClusterSourceSelect
             self.has_variant_pairs = any(name.startswith("index_") for name in f.keys())
         if not self.has_variant_pairs:
             warnings.warn("cluster_shear_selection has no pairs of the sheared versions (variant_pairs of CLClusterSourceSelect): "
-                          "the selection response misses the galaxies that pass the cuts only in a sheared version")
+                          "every version uses the pairs of the main catalog, so the response of the selection cuts is not included")
         with self.open_input("cluster_catalog_tomography") as f:
             bin_names = list(f["cluster_bin"].keys())
 
@@ -250,13 +247,9 @@ class CLClusterShearCalibrator(PipelineStage):
 
         delta_gamma = self.delta_gamma
 
-        # The same sources as the pairs, for each variant: those that pass the cuts of the
-        # selection stage and, with require_tomo_bin, have a tomographic bin, as in
-        # TXComputeShearCalibrationBase.select_any_bin
-        require_tomo_bin = self.require_tomo_bin
-        def select_any_bin(d):
-            if require_tomo_bin:
-                return (d["bin"] >= 0) & d["selection"]
+        # The pairs of each version already pass its cuts and, with require_tomo_bin, have a
+        # tomographic bin (CLClusterSourceSelect), so a version selects exactly its pairs
+        def select_pairs(d):
             return d["selection"]
 
         data = {}
@@ -271,18 +264,15 @@ class CLClusterShearCalibrator(PipelineStage):
 
             # Each variant is averaged over its own sources, which can be different
             # objects from ns, as in TXComputeShearCalibrationMetadetect
-            with self.open_input("shear_catalog") as f, \
-                 self.open_input("shear_bin_assignments") as b, \
-                 self.open_input("shear_selection") as s:
+            with self.open_input("shear_catalog") as f:
                 for v in variants:
                     source_index, cluster_id = self.variant_source_index(sources, v, f, radial_bin)
                     for col in ["g1", "g2"]:
                         data[f"{v}/{col}"] = self.read_source_rows(f[f"shear/{v}/{col}"], source_index)
                     # uniform weights, as AnaCal: the catalog weights are not used in the profile
                     data[f"{v}/weight"] = np.ones(len(source_index))
-                    data[f"{v}/bin"] = self.read_source_rows(b[f"{v}/bin"], source_index)
-                    data[f"{v}/selection"] = self.read_source_rows(s[f"shear/{v}/selection"], source_index)
-                    for col in ["g1", "g2", "weight", "bin", "selection"]:
+                    data[f"{v}/selection"] = np.ones(len(source_index), dtype=bool)
+                    for col in ["g1", "g2", "weight", "selection"]:
                         row_clusters[f"{v}/{col}"] = cluster_id
 
         elif self.catalog_type == "anacal":
@@ -309,14 +299,11 @@ class CLClusterShearCalibrator(PipelineStage):
                 for suf, in_version in zip(suffixes, np.split(np.ravel(inverse), np.cumsum([len(r) for _, r in pairs])[:-1])):
                     data[f"selection{suf}"] = np.bincount(in_version, minlength=keys.size) > 0
             else:
-                with self.open_input("shear_selection") as f:
-                    for suf in suffixes:
-                        data[f"selection{suf}"] = self.read_source_rows(f[f"shear/selection{suf}"], source_index)
+                # every version uses the pairs of the main catalog
+                for suf in suffixes:
+                    data[f"selection{suf}"] = np.ones(source_index.size, dtype=bool)
             with self.open_input("shear_catalog") as f:
                 data.update({col: self.read_source_rows(f[f"shear/{col}"], source_index) for col in cols})
-            with self.open_input("shear_bin_assignments") as f:
-                for suf in suffixes:
-                    data[f"bin{suf}"] = self.read_source_rows(f[f"bin{suf}"], source_index)
             # All the columns are rows of the same pairs
             row_clusters = {key: cluster_id for key in data}
             calculator_class = AnaCalCalculator
@@ -325,7 +312,7 @@ class CLClusterShearCalibrator(PipelineStage):
             raise ValueError(f"Cluster calibration not implemented for {self.catalog_type} catalogs")
 
         def make_calculator():
-            return calculator_class(select_any_bin, delta_gamma)
+            return calculator_class(select_pairs, delta_gamma)
 
         return data, row_clusters, make_calculator
 
