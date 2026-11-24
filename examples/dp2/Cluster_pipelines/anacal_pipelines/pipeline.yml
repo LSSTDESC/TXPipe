@@ -30,7 +30,8 @@ stages:
     nprocess: 64
   - name: TXSimpleRedshiftSourceTomography   # source bin from mean_z and its variants
     nprocess: 64
-  - name: TXComputeShearCalibrationAnacal    # AnaCal response of the source sample
+  - name: TXComputeShearCalibrationAnacal    # AnaCal response of the whole source sample: not read by the
+                                             # cluster stages, only the reference line of plot_response.ipynb
     nprocess: 64
   - name: CLClusterBinningRedshiftRichness
     nprocess: 1
