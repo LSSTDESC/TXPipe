@@ -2,7 +2,7 @@ from ..base_stage import PipelineStage
 from ..data_types import TomographyCatalog, MapsFile, HDFFile, BinnedCatalog
 from ceci.config import StageParameter
 import numpy as np
-from ..utils import unique_list, choose_pixelization, import_dask
+from ..utils import unique_list, choose_pixelization, import_dask, iter_valid_pixels
 from .mapping import make_dask_shear_maps, make_dask_lens_maps, make_coverage_map
 
 
@@ -408,9 +408,6 @@ class TXDensityMaps(PipelineStage):
                 thresh=self.config["mask_threshold"], degrade_nside=self.config["nside"]
             )
 
-        # identify unmasked pixels
-        pix = mask.valid_pixels
-
         # Read the count maps
         with self.open_input("lens_maps", wrapper=True) as f:
             meta = dict(f.file["maps"].attrs)
@@ -424,15 +421,25 @@ class TXDensityMaps(PipelineStage):
             # In order to interpret the empty pixels as 0 the sentinel must be 0.
             assert ng.sentinel == 0.0
 
-            # calculate mean of ng and mean of mask
-            mu_n = np.mean(ng[pix])
-            mu_w = np.mean(mask[pix])
+            # calculate mean of ng and mean of mask over the unmasked pixels.
+            # We iterate over the mask's coverage pixels rather than loading
+            # all its valid pixels at once, to keep memory use down.
+            sum_n = 0.0
+            sum_w = 0.0
+            count = 0
+            for pix, mask_values in iter_valid_pixels(mask):
+                sum_n += np.sum(ng[pix], dtype=np.float64)
+                sum_w += np.sum(mask_values, dtype=np.float64)
+                count += pix.size
+            mu_n = sum_n / count
+            mu_w = sum_w / count
 
             # make a new map for density
             delta_map = hsp.HealSparseMap.make_empty(
                 ng.nside_coverage, ng.nside_sparse, np.float64
             )
-            delta_map[pix] = (ng[pix] / mask[pix]) / (mu_n / mu_w)
+            for pix, mask_values in iter_valid_pixels(mask):
+                delta_map[pix] = (ng[pix] / mask_values) / (mu_n / mu_w)
 
             density_maps.append(delta_map)
 

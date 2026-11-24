@@ -1,5 +1,5 @@
 import numpy as np
-from ..utils import choose_pixelization, read_shear_catalog_type
+from ..utils import choose_pixelization, read_shear_catalog_type, iter_valid_pixels, valid_pixel_sum
 from ..base_stage import PipelineStage
 from ..data_types import MapsFile, HDFFile, ShearCatalog
 from ceci.config import StageParameter
@@ -227,18 +227,18 @@ class TXSimpleMaskSource(TXBaseMask):
             # if *all* bins have a positive lensing weight, set mask to True
             # find min lensing weight across all bins
             # if min > 0.0 -> all bins have a non-zeros lensing weight so we set that pixel to True
-            min_lw = hsp.operations.min_intersection(lensing_weights)
-            valid_pix = min_lw.valid_pixels[min_lw[min_lw.valid_pixels] > 0.0]
+            lw_combined = hsp.operations.min_intersection(lensing_weights)
         else:
             # if *any* bin has a positive lensing weight, set mask to True
             # find max lensing weight across all bins
             # if max > 0.0 -> at least 1 bins has a non-zeros lensing weight so we set that pixel to True
-            max_lw = hsp.operations.max_union(lensing_weights)
-            valid_pix = max_lw.valid_pixels[max_lw[max_lw.valid_pixels] > 0.0]
+            lw_combined = hsp.operations.max_union(lensing_weights)
         mask = hsp.HealSparseMap.make_empty(
             lw.nside_coverage, lw.nside_sparse, np.bool_
         )
-        mask[valid_pix] = True
+        # Iterate over coverage pixels to limit memory use
+        for pix, values in iter_valid_pixels(lw_combined):
+            mask[pix[values > 0.0]] = True
         return mask, pixel_scheme, metadata
 
 
@@ -287,9 +287,8 @@ class TXSimpleMaskFrac(TXSimpleMask):
 
         # boolean mask of pixels with high fracdet
         frac_cut_mask = hsp.HealSparseMap.make_empty_like(mask)
-        frac_cut_mask[fracdet.valid_pixels] = (
-            fracdet[fracdet.valid_pixels] > self.config["frac_cut"]
-        )
+        for pix, values in iter_valid_pixels(fracdet):
+            frac_cut_mask[pix] = values > self.config["frac_cut"]
 
         # find the intersection of the mask cuts and the fractional coverage map
         # fracdet contains the fractional coverage value
@@ -335,9 +334,9 @@ class TXCustomMask(TXSimpleMaskFrac):
         fracdet = self.get_fracdet()
 
         # assign fracdec for all selected pixels
-        valid_pix = mask.valid_pixels
         masked_frac_map = hsp.HealSparseMap.make_empty_like(fracdet)
-        masked_frac_map[valid_pix] = fracdet[valid_pix]
+        for pix in mask.iter_valid_pixels_by_covpix():
+            masked_frac_map[pix] = fracdet[pix]
 
         if self.config["degrade"]:
             if self.config["nside"] == metadata["nside"]:
@@ -479,10 +478,10 @@ class TXCustomMask(TXSimpleMaskFrac):
         metadata_out["nside"] = nside_out
 
         # sanity_check: make sure area in == area out
-        area_in = np.sum(mask[mask.valid_pixels]) * hp.nside2pixarea(
+        area_in = valid_pixel_sum(mask) * hp.nside2pixarea(
             metadata_in["nside"], degrees=True
         )
-        area_out = np.sum(mask_out[mask_out.valid_pixels]) * hp.nside2pixarea(
+        area_out = valid_pixel_sum(mask_out) * hp.nside2pixarea(
             metadata_out["nside"], degrees=True
         )
         assert np.round(area_in, 3) == np.round(area_out, 3)
