@@ -1,7 +1,7 @@
 import gc
 import numpy as np
 from ...base_stage import PipelineStage
-from ...data_types import ShearCatalog, HDFFile, PhotozPDFFile, FiducialCosmology, TomographyCatalog, ShearCatalog, CatalogSelection, BinAssignments
+from ...data_types import ShearCatalog, HDFFile, PhotozPDFFile, FiducialCosmology, CatalogSelection, BinAssignments
 from .utils import iterate_source_catalog
 import yaml
 import warnings
@@ -10,8 +10,7 @@ class CLClusterSourceSelect(PipelineStage):
     """Find the background sources of each cluster.
 
     The sources are the objects of the shear catalog that pass the cuts in shear_selection
-    and, with require_tomo_bin, are in a tomographic bin of shear_tomography_catalog, the
-    sample its shear calibration is measured on. For each cluster the stage keeps those
+    and, with require_tomo_bin, are in a tomographic bin of shear_bin_assignments. For each cluster the stage keeps those
     within max_radius in Mpc (or max_angle in arcmin) that are behind the cluster according
     to redshift_cut_criterion, and writes the row of each source in the shear catalog and
     its distance to the cluster. source_photoz_pdfs can be "none" if the redshift cut does
@@ -21,15 +20,14 @@ class CLClusterSourceSelect(PipelineStage):
     (1p, 1m, 2p, 2m, or 1p, 1m for scalar metadetect), with the positions, cuts, tomographic bin (from shear_bin_assignments)
     and redshift of that version, so that CLClusterShearCalibrator has every galaxy of each
     version for the selection response. The profiles only use the pairs of the main catalog.
-    shear_bin_assignments can be "none" unless variant_pairs needs the bins of the
-    sheared versions (require_tomo_bin or tomo_bins).
+    shear_bin_assignments can be "none" if neither require_tomo_bin nor the tomo_bins
+    redshift cut is used.
     """
     name = "CLClusterSourceSelect"
     inputs = [
         ("cluster_catalog", HDFFile),
         ("shear_catalog", ShearCatalog),
         ("fiducial_cosmology", FiducialCosmology),
-        ("shear_tomography_catalog", TomographyCatalog),
         ("shear_selection", CatalogSelection),
         ("source_photoz_pdfs", PhotozPDFFile),
         ("shear_bin_assignments", BinAssignments),
@@ -54,6 +52,9 @@ class CLClusterSourceSelect(PipelineStage):
     }
 
     def run(self):
+        if (self.config["require_tomo_bin"] or self.config["redshift_cut_criterion"] == "tomo_bins") \
+                and self.get_input("shear_bin_assignments").lower() == "none":
+            raise ValueError("require_tomo_bin and the tomo_bins redshift cut need the shear_bin_assignments input")
         # The pairs of the main catalog and, with variant_pairs, of each sheared version
         versions = [None]
         if self.config["variant_pairs"]:
@@ -85,8 +86,6 @@ class CLClusterSourceSelect(PipelineStage):
         if any(v["prefix"] != main_prefix for v in versions) and criterion != "tomo_bins":
             raise ValueError(f"The sheared versions of a {catalog_type} catalog are separate catalogs: "
                              f"with variant_pairs their redshift cut must be tomo_bins, not {criterion}")
-        if (self.config["require_tomo_bin"] or criterion == "tomo_bins") and self.get_input("shear_bin_assignments").lower() == "none":
-            raise ValueError("variant_pairs needs the shear_bin_assignments input, for the tomographic bins of the sheared versions")
         if criterion in ["zmode", "zmean", "zmedian", "pdf"]:
             warnings.warn(f"The sheared versions use the {criterion} photo-z of the main catalog, so the response "
                           "of the redshift cut is not in the selection response")
