@@ -294,7 +294,7 @@ Extensions:
         - TXTwoPointSourcePixel
         - TXTwoPointCluster
         - CLClusterBinningRedshiftRichness
-        - CLClusterShearCatalogs
+        - CLClusterSourceSelect
         - CLClusterEnsembleProfiles
         - CLClusterSACC
         - TXIngestPlanckLensingMaps

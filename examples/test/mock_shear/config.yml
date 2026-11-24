@@ -21,7 +21,7 @@ TXMockTruthPZ:
     mock_sigma_z: 0.001
 
 
-CLClusterShearCatalogs:
+CLClusterSourceSelect:
     redshift_cut_criterion: zmode
     redshift_weight_criterion: zmode
 TXTrainRandomForestTomography:
