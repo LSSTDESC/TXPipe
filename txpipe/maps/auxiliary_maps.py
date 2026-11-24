@@ -384,7 +384,8 @@ class TXUniformDepthMap(PipelineStage):
         depth = hsp.HealSparseMap.make_empty(
             mask.nside_coverage, mask.nside_sparse, dtype=float
         )
-        depth[mask.valid_pixels] = self.config["depth"]  # e.g. 25 everywhere
+        for pix in mask.iter_valid_pixels_by_covpix():
+            depth[pix] = self.config["depth"]  # e.g. 25 everywhere
 
         with self.open_output("depth_map", wrapper=True) as f:
             f.file.create_group("depth")

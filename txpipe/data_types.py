@@ -692,9 +692,14 @@ class MapsFile(HDFFile):
             # Remove any pixels below the threshold
             # Setting pixels to the sentinel can be buggy in healsparse
             # so we'll make a copy of the mask with the < thresh pixels removed
+            # Iterate over coverage pixels rather than loading every valid
+            # pixel at once, since the mask can be very high resolution
+            from .utils.healsparse_utils import iter_valid_pixels
+
             mask = hsp.HealSparseMap.make_empty_like(mask_in)
-            pix_to_keep = mask_in.valid_pixels[mask_in[mask_in.valid_pixels] > thresh]
-            mask.update_values_pix(pix_to_keep, mask_in[pix_to_keep])
+            for pix, values in iter_valid_pixels(mask_in):
+                keep = values > thresh
+                mask.update_values_pix(pix[keep], values[keep])
         else:
             mask = mask_in
 
@@ -717,7 +722,8 @@ class MapsFile(HDFFile):
             bool_mask = hsp.HealSparseMap.make_empty(
                 mask.nside_coverage, mask.nside_sparse, bool
             )
-            bool_mask[mask.valid_pixels] = True
+            for pix in mask.iter_valid_pixels_by_covpix():
+                bool_mask[pix] = True
             mask = bool_mask
 
         return mask

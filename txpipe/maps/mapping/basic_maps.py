@@ -346,11 +346,11 @@ def hsp_int2float(hsp_map ):
         valid pixels, and values cast to float.
     """
     import healsparse as hsp
-    valid_pix = hsp_map.valid_pixels
     m = hsp.HealSparseMap.make_empty(
                 hsp_map.nside_coverage, hsp_map.nside_sparse, dtype=float
             )
-    m.update_values_pix(valid_pix, hsp_map[valid_pix].astype(float))
+    for valid_pix in hsp_map.iter_valid_pixels_by_covpix():
+        m.update_values_pix(valid_pix, hsp_map[valid_pix].astype(float))
     return m
 
 def make_coverage_map(ra, dec, pixel_scheme):
