@@ -71,6 +71,14 @@ CLClusterSourceSelect:
     redshift_cut_criterion_pdf_fraction: 0.9
     use_true_shear: false
 
+CLClusterShearCalibrator:
+    # the radial bins must be those of CLClusterEnsembleProfiles
+    r_min: 0.5  #in Mpc
+    r_max: 10.  #in Mpc
+    nbins: 3
+    bin_units: mpc
+    delta_gamma: 0.02  # as in TXComputeShearCalibrationMetadetect
+
 CLClusterEnsembleProfiles:
     #radial bin definition
     r_min: 0.5  #in Mpc
@@ -80,9 +88,8 @@ CLClusterEnsembleProfiles:
     delta_sigma: false  # reduced shear, or delta sigma if true
     magnification_profile: false
     redshift_weight_criterion: zmode
-    subtract_mean_shear: false
     use_true_shear: false
-    shear_calibration: global  # or cluster, with the response of CLClusterShearCalibrator
+    shear_calibration: cluster  # the response of each stack, from CLClusterShearCalibrator
     coordinate_system: celestial #euclidean or celestial
     bin_units: 'mpc'
 CLClusterSACC:

@@ -43,6 +43,8 @@ stages:
       nprocess: 1
     - name: CLClusterSourceSelect
       nprocess: 1
+    - name: CLClusterShearCalibrator
+      nprocess: 1
     - name: CLClusterEnsembleProfiles
       nprocess: 10
     - name: CLClusterSACC
@@ -61,8 +63,6 @@ inputs:
     calibration_table: /sps/lsst/groups/clusters/cl_pipeline_project/TXPipe_data/cosmodc2/20deg2/sample_cosmodc2_w10year_errors.dat
     spectroscopic_catalog: /sps/lsst/groups/clusters/cl_pipeline_project/TXPipe_data/cosmodc2/20deg2/spectroscopic_catalog.hdf5
     cluster_catalog: /sps/lsst/groups/clusters/cl_pipeline_project/TXPipe_data/cosmodc2/20deg2/cluster_catalog.hdf5
-    # made by CLClusterShearCalibrator, only for shear_calibration: cluster
-    cluster_shear_response: none
     #shear_tomography_catalog: data/test/metadetect/outputs_metadetect/shear_tomography_catalog.hdf5
     #source_photoz_pdfs: ./data/example/inputs/photoz_pdfs.hdf5
 

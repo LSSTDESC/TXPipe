@@ -100,7 +100,6 @@ CLClusterEnsembleProfiles:
     bin_units: mpc
     shear_calibration: cluster      # the response of each stack (and radial bin)
     redshift_weight_criterion: zmode
-    subtract_mean_shear: false
     coordinate_system: euclidean    # as in Kabelo's DP2 config
     use_true_shear: false
     delta_sigma: true
