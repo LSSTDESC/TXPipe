@@ -3,9 +3,9 @@ import gc
 import numpy as np
 from ...base_stage import PipelineStage
 from .sources_select import CLClusterSourceSelect
-from ...data_types import ShearCatalog, HDFFile, PhotozPDFFile, FiducialCosmology, TomographyCatalog, PickleFile
+from ...data_types import ShearCatalog, HDFFile, PhotozPDFFile, FiducialCosmology, PickleFile
 from .utils import iterate_source_catalog
-from ...calibration.calibration_utils import Calibrator, MetaDetectCalibrator, ScalarMetaDetectCalibrator, AnaCalibrator
+from ...calibration.calibration_utils import MetaDetectCalibrator, ScalarMetaDetectCalibrator, AnaCalibrator
 from collections import defaultdict
 import yaml
 import ceci
@@ -20,12 +20,14 @@ class CLClusterEnsembleProfiles(CLClusterSourceSelect):
     skipped, and ensembles with fewer than two usable clusters are not stacked.
 
     The sources of each cluster are its pairs from CLClusterSourceSelect. Their shears are
-    calibrated with the calibration of the whole source sample in shear_tomography_catalog
-    (shear_calibration "global"), with the response of the sources of their stack from
-    CLClusterShearCalibrator in cluster_shear_response ("cluster"), or not at all ("none"),
-    and their quantities are saved in cluster_source_quantities. source_photoz_pdfs can be
-    "none" if redshift_weight_criterion does not use photo-z, and cluster_shear_response can
-    be "none" if shear_calibration is not "cluster".
+    calibrated with the response of the sources of their stack from CLClusterShearCalibrator
+    in cluster_shear_response (shear_calibration "cluster"), or not at all ("none", for true
+    shears or catalogs without a response), and their quantities are saved in
+    cluster_source_quantities. The response of the whole source sample is not used: the
+    response of the sources behind clusters depends on their environment (McClintock et al.
+    2019, arXiv:1805.00039, Sec. 3.1.2). source_photoz_pdfs can be "none" if
+    redshift_weight_criterion does not use photo-z, and cluster_shear_response can be "none"
+    if shear_calibration is "none".
     """
     name = "CLClusterEnsembleProfiles"
     # The stacking is done in one process
@@ -33,7 +35,6 @@ class CLClusterEnsembleProfiles(CLClusterSourceSelect):
     inputs = [
         #("cluster_catalog", HDFFile),
         ("shear_catalog", ShearCatalog),
-        ("shear_tomography_catalog", TomographyCatalog),
         ("cluster_catalog_tomography", HDFFile), # TO TEST
         ("fiducial_cosmology", FiducialCosmology),
         ("cluster_shear_selection", HDFFile),
@@ -60,13 +61,11 @@ class CLClusterEnsembleProfiles(CLClusterSourceSelect):
         #coordinate_system for shear
         #"coordinate_system" : 'euclidean' #Must be either 'celestial' or 'euclidean'
         "coordinate_system": "celestial",
-        "use_shape_noise": False, # If True, the weights include the shape noise of the whole source sample (a constant, so the profiles do not change)
         "use_true_shear": False,
         "delta_sigma": True, # If True then we compute delta-sigma, otherwise we compute gamma
         "redshift_weight_criterion": "zmode",  # pdf / mean / true / None
         "chunk_rows": 100_000,  # rows to read at once from source cat
-        "shear_calibration": "global", # global (whole source sample) / cluster (each stack, from CLClusterShearCalibrator) / none
-        "subtract_mean_shear": False,
+        "shear_calibration": "none", # cluster (each stack, from CLClusterShearCalibrator) / none
     }
 
     def run(self):
@@ -112,21 +111,17 @@ class CLClusterEnsembleProfiles(CLClusterSourceSelect):
             clmm_cosmo = clmm.cosmology.ccl.CCLCosmology()
             clmm_cosmo.set_be_cosmo(ccl_cosmo)
 
-        # The calibrators of the sources of each stack: the calibration of the whole source
-        # sample (the 2D bin) in shear_tomography_catalog, or the response of the sources of
-        # the stack (one per radial bin with radial_calibration) from CLClusterShearCalibrator
+        # The calibrators of the sources of each stack: the response of the sources of the
+        # stack (one per radial bin with radial_calibration) from CLClusterShearCalibrator
         shear_calibration = self.config["shear_calibration"]
-        with self.open_input("shear_tomography_catalog") as f:
-            catalog_type = f["tomography"].attrs["catalog_type"]
+        with self.open_input("shear_catalog", wrapper=True) as f:
+            catalog_type = f.catalog_type
         radial_calibration = False
-        if shear_calibration == "global":
-            _, calibrator = Calibrator.load(self.get_input("shear_tomography_catalog"), null=self.config["use_true_shear"])
-            calibrators = {bin_key: [calibrator] for bin_key in clusters_in_bins}
-        elif shear_calibration == "cluster":
+        if shear_calibration == "cluster":
             if str(self.get_input("cluster_shear_response")).lower() == "none":
                 raise ValueError("shear_calibration=cluster needs the cluster_shear_response input from CLClusterShearCalibrator")
-            if self.config["use_true_shear"] or self.config["subtract_mean_shear"]:
-                raise ValueError("shear_calibration=cluster cannot be used with use_true_shear or subtract_mean_shear")
+            if self.config["use_true_shear"]:
+                raise ValueError("shear_calibration=cluster cannot be used with use_true_shear")
             calibrator_classes = {"metadetect": MetaDetectCalibrator, "scalar_metadetect": ScalarMetaDetectCalibrator, "anacal": AnaCalibrator}
             if catalog_type not in calibrator_classes:
                 raise ValueError(f"shear_calibration=cluster is not implemented for {catalog_type} catalogs")
@@ -162,10 +157,10 @@ class CLClusterEnsembleProfiles(CLClusterSourceSelect):
                     calibrators[bin_key] = [calibrator_class(np.squeeze(r), np.zeros(2)) for r in (R if radial_calibration else [R])]
         elif shear_calibration == "none":
             if catalog_type in ["metacal", "metadetect", "scalar_metadetect", "anacal"] and not self.config["use_true_shear"]:
-                raise ValueError(f"The shears of a {catalog_type} catalog must be calibrated: use shear_calibration global or cluster")
+                raise ValueError(f"The shears of a {catalog_type} catalog must be calibrated: use shear_calibration cluster, or use_true_shear")
             calibrators = {bin_key: None for bin_key in clusters_in_bins}
         else:
-            raise ValueError(f"shear_calibration must be global, cluster or none, not {shear_calibration}")
+            raise ValueError(f"shear_calibration must be cluster or none, not {shear_calibration}")
 
         print("    Get cluster-galaxy pairs")
         # get cluster-galaxy pairs, only for the clusters in the bins and within the
@@ -214,12 +209,6 @@ class CLClusterEnsembleProfiles(CLClusterSourceSelect):
             bin_key: [[] for cluster in cluster_list]
             for bin_key, cluster_list in clusters_in_bins.items()
         }
-
-        # The shape noise of the whole source sample, the same for all the sources
-        self.shape_noise = None
-        if self.config["use_shape_noise"]:
-            with self.open_input("shear_tomography_catalog") as f:
-                self.shape_noise = float(f["counts/sigma_e_2d"][0])
 
         print("    Loop through the source catalog")
         # Loop through the source catalog.
@@ -306,21 +295,17 @@ class CLClusterEnsembleProfiles(CLClusterSourceSelect):
         g2 = data["g2"][index]
         # Calibrate the shears, with one calibrator per radial bin when radial_bin is given
         if calibrators is not None:
-            subtract_mean = self.config["subtract_mean_shear"]
             if radial_bin is None:
-                g1, g2 = calibrators[0].apply(g1, g2, subtract_mean=subtract_mean)
+                g1, g2 = calibrators[0].apply(g1, g2, subtract_mean=False)
             else:
                 # float64, as the calibrated shears of the other cases
                 g1, g2 = g1.astype(float), g2.astype(float)
                 for k, calibrator in enumerate(calibrators):
                     in_bin = radial_bin == k
-                    g1[in_bin], g2[in_bin] = calibrator.apply(g1[in_bin], g2[in_bin], subtract_mean=subtract_mean)
+                    g1[in_bin], g2[in_bin] = calibrator.apply(g1[in_bin], g2[in_bin], subtract_mean=False)
         weights = clmm.dataops.compute_galaxy_weights(
             sigma_c = sigma_c,
             is_deltasigma=is_deltasigma,
-            use_shape_error=self.shape_noise is not None,
-            shape_component1_err=self.shape_noise,
-            shape_component2_err=self.shape_noise,
         )
         # CLMM gives a single number when all the sources have the same weight
         weights = np.broadcast_to(weights, g1.shape).astype(float)
