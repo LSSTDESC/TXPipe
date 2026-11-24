@@ -72,7 +72,7 @@ from .covariance import (
     TXFourierNamasterCovariance,
     TXRealNamasterCovariance,
 )
-from .theory import TXTwoPointTheoryReal, TXTwoPointTheoryFourier
+from .theory import TXTwoPointTheoryReal, TXTwoPointTheoryFourier, TXTwoPointTheoryFourierCCL
 from .blinding import TXNullBlinding, TXSmokescreenBlinding
 from .diagnostics import (
     TXSourceDiagnosticPlots,
@@ -85,6 +85,7 @@ from .diagnostics import (
 from .systematics import TXLSSWeights
 from .metadata import TXTracerMetadata
 from .ingest import *
+from .systematics_twopoint_fourier import TXSystematicsTwoPointFourier
 
 # We no longer import all the extensions automatically here to avoid
 # some dependency problems when running under the LSST environment on NERSC.

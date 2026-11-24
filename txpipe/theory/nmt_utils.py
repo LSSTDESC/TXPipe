@@ -86,9 +86,12 @@ def choose_ell_bins(**config):
     from pymaster import NmtBin
     config = {key.removeprefix("binning/"): val for (key, val) in config.items()}
 
-    if "ell_edges" in config:
-        ell_edges = config["ell_edges"]
-        ell_bins = NmtBin.from_edges(ell_edges)
+    if config.get("ell_edges"):
+        # bin i covers [ell_edges[i], ell_edges[i+1]) (NmtBin.from_edges upper bounds are exclusive)
+        ell_edges = np.asarray(config["ell_edges"], dtype=int)
+        if np.any(np.diff(ell_edges) <= 0):
+            raise ValueError(f"ell_edges must be strictly increasing, got {ell_edges.tolist()}")
+        ell_bins = NmtBin.from_edges(ell_edges[:-1], ell_edges[1:])
 
     elif "ell_min" in config:
         if not "ell_max" in config or not "n_ell" in config:
