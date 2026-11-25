@@ -1,7 +1,7 @@
 import gc
 import numpy as np
 from ...base_stage import PipelineStage
-from ...data_types import ShearCatalog, HDFFile, PhotozPDFFile, FiducialCosmology, TomographyCatalog, ShearCatalog, CatalogSelection
+from ...data_types import ShearCatalog, HDFFile, PhotozPDFFile, FiducialCosmology, CatalogSelection, BinAssignments
 from .utils import iterate_source_catalog
 import yaml
 import warnings
@@ -10,21 +10,27 @@ class CLClusterSourceSelect(PipelineStage):
     """Find the background sources of each cluster.
 
     The sources are the objects of the shear catalog that pass the cuts in shear_selection
-    and, with require_tomo_bin, are in a tomographic bin of shear_tomography_catalog, the
-    sample its shear calibration is measured on. For each cluster the stage keeps those
+    and, with require_tomo_bin, are in a tomographic bin of shear_bin_assignments. For each cluster the stage keeps those
     within max_radius in Mpc (or max_angle in arcmin) that are behind the cluster according
     to redshift_cut_criterion, and writes the row of each source in the shear catalog and
     its distance to the cluster. source_photoz_pdfs can be "none" if the redshift cut does
     not use photo-z.
+
+    With variant_pairs, it also finds the pairs of each sheared version of the catalog
+    (1p, 1m, 2p, 2m, or 1p, 1m for scalar metadetect), with the positions, cuts, tomographic bin (from shear_bin_assignments)
+    and redshift of that version, so that CLClusterShearCalibrator has every galaxy of each
+    version for the selection response. The profiles only use the pairs of the main catalog.
+    shear_bin_assignments can be "none" if neither require_tomo_bin nor the tomo_bins
+    redshift cut is used.
     """
     name = "CLClusterSourceSelect"
     inputs = [
         ("cluster_catalog", HDFFile),
         ("shear_catalog", ShearCatalog),
         ("fiducial_cosmology", FiducialCosmology),
-        ("shear_tomography_catalog", TomographyCatalog),
         ("shear_selection", CatalogSelection),
         ("source_photoz_pdfs", PhotozPDFFile),
+        ("shear_bin_assignments", BinAssignments),
     ]
 
     outputs = [
@@ -35,15 +41,62 @@ class CLClusterSourceSelect(PipelineStage):
         "chunk_rows": 100_000,  # rows to read at once from source cat
         "max_radius": 10.0,  # Mpc
         "delta_z": 0.1,
-        "redshift_cut_criterion": "zmode",  # pdf / mean / true / median / tomo_bins
+        "redshift_cut_criterion": "zmode",  # pdf / mean / true / median / tomo_bins / catalog_redshift
         "redshift_cut_criterion_pdf_fraction": 0.9,  # pdf / mean / true / median
         "use_radius": True,
         "max_angle": 30, # arcmin
         "use_true_shear": False,
         "require_tomo_bin": True,  # sources must be in a tomographic bin (bin >= 0)
+        "catalog_redshift_column": "mean_z",  # redshift column of the shear catalog, for the catalog_redshift criterion
+        "variant_pairs": False,  # also find the pairs of each sheared version, for CLClusterShearCalibrator
     }
 
     def run(self):
+        if (self.config["require_tomo_bin"] or self.config["redshift_cut_criterion"] == "tomo_bins") \
+                and self.get_input("shear_bin_assignments").lower() == "none":
+            raise ValueError("require_tomo_bin and the tomo_bins redshift cut need the shear_bin_assignments input")
+        # The pairs of the main catalog and, with variant_pairs, of each sheared version
+        versions = [None]
+        if self.config["variant_pairs"]:
+            versions += self.sheared_versions()
+        outfile = self.open_output("cluster_shear_selection") if self.rank == 0 else None
+        for version in versions:
+            self.find_pairs(outfile, version)
+        if self.rank == 0:
+            outfile.close()
+
+    def sheared_versions(self):
+        """
+        The sheared versions of the shear catalog, named by its classifier variants: the
+        prefix and suffix of their columns and their bin column in shear_bin_assignments,
+        e.g. 1p/ra, 1p/selection and 1p/bin for metadetect, or ra, selection_1p and bin_1p
+        for AnaCal, where the versions are columns of the same rows.
+        """
+        with self.open_input("shear_catalog", wrapper=True) as f:
+            names = list(zip(f.get_classifier_prefixes(), f.get_classifier_suffixes(), f.get_classifier_output_columns()))
+            main_prefix = f.get_primary_catalog_prefix()
+            catalog_type = f.catalog_type
+        versions = [{"name": (p + s).strip("/_"), "prefix": p, "suffix": s, "bin": b} for p, s, b in names[1:]]
+        if not versions:
+            warnings.warn(f"A {catalog_type} catalog has no sheared versions: only the pairs of the main catalog are found")
+            return versions
+
+        criterion = self.config["redshift_cut_criterion"]
+        # The versions of metadetect are separate catalogs, with other rows than the photo-z file
+        if any(v["prefix"] != main_prefix for v in versions) and criterion != "tomo_bins":
+            raise ValueError(f"The sheared versions of a {catalog_type} catalog are separate catalogs: "
+                             f"with variant_pairs their redshift cut must be tomo_bins, not {criterion}")
+        if criterion in ["zmode", "zmean", "zmedian", "pdf"]:
+            warnings.warn(f"The sheared versions use the {criterion} photo-z of the main catalog, so the response "
+                          "of the redshift cut is not in the selection response")
+        return versions
+
+    def find_pairs(self, outfile, version=None):
+        """
+        Find the pairs of the main catalog (version None) or of a sheared version, and write
+        them in the catalog and index groups (catalog_<version> and index_<version>)
+        of outfile, which is open in the root process.
+        """
         import sklearn.neighbors
         import astropy
         import h5py
@@ -80,7 +133,10 @@ class CLClusterSourceSelect(PipelineStage):
 
         # Loop through the source catalog.
         require_tomo_bin = self.config["require_tomo_bin"]
-        for s, e, data in iterate_source_catalog(self, self.config["redshift_cut_criterion"], read_selection=True, read_tomo_bin=require_tomo_bin):
+        suffix = "" if version is None else f"_{version['name']}"
+        if self.rank == 0 and version is not None:
+            print(f"Pairs of the {version['name']} version of the catalog")
+        for s, e, data in iterate_source_catalog(self, self.config["redshift_cut_criterion"], read_selection=True, read_tomo_bin=require_tomo_bin, version=version):
             print(f"Process {self.rank} processing chunk {s:,} - {e:,}")
 
             # The sources are the objects that pass the selection cuts
@@ -141,16 +197,15 @@ class CLClusterSourceSelect(PipelineStage):
         # file here.
         if self.rank == 0:
             print("Overall pair count = ", total_count)
-            outfile = self.open_output("cluster_shear_selection")
             # Create space for the catalog
-            catalog_group = outfile.create_group("catalog")
+            catalog_group = outfile.create_group(f"catalog{suffix}")
             catalog_group.create_dataset("cluster_id", shape=(ncluster,), dtype=np.int64)
             catalog_group.create_dataset("cluster_theta_max_arcmin", shape=(ncluster,), dtype=np.float64)
             # where the pairs of each cluster are in the index below
             catalog_group.create_dataset("cluster_sample_start", shape=(ncluster,), dtype=np.int64)
             catalog_group.create_dataset("cluster_sample_count", shape=(ncluster,), dtype=np.int64)
             # and for the index into that catalog
-            index_group = outfile.create_group("index")
+            index_group = outfile.create_group(f"index{suffix}")
             index_group.create_dataset("cluster_index", shape=(total_count,), dtype=np.int64)
             index_group.create_dataset("source_index", shape=(total_count,), dtype=np.int64)
             index_group.create_dataset("cluster_id", shape=(total_count,), dtype=np.int64)
@@ -213,8 +268,6 @@ class CLClusterSourceSelect(PipelineStage):
             index_group["distance_arcmin"][start:start + n] = np.degrees(distances) * 60
 
             start += n
-        if self.rank == 0:
-            outfile.close()
 
     def find_galaxies_near_each_cluster(self, galaxy_data, cluster_data, tree, max_theta_max, index, cluster_theta_max=None):
         # Get the location of the galaxies in this chunk of data,
@@ -355,7 +408,7 @@ class CLClusterSourceSelect(PipelineStage):
             pdf_frac = pdf[:, pdf_z > cluster_z + delta_z].sum(axis=1) / pdf.sum(axis=1)
             z_good = pdf_frac > self.config["redshift_cut_criterion_pdf_fraction"]
 
-        elif redshift_cut_criterion in ["ztrue", "zmode", "zmean", "zmedian"]:
+        elif redshift_cut_criterion in ["ztrue", "zmode", "zmean", "zmedian", "catalog_redshift"]:
 
             zgal = data["redshift"][gal_index]
             z_good = zgal > cluster_z + delta_z

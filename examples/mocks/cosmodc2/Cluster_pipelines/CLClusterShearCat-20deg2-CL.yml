@@ -47,7 +47,9 @@ inputs:
     cluster_catalog: ./data/cosmodc2/20deg2/cluster_catalog.hdf5
     # made by a full run of pipeline-20deg2-CL-*.yml
     shear_selection: data/mocks/cosmodc2/outputs-20deg2-CL/shear_selection.hdf5
-    shear_tomography_catalog: data/mocks/cosmodc2/outputs-20deg2-CL/shear_tomography_catalog.hdf5
+    shear_bin_assignments: data/mocks/cosmodc2/outputs-20deg2-CL/shear_bin_assignments.hdf5
+    # the bins of the sheared versions, only for variant_pairs of CLClusterSourceSelect
+    shear_bin_assignments: none
     source_photoz_pdfs: data/mocks/cosmodc2/outputs-20deg2-CL/source_photoz_pdfs.hdf5
     fiducial_cosmology: ./data/fiducial_cosmology.yml
 

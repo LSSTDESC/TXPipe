@@ -47,11 +47,13 @@ index    source_index              1D int64    The row of this galaxy in the ori
 index    distance_arcmin           1D float64  The distance from the cluster center to this galaxy in arcminutes.
 =======  ========================  ==========  =========
 
+With `variant_pairs`, the file also has the groups `catalog_<v>` and `index_<v>`, with the same columns, for each sheared version `v` of the shear catalog (1p, 1m, 2p, 2m; 1p, 1m for scalar metadetect). The pairs of a version are found with its own positions, cuts, tomographic bin and redshift, and are only used by `CLClusterShearCalibrator`, for the selection response.
+
 
 Cluster Shear Response
 ----------------------
 
-The cluster shear response file (`cluster_shear_response`) is generated in the optional `CLClusterShearCalibrator` stage. It has the shear response of the background sources of each cluster stack (a redshift and richness bin of `cluster_catalog_tomography`), from their pairs in `cluster_shear_selection` within the radial range of the stage. `CLClusterEnsembleProfiles` applies it with `shear_calibration: cluster`.
+The cluster shear response file (`cluster_shear_response`) is generated in the optional `CLClusterShearCalibrator` stage. It has the shear response of the background sources of each cluster stack (a redshift and richness bin of `cluster_catalog_tomography`), from their pairs in `cluster_shear_selection` within the radial range of the stage. `CLClusterEnsembleProfiles` applies it with `shear_calibration: cluster_stack`. The pairs of each sheared version come from `variant_pairs`; without them every version uses the pairs of the main catalog, and the response of the selection cuts is not included (the stage warns).
 
 The response is a 2x2 matrix for metadetect, and a single value for scalar metadetect and AnaCal. With `radial_calibration`, there is one response for each radial bin of the stack (first axis), NaN for the radial bins without sources.
 

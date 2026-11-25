@@ -21,7 +21,7 @@ class CLClusterEnsembleProfiles(CLClusterSourceSelect):
 
     The sources of each cluster are its pairs from CLClusterSourceSelect. Their shears are
     calibrated with the response of the sources of their stack from CLClusterShearCalibrator
-    in cluster_shear_response (shear_calibration "cluster"), or not at all ("none", for true
+    in cluster_shear_response (shear_calibration "cluster_stack"), or not at all ("none", for true
     shears or catalogs without a response), and their quantities are saved in
     cluster_source_quantities. The response of the whole source sample is not used: the
     response of the sources behind clusters depends on their environment (McClintock et al.
@@ -63,9 +63,10 @@ class CLClusterEnsembleProfiles(CLClusterSourceSelect):
         "coordinate_system": "celestial",
         "use_true_shear": False,
         "delta_sigma": True, # If True then we compute delta-sigma, otherwise we compute gamma
-        "redshift_weight_criterion": "zmode",  # pdf / mean / true / None
+        "redshift_weight_criterion": "zmode",  # pdf / mean / true / catalog_redshift / None
+        "catalog_redshift_column": "mean_z",  # redshift column of the shear catalog, for the catalog_redshift criterion
         "chunk_rows": 100_000,  # rows to read at once from source cat
-        "shear_calibration": "none", # cluster (each stack, from CLClusterShearCalibrator) / none
+        "shear_calibration": "none", # cluster_stack (each stack, from CLClusterShearCalibrator) / none
     }
 
     def run(self):
@@ -117,14 +118,14 @@ class CLClusterEnsembleProfiles(CLClusterSourceSelect):
         with self.open_input("shear_catalog", wrapper=True) as f:
             catalog_type = f.catalog_type
         radial_calibration = False
-        if shear_calibration == "cluster":
+        if shear_calibration == "cluster_stack":
             if str(self.get_input("cluster_shear_response")).lower() == "none":
-                raise ValueError("shear_calibration=cluster needs the cluster_shear_response input from CLClusterShearCalibrator")
+                raise ValueError("shear_calibration=cluster_stack needs the cluster_shear_response input from CLClusterShearCalibrator")
             if self.config["use_true_shear"]:
-                raise ValueError("shear_calibration=cluster cannot be used with use_true_shear")
+                raise ValueError("shear_calibration=cluster_stack cannot be used with use_true_shear")
             calibrator_classes = {"metadetect": MetaDetectCalibrator, "scalar_metadetect": ScalarMetaDetectCalibrator, "anacal": AnaCalibrator}
             if catalog_type not in calibrator_classes:
-                raise ValueError(f"shear_calibration=cluster is not implemented for {catalog_type} catalogs")
+                raise ValueError(f"shear_calibration=cluster_stack is not implemented for {catalog_type} catalogs")
             calibrator_class = calibrator_classes[catalog_type]
             calibrators = {}
             with self.open_input("cluster_shear_response") as f:
@@ -157,10 +158,10 @@ class CLClusterEnsembleProfiles(CLClusterSourceSelect):
                     calibrators[bin_key] = [calibrator_class(np.squeeze(r), np.zeros(2)) for r in (R if radial_calibration else [R])]
         elif shear_calibration == "none":
             if catalog_type in ["metacal", "metadetect", "scalar_metadetect", "anacal"] and not self.config["use_true_shear"]:
-                raise ValueError(f"The shears of a {catalog_type} catalog must be calibrated: use shear_calibration cluster, or use_true_shear")
+                raise ValueError(f"The shears of a {catalog_type} catalog must be calibrated: use shear_calibration cluster_stack, or use_true_shear")
             calibrators = {bin_key: None for bin_key in clusters_in_bins}
         else:
-            raise ValueError(f"shear_calibration must be cluster or none, not {shear_calibration}")
+            raise ValueError(f"shear_calibration must be cluster_stack or none, not {shear_calibration}")
 
         print("    Get cluster-galaxy pairs")
         # get cluster-galaxy pairs, only for the clusters in the bins and within the
@@ -282,7 +283,7 @@ class CLClusterEnsembleProfiles(CLClusterSourceSelect):
                         pzbins=pdf_z,
                         pzpdf=np.repeat(pdf_pz, 2, axis=0) if len(pdf_pz) == 1 else pdf_pz,
                         )[:len(pdf_pz)]
-        elif criterion in ["zmode", "ztrue", "zmean", "zmedian"]:
+        elif criterion in ["zmode", "ztrue", "zmean", "zmedian", "catalog_redshift"]:
             if is_deltasigma:
                 z_source = data["redshift"][index]
                 sigma_c = clmm_cosmo.eval_sigma_crit(z_cluster, z_source)

@@ -91,6 +91,6 @@ CLClusterEnsembleProfiles:
     redshift_weight_criterion: ztrue
     coordinate_system: celestial #euclidean or celestial, when using shear_true we shoudl use celestial
     use_true_shear: false
-    shear_calibration: cluster  # the response of each stack, from CLClusterShearCalibrator
+    shear_calibration: cluster_stack  # the response of each stack, from CLClusterShearCalibrator
     cov_type: sample_covariance  # the clusters of the 1 deg2 field are all in one jackknife pixel
 
