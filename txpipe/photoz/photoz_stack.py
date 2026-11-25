@@ -234,6 +234,54 @@ class TXTruePhotozStack(PipelineStage):
             total_weight[nbin] += w
 
 
+class TXSOMPZLensNofZ(PipelineStage):
+    """
+    Make the lens n(z) stack from externally computed SOMPZ n(z)
+
+    The SOMPZ file is a QP interp ensemble with one n(z) per tomographic bin
+    and no combined row. TXPipe n(z) files end with the 2D (non-tomographic)
+    n(z), so this adds it as the average of the bin n(z) weighted by the
+    number of selected lens galaxies in each bin.
+    """
+
+    name = "TXSOMPZLensNofZ"
+    parallel = False
+    inputs = [
+        ("lens_tomography_catalog_unweighted", TomographyCatalog),
+        ("lens_sompz_nz", HDFFile),
+    ]
+    outputs = [
+        ("lens_photoz_stack", QPNOfZFile),
+    ]
+    config_options = {}
+
+    def run(self):
+        import qp
+
+        ens = qp.read(self.get_input("lens_sompz_nz"))
+        pdf_name = ens.metadata["pdf_name"][0]
+        if pdf_name not in ("interp", b"interp"):
+            raise ValueError(f"TXSOMPZLensNofZ expects a QP interp ensemble, got {pdf_name}")
+        z = ens.gen_obj.xvals
+        nz_bins = np.atleast_2d(ens.gen_obj.yvals)
+
+        with self.open_input("lens_tomography_catalog_unweighted") as f:
+            nbin = f["tomography"].attrs["nbin"]
+            counts = f["counts/counts"][:]
+
+        if nz_bins.shape[0] != nbin:
+            raise ValueError(f"SOMPZ file has {nz_bins.shape[0]} n(z) but the lens catalog has {nbin} bins")
+
+        nz_2d = (counts[:, None] * nz_bins).sum(axis=0) / counts.sum()
+        for i in range(nbin):
+            zmean = np.trapezoid(z * nz_bins[i], z) / np.trapezoid(nz_bins[i], z)
+            print(f"Lens bin {i}: {counts[i]:,} galaxies, <z> = {zmean:.3f}")
+
+        q = qp.Ensemble(qp.interp, data={"xvals": z, "yvals": np.vstack([nz_bins, nz_2d])})
+        with self.open_output("lens_photoz_stack", wrapper=True) as f:
+            f.write_ensemble(q)
+
+
 class TXPhotozPlot(PipelineStage):
     """
     Make n(z) plots of source and lens galaxies
