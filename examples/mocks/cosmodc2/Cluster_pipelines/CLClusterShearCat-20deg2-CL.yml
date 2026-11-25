@@ -16,6 +16,7 @@ launcher:
     interval: 3.0
 modules: >
     txpipe
+    txpipe.extensions
     rail.estimation.algos.bpz_lite
 
 python_paths: []
@@ -30,7 +31,7 @@ stages:
 #    - name: CLClusterBinningRedshiftRichness
 #      nprocess: 1
   - name: CLClusterSourceSelect
-    nprocess: 1  #>1 does not work with mpi
+    nprocess: 1
 #     - name: CLClusterEnsembleProfiles
 #       nprocess: 1
 #    - name: CLClusterDataVector
@@ -44,8 +45,10 @@ inputs:
     # See README for paths to download these files
     shear_catalog: ./data/cosmodc2/20deg2/shear_catalog.hdf5
     cluster_catalog: ./data/cosmodc2/20deg2/cluster_catalog.hdf5
-    shear_tomography_catalog: data/test/metadetect/outputs_metadetect/shear_tomography_catalog.hdf5
-    source_photoz_pdfs: ./data/example/inputs/photoz_pdfs.hdf5
+    # made by a full run of pipeline-20deg2-CL-*.yml
+    shear_selection: data/mocks/cosmodc2/outputs-20deg2-CL/shear_selection.hdf5
+    shear_tomography_catalog: data/mocks/cosmodc2/outputs-20deg2-CL/shear_tomography_catalog.hdf5
+    source_photoz_pdfs: data/mocks/cosmodc2/outputs-20deg2-CL/source_photoz_pdfs.hdf5
     fiducial_cosmology: ./data/fiducial_cosmology.yml
 
 resume: true

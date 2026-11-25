@@ -46,3 +46,30 @@ index    cluster_id                1D int64    The ID number of that cluster.
 index    source_index              1D int64    The row of this galaxy in the original shear catalog.
 index    distance_arcmin           1D float64  The distance from the cluster center to this galaxy in arcminutes.
 =======  ========================  ==========  =========
+
+
+Cluster Shear Response
+----------------------
+
+The cluster shear response file (`cluster_shear_response`) is generated in the optional `CLClusterShearCalibrator` stage. It has the shear response of the background sources of each cluster stack (a redshift and richness bin of `cluster_catalog_tomography`), from their pairs in `cluster_shear_selection` within the radial range of the stage. `CLClusterEnsembleProfiles` applies it with `shear_calibration: cluster`.
+
+The response is a 2x2 matrix for metadetect, and a single value for scalar metadetect and AnaCal. With `radial_calibration`, there is one response for each radial bin of the stack (first axis), NaN for the radial bins without sources.
+
+===========================  ========================  ===========  =========
+Group                        Name                      Kind         Meaning
+===========================  ========================  ===========  =========
+calibration                  catalog_type              attribute    The type of the shear catalog.
+calibration                  radial_calibration        attribute    Whether there is one response per radial bin.
+calibration                  distance_bins             attribute    The edges of the radial bins.
+calibration                  bin_units                 attribute    The units of the radial bins, mpc or arcmin.
+calibration                  n_bootstrap               attribute    The number of bootstrap resamplings of the clusters for the errors.
+calibration                  stacks_without_sources    attribute    The stacks with no sources in the radial range, which have no response.
+calibration/<stack>          cluster_id                int64        The clusters of the stack, to check the binning of the next stage.
+calibration/<stack>          R                         float64      The response of the stack.
+calibration/<stack>          R_err                     float64      Its bootstrap error (NaN without bootstrap).
+calibration/<stack>          n_clusters                attribute    The number of clusters in the stack.
+calibration/<stack>          n_sources                 attribute    The number of cluster-source pairs used.
+calibration/<stack>          n_sources_per_radial_bin  attribute    The number of pairs in each radial bin.
+===========================  ========================  ===========  =========
+
+Each `calibration/<stack>` group also has the attributes of the stack in `cluster_catalog_tomography` (its redshift and richness edges). A stack without sources has no `R` and `R_err`.

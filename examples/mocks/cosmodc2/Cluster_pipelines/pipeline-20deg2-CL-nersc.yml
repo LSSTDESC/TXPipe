@@ -41,7 +41,9 @@ stages:
   - name: CLClusterBinningRedshiftRichness
     nprocess: 1
   - name: CLClusterSourceSelect
-    nprocess: 32   #>1 does not work with mpi
+    nprocess: 32
+  - name: CLClusterShearCalibrator
+    nprocess: 1
   - name: CLClusterEnsembleProfiles
     nprocess: 1
   - name: CLClusterSACC

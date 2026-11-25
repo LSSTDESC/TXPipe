@@ -16,6 +16,7 @@ launcher:
     interval: 3.0
 modules: >
     txpipe
+    txpipe.extensions
     rail.estimation.algos.bpz_lite
 
 python_paths: []
@@ -23,6 +24,10 @@ python_paths: []
 stages:
     - name: TXComputeShearCalibrationMetadetect
       nprocess: 20
+    - name: TXMetaDetectSelection
+    - name: TXApplyRandomForestSourceTomography
+    - name: TXTrainRandomForestTomography
+      threads_per_process: 4
     - name: BPZliteInformer
       nprocess: 1
       aliases:
@@ -37,7 +42,9 @@ stages:
     - name: CLClusterBinningRedshiftRichness
       nprocess: 1
     - name: CLClusterSourceSelect
-      nprocess: 1 #>1 does not work with mpi
+      nprocess: 1
+    - name: CLClusterShearCalibrator
+      nprocess: 1
     - name: CLClusterEnsembleProfiles
       nprocess: 10
     - name: CLClusterSACC
@@ -48,7 +55,6 @@ stages:
 output_dir: /sps/lsst/users/ebarroso/TXPipe/data/cosmodc2/outputs-20deg2-CL
 config: /sps/lsst/users/ebarroso/TXPipe/examples/mocks/cosmodc2/Cluster_pipelines/config-20deg2-CL.yml
 
-inputs:
 inputs:
     # See README for paths to download these files
     shear_catalog: /sps/lsst/groups/clusters/cl_pipeline_project/TXPipe_data/cosmodc2/20deg2/shear_catalog.hdf5
